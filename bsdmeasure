@@ -1,0 +1,60 @@
+#!/bin/sh
+#
+# $Id$
+#
+
+# Configuration variables
+CVSDIR=/home/ncvs
+TMPDIR=/tmp/bsdmaint
+START=`date -j 199506050000 '+%s'`
+# A one month increment
+YEARDIV=12
+END=`date '+%s'`
+
+# Measure the specified directory
+measure()
+{
+	cd "$1"
+
+	LINESCHARS=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat | wc -lc`
+
+	# Non-comment characters
+	NCCHARS=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat | sed 's/#/@/g' | cpp | wc -c`
+
+	# Number of comments
+	NCOMMENTS=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat | egrep '/\*|//' | wc -l`
+
+	# Number of functions
+	NFUNCTIONS=`find . -name \*.c -print0 | xargs -0 cat | grep '^{' | wc -l`
+
+	# Unique identifiers and their total length
+	IDLEN=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat |
+	sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+	tee orig.out |
+	cpp | tr -cs 'A-Za-z0-9_' '\n' | sort -u | awk '/^[A-Za-z]/ { len += length($1); n++ } END {print n, len }'`
+
+	echo "$1 $YMD $AGE $LINESCHARS $NCCHARS $NCOMMENTS $NFUNCTIONS $IDLEN"
+}
+
+measure /tmp/bsdmaint/src/sys
+exit
+
+INCR=`expr 31557600 / $YEARDIV`
+AGE=0
+DATE=$START
+while [ $DATE -lt $END ]
+do
+	YMD=`date -r $DATE '+%Y-%m-%d'`
+	DATE=`expr $DATE + $INCR`
+	rm -rf $TMPDIR
+	mkdir $TMPDIR
+	cd $TMPDIR
+	cvs -d $CVSDIR co -D $YMD src >cvs.out 2>&1
+	measure src/sys
+	exit
+	cd ../..
+	rm -rf src/sys
+	measure src
+	cd /
+	AGE=`expr $AGE + 12 / $YEARDIV`
+done
