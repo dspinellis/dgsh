@@ -1,0 +1,36 @@
+#!/usr/local/bin/bash
+#
+# $Id$
+#
+# Run measure for all snapshots
+#
+
+# Configuration variables
+CVSDIR=/home/ncvs
+TMPDIR=/home/dds/src/debt-accrue/archive/freebsd
+START=`date -j 199506050000 '+%s'`
+export AGE=0
+# A half year increment
+YEARDIV=2
+END=`date '+%s'`
+STARTDIR=`pwd`
+
+if ! [ -d $TMPDIR ]
+then
+	mkdir $TMPDIR
+	cd $TMPDIR
+	cvs -d $CVSDIR co -D $YMD src >cvs.out 2>&1
+fi
+
+INCR=`expr 31557600 / $YEARDIV`
+DATE=$START
+while [ $DATE -lt $END ]
+do
+	export YMD=`date -r $DATE '+%Y-%m-%d'`
+	DATE=`expr $DATE + $INCR`
+	cd $TMPDIR
+	cvs -d $CVSDIR update -RPAd -D $YMD src >cvs.out 2>&1
+	bash $STARTDIR/measure FreeBSD usr $YMD $TMPDIR/src -not -path "$TMPDIR/src/sys/*"
+	bash $STARTDIR/measure FreeBSD sys $YMD "$TMPDIR/src/sys"
+	export AGE=`expr $AGE + 12 / $YEARDIV`
+done
