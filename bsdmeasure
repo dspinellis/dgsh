@@ -1,8 +1,8 @@
-#!/usr/local/bin/bash
+#!/bin/sh
 #
 # $Id$
 #
-# Bash process substitution version
+# Temporary file version
 #
 
 # Configuration variables
@@ -16,56 +16,35 @@ END=`date '+%s'`
 # Measure the specified directory
 measure()
 {
-	export DIR="$1"
-	cd "$TMPDIR/$DIR"
+	cd "$1"
 
-	rm -f lineschars ncchars ncomments idlen
-	mkfifo lineschars ncchars ncomments idlen
-
-	find . \( -name \*.c -or -name \*.h \) -print0 |
-	xargs -0 cat |
-
-	tee in.txt |
-
-	# Lines and characters
-	tee >(wc -lc >lineschars) |
+	LINESCHARS=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat | tee tmp | wc -lc`
 
 	# Non-comment characters
-	tee >(sed 's/#/@/g' | cpp | wc -c >ncchars) |
+	NCCHARS=` sed 's/#/@/g' <tmp | cpp | wc -c`
 
 	# Number of comments
-	tee >(egrep '/\*|//' | wc -l >ncomments) |
-
-	# Unique identifiers and their total length
-	sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-	cpp |
-	tr -cs 'A-Za-z0-9_' '\n' |
-	sort -u |
-	awk '/^[A-Za-z]/ { len += length($1); n++ } END {print n, len }' >idlen &
+	NCOMMENTS=` egrep '/\*|//' <tmp | wc -l`
 
 	# Number of functions
-	export NFUNCTIONS=$(find . -name \*.c -print0 | xargs -0 cat | grep '^{' | wc -l)
+	NFUNCTIONS=`find . -name \*.c -print0 | xargs -0 cat | grep '^{' | wc -l`
 
-	# Gather the results
-	(
-		echo "LINESCHARS='$(cat lineschars)'" &
-		echo  "NCCHARS='$(cat ncchars)'" &
-		echo  "NCOMMENTS='$(cat ncomments)'" &
-		echo  "IDLEN='$(cat idlen)'" &
-		wait
-		cat <<\EOF
-		echo "$DIR $YMD $AGE $LINESCHARS $NCCHARS $NCOMMENTS $NFUNCTIONS $IDLEN"
-EOF
-	) |
-	sh
+	# Unique identifiers and their total length
+	IDLEN=` sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" <tmp |
+	cpp | tr -cs 'A-Za-z0-9_' '\n' | sort -u | awk '/^[A-Za-z]/ { len += length($1); n++ } END {print n, len }'`
+
+	echo "$1 $YMD $AGE $LINESCHARS $NCCHARS $NCOMMENTS $NFUNCTIONS $IDLEN"
 }
 
+measure /tmp/bsdmaint/src/sys
+exit
+
 INCR=`expr 31557600 / $YEARDIV`
-export AGE=0
+AGE=0
 DATE=$START
 while [ $DATE -lt $END ]
 do
-	export YMD=`date -r $DATE '+%Y-%m-%d'`
+	YMD=`date -r $DATE '+%Y-%m-%d'`
 	DATE=`expr $DATE + $INCR`
 	rm -rf $TMPDIR
 	mkdir $TMPDIR
@@ -73,8 +52,9 @@ do
 	cvs -d $CVSDIR co -D $YMD src >cvs.out 2>&1
 	measure src/sys
 	exit
-	rm -rf "$TMPDIR/src/sys"
+	cd ../..
+	rm -rf src/sys
 	measure src
-	cd /tmp
-	export AGE=`expr $AGE + 12 / $YEARDIV`
+	cd /
+	AGE=`expr $AGE + 12 / $YEARDIV`
 done
