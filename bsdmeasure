@@ -2,16 +2,14 @@
 #
 # $Id$
 #
-# Named pipe implementation
+# Bash process substitution version
 #
 
 # Configuration variables
 CVSDIR=/home/ncvs
 TMPDIR=/home/dds/src/debt-accrue/archive/bsdmaint
 START=`date -j 199506050000 '+%s'`
-START=`date -j 200403040000 '+%s'`
 export AGE=0
-export AGE=105
 # A one month increment
 YEARDIV=12
 END=`date '+%s'`
@@ -74,13 +72,9 @@ while [ $DATE -lt $END ]
 do
 	export YMD=`date -r $DATE '+%Y-%m-%d'`
 	DATE=`expr $DATE + $INCR`
-	rm -rf $TMPDIR
-	mkdir $TMPDIR
 	cd $TMPDIR
-	cvs -d $CVSDIR co -D $YMD src >cvs.out 2>&1
+	# -R: read-only -P: prune empty dirs -A: reset tags -d: create dirs
+	cvs -d $CVSDIR update -RPAd -D $YMD src >cvs.out 2>&1
 	measure src/sys
-	rm -rf "$TMPDIR/src/sys"
-	measure src
-	cd /tmp
 	export AGE=`expr $AGE + 12 / $YEARDIV`
 done
