@@ -1,14 +1,17 @@
-#!/bin/sh
+#!/usr/local/bin/bash
 #
 # $Id$
 #
-# Temporary file version
+# Named pipe implementation
 #
 
 # Configuration variables
 CVSDIR=/home/ncvs
-TMPDIR=/tmp/bsdmaint
+TMPDIR=/home/dds/src/debt-accrue/archive/bsdmaint
 START=`date -j 199506050000 '+%s'`
+START=`date -j 200403040000 '+%s'`
+export AGE=0
+export AGE=105
 # A one month increment
 YEARDIV=12
 END=`date '+%s'`
@@ -16,45 +19,68 @@ END=`date '+%s'`
 # Measure the specified directory
 measure()
 {
-	cd "$1"
+	export DIR="$1"
+	cd "$TMPDIR/$DIR"
 
-	LINESCHARS=`find . \( -name \*.c -or -name \*.h \) -print0 | xargs -0 cat | tee tmp | wc -lc`
+	rm -f idlen
+	mkfifo idlen
+	rm -f lineschars.i ncchars.i ncomments.i
+	mkfifo lineschars.i ncchars.i ncomments.i
+	rm -f lineschars.o ncchars.o ncomments.o
+	mkfifo lineschars.o ncchars.o ncomments.o
 
-	# Non-comment characters
-	NCCHARS=` sed 's/#/@/g' <tmp | cpp | wc -c`
+	find . \( -name \*.c -or -name \*.h \) -print0 |
+	xargs -0 cat |
 
-	# Number of comments
-	NCOMMENTS=` egrep '/\*|//' <tmp | wc -l`
-
-	# Number of functions
-	NFUNCTIONS=`find . -name \*.c -print0 | xargs -0 cat | grep '^{' | wc -l`
+	# Scatter
+	tee lineschars.i ncchars.i ncomments.i |
 
 	# Unique identifiers and their total length
-	IDLEN=` sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" <tmp |
-	cpp | tr -cs 'A-Za-z0-9_' '\n' | sort -u | awk '/^[A-Za-z]/ { len += length($1); n++ } END {print n, len }'`
+	sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+	cpp |
+	tr -cs 'A-Za-z0-9_' '\n' |
+	sort -u |
+	awk '/^[A-Za-z]/ { len += length($1); n++ } END {print n, len }' >idlen &
 
-	echo "$1 $YMD $AGE $LINESCHARS $NCCHARS $NCOMMENTS $NFUNCTIONS $IDLEN"
+	# Lines and characters
+	wc -lc <lineschars.i >lineschars.o &
+
+	# Non-comment characters
+	sed 's/#/@/g' <ncchars.i | cpp | wc -c >ncchars.o &
+
+	# Number of comments
+	egrep '/\*|//' <ncomments.i | wc -l >ncomments.o &
+
+	# Number of functions
+	export NFUNCTIONS=$(find . -name \*.c -print0 | xargs -0 cat | grep '^{' | wc -l)
+
+	# Gather the results
+	(
+		echo "LINESCHARS='$(cat lineschars.o)'" &
+		echo  "NCCHARS='$(cat ncchars.o)'" &
+		echo  "NCOMMENTS='$(cat ncomments.o)'" &
+		echo  "IDLEN='$(cat idlen)'" &
+		wait
+		cat <<\EOF
+		echo "$DIR $YMD $AGE $LINESCHARS $NCCHARS $NCOMMENTS $NFUNCTIONS $IDLEN"
+EOF
+	) |
+	sh
 }
 
-measure /tmp/bsdmaint/src/sys
-exit
-
 INCR=`expr 31557600 / $YEARDIV`
-AGE=0
 DATE=$START
 while [ $DATE -lt $END ]
 do
-	YMD=`date -r $DATE '+%Y-%m-%d'`
+	export YMD=`date -r $DATE '+%Y-%m-%d'`
 	DATE=`expr $DATE + $INCR`
 	rm -rf $TMPDIR
 	mkdir $TMPDIR
 	cd $TMPDIR
 	cvs -d $CVSDIR co -D $YMD src >cvs.out 2>&1
 	measure src/sys
-	exit
-	cd ../..
-	rm -rf src/sys
+	rm -rf "$TMPDIR/src/sys"
 	measure src
-	cd /
-	AGE=`expr $AGE + 12 / $YEARDIV`
+	cd /tmp
+	export AGE=`expr $AGE + 12 / $YEARDIV`
 done
