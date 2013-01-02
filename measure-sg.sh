@@ -27,7 +27,7 @@ scatter |{
 
 			# Remove strings and comments
 			-| sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp 2>/dev/null |{
+			cpp -P 2>/dev/null |{
 
 				# Structure definitions
 				-|  egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |
@@ -36,7 +36,7 @@ scatter |{
 				# Type definitions
 				-| grep -w typedef | wc -l |=NTYPEDEF
 
-				# Type definitions
+				# Use of void
 				-| grep -w void | wc -l |=NVOID
 
 				# Average identifier length
@@ -49,7 +49,7 @@ scatter |{
 			-| wc -lc | awk '{OFS=":"; print $1, $2}' |=CHLINESCHAR
 
 			# Non-comment characters
-			-| sed 's/#/@/g' | cpp 2>/dev/null | wc -c |=NCCHAR
+			-| sed 's/#/@/g' | cpp -P 2>/dev/null | wc -c |=NCCHAR
 
 			# Number of comments
 			-| egrep '/\*|//' | wc -l |=NCOMMENT
@@ -80,7 +80,7 @@ scatter |{
 
 			# C code without comments and strings
 			-| sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp 2>/dev/null |{
+			cpp -P 2>/dev/null |{
 
 				# Number of functions
 				-| grep '^{' | wc -l |=NFUNCTION
