@@ -49,7 +49,10 @@ scatter |{
 			-| wc -lc | awk '{OFS=":"; print $1, $2}' |=CHLINESCHAR
 
 			# Non-comment characters
-			-| sed 's/#/@/g' | cpp -P 2>/dev/null | wc -c |=NCCHAR
+			# -traditional avoids expansion of tabs
+			-| sed 's/#/@/g' |
+			cpp -traditional -P 2>/dev/null |
+			wc -c |=NCCHAR
 
 			# Number of comments
 			-| egrep '/\*|//' | wc -l |=NCOMMENT
