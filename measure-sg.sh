@@ -39,6 +39,9 @@ scatter |{
 				# Use of void
 				-| grep -w void | wc -l |=NVOID
 
+				# Use of gets
+				-| grep -w gets | wc -l |=NGETS
+
 				# Average identifier length
 				-| tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
@@ -113,5 +116,5 @@ scatter |{
 
 # Gather and print the results
 |} gather |{
-	echo "$CODE:$DATE:$SYSTEM:$FNAMELEN:$NSTRUCT:$NTYPEDEF:$IDLEN:$CHLINESCHAR:$NCCHAR:$NCOMMENT:$NCOPYRIGHT:$NCFILE:$NCDIR:$CLINESCHAR:$NFUNCTION:$NGOTO:$NREGISTER:$NMACRO:$NINCLUDE:$NCONST:$NVOID:$NHFILE"
+	echo "$CODE:$DATE:$SYSTEM:$FNAMELEN:$NSTRUCT:$NTYPEDEF:$IDLEN:$CHLINESCHAR:$NCCHAR:$NCOMMENT:$NCOPYRIGHT:$NCFILE:$NCDIR:$CLINESCHAR:$NFUNCTION:$NGOTO:$NREGISTER:$NMACRO:$NINCLUDE:$NCONST:$NVOID:$NHFILE:$NGETS"
 |}
