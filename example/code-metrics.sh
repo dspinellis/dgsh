@@ -44,11 +44,15 @@ scatter |{
 			# Lines and characters
 			-| wc -lc | awk '{OFS=":"; print $1, $2}' |=CHLINESCHAR
 
-			# Non-comment characters
+			# Non-comment characters (rounded thousands)
 			# -traditional avoids expansion of tabs
+			# We round it to avoid failing due to minor
+			# differences between preprocessors in regression
+			# testing
 			-| sed 's/#/@/g' |
 			cpp -traditional -P 2>/dev/null |
-			wc -c |=NCCHAR
+			wc -c |
+			awk '{OFMT = "%.0f"; print $1/1000}' |=NCCHAR
 
 			# Number of comments
 			-| egrep '/\*|//' | wc -l |=NCOMMENT
