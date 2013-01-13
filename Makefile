@@ -1,6 +1,6 @@
 test: sgsh
 	./sgsh example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
-	diff test/code-metrics/out.ok test/code-metrics/out.test
+	diff -b test/code-metrics/out.ok test/code-metrics/out.test
 
 sgsh: sgsh.pl
 	perl -c sgsh.pl
