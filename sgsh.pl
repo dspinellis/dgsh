@@ -15,7 +15,7 @@ use Getopt::Std;
 # -k		Keep temporary file
 our($opt_s, $opt_k);
 $opt_s = '/bin/sh';
-getopt('s:k');
+getopts('s:k');
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
@@ -53,20 +53,21 @@ my @lines;
 # User-specified input file name (or STDIN)
 my $input_filename;
 
-print $output_fh "#!$opt_s
-# Automatically generated file
-# Source file $input_filename
-";
-
 # Read input file
-if ($#ARGV == 0) {
-	$input_filename = $ARGV[0];
+if ($#ARGV >= 0) {
+	$input_filename = shift;
 	open(my $in, '<', $input_filename) || die "Unable to open $input_filename: $!\n";
 	@lines = <$in>;
 } else {
 	$input_filename = 'STDIN';
 	@lines = <STDIN>;
 }
+
+print $output_fh "#!$opt_s
+# Automatically generated file
+# Source file $input_filename
+";
+
 
 # Adjust command interpreter line
 $lines[0] =~ s/^\#\!/#/;
@@ -123,7 +124,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	}
 
 	# Print the line, unless we're in a scatter-gather block
-	print $output_fh unless ($in_scatter_gather_block);
+	print $output_fh $_ unless ($in_scatter_gather_block);
 }
 
 # Execute the shell on the generated file
@@ -213,7 +214,7 @@ generate_scatter_code
 			s/\|\=\s*(\w+)/>\$SGDIR\/npo-$1 &/;
 		}
 
-		print $output_fh;
+		print $output_fh $_;
 	}
 }
 
