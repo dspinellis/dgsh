@@ -1,0 +1,2 @@
+test/duplicate-files/same-file-1 test/duplicate-files/same-file-2 test/duplicate-files/same-file-3
+ test/duplicate-files/another-same-1 test/duplicate-files/another-same-2

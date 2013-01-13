@@ -37,14 +37,20 @@ my @endpoint_number;
 # True when processing a scatter gather block
 my $in_scatter_gather_block = 0;
 
-# Number of gather input points
-my $gather_points;
+# Number of gather variable input points
+my $gather_variable_points;
+
+# Number of gather file input points
+my $gather_file_points;
 
 # Line where S/G block starts
 my $scatter_gather_start;
 
-# Variable name for each gather endpoint
-my @gather_name;
+# Variable name for each variable (|=) gather endpoint
+my @gather_variable_name;
+
+# File name for each file (|>) gather endpoint
+my @gather_file_name;
 
 # Lines of the input file
 # Required, because we implement a double-pass algorithm
@@ -82,12 +88,13 @@ for (my $i = 0; $i <= $#lines; $i++) {
 			exit 1;
 		}
 		$point_counter = -1;
-		$gather_points = 0;
+		$gather_variable_points = 0;
+		$gather_file_points = 0;
 		$scatter_gather_start = $i;
 		$in_scatter_gather_block = 1;
 		undef @endpoint_number;
 		undef @current_point_stack;
-		undef @gather_name;
+		undef @gather_variable_name;
 		next;
 
 	# Gather block begin
@@ -118,10 +125,16 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		$current_point = ++$point_counter;
 	}
 
-	# Gather output endpoint
+	# Gather variable output endpoint
 	if (/\|\=\s*(\w+)/) {
-		$gather_name[$gather_points++] = $1;
+		$gather_variable_name[$gather_variable_points++] = $1;
 	}
+
+	# Gather file output endpoint
+	if (/\|\>\s*\/sgsh\/(\w+)/) {
+		$gather_file_name[$gather_file_points++] = $1;
+	}
+
 
 	# Print the line, unless we're in a scatter-gather block
 	print $output_fh $_ unless ($in_scatter_gather_block);
@@ -141,7 +154,7 @@ if ($? == -1) {
 #
 # Generate the code to scatter data
 # Arguments are the beginning and end lines of the corresponding scatter block
-# Uses the global variables: @lines, $point_counts, @endpoint_number, $gather_points
+# Uses the global variables: @lines, $point_counts, @endpoint_number, $gather_variable_points
 #
 sub
 generate_scatter_code
@@ -164,16 +177,24 @@ generate_scatter_code
 		# Scatter block begin: initialize named pipes
 		if (/scatter\s*\|\{/) {
 			# Generate initialization code
-			my $code = 'export SGDIR=/tmp/sg-$$; rm -rf $SGDIR; mkdir $SGDIR; mkfifo';
+			# The traps ensure that the named pipe directory
+			# is removed on termination and that the exit code
+			# after a signal is that of the shell: 128 + signal number
+			my $code = q{export SGDIR=/tmp/sg-$$; rm -rf $SGDIR; trap 'rm -rf "$SGDIR"' 0; trap 'exit $?' 1 2 3 15; mkdir $SGDIR; mkfifo};
 			# Scatter named pipes
 			for (my $j = 0; $j <= $#endpoint_number; $j++) {
 				for (my $k = 0; $k < $endpoint_number[$j]; $k++) {
 					$code .= " \$SGDIR/npi-$j.$k";
 				}
 			}
-			# Gather named pipes
-			for (my $j = 0; $j < $gather_points; $j++) {
-				$code .= " \$SGDIR/npo-$gather_name[$j]";
+			# Gather variable named pipes
+			for (my $j = 0; $j < $gather_variable_points; $j++) {
+				$code .= " \$SGDIR/npvo-$gather_variable_name[$j]";
+			}
+
+			# Gather file named pipes
+			for (my $j = 0; $j < $gather_file_points; $j++) {
+				$code .= " \$SGDIR/npfo-$gather_file_name[$j]";
 			}
 			s/scatter\s*\|\{/$code/;
 
@@ -189,6 +210,13 @@ generate_scatter_code
 
 		}
 
+		# Scatter-gather pass-through to a named file
+		# Pass the output through tuboflo to avoid deadlock
+		if (/-\|\|\>\s*\/sgsh\/(\w+)/) {
+			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
+			s/\|\>\s*\/sgsh\/(\w+)/ tuboflo >\$SGDIR\/npfo-$1 &/;
+		}
+		
 		# Scatter input head endpoint: get input from named pipe
 		if (/-\|/) {
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
@@ -209,9 +237,15 @@ generate_scatter_code
 			$endpoint_counter[$current_point] = 0;
 		}
 
-		# Gather output endpoint
+		# Gather output endpoint to named variable
 		if (/\|\=\s*(\w+)/) {
-			s/\|\=\s*(\w+)/>\$SGDIR\/npo-$1 &/;
+			s/\|\=\s*(\w+)/>\$SGDIR\/npvo-$1 &/;
+		}
+
+		# Gather output endpoint to named file
+		# Pass the output through tuboflo to avoid deadlock
+		if (/\|\>\s*\/sgsh\/(\w+)/) {
+			s/\|\>\s*\/sgsh\/(\w+)/| tuboflo >\$SGDIR\/npfo-$1 &/;
 		}
 
 		print $output_fh $_;
@@ -231,16 +265,19 @@ generate_gather_code
 		if (/\|\}\s*gather\s*\|\{/) {
 			s/\|\}\s*gather\s*\|\{//;
 			print $output_fh "# Gather the results\n(\n";
-			for (my $j = 0; $j <= $#gather_name; $j++) {
-				print $output_fh qq{\techo "$gather_name[$j]='`cat \$SGDIR/npo-$gather_name[$j]`'" &\n};
+			for (my $j = 0; $j <= $#gather_variable_name; $j++) {
+				print $output_fh qq{\techo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'" &\n};
 			}
-			print $output_fh "\twait\nrm -rf \$SGDIR\ncat <<\\SGEOFSG\n";
+			print $output_fh "\twait\ncat <<\\SGEOFSG\n";
 		} elsif (/\|\}/) {
 			s/\|\}//;
 
 			print $output_fh "SGEOFSG\n) | $opt_s\n";
 			last;
 		} else {
+			# Substitute /sgsh/... gather points with corresponding named pipe
+			$lines[$i] =~ s|/sgsh/(\w+)|\$SGDIR/npfo-$1|g;
+
 			print $output_fh $lines[$i];
 		}
 	}
