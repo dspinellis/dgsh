@@ -37,6 +37,8 @@ scatter |{
 
 		 # Pass through the filename md5sum pairs
 		 -||>/sgsh/names
+	|}
+
 |} gather |{
 	# Join the repeated MD5 sums with the corresponding file names
 	join -2 2 /sgsh/dupes /sgsh/names |

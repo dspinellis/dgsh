@@ -113,6 +113,10 @@ for (my $i = 0; $i <= $#lines; $i++) {
 
 	# Gather block begin
 	} elsif (/\|\}\s*gather\s*\|\{/) {
+		if ($#current_point_stack != -1) {
+			print STDERR "$ARGV[0](", $i + 1, "): Missing |}\n";
+			exit 1;
+		}
 		generate_scatter_code($scatter_gather_start, $i - 1);
 		$i += generate_gather_code($i);
 		$in_scatter_gather_block = 0;

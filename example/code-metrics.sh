@@ -37,7 +37,7 @@ scatter |{
 			cpp -P 2>/dev/null |{
 
 				# Structure definitions
-				-|  egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |
+				-|  egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | #}}
 				wc -l |=NSTRUCT
 
 				# Type definitions
