@@ -20,7 +20,7 @@ getopts('s:k');
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
 # Output file
-my ($output_fh, $output_filename) = tempfile();
+my ($output_fh, $output_filename) = tempfile(UNLINK => 1);
 
 # The scatter point currently in effect
 my $current_point;
