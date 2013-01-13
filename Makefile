@@ -1,2 +1,2 @@
-measure: measure-sg.sh
-	perl scatter-gather.pl $? >$@
+test:
+	perl -c sgsh.pl

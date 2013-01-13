@@ -1,15 +1,26 @@
 #!/usr/bin/perl
 #
 # Read as input a shell script extended with scatter-gather operation syntax
-# Produce as output a plain shell script implementing the specified operations
-# through named pipes
+# Produce as output and execute a plain shell script implementing the
+# specified operations through named pipes
 #
 
 use strict;
 use warnings;
+use File::Temp qw/ tempfile /;
+use Getopt::Std;
 
-open(my $in, '<', $ARGV[0]) || die "Unable to open $ARGV[0]: $!\n";
-my @lines = <$in>;
+# Command-line options
+# -s shell	Specify shell to use
+# -k		Keep temporary file
+our($opt_s, $opt_k);
+$opt_s = '/bin/sh';
+getopt('s:k');
+
+$File::Temp::KEEP_ALL = 1 if ($opt_k);
+
+# Output file
+my ($output_fh, $output_filename) = tempfile();
 
 # The scatter point currently in effect
 my $current_point;
@@ -35,6 +46,32 @@ my $scatter_gather_start;
 # Variable name for each gather endpoint
 my @gather_name;
 
+# Lines of the input file
+# Required, because we implement a double-pass algorithm
+my @lines;
+
+# User-specified input file name (or STDIN)
+my $input_filename;
+
+print $output_fh "#!$opt_s
+# Automatically generated file
+# Source file $input_filename
+";
+
+# Read input file
+if ($#ARGV == 0) {
+	$input_filename = $ARGV[0];
+	open(my $in, '<', $input_filename) || die "Unable to open $input_filename: $!\n";
+	@lines = <$in>;
+} else {
+	$input_filename = 'STDIN';
+	@lines = <STDIN>;
+}
+
+# Adjust command interpreter line
+$lines[0] =~ s/^\#\!/#/;
+
+# Process file's lines
 for (my $i = 0; $i <= $#lines; $i++) {
 	$_ = $lines[$i];
 	# Scatter block begin
@@ -86,7 +123,18 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	}
 
 	# Print the line, unless we're in a scatter-gather block
-	print unless ($in_scatter_gather_block);
+	print $output_fh unless ($in_scatter_gather_block);
+}
+
+# Execute the shell on the generated file
+my @args = ($opt_s, $output_filename, @ARGV);
+system(@args);
+if ($? == -1) {
+	print STDERR "Unable to execute $opt_s: $!\n";
+	exit 1;
+} else {
+	# Convert Perl's system exit code into one compatible with sh(1)
+	exit (($? >> 8) | (($? & 127) << 8));
 }
 
 #
@@ -165,7 +213,7 @@ generate_scatter_code
 			s/\|\=\s*(\w+)/>\$SGDIR\/npo-$1 &/;
 		}
 
-		print;
+		print $output_fh;
 	}
 }
 
@@ -181,23 +229,18 @@ generate_gather_code
 			$_ = $lines[$i];
 		if (/\|\}\s*gather\s*\|\{/) {
 			s/\|\}\s*gather\s*\|\{//;
-			print "# Gather the results\n(\n";
+			print $output_fh "# Gather the results\n(\n";
 			for (my $j = 0; $j <= $#gather_name; $j++) {
-				print qq{\techo "$gather_name[$j]='`cat \$SGDIR/npo-$gather_name[$j]`'" &\n};
+				print $output_fh qq{\techo "$gather_name[$j]='`cat \$SGDIR/npo-$gather_name[$j]`'" &\n};
 			}
-			print "\twait\nrm -rf \$SGDIR\ncat <<\\SGEOFSG\n";
+			print $output_fh "\twait\nrm -rf \$SGDIR\ncat <<\\SGEOFSG\n";
 		} elsif (/\|\}/) {
 			s/\|\}//;
-			my $shell = $lines[0];
-			if (!($shell =~ s/^\#\!//)) {
-				print STDERR "ARGV[0](1): No shell specified\n";
-				exit 1;
-			}
-			$shell =~ s/\s.*$//;
-			print "SGEOFSG\n) | $shell\n";
+
+			print $output_fh "SGEOFSG\n) | $opt_s\n";
 			last;
 		} else {
-			print $lines[$i];
+			print $output_fh $lines[$i];
 		}
 	}
 	return $i;
