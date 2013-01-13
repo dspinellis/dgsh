@@ -98,7 +98,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	# Scatter block begin
 	if (/scatter\s*\|\{/) {
 		if ($in_scatter_gather_block) {
-			print STDERR "$ARGV[0](", $i + 1, "): Scatter-gather blocks can't be nested\n";
+			print STDERR "$input_filename(", $i + 1, "): Scatter-gather blocks can't be nested\n";
 			exit 1;
 		}
 		$point_counter = -1;
@@ -114,7 +114,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	# Gather block begin
 	} elsif (/\|\}\s*gather\s*\|\{/) {
 		if ($#current_point_stack != -1) {
-			print STDERR "$ARGV[0](", $i + 1, "): Missing |}\n";
+			print STDERR "$input_filename(", $i + 1, "): Missing |}\n";
 			exit 1;
 		}
 		generate_scatter_code($scatter_gather_start, $i - 1);
@@ -125,7 +125,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	# Scatter group end
 	} elsif (/\|\}/) {
 		if ($#current_point_stack == -1) {
-			print STDERR "$ARGV[0](", $i + 1, "): Extra |}\n";
+			print STDERR "$input_filename(", $i + 1, "): Extra |}\n";
 			exit 1;
 		}
 		$current_point = pop(@current_point_stack);
