@@ -160,7 +160,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 }
 
 # Execute the shell on the generated file
-my @args = ($opt_s, $output_filename, @ARGV);
+my @args = ($opt_s, '-a', $output_filename, @ARGV);
 
 if ($opt_n) {
 	print join(' ', @args), "\n";
@@ -241,7 +241,7 @@ generate_scatter_code
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
 			s/\|\>\s*\/sgsh\/(\w+)/ tuboflo >\$SGDIR\/npfo-$1 &/;
 		}
-		
+
 		# Scatter input head endpoint: get input from named pipe
 		if (/-\|/) {
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
