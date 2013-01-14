@@ -25,11 +25,12 @@ use File::Temp qw/ tempfile /;
 use Getopt::Std;
 
 # Command-line options
-# -s shell	Specify shell to use
 # -k		Keep temporary file
-our($opt_s, $opt_k);
+# -n		Do not run the generated script
+# -s shell	Specify shell to use
+our($opt_s, $opt_k, $opt_n);
 $opt_s = '/bin/sh';
-getopts('s:k');
+getopts('kns:');
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
@@ -160,6 +161,12 @@ for (my $i = 0; $i <= $#lines; $i++) {
 
 # Execute the shell on the generated file
 my @args = ($opt_s, $output_filename, @ARGV);
+
+if ($opt_n) {
+	print join(' ', @args), "\n";
+	exit 0;
+}
+
 system(@args);
 if ($? == -1) {
 	print STDERR "Unable to execute $opt_s: $!\n";
