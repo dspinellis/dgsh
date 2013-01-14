@@ -97,7 +97,7 @@ $lines[0] =~ s/^\#\!/#/;
 for (my $i = 0; $i <= $#lines; $i++) {
 	$_ = $lines[$i];
 	# Scatter block begin
-	if (/scatter\s*\|\{/) {
+	if (/^[^'#"]*scatter\s*\|\{\s*(\#.*)?$/) {
 		if ($in_scatter_gather_block) {
 			print STDERR "$input_filename(", $i + 1, "): Scatter-gather blocks can't be nested\n";
 			exit 1;
@@ -113,7 +113,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		next;
 
 	# Gather block begin
-	} elsif (/\|\}\s*gather\s*\|\{/) {
+	} elsif (/^[^'#"]*\|\}\s*gather\s*\|\{\s*(\#.*)?$/) {
 		if ($#current_point_stack != -1) {
 			print STDERR "$input_filename(", $i + 1, "): Missing |}\n";
 			exit 1;
@@ -124,7 +124,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		next;
 
 	# Scatter group end
-	} elsif (/\|\}/) {
+	} elsif (/^[^'#"]*\|\}\s*(\#.*)?$/) {
 		if ($#current_point_stack == -1) {
 			print STDERR "$input_filename(", $i + 1, "): Extra |}\n";
 			exit 1;
@@ -134,23 +134,23 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	}
 
 	# Scatter input endpoint
-	if (/-\|/) {
+	if (/^[^'#"]*-\|/) {
 		$endpoint_number[$current_point]++;
 	}
 
 	# Scatter group begin
-	if (/\|\{/) {
+	if (/\|\{\s*(\#.*)?$/) {
 		push(@current_point_stack, $current_point);
 		$current_point = ++$point_counter;
 	}
 
 	# Gather variable output endpoint
-	if (/\|\=\s*(\w+)/) {
+	if (/\|\=\s*(\w+)\s*(\#.*)?$/) {
 		$gather_variable_name[$gather_variable_points++] = $1;
 	}
 
 	# Gather file output endpoint
-	if (/\|\>\s*\/sgsh\/(\w+)/) {
+	if (/\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$/) {
 		$gather_file_name[$gather_file_points++] = $1;
 	}
 
