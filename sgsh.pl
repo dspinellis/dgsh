@@ -178,6 +178,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 }
 
 # Execute the shell on the generated file
+# -a inherits the shell's variables to subshell
 my @args = ($opt_s, '-a', $output_filename, @ARGV);
 
 if ($opt_n) {
@@ -315,7 +316,8 @@ generate_gather_code
 		} elsif (/$BLOCK_END/o) {
 			s/\|\}//;
 
-			print $output_fh "SGEOFSG\n) | $opt_s\n";
+			# -s allows passing positional arguments to subshell
+			print $output_fh qq{SGEOFSG\n) | $opt_s -s "\$@"\n};
 			last;
 		} else {
 			# Substitute /sgsh/... gather points with corresponding named pipe
