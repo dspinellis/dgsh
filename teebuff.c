@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 Diomidis Spinellis
+ * Copyright 2013 Diomidis Spinellis
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -247,9 +247,9 @@ main(int argc, char *argv[])
 	}
 
 	/* We will handle SIGPIPE explicitly when calling write(2). */
-	signal(SIGPIPE, SIG_IGN); 
+	signal(SIGPIPE, SIG_IGN);
 
-	/* Copy source to sink. */
+	/* Copy source to sink without allowing any single file to block us. */
 	for (;;) {
 		struct sink_info *si;
 		fd_set source_fds;
@@ -274,12 +274,20 @@ main(int argc, char *argv[])
 		if (reached_eof && active_fds == 0)
 			return 0;
 
-		/* Block until we can read, or maybe write. */
+		/* Block until we can read or write. */
 		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
 			err(3, "select");
-		/* If we wrote something, loop; no need to read. */
+
+		/* Write to all file descriptors that accept writes. */
 		if (sink_write(&sink_fds, files, argc) > 0)
+			/*
+			 * If we wrote something, we made progress on the
+			 * downstream end.  Loop without reading to avoid
+			 * allocating excessive buffer memory.
+			 */
 			continue;
+
+		/* Read, if possible. */
 		if (FD_ISSET(STDIN_FILENO, &source_fds))
 			if (source_read(&source_fds) == 0)
 				reached_eof = 1;
