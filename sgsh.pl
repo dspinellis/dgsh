@@ -28,9 +28,12 @@ use Getopt::Std;
 # -k		Keep temporary file
 # -n		Do not run the generated script
 # -s shell	Specify shell to use
-our($opt_s, $opt_k, $opt_n);
+# -t tee	Path to teebuff
+
+our($opt_s, $opt_t, $opt_k, $opt_n);
 $opt_s = '/bin/sh';
-getopts('kns:');
+$opt_t = 'teebuff';
+getopts('kns:t:');
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
@@ -273,11 +276,10 @@ generate_scatter_code
 			$current_point = ++$point_counter;
 			my $tee_args;
 			my $j;
-			for ($j = 0; $j  < $endpoint_number[$current_point] - 1; $j++) {
+			for ($j = 0; $j  < $endpoint_number[$current_point]; $j++) {
 				$tee_args .= " \$SGDIR/npi-$current_point.$j";
 			}
-			$tee_args .= " >\$SGDIR/npi-$current_point.$j";
-			s/\|\{/| tee $tee_args &/;
+			s/\|\{/| $opt_t $tee_args &/;
 			$endpoint_counter[$current_point] = 0;
 		}
 

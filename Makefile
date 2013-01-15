@@ -14,10 +14,12 @@
 #  limitations under the License.
 #
 
-test: sgsh
-	./sgsh example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
+all: sgsh teebuff
+
+test: sgsh teebuff
+	./sgsh -t ./teebuff example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
-	./sgsh example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
+	./sgsh -t ./teebuff example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 
 sgsh: sgsh.pl
