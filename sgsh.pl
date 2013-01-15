@@ -70,6 +70,9 @@ my @gather_variable_name;
 # File name for each file (|>) gather endpoint
 my @gather_file_name;
 
+# Map containing all defined gather file names
+my %gather_file_defined;
+
 # Lines of the input file
 # Required, because we implement a double-pass algorithm
 my @lines;
@@ -173,6 +176,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 	# Gather file output endpoint
 	if (/$GATHER_FILE_OUTPUT/o) {
 		$gather_file_name[$gather_file_points++] = $1;
+		$gather_file_defined{$1} = 1;
 	}
 
 
@@ -323,7 +327,14 @@ generate_gather_code
 			last;
 		} else {
 			# Substitute /sgsh/... gather points with corresponding named pipe
-			$lines[$i] =~ s|/sgsh/(\w+)|\$SGDIR/npfo-$1|g;
+			while ($lines[$i] =~ m|/sgsh/(\w+)|) {
+				my $file_name = $1;
+				if (!$gather_file_defined{$file_name}) {
+					print STDERR "$input_filename(", $i + 1, "): Undefined file gather name $file_name\n";
+					exit 1;
+				}
+				$lines[$i] =~ s|/sgsh/$file_name|\$SGDIR/npfo-$file_name|g;
+			}
 
 			print $output_fh $lines[$i];
 		}
