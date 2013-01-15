@@ -262,10 +262,9 @@ generate_scatter_code
 		}
 
 		# Scatter-gather pass-through to a named file
-		# Pass the output through tuboflo to avoid deadlock
 		if (/$SCATTER_GATHER_PASS_THROUGH/o) {
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
-			s/\|\>\s*\/sgsh\/(\w+)/ tuboflo >\$SGDIR\/npfo-$1 &/;
+			s/\|\>\s*\/sgsh\/(\w+)/ cat >\$SGDIR\/npfo-$1 &/;
 		}
 
 		# Scatter input head endpoint: get input from named pipe
@@ -293,9 +292,8 @@ generate_scatter_code
 		}
 
 		# Gather output endpoint to named file
-		# Pass the output through tuboflo to avoid deadlock
 		if (/$GATHER_FILE_OUTPUT/) {
-			s/\|\>\s*\/sgsh\/(\w+)/| tuboflo >\$SGDIR\/npfo-$1 &/;
+			s/\|\>\s*\/sgsh\/(\w+)/ >\$SGDIR\/npfo-$1 &/;
 		}
 
 		print $output_fh $_;
