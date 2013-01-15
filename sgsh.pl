@@ -308,13 +308,22 @@ generate_gather_code
 	my($start) = @_;
 
 	my $i;
+	my $uname = `uname`;
+	chop $uname;
 	for ($i = $start; $i <= $#lines; $i++) {
 			$_ = $lines[$i];
 		if (/$GATHER_BLOCK_BEGIN/o) {
 			s/\|\}\s*gather\s*\|\{//;
 			print $output_fh "# Gather the results\n(\n";
 			for (my $j = 0; $j <= $#gather_variable_name; $j++) {
-				print $output_fh qq{\techo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'" &\n};
+				if ($uname eq 'FreeBSD' and $opt_s eq '/bin/sh') {
+					# Workaround for the FreeBSD shell
+					# This doesn't execute echo "a=`sleep 5`42" &
+					# in the background
+					print $output_fh qq{\t(echo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'") &\n};
+				} else {
+					print $output_fh qq{\techo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'" &\n};
+				}
 			}
 			print $output_fh "\twait\ncat <<\\SGEOFSG\n";
 		} elsif (/$BLOCK_END/o) {
