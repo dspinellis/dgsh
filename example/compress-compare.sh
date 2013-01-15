@@ -23,7 +23,7 @@ scatter |{
 	curl $1 |{
 		-| wc -c |= NBYTES
 		-| file - |= FILETYPE
-		-| compress -c | wc -c |= BCOMPRESS
+		-| compress -c | wc -c |= COMPRESS
 		-| bzip2 -c | wc -c |= BZIP2
 		-| gzip -c | wc -c |= GZIP
 	|}
