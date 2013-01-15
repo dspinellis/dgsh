@@ -35,4 +35,5 @@ Original size: $NBYTES bytes
 compress:      $COMPRESS bytes
 gzip:          $GZIP bytes
 bzip2:         $BZIP2 bytes
+EOF
 |}
