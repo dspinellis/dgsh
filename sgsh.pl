@@ -128,7 +128,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		# Print the line, unless we're in a scatter-gather block
 		print $output_fh $_ unless ($in_scatter_gather_block);
 		next;
-	# Scatter block begin
+	# Scatter block begin: scatter |{
 	} elsif (/$SCATTER_BLOCK_BEGIN/o) {
 		if ($in_scatter_gather_block) {
 			print STDERR "$input_filename(", $i + 1, "): Scatter-gather blocks can't be nested\n";
@@ -144,7 +144,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		undef @gather_variable_name;
 		next;
 
-	# Gather block begin
+	# Gather block begin: |} gather |{
 	} elsif (/$GATHER_BLOCK_BEGIN/o) {
 		if ($#current_point_stack != -1) {
 			print STDERR "$input_filename(", $i + 1, "): Missing |}\n";
@@ -155,7 +155,7 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		$in_scatter_gather_block = 0;
 		next;
 
-	# Scatter group end
+	# Scatter group end: |}
 	} elsif (/$BLOCK_END/o) {
 		if ($#current_point_stack == -1) {
 			print STDERR "$input_filename(", $i + 1, "): Extra |}\n";
@@ -165,23 +165,23 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		next;
 	}
 
-	# Scatter input endpoint
+	# Scatter input endpoint: -|
 	if (/$SCATTER_INPUT/o) {
 		$endpoint_number[$current_point]++;
 	}
 
-	# Scatter group begin
+	# Scatter group begin: |{
 	if (/$SCATTER_BEGIN/o) {
 		push(@current_point_stack, $current_point);
 		$current_point = ++$point_counter;
 	}
 
-	# Gather variable output endpoint
+	# Gather variable output endpoint: |=
 	if (/$GATHER_VARIABLE_OUTPUT/o) {
 		$gather_variable_name[$gather_variable_points++] = $1;
 	}
 
-	# Gather file output endpoint
+	# Gather file output endpoint: |>
 	if (/$GATHER_FILE_OUTPUT/o) {
 		$gather_file_name[$gather_file_points++] = $1;
 		$gather_file_defined{$1} = 1;
@@ -237,7 +237,7 @@ generate_scatter_code
 		if (/$COMMENT_LINE/) {
 			print $output_fh $_;
 			next;
-		# Scatter block begin: initialize named pipes
+		# Scatter block begin: "scatter |{" initialize named pipes
 		} elsif (/$SCATTER_BLOCK_BEGIN/o) {
 			# Generate initialization code
 			# The traps ensure that the named pipe directory
@@ -261,31 +261,31 @@ generate_scatter_code
 			}
 			s/scatter\s*\|\{/$code/;
 
-		# Gather group begin
+		# Gather group begin: |} gather |{
 		} elsif (/$GATHER_BLOCK_BEGIN/o) {
 			generate_scatter_code($scatter_gather_start, $i - 1);
 			$i += generate_gather_code($i);
 
-		# Scatter group end: maintain stack
+		# Scatter group end: "|}" maintain stack
 		} elsif (/$BLOCK_END/o) {
 			$current_point = pop(@current_point_stack);
 			s/\|\}//;
 
 		}
 
-		# Scatter-gather pass-through to a named file
+		# Scatter-gather pass-through to a named file: -||>
 		if (/$SCATTER_GATHER_PASS_THROUGH/o) {
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
 			s/\|\>\s*\/sgsh\/(\w+)/ cat >\$SGDIR\/npfo-$1 &/;
 		}
 
-		# Scatter input head endpoint: get input from named pipe
+		# Scatter input head endpoint: "-|" get input from named pipe
 		if (/$SCATTER_INPUT/o) {
 			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
 			$endpoint_counter[$current_point]++;
 		}
 
-		# Scatter group begin: tee output to named pipes
+		# Scatter group begin: "|{" tee output to named pipes
 		if (/$SCATTER_BEGIN/o) {
 			push(@current_point_stack, $current_point) if (defined($current_point));
 			$current_point = ++$point_counter;
@@ -298,12 +298,12 @@ generate_scatter_code
 			$endpoint_counter[$current_point] = 0;
 		}
 
-		# Gather output endpoint to named variable
+		# Gather output endpoint to named variable: |=name
 		if (/$GATHER_VARIABLE_OUTPUT/o) {
 			s/\|\=\s*(\w+)/>\$SGDIR\/npvo-$1 &/;
 		}
 
-		# Gather output endpoint to named file
+		# Gather output endpoint to named file: |>filename
 		if (/$GATHER_FILE_OUTPUT/) {
 			s/\|\>\s*\/sgsh\/(\w+)/ >\$SGDIR\/npfo-$1 &/;
 		}
@@ -328,6 +328,7 @@ generate_gather_code
 		# Comment line; prevent further processing
 		if (/$COMMENT_LINE/) {
 			print $output_fh $_;
+		# Gather block begin: }| gather |{
 		# Generate the gather code as a HERE document shell script that will be passed as input to a shell
 		} elsif (/$GATHER_BLOCK_BEGIN/o) {
 			s/\|\}\s*gather\s*\|\{//;
@@ -343,6 +344,7 @@ generate_gather_code
 				}
 			}
 			print $output_fh "\twait\ncat <<\\SGEOFSG\n";
+		# Block end: |}
 		# End the generated code HERE document and pipe it to a shell for processing
 		} elsif (/$BLOCK_END/o) {
 			s/\|\}//;
