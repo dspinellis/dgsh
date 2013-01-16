@@ -328,7 +328,7 @@ generate_gather_code
 		# Comment line; prevent further processing
 		if (/$COMMENT_LINE/) {
 			print $output_fh $_;
-			next;
+		# Generate the gather code as a HERE document shell script that will be passed as input to a shell
 		} elsif (/$GATHER_BLOCK_BEGIN/o) {
 			s/\|\}\s*gather\s*\|\{//;
 			print $output_fh "# Gather the results\n(\n";
@@ -343,6 +343,7 @@ generate_gather_code
 				}
 			}
 			print $output_fh "\twait\ncat <<\\SGEOFSG\n";
+		# End the generated code HERE document and pipe it to a shell for processing
 		} elsif (/$BLOCK_END/o) {
 			s/\|\}//;
 
