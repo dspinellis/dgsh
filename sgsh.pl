@@ -97,6 +97,8 @@ my $GATHER_VARIABLE_OUTPUT = q!\|\=\s*(\w+)\s*(\#.*)?$!;
 my $GATHER_FILE_OUTPUT = q!\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
 # -||>/sgsh/name
 my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
+# Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
+my $COMMENT_LINE = '^\s*\#';
 
 # Read input file
 if ($#ARGV >= 0) {
@@ -120,8 +122,14 @@ $lines[0] =~ s/^\#\!/#/;
 # Process file's lines
 for (my $i = 0; $i <= $#lines; $i++) {
 	$_ = $lines[$i];
+
+	# Comment line; prevent further processing
+	if (/$COMMENT_LINE/) {
+		# Print the line, unless we're in a scatter-gather block
+		print $output_fh $_ unless ($in_scatter_gather_block);
+		next;
 	# Scatter block begin
-	if (/$SCATTER_BLOCK_BEGIN/o) {
+	} elsif (/$SCATTER_BLOCK_BEGIN/o) {
 		if ($in_scatter_gather_block) {
 			print STDERR "$input_filename(", $i + 1, "): Scatter-gather blocks can't be nested\n";
 			exit 1;
@@ -179,7 +187,6 @@ for (my $i = 0; $i <= $#lines; $i++) {
 		$gather_file_defined{$1} = 1;
 	}
 
-
 	# Print the line, unless we're in a scatter-gather block
 	print $output_fh $_ unless ($in_scatter_gather_block);
 }
@@ -225,8 +232,13 @@ generate_scatter_code
 
 	for (my $i = $start; $i <= $end; $i++) {
 		$_ = $lines[$i];
+
+		# Comment line; prevent further processing
+		if (/$COMMENT_LINE/) {
+			print $output_fh $_;
+			next;
 		# Scatter block begin: initialize named pipes
-		if (/$SCATTER_BLOCK_BEGIN/o) {
+		} elsif (/$SCATTER_BLOCK_BEGIN/o) {
 			# Generate initialization code
 			# The traps ensure that the named pipe directory
 			# is removed on termination and that the exit code
@@ -311,8 +323,13 @@ generate_gather_code
 	my $uname = `uname`;
 	chop $uname;
 	for ($i = $start; $i <= $#lines; $i++) {
-			$_ = $lines[$i];
-		if (/$GATHER_BLOCK_BEGIN/o) {
+		$_ = $lines[$i];
+
+		# Comment line; prevent further processing
+		if (/$COMMENT_LINE/) {
+			print $output_fh $_;
+			next;
+		} elsif (/$GATHER_BLOCK_BEGIN/o) {
 			s/\|\}\s*gather\s*\|\{//;
 			print $output_fh "# Gather the results\n(\n";
 			for (my $j = 0; $j <= $#gather_variable_name; $j++) {
