@@ -22,6 +22,13 @@ test: sgsh teebuff
 	./sgsh -t ./teebuff example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 
+test-teebuff: teebuff
+	./teebuff -b 64 <teebuff.c a b
+	diff teebuff.c a
+	diff teebuff.c b
+	rm a b
+
+
 sgsh: sgsh.pl
 	perl -c sgsh.pl
 	install sgsh.pl sgsh

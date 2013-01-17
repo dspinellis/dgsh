@@ -37,8 +37,7 @@
  * Data that can't be written is stored in a sequential pool of buffers
  */
 
-/* #define BUFFER_SIZE 1024 For debugging purposes */
-#define BUFFER_SIZE (1024 * 1024)
+static int buffer_size = 1024 * 1024;
 
 static char **buffers;
 
@@ -83,8 +82,8 @@ memory_allocate(int pool)
 
 	/* Allocate buffer memory [allocated_pool_end, pool]. */
 	for (i = allocated_pool_end; i <= pool; i++) {
-		if ((buffers[i] = malloc(BUFFER_SIZE)) == NULL)
-			err(1, "Unable to allocate %d bytes for buffer %d", BUFFER_SIZE, i);
+		if ((buffers[i] = malloc(buffer_size)) == NULL)
+			err(1, "Unable to allocate %d bytes for buffer %d", buffer_size, i);
 		#ifdef DEBUG
 		fprintf(stderr, "Allocated buffer %d to %p\n", i, buffers[i]);
 		#endif
@@ -99,7 +98,7 @@ static void
 memory_free(off_t pos)
 {
 	static int pool_begin = 0;
-	int pool_end = pos / BUFFER_SIZE;
+	int pool_end = pos / buffer_size;
 	int i;
 
 	for (i = pool_begin; i < pool_end; i++) {
@@ -121,12 +120,12 @@ static struct buffer
 source_buffer(off_t pos)
 {
 	struct buffer b;
-	int pool = pos / BUFFER_SIZE;
-	size_t pool_offset = pos % BUFFER_SIZE;
+	int pool = pos / buffer_size;
+	size_t pool_offset = pos % buffer_size;
 
 	memory_allocate(pool);
 	b.p = buffers[pool] + pool_offset;
-	b.size = BUFFER_SIZE - pool_offset;
+	b.size = buffer_size - pool_offset;
 	#ifdef DEBUG
 	fprintf(stderr, "Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
 		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
@@ -141,12 +140,12 @@ static struct buffer
 sink_buffer(off_t pos)
 {
 	struct buffer b;
-	int pool = pos / BUFFER_SIZE;
-	size_t pool_offset = pos % BUFFER_SIZE;
+	int pool = pos / buffer_size;
+	size_t pool_offset = pos % buffer_size;
 	size_t source_bytes = source_pos - pos;
 
 	b.p = buffers[pool] + pool_offset;
-	b.size = MIN(BUFFER_SIZE - pool_offset, source_bytes);
+	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	#ifdef DEBUG
 	fprintf(stderr, "Sink buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
 		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
@@ -222,6 +221,12 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	return written;
 }
 
+static void
+usage(const char *name)
+{
+	fprintf(stderr, "Usage %s [-b buffer_size] [-s] [-l]\n");
+	exit(1);
+}
 
 int
 main(int argc, char *argv[])
@@ -230,9 +235,21 @@ main(int argc, char *argv[])
 	int i;
 	struct sink_info *files;
 	int reached_eof = 0;
+	int ch;
 
-	argc--;
-	argv++;
+
+	while ((ch = getopt(argc, argv, "b:sl")) != -1) {
+		switch (ch) {
+		case 'b':
+			buffer_size = atoi(optarg);
+			break;
+		case '?':
+		default:
+			usage(argv[0]);
+		}
+	}
+	argc -= optind;
+	argv += optind;
 
 	if ((files = (struct sink_info *)malloc(argc * sizeof(struct sink_info))) == NULL)
 		err(1, NULL);
