@@ -35,13 +35,14 @@
 
 /*
  * Data that can't be written is stored in a sequential pool of buffers
+ * each of buffer_size long.
  */
 
 static int buffer_size = 1024 * 1024;
 
 static char **buffers;
 
-static off_t source_pos;
+static off_t source_pos_read;
 
 /* A buffer that can be used for reading */
 struct buffer {
@@ -49,13 +50,20 @@ struct buffer {
 	size_t size;	/* Buffer size */
 };
 
+/* Scatter the output across the files, rather than copying it. */
+static int opt_scatter;
+/* Write up to a line boundary */
+static int opt_line;
+
 /* Information regarding the files we write to */
 struct sink_info {
 	char *name;		/* Output file name */
 	int fd;			/* Output file descriptor */
-	off_t sink_pos;		/* Position up to which written */
+	off_t pos_written;	/* Position up to which written */
+	off_t pos_to_write;	/* Position up to which to write */
 	int active;		/* True if this sink is still active */
 };
+
 
 /*
  * Allocate memory for the specified pool
@@ -137,18 +145,18 @@ source_buffer(off_t pos)
  * Return a buffer to read from for writing to a file from a position onward
  */
 static struct buffer
-sink_buffer(off_t pos)
+sink_buffer(struct sink_info *si)
 {
 	struct buffer b;
-	int pool = pos / buffer_size;
-	size_t pool_offset = pos % buffer_size;
-	size_t source_bytes = source_pos - pos;
+	int pool = si->pos_written / buffer_size;
+	size_t pool_offset = si->pos_written % buffer_size;
+	size_t source_bytes = si->pos_to_write - si->pos_written;
 
 	b.p = buffers[pool] + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	#ifdef DEBUG
 	fprintf(stderr, "Sink buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
-		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
+		(long)si->pos_written, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
 	#endif
 	return b;
 }
@@ -163,14 +171,61 @@ source_read(fd_set *source_fds)
 	int n;
 	struct buffer b;
 
-	b = source_buffer(source_pos);
+	b = source_buffer(source_pos_read);
 	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
 		err(3, "Read from standard input");
-	source_pos += n;
+	source_pos_read += n;
 	#ifdef DEBUG
 	fprintf(stderr, "Read %d out of %d bytes\n", n, b.size);
 	#endif
 	return n;
+}
+
+/*
+ * Allocate available read data to empty sinks that can be written to,
+ * by adjusting their pos_written and pos_to_write pointers.
+ */
+static void
+allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
+{
+	struct sink_info *si;
+
+	if (opt_scatter) {
+		int available_sinks = 0;
+		off_t pos_assigned = 0;
+		size_t available_data, data_per_sink;
+
+		/* Determine amount of fresh data to write and available sinks. */
+		for (si = files; si < files + nfiles; si++) {
+			pos_assigned = MAX(pos_assigned, si->pos_to_write);
+			if (si->pos_written == si->pos_to_write && FD_ISSET(si->fd, sink_fds))
+				available_sinks++;
+		}
+
+		if (available_sinks == 0)
+			return;
+
+		available_data = source_pos_read - pos_assigned;
+
+		/* Assign data to sinks. */
+		data_per_sink = available_data / available_sinks;
+		#ifdef DEBUG
+		fprintf(stderr, "available_data=%d data_per_sink=%d\n", available_data, data_per_sink);
+		#endif
+		for (si = files; si < files + nfiles; si++)
+			if (si->pos_written == si->pos_to_write && FD_ISSET(si->fd, sink_fds)) {
+				si->pos_written = pos_assigned;
+				pos_assigned += data_per_sink;
+				si->pos_to_write = pos_assigned;
+				#ifdef DEBUG
+				fprintf(stderr, "file[%d] pos_written=%ld pos_to_write=%ld\n",
+					files - si, (long)si->pos_written, (long)si->pos_to_write);
+				#endif
+			}
+	} else {
+		for (si = files; si < files + nfiles; si++)
+			si->pos_to_write = source_pos_read;
+	}
 }
 
 
@@ -183,15 +238,16 @@ static size_t
 sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 {
 	struct sink_info *si;
-	off_t min_pos = source_pos;
+	off_t min_pos = source_pos_read;
 	size_t written = 0;
 
+	allocate_data_to_sinks(sink_fds, files, nfiles);
 	for (si = files; si < files + nfiles; si++) {
 		if (FD_ISSET(si->fd, sink_fds)) {
 			int n;
 			struct buffer b;
 
-			b = sink_buffer(si->sink_pos);
+			b = sink_buffer(si);
 			n = write(si->fd, b.p, b.size);
 			if (n < 0)
 				switch (errno) {
@@ -206,7 +262,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 					err(2, "Error writing to %s", si->name);
 				}
 			else {
-				si->sink_pos += n;
+				si->pos_written += n;
 				written += n;
 			}
 			#ifdef DEBUG
@@ -215,7 +271,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			#endif
 		}
 		if (si->active)
-			min_pos = MIN(min_pos, si->sink_pos);
+			min_pos = MIN(min_pos, si->pos_written);
 	}
 	memory_free(min_pos);
 	return written;
@@ -224,7 +280,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b buffer_size] [-s] [-l]\n");
+	fprintf(stderr, "Usage %s [-b buffer_size] [-s] [-l]\n", name);
 	exit(1);
 }
 
@@ -236,16 +292,19 @@ main(int argc, char *argv[])
 	struct sink_info *files;
 	int reached_eof = 0;
 	int ch;
-
+	const char *progname = argv[0];
 
 	while ((ch = getopt(argc, argv, "b:sl")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = atoi(optarg);
 			break;
+		case 's':
+			opt_scatter = 1;
+			break;
 		case '?':
 		default:
-			usage(argv[0]);
+			usage(progname);
 		}
 	}
 	argc -= optind;
@@ -261,6 +320,7 @@ main(int argc, char *argv[])
 		max_fd = MAX(files[i].fd, max_fd);
 		files[i].name = argv[i];
 		files[i].active = 1;
+		files[i].pos_written = files[i].pos_to_write = 0;
 	}
 
 	/* We will handle SIGPIPE explicitly when calling write(2). */
@@ -281,7 +341,7 @@ main(int argc, char *argv[])
 		active_fds = 0;
 		FD_ZERO(&sink_fds);
 		for (si = files; si < files + argc; si++)
-			if (si->sink_pos < source_pos && si->active) {
+			if (si->pos_written < source_pos_read && si->active) {
 				FD_SET(si->fd, &sink_fds);
 				active_fds++;
 			}

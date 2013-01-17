@@ -14,6 +14,8 @@
 #  limitations under the License.
 #
 
+CFLAGS=-g -DDEBUG -Wall
+
 all: sgsh teebuff
 
 test: sgsh teebuff
@@ -23,6 +25,13 @@ test: sgsh teebuff
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 
 test-teebuff: teebuff
+	# Test scatter
+	./teebuff -s -b 64 <teebuff.c a b c d
+	./charcount <teebuff.c >orig
+	cat a b c d | ./charcount >new
+	diff orig new
+	rm a b c d orig new
+	# Test plain
 	./teebuff -b 64 <teebuff.c a b
 	diff teebuff.c a
 	diff teebuff.c b
