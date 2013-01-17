@@ -275,8 +275,8 @@ generate_scatter_code
 
 		# Scatter-gather pass-through to a named file: -||>
 		if (/$SCATTER_GATHER_PASS_THROUGH/o) {
-			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
-			s/\|\>\s*\/sgsh\/(\w+)/ cat >\$SGDIR\/npfo-$1 &/;
+			# Create a symbolic link from gather to scatter pipe
+			s/\-\|\|\>\s*\/sgsh\/(\w+)/rm \$SGDIR\/npfo-$1; ln -s \$SGDIR\/npi-$current_point.$endpoint_counter[$current_point] \$SGDIR\/npfo-$1/;
 		}
 
 		# Scatter input head endpoint: "-|" get input from named pipe
