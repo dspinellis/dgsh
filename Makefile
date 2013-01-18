@@ -28,7 +28,7 @@ test: sgsh teebuff
 	./sgsh -t ./teebuff example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 
-test-teebuff: teebuff
+test-teebuff: teebuff charcount
 	# Test line scatter reliable algorithm
 	head -1000 /usr/share/dict/words | cat -n >words
 	./teebuff -sl -b 4096 <words a b c d
@@ -50,3 +50,6 @@ test-teebuff: teebuff
 sgsh: sgsh.pl
 	perl -c sgsh.pl
 	install sgsh.pl sgsh
+
+charcount: charcount.sh
+	install charcount.sh charcount
