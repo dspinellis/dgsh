@@ -14,7 +14,11 @@
 #  limitations under the License.
 #
 
+ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
+else
+CFLAGS=-O
+endif
 
 all: sgsh teebuff
 
