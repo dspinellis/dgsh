@@ -29,6 +29,11 @@ test: sgsh teebuff
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 
 test-teebuff: teebuff
+	# Test line scatter reliable algorithm
+	head -1000 /usr/share/dict/words | cat -n >words
+	./teebuff -sl -b 4096 <words a b c d
+	cat a b c d | sort -n >words2
+	diff words words2
 	# Test scatter
 	./teebuff -s -b 64 <teebuff.c a b c d
 	./charcount <teebuff.c >orig
