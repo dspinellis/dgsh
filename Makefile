@@ -30,17 +30,26 @@ test: sgsh teebuff
 
 test-teebuff: teebuff charcount
 	# Test line scatter reliable algorithm
-	head -1000 /usr/share/dict/words | cat -n >words
-	./teebuff -sl -b 4096 <words a b c d
+	cat -n /usr/share/dict/words >words
+	./teebuff -sl -b 1000000 <words a b c d
 	cat a b c d | sort -n >words2
 	diff words words2
-	# Test scatter
+	# Test line scatter efficient algorithm
+	./teebuff -sl -b 128 <words a b c d
+	cat a b c d | sort -n >words2
+	diff words words2
+	# Test with a buffer smaller than line size
+	./teebuff -sl -b 5 <words a b c d
+	cat a b c d | sort -n >words2
+	diff words words2
+	rm words words2
+	# Test block scatter
 	./teebuff -s -b 64 <teebuff.c a b c d
 	./charcount <teebuff.c >orig
 	cat a b c d | ./charcount >new
 	diff orig new
 	rm a b c d orig new
-	# Test plain
+	# Test plain distribution
 	./teebuff -b 64 <teebuff.c a b
 	diff teebuff.c a
 	diff teebuff.c b

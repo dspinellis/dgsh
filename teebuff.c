@@ -175,6 +175,23 @@ sink_pointer(off_t pos_written)
 }
 
 /*
+ * Return the size of a buffer region that can be read for the specified endpoints
+ */
+static size_t
+sink_buffer_length(off_t start, off_t end)
+{
+	size_t pool_offset = start % buffer_size;
+	size_t source_bytes = end - start;
+
+	#ifdef DEBUG
+	fprintf(stderr, "sink_buffer_length(%ld, %ld) = %ld\n",
+		(long)start, (long)end,  MIN(buffer_size - pool_offset, source_bytes));
+	#endif
+	return MIN(buffer_size - pool_offset, source_bytes);
+}
+
+
+/*
  * Read from the source into the memory buffer
  * Return the number of bytes read, or 0 on end of file.
  */
@@ -206,6 +223,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	off_t pos_assigned = 0;
 	size_t available_data, data_per_sink;
 	size_t data_to_assign = 0;
+	int use_reliable = 0;
 
 	/* Easy case: distribute to all files. */
 	if (!opt_scatter) {
@@ -215,7 +233,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	}
 
 	/*
-	 * Difficult case: fair scattering
+	 * Difficult case: fair scattering across available sinks
 	 */
 
 	/* Determine amount of fresh data to write and number of available sinks. */
@@ -225,94 +243,113 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			available_sinks++;
 	}
 
+	/*
+	 * Ensure we operate in a continuous memory region by clamping
+	 * the length of the available data to terminate at the end of
+	 * the buffer.
+	 */
+	available_data = sink_buffer_length(pos_assigned, source_pos_read);
+
 	if (available_sinks == 0)
 		return;
 
-	available_data = source_pos_read - pos_assigned;
-
 	/* Assign data to sinks. */
 	data_per_sink = available_data / available_sinks;
-	#ifdef DEBUG
-	fprintf(stderr, "available_data=%d data_per_sink=%d\n", available_data, data_per_sink);
-	#endif
-	for (si = files; si < files + nfiles; si++)
-		if (si->pos_written == si->pos_to_write && FD_ISSET(si->fd, sink_fds)) {
-			/* First file also gets the remainder bytes. */
-			if (data_to_assign == 0)
-				data_to_assign = data_per_sink + available_data % available_sinks;
-			else
-				data_to_assign = data_per_sink;
-			/*
-			 * Assign data_to_assign to *si (pos_written, pos_to_write),
-			 * and advance pos_assigned.
-			 */
-			si->pos_written = pos_assigned;		/* Initially nothing has been written. */
-			if (opt_line) {
-				if (available_data > buffer_size / 2) {
-					/*
-					 * Efficient algorithm:
-					 * Assume that multiple lines appear in data_per_sink.
-					 * Go to a calculated boundary and move backward to find
-					 * a new line.
-					 */
-					off_t data_end = pos_assigned + data_to_assign - 1;
+	for (si = files; si < files + nfiles; si++) {
+		/* Move to next file if this has data to write, or isn't ready. */
+		if (si->pos_written != si->pos_to_write || !FD_ISSET(si->fd, sink_fds))
+			continue;
 
-					for (;;) {
-						if (*sink_pointer(data_end) == '\n') {
+		#ifdef DEBUG
+		fprintf(stderr, "pos_assigned=%d source_pos_read=%d available_data=%d available_sinks=%d data_per_sink=%d\n",
+			pos_assigned, source_pos_read, available_data, available_sinks, data_per_sink);
+		#endif
+		/* First file also gets the remainder bytes. */
+		if (data_to_assign == 0)
+			data_to_assign = sink_buffer_length(pos_assigned,
+				pos_assigned + data_per_sink + available_data % available_sinks);
+		else
+			data_to_assign = data_per_sink;
+		/*
+		 * Assign data_to_assign to *si (pos_written, pos_to_write),
+		 * and advance pos_assigned.
+		 */
+		si->pos_written = pos_assigned;		/* Initially nothing has been written. */
+		if (opt_line) {
+			if (available_data > buffer_size / 2 && !use_reliable) {
+				/*
+				 * Efficient algorithm:
+				 * Assume that multiple lines appear in data_per_sink.
+				 * Go to a calculated boundary and scan backward to find
+				 * a new line.
+				 */
+				off_t data_end = pos_assigned + data_to_assign - 1;
+
+				for (;;) {
+					if (*sink_pointer(data_end) == '\n') {
+						pos_assigned = data_end + 1;
+						break;
+					}
+					data_end--;
+					if (data_end + 1 == pos_assigned) {
+						/*
+						 * If no newline was found with backward scanning
+						 * degenerate to the efficient algorithm. This will
+						 * scan further forward, and can defer writing the
+						 * last chunk, until more data is read.
+						 */
+						use_reliable = 1;
+						goto reliable;
+					}
+				}
+			} else {
+				/*
+				 * Reliable algorithm:
+				 * Scan forward for new lines until at least
+				 * data_per_sink are covered, or we reach the end of available data.
+				 * Keep a record of the last encountered newline.
+				 * This is used to backtrack when we scan past the end of the
+				 * available data.
+				 */
+				off_t data_end, last_nl;
+
+			reliable:
+				last_nl = -1;
+				data_end = pos_assigned;
+				for (;;) {
+					if (data_end >= source_pos_read) {
+						if (last_nl != -1) {
+							pos_assigned = last_nl + 1;
+							break;
+						} else {
+							/* No newline found in buffer; defer writing. */
+							si->pos_to_write = pos_assigned;
+							#ifdef DEBUG
+							fprintf(stderr, "scatter to file[%d] no newline from %ld to %ld\n",
+								si - files, (long)pos_assigned, (long)data_end);
+							#endif
+							return;
+						}
+					}
+
+					if (*sink_pointer(data_end) == '\n') {
+						last_nl = data_end;
+						if (data_end - pos_assigned > data_per_sink) {
 							pos_assigned = data_end + 1;
 							break;
 						}
-						data_end--;
-						if (data_end + 1 == pos_assigned) {
-							fprintf(stderr, "No newline found in a region of %d bytes. Increase buffer size.\n", data_to_assign - 1);
-							exit(1);
-						}
 					}
-				} else {
-					/*
-					 * Reliable algorithm:
-					 * Scan forward for new lines until at least data_per_sink are covered,
-					 * or we reach the end of available data.
-					 * Keep a record of the last encountered newline.
-					 * This is used when we scan past the end of the available data.
-					 */
-					off_t data_end, last_nl = -1;
-
-					data_end = pos_assigned;
-					for (;;) {
-						if (data_end >= source_pos_read) {
-							if (last_nl != -1) {
-								pos_assigned = last_nl + 1;
-								break;
-							} else {
-								/* No newline found in buffer; defer writing. */
-								si->pos_to_write = pos_assigned;
-								#ifdef DEBUG
-								fprintf(stderr, "scatter to file[%d] no newline from %ld to %ld\n",
-									si - files, (long)pos_assigned, (long)data_end);
-								#endif
-								return;
-							}
-						}
-
-						if (*sink_pointer(data_end) == '\n') {
-							last_nl = data_end;
-							if (data_end - pos_assigned > data_per_sink) {
-								pos_assigned = data_end + 1;
-								break;
-							}
-						}
-						data_end++;
-					}
+					data_end++;
 				}
-			} else
-				pos_assigned += data_to_assign;
-			si->pos_to_write = pos_assigned;
-			#ifdef DEBUG
-			fprintf(stderr, "scatter to file[%d] pos_written=%ld pos_to_write=%ld\n",
-				si - files, (long)si->pos_written, (long)si->pos_to_write);
-			#endif
-		}
+			}
+		} else
+			pos_assigned += data_to_assign;
+		si->pos_to_write = pos_assigned;
+		#ifdef DEBUG
+		fprintf(stderr, "scatter to file[%d] pos_written=%ld pos_to_write=%ld\n",
+			si - files, (long)si->pos_written, (long)si->pos_to_write);
+		#endif
+	}
 }
 
 
