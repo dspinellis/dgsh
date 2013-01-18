@@ -43,6 +43,11 @@ test-teebuff: teebuff charcount
 	cat a b c d | sort -n >words2
 	diff words words2
 	rm words words2
+	# Test with data less than the buffer size
+	head -50 /usr/share/dict/words | cat -n >words
+	./teebuff -sl -b 1000000 <words a b c d
+	cat a b c d | sort -n >words2
+	diff words words2
 	# Test block scatter
 	./teebuff -s -b 64 <teebuff.c a b c d
 	./charcount <teebuff.c >orig
