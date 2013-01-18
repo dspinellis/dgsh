@@ -282,6 +282,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 					data_end = pos_assigned;
 					for (;;) {
 						char *p = sink_pointer(data_end);
+
 						if (*p == '\n') {
 							last_nl = data_end;
 							if (data_end - pos_assigned > data_per_sink) {
