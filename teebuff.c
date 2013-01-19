@@ -515,8 +515,26 @@ main(int argc, char *argv[])
 			return 0;
 
 		/* Block until we can read or write. */
+		#ifdef DEBUG
+		fprintf(stderr, "Entering select: ");
+		if (FD_ISSET(STDIN_FILENO, &source_fds))
+				fprintf(stderr, "stdin ");
+		for (si = files; si < files + argc; si++)
+			if (FD_ISSET(si->fd, &sink_fds))
+				fprintf(stderr, "%s ", si->name);
+		fputc('\n', stderr);
+		#endif
 		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
 			err(3, "select");
+		#ifdef DEBUG
+		fprintf(stderr, "select returned: ");
+		if (FD_ISSET(STDIN_FILENO, &source_fds))
+				fprintf(stderr, "stdin ");
+		for (si = files; si < files + argc; si++)
+			if (FD_ISSET(si->fd, &sink_fds))
+				fprintf(stderr, "%s ", si->name);
+		fputc('\n', stderr);
+		#endif
 
 		/* Write to all file descriptors that accept writes. */
 		if (sink_write(&sink_fds, files, argc) > 0)
