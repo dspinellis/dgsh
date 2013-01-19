@@ -193,7 +193,7 @@ sink_buffer_length(off_t start, off_t end)
 
 /*
  * Read from the source into the memory buffer
- * Return the number of bytes read, or 0 on end of file.
+ * Return the number of bytes read, or -1 on end of file.
  */
 static size_t
 source_read(fd_set *source_fds)
@@ -203,12 +203,21 @@ source_read(fd_set *source_fds)
 
 	b = source_buffer(source_pos_read);
 	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
-		err(3, "Read from standard input");
+		switch (errno) {
+		case EAGAIN:
+			#ifdef DEBUG
+			fprintf(stderr, "EAGAIN on standard input\n");
+			#endif
+			return 0;
+		default:
+			err(3, "Read from standard input");
+		}
 	source_pos_read += n;
 	#ifdef DEBUG
 	fprintf(stderr, "Read %d out of %d bytes\n", n, b.size);
 	#endif
-	return n;
+	/* Return -1 on EOF */
+	return n ? n : -1;
 }
 
 /*
@@ -382,6 +391,12 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 					fprintf(stderr, "EPIPE for %s\n", si->name);
 					#endif
 					break;
+				case EAGAIN:
+					#ifdef DEBUG
+					fprintf(stderr, "EAGAIN for %s\n", si->name);
+					#endif
+					n = 0;
+					break;
 				default:
 					err(2, "Error writing to %s", si->name);
 				}
@@ -406,6 +421,24 @@ usage(const char *name)
 {
 	fprintf(stderr, "Usage %s [-b buffer_size] [-s] [-l]\n", name);
 	exit(1);
+}
+
+/*
+ * Set the specified file descriptor to operate in non-blocking
+ * mode.
+ * It seems that even if select returns for a specified file
+ * descriptor, performing I/O to it may block depending on the
+ * amount of data specified.
+ * See See http://pubs.opengroup.org/onlinepubs/009695399/functions/write.html#tag_03_866
+ */
+static void
+non_block(int fd, const char *name)
+{
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		err(2, "Error getting flags for %s", name);
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		err(2, "Error setting %s to non-blocking mode", name);
 }
 
 int
@@ -448,7 +481,10 @@ main(int argc, char *argv[])
 		files[i].name = argv[i];
 		files[i].active = 1;
 		files[i].pos_written = files[i].pos_to_write = 0;
+		non_block(files[i].fd, files[i].name);
 	}
+
+	non_block(STDIN_FILENO, "standard input");
 
 	/* We will handle SIGPIPE explicitly when calling write(2). */
 	signal(SIGPIPE, SIG_IGN);
@@ -493,7 +529,7 @@ main(int argc, char *argv[])
 
 		/* Read, if possible. */
 		if (FD_ISSET(STDIN_FILENO, &source_fds))
-			if (source_read(&source_fds) == 0)
+			if (source_read(&source_fds) == -1)
 				reached_eof = 1;
 	}
 	return 0;
