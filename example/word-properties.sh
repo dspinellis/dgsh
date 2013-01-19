@@ -26,7 +26,7 @@
 
 scatter |{
 	# Obtain file
-	curl "$1" |
+	curl -s "$1" |
 	# Split into one word per line
 	tr -cs a-zA-Z \\n |
 	# Create list of unique words

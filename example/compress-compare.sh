@@ -20,7 +20,7 @@
 #
 
 scatter |{
-	curl $1 |{
+	curl -s "$1" |{
 		-| wc -c |= NBYTES
 		-| file - |= FILETYPE
 		-| compress -c | wc -c |= COMPRESS
