@@ -185,7 +185,7 @@ sink_buffer_length(off_t start, off_t end)
 
 	#ifdef DEBUG
 	fprintf(stderr, "sink_buffer_length(%ld, %ld) = %ld\n",
-		(long)start, (long)end,  MIN(buffer_size - pool_offset, source_bytes));
+		(long)start, (long)end,  (long)MIN(buffer_size - pool_offset, source_bytes));
 	#endif
 	return MIN(buffer_size - pool_offset, source_bytes);
 }
@@ -261,8 +261,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			continue;
 
 		#ifdef DEBUG
-		fprintf(stderr, "pos_assigned=%d source_pos_read=%d available_data=%d available_sinks=%d data_per_sink=%d\n",
-			pos_assigned, source_pos_read, available_data, available_sinks, data_per_sink);
+		fprintf(stderr, "pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld\n",
+			(long)pos_assigned, (long)source_pos_read, (long)available_data, available_sinks, (long)data_per_sink);
 		#endif
 		/* First file also gets the remainder bytes. */
 		if (data_to_assign == 0)
