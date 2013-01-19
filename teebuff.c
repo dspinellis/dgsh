@@ -387,6 +387,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				/* EPIPE is acceptable, for the sink's reader can terminate early. */
 				case EPIPE:
 					si->active = 0;
+					(void)close(si->fd);
 					#ifdef DEBUG
 					fprintf(stderr, "EPIPE for %s\n", si->name);
 					#endif
@@ -496,7 +497,7 @@ main(int argc, char *argv[])
 		fd_set sink_fds;
 		int active_fds;
 
-		/* Set the fd's we're interested to read/write. */
+		/* Set the fd's we're interested to read/write; close unneeded ones. */
 		FD_ZERO(&source_fds);
 		if (!reached_eof)
 			FD_SET(STDIN_FILENO, &source_fds);
@@ -504,11 +505,17 @@ main(int argc, char *argv[])
 		active_fds = 0;
 		FD_ZERO(&sink_fds);
 		for (si = files; si < files + argc; si++)
-			if (si->pos_written < source_pos_read && si->active) {
-				FD_SET(si->fd, &sink_fds);
-				active_fds++;
+			if (si->active) {
+				if (si->pos_written < source_pos_read) {
+					FD_SET(si->fd, &sink_fds);
+					active_fds++;
+				} else if (reached_eof) {
+					/* No more data to write; close fd to avoid deadlocks downstream. */
+					if (close(si->fd) == -1)
+						err(2, "Error closing %s", si->name);
+					si->active = 0;
+				}
 			}
-
 
 		/* If no read possible, and no writes pending, terminate. */
 		if (reached_eof && active_fds == 0)
