@@ -24,6 +24,9 @@
 #  limitations under the License.
 #
 
+# Consitent sorting across machines
+export LC_ALL=C
+
 scatter |{
 	# Obtain file
 	curl -s "$1" |
@@ -35,12 +38,16 @@ scatter |{
 		-||>/sgsh/words
 
 		# List two-letter palindromes
-		-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t;g' |>/sgsh/palindromes
+		-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
+			g' |>/sgsh/palindromes
+
 		# List four consecutive consonants
-		-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t;g' |>/sgsh/consonants
+		-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
+			g' |>/sgsh/consonants
 
 		# List length of words longer than 12 characters
-		-| awk '{if (length($1) > 12) print "l:", length($1); else print ""}' |>/sgsh/long
+		-| awk '{if (length($1) > 12) print "l:", length($1);
+			else print ""}' |>/sgsh/long
 	|}
 |} gather |{
 	# Paste the four streams side-by-side
