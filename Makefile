@@ -27,7 +27,7 @@ test-sgsh: sgsh teebuff
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
 	./sgsh -t ./teebuff example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
-	./sgsh -t ./teebuff example/word-properties.sh file:///`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
+	./sgsh -t ./teebuff example/word-properties.sh file://`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 
 test-teebuff: teebuff charcount
