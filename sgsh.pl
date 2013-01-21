@@ -84,7 +84,7 @@ my $input_filename;
 # scatter |{
 my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(\#.*)?$!;
 # |{
-my $SCATTER_BEGIN = q!\|\{\s*(\#.*)?$!;
+my $SCATTER_BEGIN = q!\|\{\s*(-n\s*\d+)?(\#.*)?$!;
 # |} gather |{
 my $GATHER_BLOCK_BEGIN = q!^[^'#"]*\|\}\s*gather\s*\|\{\s*(\#.*)?$!;
 # |}
@@ -290,12 +290,8 @@ generate_scatter_code
 		if (/$SCATTER_BEGIN/o) {
 			push(@current_point_stack, $current_point) if (defined($current_point));
 			$current_point = ++$point_counter;
-			my $tee_args;
-			my $j;
-			for ($j = 0; $j  < $endpoint_number[$current_point]; $j++) {
-				$tee_args .= " \$SGDIR/npi-$current_point.$j";
-			}
-			s/\|\{/| $opt_t $tee_args &/;
+			my $tee_command_string = tee_command($1 ? $1 : '', $current_point, $endpoint_number[$current_point]);
+			s/\|\{/| $tee_command_string &/;
 			$endpoint_counter[$current_point] = 0;
 		}
 
@@ -368,4 +364,35 @@ generate_gather_code
 		}
 	}
 	return $i;
+}
+
+# Return the tee command (and its arguments) to be used for scattering the data
+# The argument is the text following |{
+sub
+tee_command
+{
+	my ($args, $current_point, $endpoint_number) = @_;
+
+	# Parse arguments
+	my @save_argv = @ARGV;
+	my %scatter_opts;
+	@ARGV = split($args, /\s+/);
+	getopts('ln:st', \%scatter_opts);
+	@ARGV = @save_argv;
+
+	# Invoke multiple commands
+	my $n = 1;
+	$n = $scatter_opts{'n'} if ($scatter_opts{'n'});
+
+	# Create arguments
+	my $tee_args;
+	$tee_args .= ' -s' if ($scatter_opts{'s'});
+	$tee_args .= ' -l' if ($scatter_opts{'l'});
+	for (my $j = 0; $j  < $endpoint_number; $j++) {
+		$tee_args .= " \$SGDIR/npi-$current_point.$j";
+	}
+	my $tee_prog = $opt_t;
+	$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
+
+	return "$tee_prog $tee_args";
 }
