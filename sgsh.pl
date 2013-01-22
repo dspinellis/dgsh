@@ -356,6 +356,7 @@ scatter_code_and_pipes
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
 				$parallel_file_map{$c->{file_name}} .= " \$SGDIR\/npfo-$c->{file_name}.$p";
+				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
 			}
 
