@@ -1,6 +1,7 @@
 #!/usr/local/bin/sgsh
 #
 # C code metrics
+# Demonstrates nesting, commands without input
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #
@@ -20,7 +21,7 @@
 scatter |{
 
 	# C and header code
-	find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |{
+	.| find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |{
 
 		# Average file name length
 		# Convert to newline separation for counting
@@ -77,7 +78,7 @@ scatter |{
 	|}
 
 	# C files
-	find "$@" -name \*.c -type f -print0 |{
+	.| find "$@" -name \*.c -type f -print0 |{
 
 		# Convert to newline separation for counting
 		-| tr \\0 \\n |{
@@ -123,7 +124,7 @@ scatter |{
 	|}
 
 	# Header files
-	find "$@" -name \*.h -type f | wc -l |=NHFILE
+	.| find "$@" -name \*.h -type f | wc -l |=NHFILE
 
 # Gather and print the results
 |} gather |{

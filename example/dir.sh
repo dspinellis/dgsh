@@ -22,20 +22,19 @@
 
 FREE=`df -h . | awk '!/Use%/{print $4}'`
 
+ls -n |
 scatter |{
-	ls -n |{
-		# Reorder fields in DIR-like way
-		-| awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' |>/sgsh/files
+	# Reorder fields in DIR-like way
+	-| awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' |>/sgsh/files
 
-		# Count number of files
-		-| wc -l |=NFILES
+	# Count number of files
+	-| wc -l |=NFILES
 
-		# Count number of directories
-		-| grep '^d' | wc -l |= NDIRS
+	# Count number of directories
+	-| grep '^d' | wc -l |= NDIRS
 
-		# Tally number of bytes
-		-| awk '{s += $5} END {print s}' |=NBYTES
-	|}
+	# Tally number of bytes
+	-| awk '{s += $5} END {print s}' |=NBYTES
 |} gather |{
 	cat /sgsh/files
 	echo "               $NFILES File(s) $NBYTES bytes"

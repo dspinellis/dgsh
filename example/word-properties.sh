@@ -27,28 +27,27 @@
 # Consitent sorting across machines
 export LC_ALL=C
 
+# Obtain file
+curl -s "$1" |
+# Split into one word per line
+tr -cs a-zA-Z \\n |
+# Create list of unique words
+sort -u |
 scatter |{
-	# Obtain file
-	curl -s "$1" |
-	# Split into one word per line
-	tr -cs a-zA-Z \\n |
-	# Create list of unique words
-	sort -u |{
-		# Pass through the original words
-		-||>/sgsh/words
+	# Pass through the original words
+	-||>/sgsh/words
 
-		# List two-letter palindromes
-		-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
-			g' |>/sgsh/palindromes
+	# List two-letter palindromes
+	-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
+		g' |>/sgsh/palindromes
 
-		# List four consecutive consonants
-		-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
-			g' |>/sgsh/consonants
+	# List four consecutive consonants
+	-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
+		g' |>/sgsh/consonants
 
-		# List length of words longer than 12 characters
-		-| awk '{if (length($1) > 12) print "l:", length($1);
-			else print ""}' |>/sgsh/long
-	|}
+	# List length of words longer than 12 characters
+	-| awk '{if (length($1) > 12) print "l:", length($1);
+		else print ""}' |>/sgsh/long
 |} gather |{
 	# Paste the four streams side-by-side
 	paste /sgsh/words /sgsh/palindromes /sgsh/consonants /sgsh/long |

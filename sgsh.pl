@@ -40,65 +40,51 @@ $File::Temp::KEEP_ALL = 1 if ($opt_k);
 # Output file
 my ($output_fh, $output_filename) = tempfile(UNLINK => 1);
 
-# The scatter point currently in effect
-my $current_point;
-
-# For assigning unique scatter point ids
-my $point_counter;
-
-# Used for saving/restoring current_point
-my @current_point_stack;
-
-# Number of endpoints for each scatter point
-my @endpoint_number;
-
-# True when processing a scatter gather block
-my $in_scatter_gather_block = 0;
-
-# Number of gather variable input points
-my $gather_variable_points;
-
-# Number of gather file input points
-my $gather_file_points;
-
-# Line where S/G block starts
-my $scatter_gather_start;
-
-# Variable name for each variable (|=) gather endpoint
-my @gather_variable_name;
-
-# File name for each file (|>) gather endpoint
-my @gather_file_name;
-
 # Map containing all defined gather file names
-my %gather_file_defined;
+my %defined_gather_file;
+
+# Map containing all defined gather variable names
+my %defined_gather_variable;
+
+# Map from /sgsh/ file names into (possibly multiple) named pipes
+my %parallel_file_map;
+
+# Ordinal number of the scatter command being processed
+my $global_scatter_n = 0;
 
 # Lines of the input file
 # Required, because we implement a double-pass algorithm
 my @lines;
+
+my $line_number = 0;
 
 # User-specified input file name (or STDIN)
 my $input_filename;
 
 # Regular expressions for the input files scatter-gather operators
 # scatter |{
-my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(\#.*)?$!;
+my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
 # |{
-my $SCATTER_BEGIN = q!\|\{\s*(-n\s*\d+)?(\#.*)?$!;
+my $SCATTER_BEGIN = q!\|\{\s*(.*)?$!;
 # |} gather |{
 my $GATHER_BLOCK_BEGIN = q!^[^'#"]*\|\}\s*gather\s*\|\{\s*(\#.*)?$!;
 # |}
 my $BLOCK_END = q!^[^'#"]*\|\}\s*(\#.*)?$!;
 # -|
 my $SCATTER_INPUT = q!^[^'#"]*-\|!;
+# .|
+my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |= name
 my $GATHER_VARIABLE_OUTPUT = q!\|\=\s*(\w+)\s*(\#.*)?$!;
 # |>/sgsh/name
 my $GATHER_FILE_OUTPUT = q!\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
+# |.
+my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
 # -||>/sgsh/name
 my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
-my $COMMENT_LINE = '^\s*\#';
+my $COMMENT_LINE = '^\s*(\#.*)?$';
+
 
 # Read input file
 if ($#ARGV >= 0) {
@@ -115,81 +101,53 @@ print $output_fh "#!$opt_s
 # Source file $input_filename
 ";
 
-
 # Adjust command interpreter line
 $lines[0] =~ s/^\#\!/#/;
 
-# Process file's lines
-for (my $i = 0; $i <= $#lines; $i++) {
-	$_ = $lines[$i];
+my $code = '';
+my $pipes = '';
 
-	# Comment line; prevent further processing
-	if (/$COMMENT_LINE/) {
-		# Print the line, unless we're in a scatter-gather block
-		print $output_fh $_ unless ($in_scatter_gather_block);
-		next;
+# Parse the file and generate the corresponding code
+while (get_next_line()) {
 	# Scatter block begin: scatter |{
-	} elsif (/$SCATTER_BLOCK_BEGIN/o) {
-		if ($in_scatter_gather_block) {
-			print STDERR "$input_filename(", $i + 1, "): Scatter-gather blocks can't be nested\n";
-			exit 1;
-		}
-		$point_counter = -1;
-		$gather_variable_points = 0;
-		$gather_file_points = 0;
-		$scatter_gather_start = $i;
-		$in_scatter_gather_block = 1;
-		undef @endpoint_number;
-		undef @current_point_stack;
-		undef @gather_variable_name;
-		next;
+	if (!/$COMMENT_LINE/o && /$SCATTER_BLOCK_BEGIN/o) {
 
-	# Gather block begin: |} gather |{
-	} elsif (/$GATHER_BLOCK_BEGIN/o) {
-		if ($#current_point_stack != -1) {
-			print STDERR "$input_filename(", $i + 1, "): Missing |}\n";
-			exit 1;
-		}
-		generate_scatter_code($scatter_gather_start, $i - 1);
-		$i += generate_gather_code($i);
-		$in_scatter_gather_block = 0;
-		next;
+		# Top-level scatter command
+		my %scatter_command;
+		$scatter_command{line_number} = $line_number;
+		$scatter_command{input} = 'stdin';
+		$scatter_command{output} = 'scatter';
+		$scatter_command{body} = '';
+		$scatter_command{scatter_flags} = $1;
+		$scatter_command{scatter_commands} = parse_scatter_command_sequence($GATHER_BLOCK_BEGIN);
 
-	# Scatter group end: |}
-	} elsif (/$BLOCK_END/o) {
-		if ($#current_point_stack == -1) {
-			print STDERR "$input_filename(", $i + 1, "): Extra |}\n";
-			exit 1;
-		}
-		$current_point = pop(@current_point_stack);
-		next;
+		my $gather_commands = parse_gather_command_sequence();
+
+		verify_code(\%scatter_command, $gather_commands);
+
+		my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
+		$code .= $code2;
+		$pipes .= $pipes2;
+		$code .= gather_code($gather_commands);
+	} else {
+		$code .= $_ ;
 	}
-
-	# Scatter input endpoint: -|
-	if (/$SCATTER_INPUT/o) {
-		$endpoint_number[$current_point]++;
-	}
-
-	# Scatter group begin: |{
-	if (/$SCATTER_BEGIN/o) {
-		push(@current_point_stack, $current_point);
-		$current_point = ++$point_counter;
-	}
-
-	# Gather variable output endpoint: |=
-	if (/$GATHER_VARIABLE_OUTPUT/o) {
-		$gather_variable_name[$gather_variable_points++] = $1;
-	}
-
-	# Gather file output endpoint: |>
-	if (/$GATHER_FILE_OUTPUT/o) {
-		$gather_file_name[$gather_file_points++] = $1;
-		$gather_file_defined{$1} = 1;
-	}
-
-	# Print the line, unless we're in a scatter-gather block
-	print $output_fh $_ unless ($in_scatter_gather_block);
 }
+
+# The traps ensure that the named pipe directory
+# is removed on termination and that the exit code
+# after a signal is that of the shell: 128 + signal number
+print $output_fh q{
+export SGDIR=/tmp/sg-$$
+rm -rf $SGDIR
+trap 'rm -rf "$SGDIR"' 0
+trap 'exit $?' 1 2 3 15
+mkdir $SGDIR
+},
+qq{
+mkfifo $pipes
+$code
+};
 
 # Execute the shell on the generated file
 # -a inherits the shell's variables to subshell
@@ -209,190 +167,311 @@ if ($? == -1) {
 	exit (($? >> 8) | (($? & 127) << 8));
 }
 
-#
-# Generate the code to scatter data
-# Arguments are the beginning and end lines of the corresponding scatter block
-# Uses the global variables: @lines, $point_counts, @endpoint_number, $gather_variable_points
-#
+# Parse and return a sequence of scatter commands until we reach the specified
+# block end
 sub
-generate_scatter_code
+parse_scatter_command_sequence
 {
-	my($start, $end) = @_;
-	# The scatter point currently in effect
-	my $current_point;
+	my ($block_end) = @_;
+	my @commands;
 
-	# For assigning unique scatter point ids
-	my $point_counter = -1;
-
-	# Used for saving/restoring current_point
-	my @current_point_stack;
-
-	# Count endpoints for each scatter point
-	my @endpoint_counter;
-
-	for (my $i = $start; $i <= $end; $i++) {
-		$_ = $lines[$i];
-
-		# Comment line; prevent further processing
-		if (/$COMMENT_LINE/) {
-			print $output_fh $_;
+	for (;;) {
+		if (!get_next_line()) {
+			error('End of file while parsing scatter command sequence');
+		}
+		if (/$COMMENT_LINE/o) {
 			next;
-		# Scatter block begin: "scatter |{" initialize named pipes
-		} elsif (/$SCATTER_BLOCK_BEGIN/o) {
-			# Generate initialization code
-			# The traps ensure that the named pipe directory
-			# is removed on termination and that the exit code
-			# after a signal is that of the shell: 128 + signal number
-			my $code = q{export SGDIR=/tmp/sg-$$; rm -rf $SGDIR; trap 'rm -rf "$SGDIR"' 0; trap 'exit $?' 1 2 3 15; mkdir $SGDIR; mkfifo};
-			# Scatter named pipes
-			for (my $j = 0; $j <= $#endpoint_number; $j++) {
-				for (my $k = 0; $k < $endpoint_number[$j]; $k++) {
-					$code .= " \$SGDIR/npi-$j.$k";
-				}
-			}
-			# Gather variable named pipes
-			for (my $j = 0; $j < $gather_variable_points; $j++) {
-				$code .= " \$SGDIR/npvo-$gather_variable_name[$j]";
-			}
-
-			# Gather file named pipes
-			for (my $j = 0; $j < $gather_file_points; $j++) {
-				$code .= " \$SGDIR/npfo-$gather_file_name[$j]";
-			}
-			s/scatter\s*\|\{/$code/;
-
-		# Gather group begin: |} gather |{
-		} elsif (/$GATHER_BLOCK_BEGIN/o) {
-			generate_scatter_code($scatter_gather_start, $i - 1);
-			$i += generate_gather_code($i);
-
-		# Scatter group end: "|}" maintain stack
-		} elsif (/$BLOCK_END/o) {
-			$current_point = pop(@current_point_stack);
-			s/\|\}//;
-
-		}
-
-		# Scatter-gather pass-through to a named file: -||>
-		if (/$SCATTER_GATHER_PASS_THROUGH/o) {
-			# Create a symbolic link from gather to scatter pipe
-			s/\-\|\|\>\s*\/sgsh\/(\w+)/rm \$SGDIR\/npfo-$1; ln -s \$SGDIR\/npi-$current_point.$endpoint_counter[$current_point] \$SGDIR\/npfo-$1/;
-			$endpoint_counter[$current_point]++;
-		}
-
-		# Scatter input head endpoint: "-|" get input from named pipe
-		if (/$SCATTER_INPUT/o) {
-			s/-\|/<\$SGDIR\/npi-$current_point.$endpoint_counter[$current_point]/;
-			$endpoint_counter[$current_point]++;
-		}
-
-		# Scatter group begin: "|{" tee output to named pipes
-		if (/$SCATTER_BEGIN/o) {
-			push(@current_point_stack, $current_point) if (defined($current_point));
-			$current_point = ++$point_counter;
-			my $tee_command_string = tee_command($1 ? $1 : '', $current_point, $endpoint_number[$current_point]);
-			s/\|\{/| $tee_command_string &/;
-			$endpoint_counter[$current_point] = 0;
-		}
-
-		# Gather output endpoint to named variable: |=name
-		if (/$GATHER_VARIABLE_OUTPUT/o) {
-			s/\|\=\s*(\w+)/>\$SGDIR\/npvo-$1 &/;
-		}
-
-		# Gather output endpoint to named file: |>filename
-		if (/$GATHER_FILE_OUTPUT/) {
-			s/\|\>\s*\/sgsh\/(\w+)/ >\$SGDIR\/npfo-$1 &/;
-		}
-
-		print $output_fh $_;
-	}
-}
-
-# Generate gather code for the gather block starting in the passed line
-# Return the number of lines in the block
-sub
-generate_gather_code
-{
-	my($start) = @_;
-
-	my $i;
-	my $uname = `uname`;
-	chop $uname;
-	for ($i = $start; $i <= $#lines; $i++) {
-		$_ = $lines[$i];
-
-		# Comment line; prevent further processing
-		if (/$COMMENT_LINE/) {
-			print $output_fh $_;
-		# Gather block begin: }| gather |{
-		# Generate the gather code as a HERE document shell script that will be passed as input to a shell
-		} elsif (/$GATHER_BLOCK_BEGIN/o) {
-			s/\|\}\s*gather\s*\|\{//;
-			print $output_fh "# Gather the results\n(\n";
-			for (my $j = 0; $j <= $#gather_variable_name; $j++) {
-				if ($uname eq 'FreeBSD' and $opt_s eq '/bin/sh') {
-					# Workaround for the FreeBSD shell
-					# This doesn't execute echo "a=`sleep 5`42" &
-					# in the background
-					print $output_fh qq{\t(echo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'") &\n};
-				} else {
-					print $output_fh qq{\techo "$gather_variable_name[$j]='`cat \$SGDIR/npvo-$gather_variable_name[$j]`'" &\n};
-				}
-			}
-			print $output_fh "\twait\ncat <<\\SGEOFSG\n";
-		# Block end: |}
-		# End the generated code HERE document and pipe it to a shell for processing
-		} elsif (/$BLOCK_END/o) {
-			s/\|\}//;
-
-			# -s allows passing positional arguments to subshell
-			print $output_fh qq{SGEOFSG\n) | $opt_s -s "\$@"\n};
-			last;
+		} elsif (/$block_end/) {
+			return \@commands;
 		} else {
-			# Substitute /sgsh/... gather points with corresponding named pipe
-			while ($lines[$i] =~ m|/sgsh/(\w+)|) {
-				my $file_name = $1;
-				if (!$gather_file_defined{$file_name}) {
-					print STDERR "$input_filename(", $i + 1, "): Undefined file gather name $file_name\n";
-					exit 1;
-				}
-				$lines[$i] =~ s|/sgsh/$file_name|\$SGDIR/npfo-$file_name|g;
-			}
-
-			print $output_fh $lines[$i];
+			unget_line();
+			my $cmd = parse_scatter_command();
+			push(@commands, $cmd);
 		}
 	}
-	return $i;
 }
 
-# Return the tee command (and its arguments) to be used for scattering the data
-# The argument is the text following |{
+# Parse and return a single scatter command with the following syntax
+# scatter_command = ('.|' | '-|')
+#	[body]
+#	('|>' filename |
+#	 '|=' varname |
+#	 '|{' flags scatter_command_sequence |
+#	 '|.')
+# The return is a hash with the following elements:
+# input: 		none|scatter
+# body:			Command's text
+# output:		none|scatter|file|variable
+# scatter_commands:	When output = scatter
+# scatter_flags:	When output = scatter
+# variable_name:	When output = variable
+# file_name:		When output = file
 sub
-tee_command
+parse_scatter_command
 {
-	my ($args, $current_point, $endpoint_number) = @_;
+	my %command;
+
+	$command{body} = '';
+
+	while (get_next_line()) {
+		# Don't look at comment lines
+		if (/$COMMENT_LINE/o) {
+			$command{body} .= $_;
+			next;
+		}
+
+		# Scatter input endpoint: -|
+		if (s/$SCATTER_INPUT//o) {
+			error("Input source already defined") if (defined($command{input}));
+			$command{line_number} = $line_number;
+			$command{input} = 'scatter';
+		}
+
+		# No input : .|
+		if (s/$NO_INPUT//o) {
+			error("Input source already defined") if (defined($command{input}));
+			$command{line_number} = $line_number;
+			$command{input} = 'none';
+		}
+
+		# Scatter group begin: |{
+		if (s/$SCATTER_BEGIN//o) {
+			error("Headless command in scatter block") if (!defined($command{input}));
+			$command{output} = 'scatter';
+			$command{body} .= $_;
+			$command{scatter_flags} = $1;
+			$command{scatter_commands} = parse_scatter_command_sequence($BLOCK_END);
+			return \%command;
+		}
+
+		# Gather variable output endpoint: |=
+		if (s/$GATHER_VARIABLE_OUTPUT//o) {
+			error("Headless command in scatter block") if (!defined($command{input}));
+			error("Variable $1 already used") if (defined($defined_gather_variable{$1}));
+			$defined_gather_variable{$1} = 1;
+			$command{output} = 'variable';
+			$command{variable_name} = $1;
+			$command{body} .= $_;
+			return \%command;
+		}
+
+		# Gather file output endpoint: |>
+		if (s/$GATHER_FILE_OUTPUT//o) {
+			error("Headless command in scatter block") if (!defined($command{input}));
+			error("Output file $1 already used") if (defined($defined_gather_file{$1}));
+			$defined_gather_file{$1} = 1;
+			$parallel_file_map{$1} = '';
+			$command{output} = 'file';
+			$command{file_name} = $1;
+			$command{body} .= $_;
+			return \%command;
+		}
+
+		# Scatter group end: |}
+		if (/$BLOCK_END/o) {
+			error("Unterminated scatter command");
+		}
+
+		# Append command to body
+		$command{body} .= $_;
+	}
+	error("End of file reached file parsing a scatter command");
+}
+
+
+# Parse a sequence of gather commands and return it as a single scalar
+sub
+parse_gather_command_sequence
+{
+	my $command = '';
+
+	while (get_next_line()) {
+		# Gather block end: |}
+		if (/$BLOCK_END/o) {
+			return $command;
+		}
+		$command .= $_;
+	}
+	error("End of file reached file parsing a gather block");
+}
+
+# Return the code and the named pipes that must be generated
+# to scatter data for the specified command
+sub
+scatter_code_and_pipes
+{
+	my($command) = @_;
+	my $code = '';
+	my $pipes = '';
+
+	my $scatter_n = $global_scatter_n++;
 
 	# Parse arguments
 	my @save_argv = @ARGV;
 	my %scatter_opts;
-	@ARGV = split($args, /\s+/);
-	getopts('ln:st', \%scatter_opts);
+	@ARGV = split($command->{scatter_flags}, /\s+/);
+	getopts('lp:st', \%scatter_opts);
 	@ARGV = @save_argv;
 
-	# Invoke multiple commands
-	my $n = 1;
-	$n = $scatter_opts{'n'} if ($scatter_opts{'n'});
-
-	# Create arguments
-	my $tee_args;
-	$tee_args .= ' -s' if ($scatter_opts{'s'});
-	$tee_args .= ' -l' if ($scatter_opts{'l'});
-	for (my $j = 0; $j  < $endpoint_number; $j++) {
-		$tee_args .= " \$SGDIR/npi-$current_point.$j";
+	# Number of commands to invoke in parallel
+	my $parallel;
+	if ($scatter_opts{'p'}) {
+		$parallel = $scatter_opts{'p'};
+	} else {
+		$parallel = 1;
 	}
-	my $tee_prog = $opt_t;
-	$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-	return "$tee_prog $tee_args";
+	# Count number of scatter targets;
+	my $commands = $command->{scatter_commands};
+
+	my $scatter_targets = 0;
+	for my $c (@{$commands}) {
+		$scatter_targets++ if ($c->{input} eq 'scatter');
+	}
+
+	# Create tee, if needed
+	if ($scatter_targets * $parallel > 1) {
+		# Create arguments
+		my $tee_args;
+		$tee_args .= ' -s' if ($scatter_opts{'s'});
+		$tee_args .= ' -l' if ($scatter_opts{'l'});
+			for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
+				for (my $p = 0; $p < $parallel; $p++) {
+					$tee_args .= " \$SGDIR/npi-$scatter_n.$cmd_n.$p";
+				}
+			}
+		# Obtain tee program
+		my $tee_prog = $opt_t;
+		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
+
+		$code .= "$tee_prog $tee_args &\n";
+	}
+
+	# Process the commands
+	my $cmd_n = 0;
+	for my $c (@{$commands}) {
+		for (my $p = 0; $p < $parallel; $p++) {
+
+			# Pass-through fast exit
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
+				$parallel_file_map{$c->{file_name}} .= " \$SGDIR\/npfo-$c->{file_name}.$p";
+				next;
+			}
+
+			# Generate input
+			if ($c->{input} eq 'none') {
+				$code .= '</dev/null ';
+			} elsif ($c->{input} eq 'scatter') {
+				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+			} else {
+				die "Headless command";
+			}
+
+			# Generate body sans trailing newline
+			chop $c->{body};
+			$code .= $c->{body};
+
+			# Generate output redirection
+			if ($c->{output} eq 'none') {
+				$code .= " >/dev/null\n";
+			} elsif ($c->{output} eq 'scatter') {
+				$code .= " |\n";
+				my ($code2, $pipes2) = scatter_code_and_pipes($c);
+				$code .= $code2;
+				$pipes .= $pipes2;
+			} elsif ($c->{output} eq 'file') {
+				$code .= " >\$SGDIR\/npfo-$c->{file_name}.$p &\n";
+				$pipes .= " \\\n\$SGDIR\/npfo-$c->{file_name}.$p";
+				$parallel_file_map{$c->{file_name}} .= " \$SGDIR\/npfo-$c->{file_name}.$p";
+			} elsif ($c->{output} eq 'variable') {
+				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
+				$code .= " >\$SGDIR\/npvo-$c->{variable_name} &\n";
+				$pipes .= " \\\n\$SGDIR\/npvo-$c->{variable_name}";
+			} else {
+				die "Tailless command";
+			}
+		}
+		$cmd_n++;
+	}
+	return ($code, $pipes);
+}
+
+
+# Return gather code for the string passed as an argument
+sub
+gather_code
+{
+	my($commands) = @_;
+	my $code;
+
+
+	$code .= "# Gather the results\n(\n";
+	# Create code for all variables
+	my $uname = `uname`;
+	chop $uname;
+	for my $gv (keys %defined_gather_variable) {
+		if ($uname eq 'FreeBSD' and $opt_s eq '/bin/sh') {
+			# Workaround for the FreeBSD shell
+			# This doesn't execute echo "a=`sleep 5`42" &
+			# in the background
+			$code .= qq{\t(echo "$gv='`cat \$SGDIR/npvo-$gv`'") &\n};
+		} else {
+			$code .= qq{\techo "$gv='`cat \$SGDIR/npvo-$gv`'" &\n};
+		}
+	}
+
+	# Create the rest of the code
+	$code .= "\twait\ncat <<\\SGEOFSG\n";
+
+	# Substitute /sgsh/... gather points with corresponding named pipe
+	while ($commands =~ m|/sgsh/(\w+)|) {
+		my $file_name = $1;
+		error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
+		$commands =~ s|/sgsh/$file_name|$parallel_file_map{$file_name}|g;
+	}
+	$code .= $commands;
+
+	# -s allows passing positional arguments to subshell
+	$code .= qq{SGEOFSG\n) | $opt_s -s "\$@"\n};
+	return $code;
+}
+
+# Set $_ to the next line from @lines
+# Return true if a next line exists
+# Advance $line_number
+sub
+get_next_line
+{
+	return 0 if ($line_number > $#lines);
+	$_ = $lines[$line_number++];
+	return 1;
+}
+
+# Push back current line
+sub
+unget_line
+{
+	die "unget_line past beginning" if ($line_number-- == 0);
+}
+
+
+# Verify the code
+# Ensure that all variables are used in the gather block
+# Ensure that the scatter code implements a DAG
+sub
+verify_code
+{
+	my($scatter_command, $gather_commands) = @_;
+}
+
+sub
+error
+{
+	my($message, $line) = @_;
+
+	$line = $line_number unless(defined($line));
+	print STDERR "$input_filename($line): $message\n";
+	exit 1;
 }

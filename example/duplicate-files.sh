@@ -18,26 +18,26 @@
 #  limitations under the License.
 #
 
+# Create list of files
+find "$@" -type f |
+
+# Produce lines of the form
+# MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
+xargs openssl md5 |
+
+# Convert each line into a "filename md5sum" pair
+sed 's/^MD5(//;s/)= / /' |
+
+# Sort by MD5 sum
+sort -k2 |
+
 scatter |{
-	# Create list of files
-	find "$@" -type f |
 
-	# Produce lines of the form
-	# MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
-	xargs openssl md5 |
+	 # Print an MD5 sum for each file that appears more than once
+	 -| awk '{print $2}' | uniq -d |>/sgsh/dupes
 
-	# Convert each line into a "filename md5sum" pair
-	sed 's/^MD5(//;s/)= / /' |
-
-	# Sort by MD5 sum
-	sort -k2 |{
-
-		 # Print an MD5 sum for each file that appears more than once
-		 -| awk '{print $2}' | uniq -d |>/sgsh/dupes
-
-		 # Pass through the filename md5sum pairs
-		 -||>/sgsh/names
-	|}
+	 # Pass through the filename md5sum pairs
+	 -||>/sgsh/names
 
 |} gather |{
 	# Join the repeated MD5 sums with the corresponding file names

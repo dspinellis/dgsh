@@ -19,14 +19,13 @@
 #  limitations under the License.
 #
 
+curl -s "$1" |
 scatter |{
-	curl -s "$1" |{
-		-| wc -c |= NBYTES
-		-| file - |= FILETYPE
-		-| compress -c | wc -c |= COMPRESS
-		-| bzip2 -c | wc -c |= BZIP2
-		-| gzip -c | wc -c |= GZIP
-	|}
+	-| wc -c |= NBYTES
+	-| file - |= FILETYPE
+	-| compress -c | wc -c |= COMPRESS
+	-| bzip2 -c | wc -c |= BZIP2
+	-| gzip -c | wc -c |= GZIP
 |} gather |{
 	cat <<EOF
 File URL:      $1
