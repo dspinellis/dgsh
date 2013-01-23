@@ -371,8 +371,9 @@ scatter_code_and_pipes
 			}
 
 			# Generate body sans trailing newline
-			chop $c->{body};
-			$code .= $c->{body};
+			my $body = $c->{body};
+			chop $body;
+			$code .= $body;
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
