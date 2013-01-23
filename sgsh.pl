@@ -309,7 +309,7 @@ scatter_code_and_pipes
 	# Parse arguments
 	my @save_argv = @ARGV;
 	my %scatter_opts;
-	@ARGV = split($command->{scatter_flags}, /\s+/);
+	@ARGV = split(/\s+/, $command->{scatter_flags});
 	getopts('lp:st', \%scatter_opts);
 	@ARGV = @save_argv;
 
