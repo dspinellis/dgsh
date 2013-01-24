@@ -24,16 +24,31 @@ use warnings;
 use File::Temp qw/ tempfile /;
 use Getopt::Std;
 
-# Command-line options
-# -k		Keep temporary file
-# -n		Do not run the generated script
-# -s shell	Specify shell to use
-# -t tee	Path to teebuff
+$main::VERSION = '0.3';
+
+# Exit after command processing error
+$Getopt::Std::STANDARD_HELP_VERSION = 1;
+
+sub
+main::HELP_MESSAGE
+{
+	my ($fh) = @_;
+	print $fh qq{
+Usage $0: [-kn] [-s shell] [-t tee] [file]
+-k		Keep temporary script file
+-n		Do not run the generated script
+-s shell	Specify shell to use (/bin/sh is the default)
+-t tee		Path to the teebuff command
+};
+}
 
 our($opt_s, $opt_t, $opt_k, $opt_n);
 $opt_s = '/bin/sh';
 $opt_t = 'teebuff';
-getopts('kns:t:');
+if (!getopts('kns:t:')) {
+	main::HELP_MESSAGE(*STDERR);
+	exit 1;
+}
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
