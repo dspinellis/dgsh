@@ -381,6 +381,8 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			struct buffer b;
 
 			b = sink_buffer(si);
+			if (b.size == 0)
+				continue;
 			n = write(si->fd, b.p, b.size);
 			if (n < 0)
 				switch (errno) {
