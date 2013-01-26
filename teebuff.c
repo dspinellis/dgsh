@@ -382,8 +382,9 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 
 			b = sink_buffer(si);
 			if (b.size == 0)
-				continue;
-			n = write(si->fd, b.p, b.size);
+				n = 0;
+			else
+				n = write(si->fd, b.p, b.size);
 			if (n < 0)
 				switch (errno) {
 				/* EPIPE is acceptable, for the sink's reader can terminate early. */
