@@ -61,7 +61,10 @@ test-teebuff: teebuff charcount
 	diff teebuff.c a
 	diff teebuff.c b
 	rm a b
-
+	# Test output to stdout
+	./teebuff -b 64 <teebuff.c >a
+	diff teebuff.c a
+	rm a
 
 sgsh: sgsh.pl
 	perl -c sgsh.pl

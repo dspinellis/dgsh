@@ -449,7 +449,6 @@ int
 main(int argc, char *argv[])
 {
 	int max_fd = 0;
-	int i;
 	struct sink_info *files;
 	int reached_eof = 0;
 	int ch;
@@ -474,18 +473,30 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if ((files = (struct sink_info *)malloc(argc * sizeof(struct sink_info))) == NULL)
+	if ((files = (struct sink_info *)malloc(MAX(1, argc) * sizeof(struct sink_info))) == NULL)
 		err(1, NULL);
 
-	/* Open files */
-	for (i = 0; i < argc; i++) {
-		if ((files[i].fd = open(argv[i], O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0)
-			err(2, "Error opening %s", argv[i]);
-		max_fd = MAX(files[i].fd, max_fd);
-		files[i].name = argv[i];
-		files[i].active = 1;
-		files[i].pos_written = files[i].pos_to_write = 0;
-		non_block(files[i].fd, files[i].name);
+	if (argc == 0) {
+		/* Output to stdout */
+		files[0].fd = max_fd = STDOUT_FILENO;
+		files[0].name = "standard output";
+		files[0].active = 1;
+		files[0].pos_written = files[0].pos_to_write = 0;
+		non_block(files[0].fd, files[0].name);
+		argc = 1;
+	} else {
+		int i;
+
+		/* Open files */
+		for (i = 0; i < argc; i++) {
+			if ((files[i].fd = open(argv[i], O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0)
+				err(2, "Error opening %s", argv[i]);
+			max_fd = MAX(files[i].fd, max_fd);
+			files[i].name = argv[i];
+			files[i].active = 1;
+			files[i].pos_written = files[i].pos_to_write = 0;
+			non_block(files[i].fd, files[i].name);
+		}
 	}
 
 	non_block(STDIN_FILENO, "standard input");
