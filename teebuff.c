@@ -144,6 +144,7 @@ source_buffer(off_t pos)
 
 /*
  * Return a buffer to read from for writing to a file from a position onward
+ * When processing lines, b.size can be 0
  */
 static struct buffer
 sink_buffer(struct sink_info *si)
@@ -156,8 +157,8 @@ sink_buffer(struct sink_info *si)
 	b.p = buffers[pool] + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	#ifdef DEBUG
-	fprintf(stderr, "Sink buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
-		(long)si->pos_written, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
+	fprintf(stderr, "Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
+		(long)si->pos_written, (long)si->pos_to_write, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
 	#endif
 	return b;
 }
@@ -382,6 +383,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 
 			b = sink_buffer(si);
 			if (b.size == 0)
+				/* Can happen when a line spans a buffer */
 				n = 0;
 			else
 				n = write(si->fd, b.p, b.size);
