@@ -17,7 +17,7 @@
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
 else
-CFLAGS=-O
+CFLAGS=-O -Wall
 endif
 
 all: sgsh teebuff

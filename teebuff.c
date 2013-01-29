@@ -56,6 +56,9 @@ static int opt_scatter;
 /* Split scattered data on line boundaries */
 static int opt_line;
 
+/* Set to true when we reach EOF on input */
+static int reached_eof = 0;
+
 /* Information regarding the files we write to */
 struct sink_info {
 	char *name;		/* Output file name */
@@ -63,6 +66,24 @@ struct sink_info {
 	off_t pos_written;	/* Position up to which written */
 	off_t pos_to_write;	/* Position up to which to write */
 	int active;		/* True if this sink is still active */
+};
+
+/*
+ * States for the copying engine.
+ * Two disjunct sets:
+ * input side buffering (ib) and output side buffering (ob)
+ * Input side buffering will always read input if it is available,
+ * presenting an infinite output buffer to the upstream process.
+ * The output-side buffering will read input only if at least one
+ * active output buffer is empty.
+ */
+enum state {
+	read_ib,		/* Must read input */
+	read_ob,
+	drain_ib,		/* Drain output */
+	drain_ob,
+	allocate_ib,		/* Allocate read data to available files */
+	allocate_ob,
 };
 
 
@@ -375,7 +396,6 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	off_t min_pos = source_pos_read;
 	size_t written = 0;
 
-	allocate_data_to_sinks(sink_fds, files, nfiles);
 	for (si = files; si < files + nfiles; si++) {
 		if (FD_ISSET(si->fd, sink_fds)) {
 			int n;
@@ -419,13 +439,16 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			min_pos = MIN(min_pos, si->pos_written);
 	}
 	memory_free(min_pos);
+	#ifdef DEBUG
+	fprintf(stderr, "Wrote %d total bytes\n", written);
+	#endif
 	return written;
 }
 
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b buffer_size] [-s] [-l]\n", name);
+	fprintf(stderr, "Usage %s [-b buffer_size] [-i] [-l] [-s]\n", name);
 	exit(1);
 }
 
@@ -447,22 +470,75 @@ non_block(int fd, const char *name)
 		err(2, "Error setting %s to non-blocking mode", name);
 }
 
+/*
+ * Show the arguments passed to select(2)
+ * in human-readable form
+ */
+static void
+show_select_args(const char *msg, fd_set *source_fds, fd_set *sink_fds, struct sink_info *files, int n)
+{
+	#ifdef DEBUG
+	struct sink_info *si;
+
+	fprintf(stderr, "%s: ", msg);
+	if (FD_ISSET(STDIN_FILENO, source_fds))
+			fprintf(stderr, "stdin ");
+	for (si = files; si < files + n; si++)
+		if (FD_ISSET(si->fd, sink_fds))
+			fprintf(stderr, "%s ", si->name);
+	fputc('\n', stderr);
+	#endif
+}
+
+static void
+show_state(enum state state)
+{
+	#ifdef DEBUG
+	char *s;
+
+	switch (state) {
+	case read_ib:
+		s = "read_ib";
+		break;
+	case read_ob:
+		s = "read_ob";
+		break;
+	case allocate_ib:
+		s = "allocate_ib";
+		break;
+	case allocate_ob:
+		s = "allocate_ob";
+		break;
+	case drain_ib:
+		s = "drain_ib";
+		break;
+	case drain_ob:
+		s = "drain_ob";
+		break;
+	}
+	fprintf(stderr, "State: %s\n", s);
+	#endif
+}
+
 int
 main(int argc, char *argv[])
 {
 	int max_fd = 0;
 	struct sink_info *files;
-	int reached_eof = 0;
 	int ch;
 	const char *progname = argv[0];
+	enum state state = read_ob;
 
-	while ((ch = getopt(argc, argv, "b:sl")) != -1) {
+	while ((ch = getopt(argc, argv, "b:sil")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = atoi(optarg);
 			break;
 		case 's':
 			opt_scatter = 1;
+			break;
+		case 'i':
+			state = read_ib;
 			break;
 		case 'l':
 			opt_line = 1;
@@ -511,53 +587,38 @@ main(int argc, char *argv[])
 		struct sink_info *si;
 		fd_set source_fds;
 		fd_set sink_fds;
-		int active_fds;
 
+		show_state(state);
 		/* Set the fd's we're interested to read/write; close unneeded ones. */
 		FD_ZERO(&source_fds);
-		if (!reached_eof)
+		FD_ZERO(&sink_fds);
+
+		if (!reached_eof && (state == read_ib || state == read_ob))
 			FD_SET(STDIN_FILENO, &source_fds);
 
-		active_fds = 0;
-		FD_ZERO(&sink_fds);
 		for (si = files; si < files + argc; si++)
 			if (si->active) {
-				if (si->pos_written < source_pos_read) {
+				switch (state) {
+				case read_ib:
+				case read_ob:
+					if (si->pos_written < si->pos_to_write)
+						FD_SET(si->fd, &sink_fds);
+					break;
+				case allocate_ib:
+				case allocate_ob:
+				case drain_ib:
+				case drain_ob:
 					FD_SET(si->fd, &sink_fds);
-					active_fds++;
-				} else if (reached_eof) {
-					/* No more data to write; close fd to avoid deadlocks downstream. */
-					if (close(si->fd) == -1)
-						err(2, "Error closing %s", si->name);
-					si->active = 0;
+					break;
 				}
 			}
 
-		/* If no read possible, and no writes pending, terminate. */
-		if (reached_eof && active_fds == 0)
-			return 0;
 
 		/* Block until we can read or write. */
-		#ifdef DEBUG
-		fprintf(stderr, "Entering select: ");
-		if (FD_ISSET(STDIN_FILENO, &source_fds))
-				fprintf(stderr, "stdin ");
-		for (si = files; si < files + argc; si++)
-			if (FD_ISSET(si->fd, &sink_fds))
-				fprintf(stderr, "%s ", si->name);
-		fputc('\n', stderr);
-		#endif
+		show_select_args("Entering select", &source_fds, &sink_fds, files, argc);
 		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
 			err(3, "select");
-		#ifdef DEBUG
-		fprintf(stderr, "select returned: ");
-		if (FD_ISSET(STDIN_FILENO, &source_fds))
-				fprintf(stderr, "stdin ");
-		for (si = files; si < files + argc; si++)
-			if (FD_ISSET(si->fd, &sink_fds))
-				fprintf(stderr, "%s ", si->name);
-		fputc('\n', stderr);
-		#endif
+		show_select_args("Select returned", &source_fds, &sink_fds, files, argc);
 
 		/* Write to all file descriptors that accept writes. */
 		if (sink_write(&sink_fds, files, argc) > 0)
@@ -568,10 +629,74 @@ main(int argc, char *argv[])
 			 */
 			continue;
 
-		/* Read, if possible. */
-		if (FD_ISSET(STDIN_FILENO, &source_fds))
-			if (source_read(&source_fds) == -1)
-				reached_eof = 1;
+		if (reached_eof) {
+			int active_fds = 0;
+
+			for (si = files; si < files + argc; si++)
+				if (si->active) {
+					if (si->pos_written < si->pos_to_write)
+						active_fds++;
+					else {
+						#ifdef DEBUG
+						fprintf(stderr, "Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld\n",
+						si->name, (long)si->pos_written, (long)source_pos_read);
+						#endif
+						/* No more data to write; close fd to avoid deadlocks downstream. */
+						if (close(si->fd) == -1)
+							err(2, "Error closing %s", si->name);
+						si->active = 0;
+					}
+				}
+			if (active_fds == 0)
+				/* If no read possible, and no writes pending, terminate. */
+				return 0;
+		}
+
+		switch (state) {
+		case read_ib:
+			/* Read, if possible. */
+			if (FD_ISSET(STDIN_FILENO, &source_fds))
+				switch (source_read(&source_fds)) {
+				case -1:
+					reached_eof = 1;
+					state = drain_ib;
+					break;
+				case 0:
+					break;
+				default:
+					state = allocate_ib;
+					break;
+				}
+			break;
+		case read_ob:
+			/* Read, if possible. */
+			if (FD_ISSET(STDIN_FILENO, &source_fds))
+				switch (source_read(&source_fds)) {
+				case -1:
+					reached_eof = 1;
+					state = drain_ob;
+					break;
+				case 0:
+					break;
+				default:
+					state = allocate_ob;
+					break;
+				}
+			break;
+		case allocate_ib:
+			allocate_data_to_sinks(&sink_fds, files, argc);
+			state = read_ib;
+			break;
+		case allocate_ob:
+			allocate_data_to_sinks(&sink_fds, files, argc);
+			state = drain_ob;
+			break;
+		case drain_ib:
+			break;
+		case drain_ob:
+			if (!reached_eof)
+				state = read_ob;
+			break;
+		}
 	}
-	return 0;
 }
