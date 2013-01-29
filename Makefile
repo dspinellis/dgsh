@@ -30,41 +30,8 @@ test-sgsh: sgsh teebuff
 	./sgsh -t ./teebuff example/word-properties.sh file://`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 
-test-teebuff: teebuff charcount
-	# Test line scatter reliable algorithm
-	cat -n /usr/share/dict/words >words
-	./teebuff -sl -b 1000000 <words a b c d
-	cat a b c d | sort -n >words2
-	diff words words2
-	# Test line scatter efficient algorithm
-	./teebuff -sl -b 128 <words a b c d
-	cat a b c d | sort -n >words2
-	diff words words2
-	# Test with a buffer smaller than line size
-	./teebuff -sl -b 5 <words a b c d
-	cat a b c d | sort -n >words2
-	diff words words2
-	rm words words2
-	# Test with data less than the buffer size
-	head -50 /usr/share/dict/words | cat -n >words
-	./teebuff -sl -b 1000000 <words a b c d
-	cat a b c d | sort -n >words2
-	diff words words2
-	# Test block scatter
-	./teebuff -s -b 64 <teebuff.c a b c d
-	./charcount <teebuff.c >orig
-	cat a b c d | ./charcount >new
-	diff orig new
-	rm a b c d orig new
-	# Test plain distribution
-	./teebuff -b 64 <teebuff.c a b
-	diff teebuff.c a
-	diff teebuff.c b
-	rm a b
-	# Test output to stdout
-	./teebuff -b 64 <teebuff.c >a
-	diff teebuff.c a
-	rm a
+test-teebuff: teebuff charcount test-teebuff.sh
+	./test-teebuff.sh
 
 sgsh: sgsh.pl
 	perl -c sgsh.pl
