@@ -82,8 +82,6 @@ enum state {
 	read_ob,
 	drain_ib,		/* Drain output */
 	drain_ob,
-	allocate_ib,		/* Allocate read data to available files */
-	allocate_ob,
 };
 
 
@@ -396,6 +394,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	off_t min_pos = source_pos_read;
 	size_t written = 0;
 
+	allocate_data_to_sinks(sink_fds, files, nfiles);
 	for (si = files; si < files + nfiles; si++) {
 		if (FD_ISSET(si->fd, sink_fds)) {
 			int n;
@@ -503,12 +502,6 @@ show_state(enum state state)
 	case read_ob:
 		s = "read_ob";
 		break;
-	case allocate_ib:
-		s = "allocate_ib";
-		break;
-	case allocate_ob:
-		s = "allocate_ob";
-		break;
 	case drain_ib:
 		s = "drain_ib";
 		break;
@@ -604,8 +597,6 @@ main(int argc, char *argv[])
 					if (si->pos_written < si->pos_to_write)
 						FD_SET(si->fd, &sink_fds);
 					break;
-				case allocate_ib:
-				case allocate_ob:
 				case drain_ib:
 				case drain_ob:
 					FD_SET(si->fd, &sink_fds);
@@ -664,7 +655,7 @@ main(int argc, char *argv[])
 				case 0:
 					break;
 				default:
-					state = allocate_ib;
+					state = read_ib;
 					break;
 				}
 			break;
@@ -679,17 +670,9 @@ main(int argc, char *argv[])
 				case 0:
 					break;
 				default:
-					state = allocate_ob;
+					state = drain_ob;
 					break;
 				}
-			break;
-		case allocate_ib:
-			allocate_data_to_sinks(&sink_fds, files, argc);
-			state = read_ib;
-			break;
-		case allocate_ob:
-			allocate_data_to_sinks(&sink_fds, files, argc);
-			state = drain_ob;
 			break;
 		case drain_ib:
 			break;
