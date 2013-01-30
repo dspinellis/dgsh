@@ -116,9 +116,6 @@ print $output_fh "#!$opt_s
 # Source file $input_filename
 ";
 
-# Adjust command interpreter line
-$lines[0] =~ s/^\#\!/#/;
-
 my $code = '';
 my $pipes = '';
 
