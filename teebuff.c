@@ -402,7 +402,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 
 	allocate_data_to_sinks(sink_fds, files, nfiles);
 	for (si = files; si < files + nfiles; si++) {
-		if (FD_ISSET(si->fd, sink_fds)) {
+		if (si->active && FD_ISSET(si->fd, sink_fds)) {
 			int n;
 			struct buffer b;
 
