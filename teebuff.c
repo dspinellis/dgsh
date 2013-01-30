@@ -56,6 +56,9 @@ static int opt_scatter;
 /* Split scattered data on line boundaries */
 static int opt_line;
 
+/* Allocated bufffer information */
+static int buffers_allocated, buffers_freed, max_buffers_allocated;
+
 /* Set to true when we reach EOF on input */
 static int reached_eof = 0;
 
@@ -115,6 +118,8 @@ memory_allocate(int pool)
 		#ifdef DEBUG
 		fprintf(stderr, "Allocated buffer %d to %p\n", i, buffers[i]);
 		#endif
+		buffers_allocated++;
+		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 	}
 	allocated_pool_end = pool + 1;
 }
@@ -131,6 +136,7 @@ memory_free(off_t pos)
 
 	for (i = pool_begin; i < pool_end; i++) {
 		free(buffers[i]);
+		buffers_freed++;
 		#ifdef DEBUG
 		buffers[i] = NULL;
 		fprintf(stderr, "Freed buffer %d (pos = %ld, begin=%d end=%d)\n",
@@ -447,7 +453,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b buffer_size] [-i] [-l] [-s]\n", name);
+	fprintf(stderr, "Usage %s [-b buffer_size] [-i] [-l] [-m] [-s]\n", name);
 	exit(1);
 }
 
@@ -521,20 +527,24 @@ main(int argc, char *argv[])
 	int ch;
 	const char *progname = argv[0];
 	enum state state = read_ob;
+	int opt_memory_stats = 0;
 
-	while ((ch = getopt(argc, argv, "b:sil")) != -1) {
+	while ((ch = getopt(argc, argv, "b:silm")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = atoi(optarg);
-			break;
-		case 's':
-			opt_scatter = 1;
 			break;
 		case 'i':
 			state = read_ib;
 			break;
 		case 'l':
 			opt_line = 1;
+			break;
+		case 'm':	/* Provide memory use statistics on termination */
+			opt_memory_stats = 1;
+			break;
+		case 's':
+			opt_scatter = 1;
 			break;
 		case '?':
 		default:
@@ -638,9 +648,13 @@ main(int argc, char *argv[])
 						si->active = 0;
 					}
 				}
-			if (active_fds == 0)
+			if (active_fds == 0) {
 				/* If no read possible, and no writes pending, terminate. */
+				if (opt_memory_stats)
+					fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
+						buffers_allocated, buffers_freed, max_buffers_allocated);
 				return 0;
+			}
 		}
 
 		switch (state) {
