@@ -3,6 +3,7 @@
 # Regression tests for teebuff
 #
 
+# Ensure that the files passed as 2nd and 3rd arguments are the same
 ensure_same()
 {
 	echo "$1"
@@ -13,6 +14,29 @@ ensure_same()
 	fi
 }
 
+# Ensure that the numbers in the files passed as 2nd and 3rd arguments
+# about are the same
+# Line format:
+# Buffers allocated: 1025 Freed: 1024 Maximum allocated: 960
+ensure_similar_buffers()
+{
+	echo "$1"
+	for n in 3 5 8
+	do
+		if ! awk "
+		function abs(v)
+		{
+			return (v < 0 ? -v : v)
+		}
+		NR == 1 {ref = \$$n}
+		NR == 2 {test = \$$n}
+		END { exit (abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" $2 $3
+		then
+			echo "$1: Fields $n of $2 and $3 differ by more than 10%" 1>&2
+			exit 1
+		fi
+	done
+}
 
 for flags in '' -i
 do
@@ -62,10 +86,10 @@ do
 	do
 		test=teebuff-fastout$flags$flags2
 		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./teebuff -m $flags $flags2 -b 1024 >/dev/null 2>test/teebuff-buffer/$test.test
-		ensure_same "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
+		ensure_similar_buffers "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
 		test=teebuff-lagout$flags$flags2
 		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./teebuff -m $flags $flags2 -b 1024 2>test/teebuff-buffer/$test.test | (sleep 1 ; cat >/dev/null)
-		ensure_same "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
+		ensure_similar_buffers "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
 	done
 done
 exit 0
