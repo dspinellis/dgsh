@@ -34,7 +34,8 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage $0: [-kn] [-s shell] [-t tee] [file]
+Usage $0: [-kng] [-s shell] [-t tee] [file]
+-g		Generate a GraphViz graph of the specified processing
 -k		Keep temporary script file
 -n		Do not run the generated script
 -s shell	Specify shell to use (/bin/sh is the default)
@@ -42,10 +43,10 @@ Usage $0: [-kn] [-s shell] [-t tee] [file]
 };
 }
 
-our($opt_s, $opt_t, $opt_k, $opt_n);
+our($opt_g, $opt_k, $opt_n, $opt_s, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'teebuff';
-if (!getopts('kns:t:')) {
+if (!getopts('gkns:t:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
@@ -61,7 +62,7 @@ my %defined_gather_file;
 # Map containing all defined gather variable names
 my %defined_gather_variable;
 
-# Map from /sgsh/ file names into (possibly multiple) named pipes
+# Map from /sgsh/ file names into an array of named pipes
 my %parallel_file_map;
 
 # Ordinal number of the scatter command being processed
@@ -72,6 +73,9 @@ my $global_scatter_n = 0;
 my @lines;
 
 my $line_number = 0;
+
+# Properties (names of lhs and rhs nodes) of graph edges
+my %edge;
 
 # User-specified input file name (or STDIN)
 my $input_filename;
@@ -133,14 +137,25 @@ while (get_next_line()) {
 		$scatter_command{scatter_flags} = $1;
 		$scatter_command{scatter_commands} = parse_scatter_command_sequence($GATHER_BLOCK_BEGIN);
 
-		my $gather_commands = parse_gather_command_sequence();
+		my @gather_commands = parse_gather_command_sequence();
 
-		verify_code(\%scatter_command, $gather_commands);
+		verify_code(\%scatter_command, \@gather_commands);
 
-		my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
-		$code .= $code2;
-		$pipes .= $pipes2;
-		$code .= gather_code($gather_commands);
+		if ($opt_g) {
+			# Generate graph
+			print "digraph D {\n\trankdir = LR;\n";
+			my @edges = scatter_graph(\%scatter_command, 0);
+			gather_graph(\@gather_commands);
+			graph_edges();
+			print "}\n";
+			exit 0;
+		} else {
+			# Generate code
+			my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
+			$code .= $code2;
+			$pipes .= $pipes2;
+			$code .= gather_code(join('', @gather_commands));
+		}
 	} else {
 		$code .= $_ ;
 	}
@@ -272,7 +287,7 @@ parse_scatter_command
 			error("Headless command in scatter block") if (!defined($command{input}));
 			error("Output file $1 already used") if (defined($defined_gather_file{$1}));
 			$defined_gather_file{$1} = 1;
-			$parallel_file_map{$1} = '';
+			undef @{$parallel_file_map{$1}};
 			$command{output} = 'file';
 			$command{file_name} = $1;
 			$command{body} .= $_;
@@ -291,18 +306,18 @@ parse_scatter_command
 }
 
 
-# Parse a sequence of gather commands and return it as a single scalar
+# Parse a sequence of gather commands and return it as an array of lines
 sub
 parse_gather_command_sequence
 {
-	my $command = '';
+	my @commands;
 
 	while (get_next_line()) {
 		# Gather block end: |}
 		if (/$BLOCK_END/o) {
-			return $command;
+			return @commands;
 		}
-		$command .= $_;
+		push(@commands, $_);
 	}
 	error("End of file reached file parsing a gather block");
 }
@@ -344,7 +359,7 @@ scatter_code_and_pipes
 	# Create tee, if needed
 	if ($scatter_targets * $parallel > 1) {
 		# Create arguments
-		my $tee_args;
+		my $tee_args = '';
 		$tee_args .= ' -s' if ($scatter_opts{'s'});
 		$tee_args .= ' -l' if ($scatter_opts{'l'});
 			for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
@@ -367,7 +382,7 @@ scatter_code_and_pipes
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
-				$parallel_file_map{$c->{file_name}} .= " \$SGDIR\/npfo-$c->{file_name}.$p";
+				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
 			}
@@ -398,7 +413,7 @@ scatter_code_and_pipes
 			} elsif ($c->{output} eq 'file') {
 				$code .= " >\$SGDIR\/npfo-$c->{file_name}.$p &\n";
 				$pipes .= " \\\n\$SGDIR\/npfo-$c->{file_name}.$p";
-				$parallel_file_map{$c->{file_name}} .= " \$SGDIR\/npfo-$c->{file_name}.$p";
+				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'variable') {
 				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
 				$code .= " >\$SGDIR\/npvo-$c->{variable_name} &\n";
@@ -443,7 +458,7 @@ gather_code
 	while ($commands =~ m|/sgsh/(\w+)|) {
 		my $file_name = $1;
 		error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
-		$commands =~ s|/sgsh/$file_name|$parallel_file_map{$file_name}|g;
+		$commands =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
 	}
 	$code .= $commands;
 
@@ -488,4 +503,189 @@ error
 	$line = $line_number unless(defined($line));
 	print STDERR "$input_filename($line): $message\n";
 	exit 1;
+}
+
+# Return the code and the named pipes that must be generated
+# to scatter data for the specified command
+# Return a list of edges to which the specified command scatters the data
+sub
+scatter_graph
+{
+	my($command, $level) = @_;
+	my @output_edges;
+
+	my $scatter_n = $global_scatter_n++;
+
+	my $show_teebuff = 0;
+
+	# Parse arguments
+	my @save_argv = @ARGV;
+	my %scatter_opts;
+	@ARGV = split(/\s+/, $command->{scatter_flags});
+	getopts('lp:st', \%scatter_opts);
+	@ARGV = @save_argv;
+
+	# Number of commands to invoke in parallel
+	my $parallel;
+	if ($scatter_opts{'p'}) {
+		$parallel = $scatter_opts{'p'};
+	} else {
+		$parallel = 1;
+	}
+
+	# Count number of scatter targets;
+	my $commands = $command->{scatter_commands};
+
+	my $scatter_targets = 0;
+	for my $c (@{$commands}) {
+		$scatter_targets++ if ($c->{input} eq 'scatter');
+	}
+
+	my $tee_node_name = "node_tee_$scatter_n";
+	# Create tee, if needed
+	if ($scatter_targets * $parallel > 1) {
+		$show_teebuff = 1 if ($level == 0);
+		# Create arguments
+		my $tee_args = '';
+		if ($scatter_opts{'s'}) {
+			$tee_args .= ' -s';
+			$show_teebuff = 1;
+		}
+		if ($scatter_opts{'l'}) {
+			$tee_args .= ' -l';
+			$show_teebuff = 1;
+		}
+		for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
+			for (my $p = 0; $p < $parallel; $p++) {
+				$edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs} = $tee_node_name;
+			}
+		}
+		# Obtain tee program
+		my $tee_prog = $opt_t;
+		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
+
+		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($show_teebuff);
+	}
+
+	# Process the commands
+	my $cmd_n = 0;
+	for my $c (@{$commands}) {
+		for (my $p = 0; $p < $parallel; $p++) {
+
+			# Pass-through fast exit
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
+				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
+				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
+				next;
+			}
+
+			my $node_name = "node_cmd_${scatter_n}_${cmd_n}_$p";
+
+			# Generate input
+			if ($c->{input} eq 'none') {
+				;
+			} elsif ($c->{input} eq 'scatter') {
+				push(@output_edges, "npi-$scatter_n.$cmd_n.$p");
+				$edge{"npi-$scatter_n.$cmd_n.$p"}->{rhs} = $node_name;
+			} else {
+				die "Headless command";
+			}
+
+			# Generate body sans trailing newline and update corresponding edges
+			my $body = $c->{body};
+			chop $body;
+			while ($body =~ s|/sgsh/(\w+)||) {
+				my $file_name = $1;
+				error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
+				for my $file_name_p (@{$parallel_file_map{$file_name}}) {
+					$edge{"$file_name_p"}->{rhs} = $node_name;
+				}
+			}
+			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{"];\n};
+
+			# Generate output redirection
+			if ($c->{output} eq 'none') {
+				;
+			} elsif ($c->{output} eq 'scatter') {
+				my ($tee_node_name, @output_edges) = scatter_graph($c, $level + 1);
+				# Generate scatter edges
+				for my $output_edge (@output_edges) {
+					$edge{$output_edge}->{lhs} =
+						 ($#output_edges > 0 && $show_teebuff) ? $tee_node_name : $node_name;
+				}
+				# Connect our command to teebuff
+				print qq{\t$node_name -> $tee_node_name\n} if ($#output_edges > 0 && $show_teebuff);
+			} elsif ($c->{output} eq 'file') {
+				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
+				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
+			} elsif ($c->{output} eq 'variable') {
+				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
+				print qq(\t$node_name -> "\$$c->{variable_name}";\n);
+			} else {
+				die "Tailless command";
+			}
+		}
+		$cmd_n++;
+	}
+	return ($tee_node_name, @output_edges);
+}
+
+# Escape characters making the argument a valid GraphViz string
+sub
+graphviz_escape
+{
+	my ($name) = @_;
+
+	$name =~ s/\\/\\\\/g;
+	$name =~ s/"/\\"/g;
+	$name =~ s/\n/\\n/g;
+	$name =~ s/\s+$//;
+	$name =~ s/^\s+//;
+	return $name;
+}
+
+# Create nodes and edges for the gather commands passed as an array reference
+sub
+gather_graph
+{
+	my($commands) = @_;
+	my $n = 0;
+
+	for my $command (@{$commands}) {
+		my $is_node = 0;
+		my $node_name = "gather_node_$n";
+		while ($command =~ s|/sgsh/(\w+)||) {
+			my $file_name = $1;
+			error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
+			for my $file_name_p (@{$parallel_file_map{$file_name}}) {
+				$edge{"$file_name_p"}->{rhs} = $node_name;
+			}
+			$is_node = 1;
+		}
+		print qq{\t$node_name [label="} . graphviz_escape($command) . qq{"];\n} if ($is_node);
+		$n++;
+	}
+}
+
+# Draw the graph's edges
+sub
+graph_edges
+{
+	my $u = 0;
+
+	for my $e (keys %edge) {
+		next if ($edge{$e}->{passthru});
+		if (!defined($edge{$e}->{lhs})) {
+			print qq{\tunknown_node_$u [label="???"]; // $e\n};
+			$edge{$e}->{lhs} = "unknown_node_$u";
+			$u++;
+		}
+		if (!defined($edge{$e}->{rhs})) {
+			print qq{\tunknown_node_$u [label="???"]; // $e\n};
+			$edge{$e}->{rhs} = "unknown_node_$u";
+			$u++;
+		}
+		print "\t$edge{$e}->{lhs} -> $edge{$e}->{rhs}; // $e\n";
+	}
 }

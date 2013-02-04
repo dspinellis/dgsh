@@ -20,6 +20,9 @@ else
 CFLAGS=-O -Wall
 endif
 
+%.png: %.sh
+	./sgsh -g $< | dot -Tpng >$@
+
 all: sgsh teebuff
 
 test-sgsh: sgsh teebuff
@@ -39,3 +42,8 @@ sgsh: sgsh.pl
 
 charcount: charcount.sh
 	install charcount.sh charcount
+
+png: sgsh
+	for i in example/*.sh ; do \
+		./sgsh -g $$i | dot -Tpng >`basename $$i .sh`.png ; \
+	done
