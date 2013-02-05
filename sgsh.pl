@@ -48,15 +48,16 @@ Usage $0: [-kng] [-s shell] [-t tee] [file]
 -g		Generate a GraphViz graph of the specified processing
 -k		Keep temporary script file
 -n		Do not run the generated script
+-o filename	Write the script in the specified file (- is stdout) and exit
 -s shell	Specify shell to use (/bin/sh is the default)
 -t tee		Path to the teebuff command
 };
 }
 
-our($opt_g, $opt_k, $opt_n, $opt_s, $opt_t);
+our($opt_g, $opt_k, $opt_n, $opt_o, $opt_s, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'teebuff';
-if (!getopts('gkns:t:')) {
+if (!getopts('gkno:s:t:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
@@ -64,7 +65,20 @@ if (!getopts('gkns:t:')) {
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
 # Output file
-my ($output_fh, $output_filename) = tempfile(UNLINK => 1);
+my ($output_fh, $output_filename);
+
+if ($opt_o) {
+	# Output to specified file
+	$output_filename = $opt_o;
+	if ($output_filename eq '-') {
+		$output_fh = \*STDOUT;
+	} else {
+		open($output_fh, '>', $output_filename) || die "Unable to open $output_filename: $!\n";
+	}
+} else {
+	# Output to temporary file
+	($output_fh, $output_filename) = tempfile(UNLINK => 1);
+}
 
 # Map containing all defined gather file names
 my %defined_gather_file;
@@ -207,6 +221,8 @@ if ($opt_n) {
 	print join(' ', @args), "\n";
 	exit 0;
 }
+
+exit 0 if ($opt_o);
 
 system(@args);
 if ($? == -1) {
