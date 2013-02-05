@@ -59,8 +59,14 @@ my ($output_fh, $output_filename) = tempfile(UNLINK => 1);
 # Map containing all defined gather file names
 my %defined_gather_file;
 
+# Map containing all used gather file names
+my %used_gather_file;
+
 # Map containing all defined gather variable names
 my %defined_gather_variable;
+
+# Map containing all used gather variable names
+my %used_gather_variable;
 
 # Map from /sgsh/ file names into an array of named pipes
 my %parallel_file_map;
@@ -139,7 +145,7 @@ while (get_next_line()) {
 
 		my @gather_commands = parse_gather_command_sequence();
 
-		verify_code(\%scatter_command, \@gather_commands);
+		verify_code(0, \%scatter_command, \@gather_commands);
 
 		if ($opt_g) {
 			# Generate graph
@@ -274,7 +280,7 @@ parse_scatter_command
 		# Gather variable output endpoint: |=
 		if (s/$GATHER_VARIABLE_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Variable $1 already used") if (defined($defined_gather_variable{$1}));
+			error("Variable \$$1 already used for output") if (defined($defined_gather_variable{$1}));
 			$defined_gather_variable{$1} = 1;
 			$command{output} = 'variable';
 			$command{variable_name} = $1;
@@ -285,7 +291,7 @@ parse_scatter_command
 		# Gather file output endpoint: |>
 		if (s/$GATHER_FILE_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Output file $1 already used") if (defined($defined_gather_file{$1}));
+			error("Output file /sgsh/$1 already used for output") if (defined($defined_gather_file{$1}));
 			$defined_gather_file{$1} = 1;
 			undef @{$parallel_file_map{$1}};
 			$command{output} = 'file';
@@ -415,7 +421,7 @@ scatter_code_and_pipes
 				$pipes .= " \\\n\$SGDIR\/npfo-$c->{file_name}.$p";
 				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'variable') {
-				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
+				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= " >\$SGDIR\/npvo-$c->{variable_name} &\n";
 				$pipes .= " \\\n\$SGDIR\/npvo-$c->{variable_name}";
 			} else {
@@ -457,7 +463,6 @@ gather_code
 	# Substitute /sgsh/... gather points with corresponding named pipe
 	while ($commands =~ m|/sgsh/(\w+)|) {
 		my $file_name = $1;
-		error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
 		$commands =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
 	}
 	$code .= $commands;
@@ -485,16 +490,54 @@ unget_line
 	die "unget_line past beginning" if ($line_number-- == 0);
 }
 
-
 # Verify the code
+# Ensure that all /sgsh files are used exactly once
 # Ensure that all variables are used in the gather block
 # Ensure that the scatter code implements a DAG
 sub
 verify_code
 {
-	my($scatter_command, $gather_commands) = @_;
+	my($level, $scatter_command, $gather_commands) = @_;
+
+	my $commands = $scatter_command->{scatter_commands};
+	for my $c (@{$commands}) {
+		my $body = $c->{body};
+		chop $body;
+		while ($body =~ s|/sgsh/(\w+)||) {
+			my $file_name = $1;
+			error("Undefined gather file name /sgsh/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
+			error("Gather file name /sgsh/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
+			$used_gather_file{$file_name} = 1;
+		}
+
+		if ($c->{output} eq 'scatter') {
+			verify_code($level + 1, $c);
+		}
+	}
+
+	for my $command (@{$gather_commands}) {
+		while ($command =~ s|/sgsh/(\w+)||) {
+			my $file_name = $1;
+			error("Undefined gather file name /sgsh/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
+			error("Gather file name /sgsh/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
+			$used_gather_file{$file_name} = 1;
+		}
+		while ($command =~ s|\$(\w+)||) {
+			$used_gather_variable{$1} = 1;
+		}
+	}
+
+	if ($level == 0) {
+		for my $gf (keys %defined_gather_file) {
+			error("Gather file /sgsh/$gf is never read\n") unless (defined($used_gather_file{$gf}));
+		}
+		for my $gv (keys %defined_gather_variable) {
+			warning("Gather variable \$$gv set but not used\n") unless (defined($used_gather_variable{$gv}));
+		}
+	}
 }
 
+# Report an error and exit
 sub
 error
 {
@@ -503,6 +546,16 @@ error
 	$line = $line_number unless(defined($line));
 	print STDERR "$input_filename($line): $message\n";
 	exit 1;
+}
+
+# Report a warning (don't exit)
+sub
+warning
+{
+	my($message, $line) = @_;
+
+	$line = $line_number unless(defined($line));
+	print STDERR "$input_filename($line): $message\n";
 }
 
 # Return the code and the named pipes that must be generated
@@ -597,7 +650,6 @@ scatter_graph
 			chop $body;
 			while ($body =~ s|/sgsh/(\w+)||) {
 				my $file_name = $1;
-				error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
 				for my $file_name_p (@{$parallel_file_map{$file_name}}) {
 					$edge{"$file_name_p"}->{rhs} = $node_name;
 				}
@@ -657,7 +709,6 @@ gather_graph
 		my $node_name = "gather_node_$n";
 		while ($command =~ s|/sgsh/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined file gather name $file_name\n") unless ($defined_gather_file{$file_name});
 			for my $file_name_p (@{$parallel_file_map{$file_name}}) {
 				$edge{"$file_name_p"}->{rhs} = $node_name;
 			}
