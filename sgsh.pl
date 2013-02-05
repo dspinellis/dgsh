@@ -516,13 +516,14 @@ verify_code
 	}
 
 	for my $command (@{$gather_commands}) {
-		while ($command =~ s|/sgsh/(\w+)||) {
+		my $tmp_command = $command;
+		while ($tmp_command =~ s|/sgsh/(\w+)||) {
 			my $file_name = $1;
 			error("Undefined gather file name /sgsh/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
 			error("Gather file name /sgsh/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
 			$used_gather_file{$file_name} = 1;
 		}
-		while ($command =~ s|\$(\w+)||) {
+		while ($tmp_command =~ s|\$(\w+)||) {
 			$used_gather_variable{$1} = 1;
 		}
 	}
