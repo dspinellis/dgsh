@@ -24,6 +24,16 @@ use warnings;
 use File::Temp qw/ tempfile /;
 use Getopt::Std;
 
+# Optionally build a graph to detect cycles
+my $graph;
+eval 'require Graph';
+if ($@) {
+	print STDERR "Warning: Perl Graph module is missing.\n";
+	print STDERR "Cycles in /sgsh files will not be reported.\n";
+} else {
+	$graph = Graph->new();
+}
+
 $main::VERSION = '0.3';
 
 # Exit after command processing error
@@ -69,7 +79,12 @@ my %defined_gather_variable;
 my %used_gather_variable;
 
 # Map from /sgsh/ file names into an array of named pipes
+# For code and the graph structure
 my %parallel_file_map;
+my %parallel_graph_file_map;
+
+# The code used for each graph node name
+my %node_label;
 
 # Ordinal number of the scatter command being processed
 my $global_scatter_n = 0;
@@ -145,23 +160,25 @@ while (get_next_line()) {
 
 		my @gather_commands = parse_gather_command_sequence();
 
+		# Generate graph
+		print "digraph D {\n\trankdir = LR;\n" if ($opt_g);
+		my @edges = scatter_graph(\%scatter_command, 0);
+		gather_graph(\@gather_commands);
+		graph_edges();
+
+		# Now that we have the edges we can verify the graph
 		verify_code(0, \%scatter_command, \@gather_commands);
 
 		if ($opt_g) {
-			# Generate graph
-			print "digraph D {\n\trankdir = LR;\n";
-			my @edges = scatter_graph(\%scatter_command, 0);
-			gather_graph(\@gather_commands);
-			graph_edges();
 			print "}\n";
 			exit 0;
-		} else {
-			# Generate code
-			my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
-			$code .= $code2;
-			$pipes .= $pipes2;
-			$code .= gather_code(join('', @gather_commands));
 		}
+
+		# Generate code
+		my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
+		$code .= $code2;
+		$pipes .= $pipes2;
+		$code .= gather_code(join('', @gather_commands));
 	} else {
 		$code .= $_ ;
 	}
@@ -294,6 +311,7 @@ parse_scatter_command
 			error("Output file /sgsh/$1 already used for output") if (defined($defined_gather_file{$1}));
 			$defined_gather_file{$1} = 1;
 			undef @{$parallel_file_map{$1}};
+			undef @{$parallel_graph_file_map{$1}};
 			$command{output} = 'file';
 			$command{file_name} = $1;
 			$command{body} .= $_;
@@ -535,6 +553,15 @@ verify_code
 		for my $gv (keys %defined_gather_variable) {
 			warning("Gather variable \$$gv set but not used\n") unless (defined($used_gather_variable{$gv}));
 		}
+
+		my @cycle;
+		if (defined($graph) && (@cycle = $graph->find_a_cycle())) {
+			print STDERR "The following dependencies across /sgsh files form a cycle:\n";
+			for my $node (@cycle) {
+				print "$node_label{$node}\n";
+			}
+			exit 1;
+		}
 	}
 }
 
@@ -618,10 +645,11 @@ scatter_graph
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($show_teebuff);
+		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($opt_g && $show_teebuff);
 	}
 
 	# Process the commands
+	# Pass 1: I/O redirection
 	my $cmd_n = 0;
 	for my $c (@{$commands}) {
 		for (my $p = 0; $p < $parallel; $p++) {
@@ -630,7 +658,7 @@ scatter_graph
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
-				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
+				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 				next;
 			}
 
@@ -646,17 +674,6 @@ scatter_graph
 				die "Headless command";
 			}
 
-			# Generate body sans trailing newline and update corresponding edges
-			my $body = $c->{body};
-			chop $body;
-			while ($body =~ s|/sgsh/(\w+)||) {
-				my $file_name = $1;
-				for my $file_name_p (@{$parallel_file_map{$file_name}}) {
-					$edge{"$file_name_p"}->{rhs} = $node_name;
-				}
-			}
-			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{"];\n};
-
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
 				;
@@ -668,19 +685,41 @@ scatter_graph
 						 ($#output_edges > 0 && $show_teebuff) ? $tee_node_name : $node_name;
 				}
 				# Connect our command to teebuff
-				print qq{\t$node_name -> $tee_node_name\n} if ($#output_edges > 0 && $show_teebuff);
+				print qq{\t$node_name -> $tee_node_name\n} if ($opt_g && $#output_edges > 0 && $show_teebuff);
 			} elsif ($c->{output} eq 'file') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
-				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
+				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'variable') {
 				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
-				print qq(\t$node_name -> "\$$c->{variable_name}";\n);
+				print qq(\t$node_name -> "\$$c->{variable_name}";\n) if ($opt_g);
 			} else {
 				die "Tailless command";
 			}
 		}
 		$cmd_n++;
 	}
+
+	# Pass 2: Having established parallel_graph_file_map process the bodies
+	$cmd_n = 0;
+	for my $c (@{$commands}) {
+		for (my $p = 0; $p < $parallel; $p++) {
+			my $node_name = "node_cmd_${scatter_n}_${cmd_n}_$p";
+
+			# Generate body sans trailing newline and update corresponding edges
+			my $body = $c->{body};
+			chop $body;
+			while ($body =~ s|/sgsh/(\w+)||) {
+				my $file_name = $1;
+				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
+					$edge{"$file_name_p"}->{rhs} = $node_name;
+				}
+			}
+			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{"];\n} if ($opt_g);
+			$node_label{$node_name} = $body;
+		}
+		$cmd_n++;
+	}
+
 	return ($tee_node_name, @output_edges);
 }
 
@@ -708,14 +747,15 @@ gather_graph
 	for my $command (@{$commands}) {
 		my $is_node = 0;
 		my $node_name = "gather_node_$n";
-		while ($command =~ s|/sgsh/(\w+)||) {
+		my $command_tmp = $command;
+		while ($command_tmp =~ s|/sgsh/(\w+)||) {
 			my $file_name = $1;
-			for my $file_name_p (@{$parallel_file_map{$file_name}}) {
+			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 				$edge{"$file_name_p"}->{rhs} = $node_name;
 			}
 			$is_node = 1;
 		}
-		print qq{\t$node_name [label="} . graphviz_escape($command) . qq{"];\n} if ($is_node);
+		print qq{\t$node_name [label="} . graphviz_escape($command) . qq{"];\n} if ($opt_g && $is_node);
 		$n++;
 	}
 }
@@ -729,15 +769,16 @@ graph_edges
 	for my $e (keys %edge) {
 		next if ($edge{$e}->{passthru});
 		if (!defined($edge{$e}->{lhs})) {
-			print qq{\tunknown_node_$u [label="???"]; // $e\n};
+			print qq{\tunknown_node_$u [label="???"]; // $e\n} if ($opt_g);
 			$edge{$e}->{lhs} = "unknown_node_$u";
 			$u++;
 		}
 		if (!defined($edge{$e}->{rhs})) {
-			print qq{\tunknown_node_$u [label="???"]; // $e\n};
+			print qq{\tunknown_node_$u [label="???"]; // $e\n} if ($opt_g);
 			$edge{$e}->{rhs} = "unknown_node_$u";
 			$u++;
 		}
-		print "\t$edge{$e}->{lhs} -> $edge{$e}->{rhs}; // $e\n";
+		$graph->add_edge($edge{$e}->{lhs}, $edge{$e}->{rhs}) if (defined($graph));
+		print "\t$edge{$e}->{lhs} -> $edge{$e}->{rhs}; // $e\n" if ($opt_g);
 	}
 }
