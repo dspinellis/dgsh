@@ -101,7 +101,7 @@ my %parallel_graph_file_map;
 my %node_label;
 
 # Ordinal number of the scatter command being processed
-my $global_scatter_n = 0;
+my $global_scatter_n;
 
 # Lines of the input file
 # Required, because we implement a double-pass algorithm
@@ -176,7 +176,10 @@ while (get_next_line()) {
 
 		# Generate graph
 		print "digraph D {\n\trankdir = LR;\n" if ($opt_g);
-		my @edges = scatter_graph(\%scatter_command, 0);
+		$global_scatter_n = 0;
+		scatter_graph_io(\%scatter_command, 0);
+		$global_scatter_n = 0;
+		scatter_graph_body(\%scatter_command);
 		gather_graph(\@gather_commands);
 		graph_edges();
 
@@ -189,10 +192,13 @@ while (get_next_line()) {
 		}
 
 		# Generate code
-		my ($code2, $pipes2) = scatter_code_and_pipes(\%scatter_command);
+		$global_scatter_n = 0;
+		scatter_code_and_pipes_map(\%scatter_command);
+		$global_scatter_n = 0;
+		my ($code2, $pipes2) = scatter_code_and_pipes_code(\%scatter_command);
 		$code .= $code2;
 		$pipes .= $pipes2;
-		$code .= gather_code(join('', @gather_commands));
+		$code .= gather_code(\@gather_commands);
 	} else {
 		$code .= $_ ;
 	}
@@ -362,16 +368,10 @@ parse_gather_command_sequence
 	error("End of file reached file parsing a gather block");
 }
 
-# Return the code and the named pipes that must be generated
-# to scatter data for the specified command
 sub
-scatter_code_and_pipes
+parse_scatter_arguments
 {
-	my($command) = @_;
-	my $code = '';
-	my $pipes = '';
-
-	my $scatter_n = $global_scatter_n++;
+	my ($command) = @_;
 
 	# Parse arguments
 	my @save_argv = @ARGV;
@@ -387,6 +387,54 @@ scatter_code_and_pipes
 	} else {
 		$parallel = 1;
 	}
+	return ($parallel, %scatter_opts)
+}
+
+# Set the parallel file map for the specified command
+sub
+scatter_code_and_pipes_map
+{
+	my($command) = @_;
+
+	my $scatter_n = $global_scatter_n++;
+
+	my ($parallel, %scatter_opts) = parse_scatter_arguments($command);
+
+	# Process the commands
+	my $cmd_n = 0;
+	for my $c (@{$command->{scatter_commands}}) {
+		for (my $p = 0; $p < $parallel; $p++) {
+
+			# Pass-through fast exit
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
+				next;
+			}
+
+			# Generate output redirection
+			if ($c->{output} eq 'scatter') {
+				my ($code2, $pipes2) = scatter_code_and_pipes_map($c);
+			} elsif ($c->{output} eq 'file') {
+				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
+			}
+		}
+		$cmd_n++;
+	}
+}
+
+
+# Return the code and the named pipes that must be generated
+# to scatter data for the specified command
+sub
+scatter_code_and_pipes_code
+{
+	my($command) = @_;
+	my $code = '';
+	my $pipes = '';
+
+	my $scatter_n = $global_scatter_n++;
+
+	my ($parallel, %scatter_opts) = parse_scatter_arguments($command);
 
 	# Count number of scatter targets;
 	my $commands = $command->{scatter_commands};
@@ -422,7 +470,6 @@ scatter_code_and_pipes
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
-				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
 			}
@@ -440,6 +487,11 @@ scatter_code_and_pipes
 			# Generate body sans trailing newline
 			my $body = $c->{body};
 			chop $body;
+			# Substitute /sgsh/... gather points with corresponding named pipe
+			while ($body =~ m|/sgsh/(\w+)|) {
+				my $file_name = $1;
+				$body =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+			}
 			$code .= $body;
 
 			# Generate output redirection
@@ -447,13 +499,12 @@ scatter_code_and_pipes
 				$code .= " >/dev/null\n";
 			} elsif ($c->{output} eq 'scatter') {
 				$code .= " |\n";
-				my ($code2, $pipes2) = scatter_code_and_pipes($c);
+				my ($code2, $pipes2) = scatter_code_and_pipes_code($c);
 				$code .= $code2;
 				$pipes .= $pipes2;
 			} elsif ($c->{output} eq 'file') {
 				$code .= " >\$SGDIR\/npfo-$c->{file_name}.$p &\n";
 				$pipes .= " \\\n\$SGDIR\/npfo-$c->{file_name}.$p";
-				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'variable') {
 				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= " >\$SGDIR\/npvo-$c->{variable_name} &\n";
@@ -495,11 +546,13 @@ gather_code
 	$code .= "\twait\ncat <<\\SGEOFSG\n";
 
 	# Substitute /sgsh/... gather points with corresponding named pipe
-	while ($commands =~ m|/sgsh/(\w+)|) {
-		my $file_name = $1;
-		$commands =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+	for my $command (@{$commands}) {
+		while ($command =~ m|/sgsh/(\w+)|) {
+			my $file_name = $1;
+			$command =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+		}
+		$code .= $command;
 	}
-	$code .= $commands;
 
 	# -s allows passing positional arguments to subshell
 	$code .= qq{SGEOFSG\n) | $opt_s -s "\$@"\n};
@@ -602,11 +655,11 @@ warning
 	print STDERR "$input_filename($line): $message\n";
 }
 
-# Return the code and the named pipes that must be generated
-# to scatter data for the specified command
-# Return a list of edges to which the specified command scatters the data
+# Process the I/O redirection specifications returning
+# the name of the tee node and a list of edges to which the specified command scatters the data
+# setting the %edge and %parallel_graph_file_map
 sub
-scatter_graph
+scatter_graph_io
 {
 	my($command, $level) = @_;
 	my @output_edges;
@@ -615,20 +668,7 @@ scatter_graph
 
 	my $show_teebuff = 0;
 
-	# Parse arguments
-	my @save_argv = @ARGV;
-	my %scatter_opts;
-	@ARGV = split(/\s+/, $command->{scatter_flags});
-	getopts('lp:st', \%scatter_opts);
-	@ARGV = @save_argv;
-
-	# Number of commands to invoke in parallel
-	my $parallel;
-	if ($scatter_opts{'p'}) {
-		$parallel = $scatter_opts{'p'};
-	} else {
-		$parallel = 1;
-	}
+	my ($parallel, %scatter_opts) = parse_scatter_arguments($command);
 
 	# Count number of scatter targets;
 	my $commands = $command->{scatter_commands};
@@ -694,7 +734,7 @@ scatter_graph
 			if ($c->{output} eq 'none') {
 				;
 			} elsif ($c->{output} eq 'scatter') {
-				my ($tee_node_name, @output_edges) = scatter_graph($c, $level + 1);
+				my ($tee_node_name, @output_edges) = scatter_graph_io($c, $level + 1);
 				# Generate scatter edges
 				for my $output_edge (@output_edges) {
 					$edge{$output_edge}->{lhs} =
@@ -715,10 +755,24 @@ scatter_graph
 		$cmd_n++;
 	}
 
-	# Pass 2: Having established parallel_graph_file_map process the bodies
-	$cmd_n = 0;
-	for my $c (@{$commands}) {
+	return ($tee_node_name, @output_edges);
+}
+
+
+# Pass 2: Having established parallel_graph_file_map process the bodies
+sub
+scatter_graph_body
+{
+	my($command) = @_;
+	my $scatter_n = $global_scatter_n++;
+
+	my ($parallel, %scatter_opts) = parse_scatter_arguments($command);
+
+	my $cmd_n = 0;
+	for my $c (@{$command->{scatter_commands}}) {
 		for (my $p = 0; $p < $parallel; $p++) {
+			next if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file');
+
 			my $node_name = "node_cmd_${scatter_n}_${cmd_n}_$p";
 
 			# Generate body sans trailing newline and update corresponding edges
@@ -732,12 +786,15 @@ scatter_graph
 			}
 			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{"];\n} if ($opt_g);
 			$node_label{$node_name} = $body;
+
+			if ($c->{output} eq 'scatter') {
+				scatter_graph_body($c);
+			}
 		}
 		$cmd_n++;
 	}
-
-	return ($tee_node_name, @output_edges);
 }
+
 
 # Escape characters making the argument a valid GraphViz string
 sub
@@ -771,7 +828,7 @@ gather_graph
 			}
 			$is_node = 1;
 		}
-		print qq{\t$node_name [label="} . graphviz_escape($command) . qq{"];\n} if ($opt_g && $is_node);
+		print qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{"];\n} if ($opt_g && $is_node);
 		$n++;
 	}
 }
