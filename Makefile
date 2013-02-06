@@ -54,12 +54,12 @@ regression:
 	# Sort files by size to get the easiest problems first
 	for i in `ls -rS example/*.sh` ; do \
 		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
-		diff test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
+		diff -b test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
 	done
 	# Generated dot graphs
 	for i in `ls -rS example/*.sh` ; do \
 		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.test ; \
-		diff test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
+		diff -b test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
 	done
 
 # Seed the regression test data
