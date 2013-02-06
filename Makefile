@@ -47,3 +47,24 @@ png: sgsh
 	for i in example/*.sh ; do \
 		./sgsh -g $$i | dot -Tpng >`basename $$i .sh`.png ; \
 	done
+
+# Regression test based on generated output files
+regression:
+	# Generated code
+	# Sort files by size to get the easiest problems first
+	for i in `ls -rS example/*.sh` ; do \
+		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
+		diff test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
+	done
+	# Generated dot graphs
+	for i in `ls -rS example/*.sh` ; do \
+		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.test ; \
+		diff test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
+	done
+
+# Seed the regression test data
+regression-seed:
+	for i in example/*.sh ; do \
+		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
+		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
+	done

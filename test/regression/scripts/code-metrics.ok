@@ -1,0 +1,168 @@
+#!/bin/sh
+# Automatically generated file
+# Source file example/code-metrics.sh
+
+export SGDIR=/tmp/sg-$$
+rm -rf $SGDIR
+trap 'rm -rf "$SGDIR"' 0
+trap 'exit $?' 1 2 3 15
+mkdir $SGDIR
+
+mkfifo  \
+$SGDIR/npi-1.0.0 \
+$SGDIR/npvo-FNAMELEN \
+$SGDIR/npi-1.1.0 \
+$SGDIR/npi-2.0.0 \
+$SGDIR/npi-3.0.0 \
+$SGDIR/npvo-NSTRUCT \
+$SGDIR/npi-3.1.0 \
+$SGDIR/npvo-NTYPEDEF \
+$SGDIR/npi-3.2.0 \
+$SGDIR/npvo-NVOID \
+$SGDIR/npi-3.3.0 \
+$SGDIR/npvo-NGETS \
+$SGDIR/npi-3.4.0 \
+$SGDIR/npvo-IDLEN \
+$SGDIR/npi-2.1.0 \
+$SGDIR/npvo-CHLINESCHAR \
+$SGDIR/npi-2.2.0 \
+$SGDIR/npvo-NCCHAR \
+$SGDIR/npi-2.3.0 \
+$SGDIR/npvo-NCOMMENT \
+$SGDIR/npi-2.4.0 \
+$SGDIR/npvo-NCOPYRIGHT \
+$SGDIR/npi-4.0.0 \
+$SGDIR/npi-5.0.0 \
+$SGDIR/npvo-NCFILE \
+$SGDIR/npi-5.1.0 \
+$SGDIR/npvo-NCDIR \
+$SGDIR/npi-4.1.0 \
+$SGDIR/npi-6.0.0 \
+$SGDIR/npvo-CLINESCHAR \
+$SGDIR/npi-6.1.0 \
+$SGDIR/npi-7.0.0 \
+$SGDIR/npvo-NFUNCTION \
+$SGDIR/npi-7.1.0 \
+$SGDIR/npvo-NGOTO \
+$SGDIR/npi-7.2.0 \
+$SGDIR/npvo-NREGISTER \
+$SGDIR/npi-7.3.0 \
+$SGDIR/npvo-NMACRO \
+$SGDIR/npi-7.4.0 \
+$SGDIR/npvo-NINCLUDE \
+$SGDIR/npi-7.5.0 \
+$SGDIR/npvo-NCONST \
+$SGDIR/npvo-NHFILE
+#!/usr/local/bin/sgsh
+#
+# C code metrics
+# Demonstrates nesting, commands without input
+#
+#  Copyright 2012-2013 Diomidis Spinellis
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+</dev/null  find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |
+teebuff  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 &
+ <$SGDIR/npi-1.0.0 tr \\0 \\n |
+		# Remove path
+		sed 's|^.*/||' |
+		# Maintain average
+		awk '{s += length($1); n++} END {print s / n}' >$SGDIR/npvo-FNAMELEN &
+ <$SGDIR/npi-1.1.0 xargs -0 cat |
+teebuff  $SGDIR/npi-2.0.0 $SGDIR/npi-2.1.0 $SGDIR/npi-2.2.0 $SGDIR/npi-2.3.0 $SGDIR/npi-2.4.0 &
+ <$SGDIR/npi-2.0.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+			cpp -P 2>/dev/null |
+teebuff  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SGDIR/npi-3.4.0 &
+ <$SGDIR/npi-3.0.0  egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | #}}
+				wc -l >$SGDIR/npvo-NSTRUCT &
+ <$SGDIR/npi-3.1.0 grep -w typedef | wc -l >$SGDIR/npvo-NTYPEDEF &
+ <$SGDIR/npi-3.2.0 grep -w void | wc -l >$SGDIR/npvo-NVOID &
+ <$SGDIR/npi-3.3.0 grep -w gets | wc -l >$SGDIR/npvo-NGETS &
+ <$SGDIR/npi-3.4.0 tr -cs 'A-Za-z0-9_' '\n' |
+				sort -u |
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' >$SGDIR/npvo-IDLEN &
+ <$SGDIR/npi-2.1.0 wc -lc | awk '{OFS=":"; print $1, $2}' >$SGDIR/npvo-CHLINESCHAR &
+ <$SGDIR/npi-2.2.0 sed 's/#/@/g' |
+			cpp -traditional -P 2>/dev/null |
+			wc -c |
+			awk '{OFMT = "%.0f"; print $1/1000}' >$SGDIR/npvo-NCCHAR &
+ <$SGDIR/npi-2.3.0 egrep '/\*|//' | wc -l >$SGDIR/npvo-NCOMMENT &
+ <$SGDIR/npi-2.4.0 grep -i copyright | wc -l >$SGDIR/npvo-NCOPYRIGHT &
+</dev/null  find "$@" -name \*.c -type f -print0 |
+teebuff  $SGDIR/npi-4.0.0 $SGDIR/npi-4.1.0 &
+ <$SGDIR/npi-4.0.0 tr \\0 \\n |
+teebuff  $SGDIR/npi-5.0.0 $SGDIR/npi-5.1.0 &
+ <$SGDIR/npi-5.0.0 wc -l >$SGDIR/npvo-NCFILE &
+ <$SGDIR/npi-5.1.0 sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l >$SGDIR/npvo-NCDIR &
+ <$SGDIR/npi-4.1.0 xargs -0 cat |
+teebuff  $SGDIR/npi-6.0.0 $SGDIR/npi-6.1.0 &
+ <$SGDIR/npi-6.0.0 wc -lc | awk '{OFS=":"; print $1, $2}' >$SGDIR/npvo-CLINESCHAR &
+ <$SGDIR/npi-6.1.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+			cpp -P 2>/dev/null |
+teebuff  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $SGDIR/npi-7.4.0 $SGDIR/npi-7.5.0 &
+ <$SGDIR/npi-7.0.0 grep '^{' | wc -l >$SGDIR/npvo-NFUNCTION &
+ <$SGDIR/npi-7.1.0 grep -w goto | wc -l >$SGDIR/npvo-NGOTO &
+ <$SGDIR/npi-7.2.0 grep -w register | wc -l >$SGDIR/npvo-NREGISTER &
+ <$SGDIR/npi-7.3.0 grep '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | wc -l >$SGDIR/npvo-NMACRO &
+ <$SGDIR/npi-7.4.0 grep '@[ 	]*include' | wc -l >$SGDIR/npvo-NINCLUDE &
+ <$SGDIR/npi-7.5.0 grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l >$SGDIR/npvo-NCONST &
+</dev/null  find "$@" -name \*.h -type f | wc -l >$SGDIR/npvo-NHFILE &
+# Gather the results
+(
+	echo "NGOTO='`cat $SGDIR/npvo-NGOTO`'" &
+	echo "NFUNCTION='`cat $SGDIR/npvo-NFUNCTION`'" &
+	echo "NTYPEDEF='`cat $SGDIR/npvo-NTYPEDEF`'" &
+	echo "NHFILE='`cat $SGDIR/npvo-NHFILE`'" &
+	echo "IDLEN='`cat $SGDIR/npvo-IDLEN`'" &
+	echo "NCONST='`cat $SGDIR/npvo-NCONST`'" &
+	echo "CHLINESCHAR='`cat $SGDIR/npvo-CHLINESCHAR`'" &
+	echo "CLINESCHAR='`cat $SGDIR/npvo-CLINESCHAR`'" &
+	echo "NCCHAR='`cat $SGDIR/npvo-NCCHAR`'" &
+	echo "NSTRUCT='`cat $SGDIR/npvo-NSTRUCT`'" &
+	echo "NINCLUDE='`cat $SGDIR/npvo-NINCLUDE`'" &
+	echo "NCDIR='`cat $SGDIR/npvo-NCDIR`'" &
+	echo "FNAMELEN='`cat $SGDIR/npvo-FNAMELEN`'" &
+	echo "NMACRO='`cat $SGDIR/npvo-NMACRO`'" &
+	echo "NCFILE='`cat $SGDIR/npvo-NCFILE`'" &
+	echo "NREGISTER='`cat $SGDIR/npvo-NREGISTER`'" &
+	echo "NCOPYRIGHT='`cat $SGDIR/npvo-NCOPYRIGHT`'" &
+	echo "NGETS='`cat $SGDIR/npvo-NGETS`'" &
+	echo "NCOMMENT='`cat $SGDIR/npvo-NCOMMENT`'" &
+	echo "NVOID='`cat $SGDIR/npvo-NVOID`'" &
+	wait
+cat <<\SGEOFSG
+	echo "FNAMELEN: $FNAMELEN"
+	echo "NSTRUCT: $NSTRUCT"
+	echo "NTYPEDEF: $NTYPEDEF"
+	echo "IDLEN: $IDLEN"
+	echo "CHLINESCHAR: $CHLINESCHAR"
+	echo "NCCHAR: $NCCHAR"
+	echo "NCOMMENT: $NCOMMENT"
+	echo "NCOPYRIGHT: $NCOPYRIGHT"
+	echo "NCFILE: $NCFILE"
+	echo "NCDIR: $NCDIR"
+	echo "CLINESCHAR: $CLINESCHAR"
+	echo "NFUNCTION: $NFUNCTION"
+	echo "NGOTO: $NGOTO"
+	echo "NREGISTER: $NREGISTER"
+	echo "NMACRO: $NMACRO"
+	echo "NINCLUDE: $NINCLUDE"
+	echo "NCONST: $NCONST"
+	echo "NVOID: $NVOID"
+	echo "NHFILE: $NHFILE"
+	echo "NGETS: $NGETS"
+SGEOFSG
+) | /bin/sh -s "$@"
+

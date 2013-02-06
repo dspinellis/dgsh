@@ -1,0 +1,74 @@
+digraph D {
+	rankdir = LR;
+	node_cmd_1_0_0 -> "$FNAMELEN";
+	node_cmd_3_0_0 -> "$NSTRUCT";
+	node_cmd_3_1_0 -> "$NTYPEDEF";
+	node_cmd_3_2_0 -> "$NVOID";
+	node_cmd_3_3_0 -> "$NGETS";
+	node_cmd_3_4_0 -> "$IDLEN";
+	node_cmd_2_1_0 -> "$CHLINESCHAR";
+	node_cmd_2_2_0 -> "$NCCHAR";
+	node_cmd_2_3_0 -> "$NCOMMENT";
+	node_cmd_2_4_0 -> "$NCOPYRIGHT";
+	node_cmd_5_0_0 -> "$NCFILE";
+	node_cmd_5_1_0 -> "$NCDIR";
+	node_cmd_6_0_0 -> "$CLINESCHAR";
+	node_cmd_7_0_0 -> "$NFUNCTION";
+	node_cmd_7_1_0 -> "$NGOTO";
+	node_cmd_7_2_0 -> "$NREGISTER";
+	node_cmd_7_3_0 -> "$NMACRO";
+	node_cmd_7_4_0 -> "$NINCLUDE";
+	node_cmd_7_5_0 -> "$NCONST";
+	node_cmd_0_2_0 -> "$NHFILE";
+	node_cmd_0_0_0 [label="find \"$@\" \\( -name \\*.c -or -name \\*.h \\) -type f -print0"];
+	node_cmd_1_0_0 [label="tr \\\\0 \\\\n |\n		# Remove path\n		sed 's|^.*/||' |\n		# Maintain average\n		awk '{s += length($1); n++} END {print s / n}'"];
+	node_cmd_1_1_0 [label="xargs -0 cat"];
+	node_cmd_2_0_0 [label="sed 's/#/@/g;s/\\\\[\\\\\"'\\'']/@/g;s/\"[^\"]*\"/\"\"/g;'\"s/'[^']*'/''/g\" |\n			cpp -P 2>/dev/null"];
+	node_cmd_3_0_0 [label="egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | #}}\n				wc -l"];
+	node_cmd_3_1_0 [label="grep -w typedef | wc -l"];
+	node_cmd_3_2_0 [label="grep -w void | wc -l"];
+	node_cmd_3_3_0 [label="grep -w gets | wc -l"];
+	node_cmd_3_4_0 [label="tr -cs 'A-Za-z0-9_' '\\n' |\n				sort -u |\n				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}'"];
+	node_cmd_2_1_0 [label="wc -lc | awk '{OFS=\":\"; print $1, $2}'"];
+	node_cmd_2_2_0 [label="sed 's/#/@/g' |\n			cpp -traditional -P 2>/dev/null |\n			wc -c |\n			awk '{OFMT = \"%.0f\"; print $1/1000}'"];
+	node_cmd_2_3_0 [label="egrep '/\\*|//' | wc -l"];
+	node_cmd_2_4_0 [label="grep -i copyright | wc -l"];
+	node_cmd_0_1_0 [label="find \"$@\" -name \\*.c -type f -print0"];
+	node_cmd_4_0_0 [label="tr \\\\0 \\\\n"];
+	node_cmd_5_0_0 [label="wc -l"];
+	node_cmd_5_1_0 [label="sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l"];
+	node_cmd_4_1_0 [label="xargs -0 cat"];
+	node_cmd_6_0_0 [label="wc -lc | awk '{OFS=\":\"; print $1, $2}'"];
+	node_cmd_6_1_0 [label="sed 's/#/@/g;s/\\\\[\\\\\"'\\'']/@/g;s/\"[^\"]*\"/\"\"/g;'\"s/'[^']*'/''/g\" |\n			cpp -P 2>/dev/null"];
+	node_cmd_7_0_0 [label="grep '^{' | wc -l"];
+	node_cmd_7_1_0 [label="grep -w goto | wc -l"];
+	node_cmd_7_2_0 [label="grep -w register | wc -l"];
+	node_cmd_7_3_0 [label="grep '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | wc -l"];
+	node_cmd_7_4_0 [label="grep '@[ 	]*include' | wc -l"];
+	node_cmd_7_5_0 [label="grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l"];
+	node_cmd_0_2_0 [label="find \"$@\" -name \\*.h -type f | wc -l"];
+	node_cmd_6_1_0 -> node_cmd_7_5_0; // npi-7.5.0
+	node_cmd_4_0_0 -> node_cmd_5_1_0; // npi-5.1.0
+	node_cmd_2_0_0 -> node_cmd_3_1_0; // npi-3.1.0
+	node_cmd_0_0_0 -> node_cmd_1_1_0; // npi-1.1.0
+	node_cmd_2_0_0 -> node_cmd_3_3_0; // npi-3.3.0
+	node_cmd_1_1_0 -> node_cmd_2_4_0; // npi-2.4.0
+	node_cmd_0_0_0 -> node_cmd_1_0_0; // npi-1.0.0
+	node_cmd_2_0_0 -> node_cmd_3_0_0; // npi-3.0.0
+	node_cmd_4_1_0 -> node_cmd_6_1_0; // npi-6.1.0
+	node_cmd_4_0_0 -> node_cmd_5_0_0; // npi-5.0.0
+	node_cmd_6_1_0 -> node_cmd_7_2_0; // npi-7.2.0
+	node_cmd_1_1_0 -> node_cmd_2_2_0; // npi-2.2.0
+	node_cmd_2_0_0 -> node_cmd_3_2_0; // npi-3.2.0
+	node_cmd_0_1_0 -> node_cmd_4_0_0; // npi-4.0.0
+	node_cmd_6_1_0 -> node_cmd_7_1_0; // npi-7.1.0
+	node_cmd_1_1_0 -> node_cmd_2_3_0; // npi-2.3.0
+	node_cmd_4_1_0 -> node_cmd_6_0_0; // npi-6.0.0
+	node_cmd_6_1_0 -> node_cmd_7_4_0; // npi-7.4.0
+	node_cmd_0_1_0 -> node_cmd_4_1_0; // npi-4.1.0
+	node_cmd_1_1_0 -> node_cmd_2_0_0; // npi-2.0.0
+	node_cmd_6_1_0 -> node_cmd_7_3_0; // npi-7.3.0
+	node_cmd_1_1_0 -> node_cmd_2_1_0; // npi-2.1.0
+	node_cmd_2_0_0 -> node_cmd_3_4_0; // npi-3.4.0
+	node_cmd_6_1_0 -> node_cmd_7_0_0; // npi-7.0.0
+}

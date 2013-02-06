@@ -1,0 +1,17 @@
+digraph D {
+	rankdir = LR;
+	node_tee_0 [label="teebuff "];
+	node_cmd_0_1_0 -> "$NFILES";
+	node_cmd_0_2_0 -> "$NDIRS";
+	node_cmd_0_3_0 -> "$NBYTES";
+	node_cmd_0_0_0 [label="awk '!/^total/ {print $6, $7, $8, $1, sprintf(\"%8d\", $5), $9}'"];
+	node_cmd_0_1_0 [label="wc -l"];
+	node_cmd_0_2_0 [label="grep '^d' | wc -l"];
+	node_cmd_0_3_0 [label="awk '{s += $5} END {print s}'"];
+	gather_node_0 [label="cat \n"];
+	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
+	node_cmd_0_0_0 -> gather_node_0; // npfo-files.0
+	node_tee_0 -> node_cmd_0_3_0; // npi-0.3.0
+	node_tee_0 -> node_cmd_0_2_0; // npi-0.2.0
+	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0
+}
