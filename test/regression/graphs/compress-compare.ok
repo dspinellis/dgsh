@@ -1,5 +1,7 @@
+
 digraph D {
 	rankdir = LR;
+	node [fontname="Courier"];
 	node_tee_0 [label="teebuff "];
 	node_cmd_0_0_0 -> "$NBYTES";
 	node_cmd_0_1_0 -> "$FILETYPE";

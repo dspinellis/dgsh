@@ -1,5 +1,7 @@
+
 digraph D {
 	rankdir = LR;
+	node [fontname="Courier"];
 	node_cmd_1_0_0 -> "$FNAMELEN";
 	node_cmd_3_0_0 -> "$NSTRUCT";
 	node_cmd_3_1_0 -> "$NTYPEDEF";
@@ -24,15 +26,15 @@ digraph D {
 	node_cmd_1_0_0 [label="tr \\\\0 \\\\n |\l# Remove path\lsed 's|^.*/||' |\l# Maintain average\lawk '{s += length($1); n++} END {print s / n}'\l"];
 	node_cmd_1_1_0 [label="xargs -0 cat\l"];
 	node_cmd_2_0_0 [label="sed 's/#/@/g;s/\\\\[\\\\\"'\\'']/@/g;s/\"[^\"]*\"/\"\"/g;'\"s/'[^']*'/''/g\" |\lcpp -P 2>/dev/null\l"];
-	node_cmd_3_0_0 [label="egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | #}}\lwc -l\l"];
-	node_cmd_3_1_0 [label="grep -w typedef | wc -l\l"];
-	node_cmd_3_2_0 [label="grep -w void | wc -l\l"];
-	node_cmd_3_3_0 [label="grep -w gets | wc -l\l"];
+	node_cmd_3_0_0 [label="egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{'\l"];
+	node_cmd_3_1_0 [label="grep -cw typedef\l"];
+	node_cmd_3_2_0 [label="grep -cw void\l"];
+	node_cmd_3_3_0 [label="grep -cw gets\l"];
 	node_cmd_3_4_0 [label="tr -cs 'A-Za-z0-9_' '\\n' |\lsort -u |\lawk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}'\l"];
 	node_cmd_2_1_0 [label="wc -lc | awk '{OFS=\":\"; print $1, $2}'\l"];
 	node_cmd_2_2_0 [label="sed 's/#/@/g' |\lcpp -traditional -P 2>/dev/null |\lwc -c |\lawk '{OFMT = \"%.0f\"; print $1/1000}'\l"];
-	node_cmd_2_3_0 [label="egrep '/\\*|//' | wc -l\l"];
-	node_cmd_2_4_0 [label="grep -i copyright | wc -l\l"];
+	node_cmd_2_3_0 [label="egrep -c '/\\*|//'\l"];
+	node_cmd_2_4_0 [label="grep -ci copyright\l"];
 	node_cmd_0_1_0 [label="find \"$@\" -name \\*.c -type f -print0\l"];
 	node_cmd_4_0_0 [label="tr \\\\0 \\\\n\l"];
 	node_cmd_5_0_0 [label="wc -l\l"];
@@ -40,11 +42,11 @@ digraph D {
 	node_cmd_4_1_0 [label="xargs -0 cat\l"];
 	node_cmd_6_0_0 [label="wc -lc | awk '{OFS=\":\"; print $1, $2}'\l"];
 	node_cmd_6_1_0 [label="sed 's/#/@/g;s/\\\\[\\\\\"'\\'']/@/g;s/\"[^\"]*\"/\"\"/g;'\"s/'[^']*'/''/g\" |\lcpp -P 2>/dev/null\l"];
-	node_cmd_7_0_0 [label="grep '^{' | wc -l\l"];
-	node_cmd_7_1_0 [label="grep -w goto | wc -l\l"];
-	node_cmd_7_2_0 [label="grep -w register | wc -l\l"];
-	node_cmd_7_3_0 [label="grep '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | wc -l\l"];
-	node_cmd_7_4_0 [label="grep '@[ 	]*include' | wc -l\l"];
+	node_cmd_7_0_0 [label="grep -c '^{'\l"];
+	node_cmd_7_1_0 [label="grep -cw goto\l"];
+	node_cmd_7_2_0 [label="grep -cw register\l"];
+	node_cmd_7_3_0 [label="grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*('\l"];
+	node_cmd_7_4_0 [label="grep -c '@[ 	]*include'\l"];
 	node_cmd_7_5_0 [label="grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l\l"];
 	node_cmd_0_2_0 [label="find \"$@\" -name \\*.h -type f | wc -l\l"];
 	node_cmd_6_1_0 -> node_cmd_7_5_0; // npi-7.5.0
