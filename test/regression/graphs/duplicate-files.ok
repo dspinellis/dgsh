@@ -1,8 +1,8 @@
 digraph D {
 	rankdir = LR;
 	node_tee_0 [label="teebuff "];
-	node_cmd_0_0_0 [label="awk '{print $2}' | uniq -d"];
-	gather_node_1 [label="join -2 2   |\n"];
+	node_cmd_0_0_0 [label="awk '{print $2}' | uniq -d\l"];
+	gather_node_1 [label="join -2 2   |\l\l"];
 	node_cmd_0_0_0 -> gather_node_1; // npfo-dupes.0
 	node_tee_0 -> gather_node_1; // npfo-names.0
 	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0

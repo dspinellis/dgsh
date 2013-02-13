@@ -175,7 +175,11 @@ while (get_next_line()) {
 		my @gather_commands = parse_gather_command_sequence();
 
 		# Generate graph
-		print "digraph D {\n\trankdir = LR;\n" if ($opt_g);
+		print '
+digraph D {
+	rankdir = LR;
+	node [fontname="Courier"];
+' 			if ($opt_g);
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
 		$global_scatter_n = 0;

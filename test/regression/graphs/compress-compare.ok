@@ -6,11 +6,11 @@ digraph D {
 	node_cmd_0_2_0 -> "$COMPRESS";
 	node_cmd_0_3_0 -> "$BZIP2";
 	node_cmd_0_4_0 -> "$GZIP";
-	node_cmd_0_0_0 [label="wc -c"];
-	node_cmd_0_1_0 [label="file -"];
-	node_cmd_0_2_0 [label="compress -c | wc -c"];
-	node_cmd_0_3_0 [label="bzip2 -c | wc -c"];
-	node_cmd_0_4_0 [label="gzip -c | wc -c"];
+	node_cmd_0_0_0 [label="wc -c\l"];
+	node_cmd_0_1_0 [label="file -\l"];
+	node_cmd_0_2_0 [label="compress -c | wc -c\l"];
+	node_cmd_0_3_0 [label="bzip2 -c | wc -c\l"];
+	node_cmd_0_4_0 [label="gzip -c | wc -c\l"];
 	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
 	node_tee_0 -> node_cmd_0_3_0; // npi-0.3.0
 	node_tee_0 -> node_cmd_0_4_0; // npi-0.4.0
