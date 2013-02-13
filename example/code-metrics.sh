@@ -38,17 +38,17 @@ scatter |{
 			cpp -P 2>/dev/null |{
 
 				# Structure definitions
-				-|  egrep 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | #}}
-				wc -l |=NSTRUCT
+				-|  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |=NSTRUCT
+				#}}
 
 				# Type definitions
-				-| grep -w typedef | wc -l |=NTYPEDEF
+				-| grep -cw typedef |=NTYPEDEF
 
 				# Use of void
-				-| grep -w void | wc -l |=NVOID
+				-| grep -cw void |=NVOID
 
 				# Use of gets
-				-| grep -w gets | wc -l |=NGETS
+				-| grep -cw gets |=NGETS
 
 				# Average identifier length
 				-| tr -cs 'A-Za-z0-9_' '\n' |
@@ -70,10 +70,10 @@ scatter |{
 			awk '{OFMT = "%.0f"; print $1/1000}' |=NCCHAR
 
 			# Number of comments
-			-| egrep '/\*|//' | wc -l |=NCOMMENT
+			-| egrep -c '/\*|//' |=NCOMMENT
 
 			# Occurences of the word Copyright
-			-| grep -i copyright | wc -l |=NCOPYRIGHT
+			-| grep -ci copyright |=NCOPYRIGHT
 		|}
 	|}
 
@@ -101,20 +101,20 @@ scatter |{
 			cpp -P 2>/dev/null |{
 
 				# Number of functions
-				-| grep '^{' | wc -l |=NFUNCTION
+				-| grep -c '^{' |=NFUNCTION
 				# } (match preceding open)
 
 				# Number of gotos
-				-| grep -w goto | wc -l |=NGOTO
+				-| grep -cw goto |=NGOTO
 
 				# Occurrences of the register keyword
-				-| grep -w register | wc -l |=NREGISTER
+				-| grep -cw register |=NREGISTER
 
 				# Number of macro definitions
-				-| grep '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | wc -l |=NMACRO
+				-| grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' |=NMACRO
 
 				# Number of include directives
-				-| grep '@[ 	]*include' | wc -l |=NINCLUDE
+				-| grep -c '@[ 	]*include' |=NINCLUDE
 
 				# Number of constants
 				-| grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l |=NCONST

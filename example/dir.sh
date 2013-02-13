@@ -31,7 +31,7 @@ scatter |{
 	-| wc -l |=NFILES
 
 	# Count number of directories
-	-| grep '^d' | wc -l |= NDIRS
+	-| grep -c '^d' |= NDIRS
 
 	# Tally number of bytes
 	-| awk '{s += $5} END {print s}' |=NBYTES
