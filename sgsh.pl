@@ -221,7 +221,8 @@ $code
 
 # Execute the shell on the generated file
 # -a inherits the shell's variables to subshell
-my @args = ($opt_s, '-a', $output_filename, @ARGV);
+# -n only checks for syntax errors
+my @args = ($opt_s, '-n', '-a', $output_filename, @ARGV);
 
 if ($opt_n) {
 	print join(' ', @args), "\n";
@@ -230,6 +231,20 @@ if ($opt_n) {
 
 exit 0 if ($opt_o);
 
+# Check for syntax error before executing
+# This avoids leaving commands in the background
+system(@args);
+if ($? == -1) {
+	print STDERR "Unable to execute $opt_s: $!\n";
+	exit 1;
+} elsif (($? >> 8) != 0) {
+	$File::Temp::KEEP_ALL = 1;
+	print STDERR "Syntax error in generated script $output_filename while executing $opt_s\n";
+	exit 1;
+}
+
+# Now the real run
+@args = ($opt_s, '-a', $output_filename, @ARGV);
 system(@args);
 if ($? == -1) {
 	print STDERR "Unable to execute $opt_s: $!\n";
