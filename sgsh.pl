@@ -819,9 +819,10 @@ graphviz_escape
 
 	$name =~ s/\\/\\\\/g;
 	$name =~ s/"/\\"/g;
-	$name =~ s/\n/\\n/g;
+	$name =~ s/\n\s*/\\l/g;
 	$name =~ s/\s+$//;
 	$name =~ s/^\s+//;
+	$name =~ s/$/\\l/;
 	return $name;
 }
 
