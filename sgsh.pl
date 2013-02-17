@@ -44,7 +44,7 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage $0: [-kng] [-s shell] [-t tee] [file]
+Usage: $0 [-kng] [-s shell] [-t tee] [file]
 -g		Generate a GraphViz graph of the specified processing
 -k		Keep temporary script file
 -n		Do not run the generated script
