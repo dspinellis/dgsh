@@ -23,7 +23,7 @@ endif
 %.png: %.sh
 	./sgsh -g $< | dot -Tpng >$@
 
-all: sgsh teebuff
+all: sgsh teebuff sgsh-writeval sgsh-readval
 
 test-sgsh: sgsh teebuff
 	./sgsh -t ./teebuff example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
