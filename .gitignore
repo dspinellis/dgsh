@@ -1,7 +1,10 @@
 *.swp
 *.test
+*.exe
+*.o
+*.png
 sgsh
 teebuff
-teebuff.exe
+sgsh-readval
+sgsh-writeval
 charcount
-*.png
