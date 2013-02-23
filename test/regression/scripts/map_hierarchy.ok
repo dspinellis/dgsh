@@ -68,12 +68,7 @@ teebuff  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 &
  <$SGDIR/npi-1.0.0 awk '{print "cp " $2 "/" $1 " new/" $3 "/" $1}' >$SGDIR/npfo-cp.0 &
  <$SGDIR/npi-1.1.0 awk '{print "mkdir -p new/" $3}' | sort -u >$SGDIR/npfo-mkdir.0 &
 # Gather the results
-(
-	wait
-cat <<\SGEOFSG
 	# Order: first make directories, then copy files
 	cat $SGDIR/npfo-mkdir.0 $SGDIR/npfo-cp.0 |
 	sh
-SGEOFSG
-) | /bin/sh -s "$@"
 

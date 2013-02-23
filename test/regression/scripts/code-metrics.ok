@@ -4,55 +4,55 @@
 
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
-trap 'rm -rf "$SGDIR"' 0
+trap 'sgsh-readval -q "$SGDIR/FNAMELEN" 2>/dev/null
+sgsh-readval -q "$SGDIR/NSTRUCT" 2>/dev/null
+sgsh-readval -q "$SGDIR/NTYPEDEF" 2>/dev/null
+sgsh-readval -q "$SGDIR/NVOID" 2>/dev/null
+sgsh-readval -q "$SGDIR/NGETS" 2>/dev/null
+sgsh-readval -q "$SGDIR/IDLEN" 2>/dev/null
+sgsh-readval -q "$SGDIR/CHLINESCHAR" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCCHAR" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCOMMENT" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCOPYRIGHT" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCFILE" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCDIR" 2>/dev/null
+sgsh-readval -q "$SGDIR/CLINESCHAR" 2>/dev/null
+sgsh-readval -q "$SGDIR/NFUNCTION" 2>/dev/null
+sgsh-readval -q "$SGDIR/NGOTO" 2>/dev/null
+sgsh-readval -q "$SGDIR/NREGISTER" 2>/dev/null
+sgsh-readval -q "$SGDIR/NMACRO" 2>/dev/null
+sgsh-readval -q "$SGDIR/NINCLUDE" 2>/dev/null
+sgsh-readval -q "$SGDIR/NCONST" 2>/dev/null
+sgsh-readval -q "$SGDIR/NHFILE" 2>/dev/null
+rm -rf "$SGDIR"' 0
 trap 'exit $?' 1 2 3 15
 mkdir $SGDIR
 
 mkfifo  \
 $SGDIR/npi-1.0.0 \
-$SGDIR/npvo-FNAMELEN \
 $SGDIR/npi-1.1.0 \
 $SGDIR/npi-2.0.0 \
 $SGDIR/npi-3.0.0 \
-$SGDIR/npvo-NSTRUCT \
 $SGDIR/npi-3.1.0 \
-$SGDIR/npvo-NTYPEDEF \
 $SGDIR/npi-3.2.0 \
-$SGDIR/npvo-NVOID \
 $SGDIR/npi-3.3.0 \
-$SGDIR/npvo-NGETS \
 $SGDIR/npi-3.4.0 \
-$SGDIR/npvo-IDLEN \
 $SGDIR/npi-2.1.0 \
-$SGDIR/npvo-CHLINESCHAR \
 $SGDIR/npi-2.2.0 \
-$SGDIR/npvo-NCCHAR \
 $SGDIR/npi-2.3.0 \
-$SGDIR/npvo-NCOMMENT \
 $SGDIR/npi-2.4.0 \
-$SGDIR/npvo-NCOPYRIGHT \
 $SGDIR/npi-4.0.0 \
 $SGDIR/npi-5.0.0 \
-$SGDIR/npvo-NCFILE \
 $SGDIR/npi-5.1.0 \
-$SGDIR/npvo-NCDIR \
 $SGDIR/npi-4.1.0 \
 $SGDIR/npi-6.0.0 \
-$SGDIR/npvo-CLINESCHAR \
 $SGDIR/npi-6.1.0 \
 $SGDIR/npi-7.0.0 \
-$SGDIR/npvo-NFUNCTION \
 $SGDIR/npi-7.1.0 \
-$SGDIR/npvo-NGOTO \
 $SGDIR/npi-7.2.0 \
-$SGDIR/npvo-NREGISTER \
 $SGDIR/npi-7.3.0 \
-$SGDIR/npvo-NMACRO \
 $SGDIR/npi-7.4.0 \
-$SGDIR/npvo-NINCLUDE \
-$SGDIR/npi-7.5.0 \
-$SGDIR/npvo-NCONST \
-$SGDIR/npvo-NHFILE
+$SGDIR/npi-7.5.0
 #!/usr/local/bin/sgsh
 #
 # C code metrics
@@ -79,69 +79,66 @@ teebuff  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 &
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
-		awk '{s += length($1); n++} END {print s / n}' >$SGDIR/npvo-FNAMELEN &
+		awk '{s += length($1); n++} END {print s / n}' | sgsh-writeval $SGDIR/FNAMELEN &
  <$SGDIR/npi-1.1.0 xargs -0 cat |
 teebuff  $SGDIR/npi-2.0.0 $SGDIR/npi-2.1.0 $SGDIR/npi-2.2.0 $SGDIR/npi-2.3.0 $SGDIR/npi-2.4.0 &
  <$SGDIR/npi-2.0.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
 teebuff  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SGDIR/npi-3.4.0 &
- <$SGDIR/npi-3.0.0  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' >$SGDIR/npvo-NSTRUCT &
- <$SGDIR/npi-3.1.0 grep -cw typedef >$SGDIR/npvo-NTYPEDEF &
- <$SGDIR/npi-3.2.0 grep -cw void >$SGDIR/npvo-NVOID &
- <$SGDIR/npi-3.3.0 grep -cw gets >$SGDIR/npvo-NGETS &
+ <$SGDIR/npi-3.0.0  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | sgsh-writeval $SGDIR/NSTRUCT &
+ <$SGDIR/npi-3.1.0 grep -cw typedef | sgsh-writeval $SGDIR/NTYPEDEF &
+ <$SGDIR/npi-3.2.0 grep -cw void | sgsh-writeval $SGDIR/NVOID &
+ <$SGDIR/npi-3.3.0 grep -cw gets | sgsh-writeval $SGDIR/NGETS &
  <$SGDIR/npi-3.4.0 tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' >$SGDIR/npvo-IDLEN &
- <$SGDIR/npi-2.1.0 wc -lc | awk '{OFS=":"; print $1, $2}' >$SGDIR/npvo-CHLINESCHAR &
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' | sgsh-writeval $SGDIR/IDLEN &
+ <$SGDIR/npi-2.1.0 wc -lc | awk '{OFS=":"; print $1, $2}' | sgsh-writeval $SGDIR/CHLINESCHAR &
  <$SGDIR/npi-2.2.0 sed 's/#/@/g' |
 			cpp -traditional -P 2>/dev/null |
 			wc -c |
-			awk '{OFMT = "%.0f"; print $1/1000}' >$SGDIR/npvo-NCCHAR &
- <$SGDIR/npi-2.3.0 egrep -c '/\*|//' >$SGDIR/npvo-NCOMMENT &
- <$SGDIR/npi-2.4.0 grep -ci copyright >$SGDIR/npvo-NCOPYRIGHT &
+			awk '{OFMT = "%.0f"; print $1/1000}' | sgsh-writeval $SGDIR/NCCHAR &
+ <$SGDIR/npi-2.3.0 egrep -c '/\*|//' | sgsh-writeval $SGDIR/NCOMMENT &
+ <$SGDIR/npi-2.4.0 grep -ci copyright | sgsh-writeval $SGDIR/NCOPYRIGHT &
 </dev/null  find "$@" -name \*.c -type f -print0 |
 teebuff  $SGDIR/npi-4.0.0 $SGDIR/npi-4.1.0 &
  <$SGDIR/npi-4.0.0 tr \\0 \\n |
 teebuff  $SGDIR/npi-5.0.0 $SGDIR/npi-5.1.0 &
- <$SGDIR/npi-5.0.0 wc -l >$SGDIR/npvo-NCFILE &
- <$SGDIR/npi-5.1.0 sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l >$SGDIR/npvo-NCDIR &
+ <$SGDIR/npi-5.0.0 wc -l | sgsh-writeval $SGDIR/NCFILE &
+ <$SGDIR/npi-5.1.0 sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l | sgsh-writeval $SGDIR/NCDIR &
  <$SGDIR/npi-4.1.0 xargs -0 cat |
 teebuff  $SGDIR/npi-6.0.0 $SGDIR/npi-6.1.0 &
- <$SGDIR/npi-6.0.0 wc -lc | awk '{OFS=":"; print $1, $2}' >$SGDIR/npvo-CLINESCHAR &
+ <$SGDIR/npi-6.0.0 wc -lc | awk '{OFS=":"; print $1, $2}' | sgsh-writeval $SGDIR/CLINESCHAR &
  <$SGDIR/npi-6.1.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
 teebuff  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $SGDIR/npi-7.4.0 $SGDIR/npi-7.5.0 &
- <$SGDIR/npi-7.0.0 grep -c '^{' >$SGDIR/npvo-NFUNCTION &
- <$SGDIR/npi-7.1.0 grep -cw goto >$SGDIR/npvo-NGOTO &
- <$SGDIR/npi-7.2.0 grep -cw register >$SGDIR/npvo-NREGISTER &
- <$SGDIR/npi-7.3.0 grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' >$SGDIR/npvo-NMACRO &
- <$SGDIR/npi-7.4.0 grep -c '@[ 	]*include' >$SGDIR/npvo-NINCLUDE &
- <$SGDIR/npi-7.5.0 grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l >$SGDIR/npvo-NCONST &
-</dev/null  find "$@" -name \*.h -type f | wc -l >$SGDIR/npvo-NHFILE &
+ <$SGDIR/npi-7.0.0 grep -c '^{' | sgsh-writeval $SGDIR/NFUNCTION &
+ <$SGDIR/npi-7.1.0 grep -cw goto | sgsh-writeval $SGDIR/NGOTO &
+ <$SGDIR/npi-7.2.0 grep -cw register | sgsh-writeval $SGDIR/NREGISTER &
+ <$SGDIR/npi-7.3.0 grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | sgsh-writeval $SGDIR/NMACRO &
+ <$SGDIR/npi-7.4.0 grep -c '@[ 	]*include' | sgsh-writeval $SGDIR/NINCLUDE &
+ <$SGDIR/npi-7.5.0 grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l | sgsh-writeval $SGDIR/NCONST &
+</dev/null  find "$@" -name \*.h -type f | wc -l | sgsh-writeval $SGDIR/NHFILE &
 # Gather the results
-(
-	echo "NGOTO='`cat $SGDIR/npvo-NGOTO`'" &
-	echo "NFUNCTION='`cat $SGDIR/npvo-NFUNCTION`'" &
-	echo "NTYPEDEF='`cat $SGDIR/npvo-NTYPEDEF`'" &
-	echo "NHFILE='`cat $SGDIR/npvo-NHFILE`'" &
-	echo "IDLEN='`cat $SGDIR/npvo-IDLEN`'" &
-	echo "NCONST='`cat $SGDIR/npvo-NCONST`'" &
-	echo "CHLINESCHAR='`cat $SGDIR/npvo-CHLINESCHAR`'" &
-	echo "CLINESCHAR='`cat $SGDIR/npvo-CLINESCHAR`'" &
-	echo "NCCHAR='`cat $SGDIR/npvo-NCCHAR`'" &
-	echo "NSTRUCT='`cat $SGDIR/npvo-NSTRUCT`'" &
-	echo "NINCLUDE='`cat $SGDIR/npvo-NINCLUDE`'" &
-	echo "NCDIR='`cat $SGDIR/npvo-NCDIR`'" &
-	echo "FNAMELEN='`cat $SGDIR/npvo-FNAMELEN`'" &
-	echo "NMACRO='`cat $SGDIR/npvo-NMACRO`'" &
-	echo "NCFILE='`cat $SGDIR/npvo-NCFILE`'" &
-	echo "NREGISTER='`cat $SGDIR/npvo-NREGISTER`'" &
-	echo "NCOPYRIGHT='`cat $SGDIR/npvo-NCOPYRIGHT`'" &
-	echo "NGETS='`cat $SGDIR/npvo-NGETS`'" &
-	echo "NCOMMENT='`cat $SGDIR/npvo-NCOMMENT`'" &
-	echo "NVOID='`cat $SGDIR/npvo-NVOID`'" &
-	wait
-cat <<\SGEOFSG
+NGOTO="`sgsh-readval -lqr $SGDIR/NGOTO`"
+NFUNCTION="`sgsh-readval -lqr $SGDIR/NFUNCTION`"
+NTYPEDEF="`sgsh-readval -lqr $SGDIR/NTYPEDEF`"
+NHFILE="`sgsh-readval -lqr $SGDIR/NHFILE`"
+IDLEN="`sgsh-readval -lqr $SGDIR/IDLEN`"
+NCONST="`sgsh-readval -lqr $SGDIR/NCONST`"
+CHLINESCHAR="`sgsh-readval -lqr $SGDIR/CHLINESCHAR`"
+CLINESCHAR="`sgsh-readval -lqr $SGDIR/CLINESCHAR`"
+NCCHAR="`sgsh-readval -lqr $SGDIR/NCCHAR`"
+NSTRUCT="`sgsh-readval -lqr $SGDIR/NSTRUCT`"
+NINCLUDE="`sgsh-readval -lqr $SGDIR/NINCLUDE`"
+NCDIR="`sgsh-readval -lqr $SGDIR/NCDIR`"
+FNAMELEN="`sgsh-readval -lqr $SGDIR/FNAMELEN`"
+NMACRO="`sgsh-readval -lqr $SGDIR/NMACRO`"
+NCFILE="`sgsh-readval -lqr $SGDIR/NCFILE`"
+NREGISTER="`sgsh-readval -lqr $SGDIR/NREGISTER`"
+NCOPYRIGHT="`sgsh-readval -lqr $SGDIR/NCOPYRIGHT`"
+NGETS="`sgsh-readval -lqr $SGDIR/NGETS`"
+NCOMMENT="`sgsh-readval -lqr $SGDIR/NCOMMENT`"
+NVOID="`sgsh-readval -lqr $SGDIR/NVOID`"
 	echo "FNAMELEN: $FNAMELEN"
 	echo "NSTRUCT: $NSTRUCT"
 	echo "NTYPEDEF: $NTYPEDEF"
@@ -162,6 +159,4 @@ cat <<\SGEOFSG
 	echo "NVOID: $NVOID"
 	echo "NHFILE: $NHFILE"
 	echo "NGETS: $NGETS"
-SGEOFSG
-) | /bin/sh -s "$@"
 

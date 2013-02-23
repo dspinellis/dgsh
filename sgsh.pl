@@ -65,6 +65,7 @@ if (!getopts('gkno:p:s:t:')) {
 
 # Ensure defined path ends with a /
 $opt_p .= '/' if (defined($opt_p) && $opt_p !~ m|/$|);
+$opt_p = '' unless defined($opt_p);
 # Add path to opt_t unless it has one
 $opt_t = "$opt_p$opt_t" unless ($opt_t =~ m|/|);
 
@@ -163,6 +164,7 @@ print $output_fh "#!$opt_s
 
 my $code = '';
 my $pipes = '';
+my $kvstores = '';
 
 # Parse the file and generate the corresponding code
 while (get_next_line()) {
@@ -205,9 +207,10 @@ digraph D {
 		$global_scatter_n = 0;
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
-		my ($code2, $pipes2) = scatter_code_and_pipes_code(\%scatter_command);
+		my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code(\%scatter_command);
 		$code .= $code2;
 		$pipes .= $pipes2;
+		$kvstores .= $kvstores2;
 		$code .= gather_code(\@gather_commands);
 	} else {
 		$code .= $_ ;
@@ -217,10 +220,13 @@ digraph D {
 # The traps ensure that the named pipe directory
 # is removed on termination and that the exit code
 # after a signal is that of the shell: 128 + signal number
+my $stop_kvstores = $kvstores;
+$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q "|g;
+$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
 print $output_fh q{
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
-trap 'rm -rf "$SGDIR"' 0
+trap '} . $stop_kvstores . q{rm -rf "$SGDIR"' 0
 trap 'exit $?' 1 2 3 15
 mkdir $SGDIR
 },
@@ -456,6 +462,7 @@ scatter_code_and_pipes_code
 	my($command) = @_;
 	my $code = '';
 	my $pipes = '';
+	my $kvstores = '';
 
 	my $scatter_n = $global_scatter_n++;
 
@@ -524,23 +531,24 @@ scatter_code_and_pipes_code
 				$code .= " >/dev/null\n";
 			} elsif ($c->{output} eq 'scatter') {
 				$code .= " |\n";
-				my ($code2, $pipes2) = scatter_code_and_pipes_code($c);
+				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c);
 				$code .= $code2;
 				$pipes .= $pipes2;
+				$kvstores .= $kvstores2;
 			} elsif ($c->{output} eq 'file') {
-				$code .= " >\$SGDIR\/npfo-$c->{file_name}.$p &\n";
-				$pipes .= " \\\n\$SGDIR\/npfo-$c->{file_name}.$p";
+				$code .= " >\$SGDIR/npfo-$c->{file_name}.$p &\n";
+				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'variable') {
 				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				$code .= " >\$SGDIR\/npvo-$c->{variable_name} &\n";
-				$pipes .= " \\\n\$SGDIR\/npvo-$c->{variable_name}";
+				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{variable_name} &\n";
+				$kvstores .= "{\$SGDIR/$c->{variable_name}}";
 			} else {
 				die "Tailless command";
 			}
 		}
 		$cmd_n++;
 	}
-	return ($code, $pipes);
+	return ($code, $pipes, $kvstores);
 }
 
 
@@ -551,27 +559,17 @@ gather_code
 	my($commands) = @_;
 	my $code;
 
-
-	$code .= "# Gather the results\n(\n";
-	# Create code for all variables
-	my $uname = `uname`;
-	chop $uname;
-	for my $gv (keys %defined_gather_variable) {
-		if ($uname eq 'FreeBSD' and $opt_s eq '/bin/sh') {
-			# Workaround for the FreeBSD shell
-			# This doesn't execute echo "a=`sleep 5`42" &
-			# in the background
-			$code .= qq{\t(echo "$gv='`cat \$SGDIR/npvo-$gv`'") &\n};
-		} else {
-			$code .= qq{\techo "$gv='`cat \$SGDIR/npvo-$gv`'" &\n};
-		}
+	$code .= "# Gather the results\n";
+	# Set the variables
+	for my $var (keys %defined_gather_variable) {
+		# Ask for last record (-l) and quit the server (-q)
+		# To avoid race condition with the socket setup code
+		# ask to retry connection to socket if it is missing (-r)
+		$code .= qq[$var="\`${opt_p}sgsh-readval -lqr \$SGDIR\/$var\`"\n];
 	}
 
-	# Create the rest of the code
-	$code .= "\twait\ncat <<\\SGEOFSG\n";
-
-	# Substitute /sgsh/... gather points with corresponding named pipe
 	for my $command (@{$commands}) {
+		# Substitute /sgsh/... gather points with corresponding named pipe
 		while ($command =~ m|/sgsh/(\w+)|) {
 			my $file_name = $1;
 			$command =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
@@ -579,8 +577,6 @@ gather_code
 		$code .= $command;
 	}
 
-	# -s allows passing positional arguments to subshell
-	$code .= qq{SGEOFSG\n) | $opt_s -s "\$@"\n};
 	return $code;
 }
 
@@ -771,7 +767,7 @@ scatter_graph_io
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'variable') {
-				error("Variables not allowed in parallel execition", $c->{line_number}) if ($p > 0);
+				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				print qq(\t$node_name -> "\$$c->{variable_name}";\n) if ($opt_g);
 			} else {
 				die "Tailless command";

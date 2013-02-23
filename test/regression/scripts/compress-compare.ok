@@ -4,21 +4,21 @@
 
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
-trap 'rm -rf "$SGDIR"' 0
+trap 'sgsh-readval -q "$SGDIR/NBYTES" 2>/dev/null
+sgsh-readval -q "$SGDIR/FILETYPE" 2>/dev/null
+sgsh-readval -q "$SGDIR/COMPRESS" 2>/dev/null
+sgsh-readval -q "$SGDIR/BZIP2" 2>/dev/null
+sgsh-readval -q "$SGDIR/GZIP" 2>/dev/null
+rm -rf "$SGDIR"' 0
 trap 'exit $?' 1 2 3 15
 mkdir $SGDIR
 
 mkfifo  \
 $SGDIR/npi-0.0.0 \
-$SGDIR/npvo-NBYTES \
 $SGDIR/npi-0.1.0 \
-$SGDIR/npvo-FILETYPE \
 $SGDIR/npi-0.2.0 \
-$SGDIR/npvo-COMPRESS \
 $SGDIR/npi-0.3.0 \
-$SGDIR/npvo-BZIP2 \
-$SGDIR/npi-0.4.0 \
-$SGDIR/npvo-GZIP
+$SGDIR/npi-0.4.0
 #!/usr/local/bin/sgsh
 #
 # Report file type, length, and compression performance for a
@@ -42,20 +42,17 @@ $SGDIR/npvo-GZIP
 
 curl -s "$1" |
 teebuff  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 $SGDIR/npi-0.4.0 &
- <$SGDIR/npi-0.0.0 wc -c >$SGDIR/npvo-NBYTES &
- <$SGDIR/npi-0.1.0 file - >$SGDIR/npvo-FILETYPE &
- <$SGDIR/npi-0.2.0 compress -c | wc -c >$SGDIR/npvo-COMPRESS &
- <$SGDIR/npi-0.3.0 bzip2 -c | wc -c >$SGDIR/npvo-BZIP2 &
- <$SGDIR/npi-0.4.0 gzip -c | wc -c >$SGDIR/npvo-GZIP &
+ <$SGDIR/npi-0.0.0 wc -c | sgsh-writeval $SGDIR/NBYTES &
+ <$SGDIR/npi-0.1.0 file - | sgsh-writeval $SGDIR/FILETYPE &
+ <$SGDIR/npi-0.2.0 compress -c | wc -c | sgsh-writeval $SGDIR/COMPRESS &
+ <$SGDIR/npi-0.3.0 bzip2 -c | wc -c | sgsh-writeval $SGDIR/BZIP2 &
+ <$SGDIR/npi-0.4.0 gzip -c | wc -c | sgsh-writeval $SGDIR/GZIP &
 # Gather the results
-(
-	echo "NBYTES='`cat $SGDIR/npvo-NBYTES`'" &
-	echo "GZIP='`cat $SGDIR/npvo-GZIP`'" &
-	echo "BZIP2='`cat $SGDIR/npvo-BZIP2`'" &
-	echo "COMPRESS='`cat $SGDIR/npvo-COMPRESS`'" &
-	echo "FILETYPE='`cat $SGDIR/npvo-FILETYPE`'" &
-	wait
-cat <<\SGEOFSG
+NBYTES="`sgsh-readval -lqr $SGDIR/NBYTES`"
+GZIP="`sgsh-readval -lqr $SGDIR/GZIP`"
+BZIP2="`sgsh-readval -lqr $SGDIR/BZIP2`"
+COMPRESS="`sgsh-readval -lqr $SGDIR/COMPRESS`"
+FILETYPE="`sgsh-readval -lqr $SGDIR/FILETYPE`"
 	cat <<EOF
 File URL:      $1
 File type:     $FILETYPE
@@ -64,6 +61,4 @@ compress:      $COMPRESS bytes
 gzip:          $GZIP bytes
 bzip2:         $BZIP2 bytes
 EOF
-SGEOFSG
-) | /bin/sh -s "$@"
 

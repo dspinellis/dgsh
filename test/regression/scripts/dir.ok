@@ -4,7 +4,10 @@
 
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
-trap 'rm -rf "$SGDIR"' 0
+trap 'sgsh-readval -q "$SGDIR/NFILES" 2>/dev/null
+sgsh-readval -q "$SGDIR/NDIRS" 2>/dev/null
+sgsh-readval -q "$SGDIR/NBYTES" 2>/dev/null
+rm -rf "$SGDIR"' 0
 trap 'exit $?' 1 2 3 15
 mkdir $SGDIR
 
@@ -12,11 +15,8 @@ mkfifo  \
 $SGDIR/npi-0.0.0 \
 $SGDIR/npfo-files.0 \
 $SGDIR/npi-0.1.0 \
-$SGDIR/npvo-NFILES \
 $SGDIR/npi-0.2.0 \
-$SGDIR/npvo-NDIRS \
-$SGDIR/npi-0.3.0 \
-$SGDIR/npvo-NBYTES
+$SGDIR/npi-0.3.0
 #!/usr/local/bin/sgsh
 #
 # Windows-like DIR command for the current directory
@@ -44,19 +44,14 @@ FREE=`df -h . | awk '!/Use%/{print $4}'`
 ls -n |
 teebuff  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 &
  <$SGDIR/npi-0.0.0 awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' >$SGDIR/npfo-files.0 &
- <$SGDIR/npi-0.1.0 wc -l >$SGDIR/npvo-NFILES &
- <$SGDIR/npi-0.2.0 grep -c '^d' >$SGDIR/npvo-NDIRS &
- <$SGDIR/npi-0.3.0 awk '{s += $5} END {print s}' >$SGDIR/npvo-NBYTES &
+ <$SGDIR/npi-0.1.0 wc -l | sgsh-writeval $SGDIR/NFILES &
+ <$SGDIR/npi-0.2.0 grep -c '^d' | sgsh-writeval $SGDIR/NDIRS &
+ <$SGDIR/npi-0.3.0 awk '{s += $5} END {print s}' | sgsh-writeval $SGDIR/NBYTES &
 # Gather the results
-(
-	echo "NBYTES='`cat $SGDIR/npvo-NBYTES`'" &
-	echo "NDIRS='`cat $SGDIR/npvo-NDIRS`'" &
-	echo "NFILES='`cat $SGDIR/npvo-NFILES`'" &
-	wait
-cat <<\SGEOFSG
+NBYTES="`sgsh-readval -lqr $SGDIR/NBYTES`"
+NDIRS="`sgsh-readval -lqr $SGDIR/NDIRS`"
+NFILES="`sgsh-readval -lqr $SGDIR/NFILES`"
 	cat $SGDIR/npfo-files.0
 	echo "               $NFILES File(s) $NBYTES bytes"
 	echo "               $NDIRS Dir(s) $FREE bytes free"
-SGEOFSG
-) | /bin/sh -s "$@"
 

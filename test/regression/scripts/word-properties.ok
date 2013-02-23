@@ -60,13 +60,8 @@ ln -s $SGDIR/npi-0.0.0 $SGDIR/npfo-words.0
  <$SGDIR/npi-0.3.0 awk '{if (length($1) > 12) print "l:", length($1);
 		else print ""}' >$SGDIR/npfo-long.0 &
 # Gather the results
-(
-	wait
-cat <<\SGEOFSG
 	# Paste the four streams side-by-side
 	paste $SGDIR/npfo-words.0 $SGDIR/npfo-palindromes.0 $SGDIR/npfo-consonants.0 $SGDIR/npfo-long.0 |
 	# List only words satisfying one or more properties
 	grep :
-SGEOFSG
-) | /bin/sh -s "$@"
 

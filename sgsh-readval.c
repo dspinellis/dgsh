@@ -41,29 +41,75 @@
 #define DPRINTF(fmt, ...)
 #endif
 
+static int retry_connection;
 
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-q] socket_name\n", name);
+	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] socket_name\n", name);
 	exit(1);
+}
+
+/* Write a command to the specified socket, and return the socket */
+static int
+write_command(const char *name, char cmd)
+{
+	int s, len;
+	struct sockaddr_un remote;
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+		err(1, "socket");
+
+	DPRINTF("Connecting to %s", name);
+
+	remote.sun_family = AF_UNIX;
+	strcpy(remote.sun_path, name);
+	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+again:
+	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
+		if (retry_connection && errno == ENOENT) {
+			DPRINTF("Retrying connection setup");
+			sleep(1);
+			goto again;
+		}
+		err(2, "connect %s", name);
+	}
+	DPRINTF("Connected");
+
+	if (write(s, &cmd, 1) == -1)
+		err(3, "write");
+	DPRINTF("Wrote command");
+	return s;
 }
 
 int
 main(int argc, char *argv[])
 {
-	int s, len, ch, n;
-	struct sockaddr_un remote;
-	char cmd = 'R';
+	int s, ch, n;
 	char buff[PIPE_BUF];
 	int content_length;
 	char cbuff[CONTENT_LENGTH_DIGITS + 2];
 	struct iovec iov[2];
+	int quit = 0;
+	char cmd = 0;
 
-	while ((ch = getopt(argc, argv, "q")) != -1) {
+	/* Default if nothing else is specified */
+	if (argc == 2)
+		cmd = 'C';
+
+	while ((ch = getopt(argc, argv, "clqr")) != -1) {
 		switch (ch) {
+		case 'c':	/* Read current value */
+			cmd = 'C';
+			break;
+		case 'l':	/* Read last value */
+			cmd = 'L';
+			break;
 		case 'q':
-			cmd = 'Q';
+			quit = 1;
+			break;
+		case 'r':
+			retry_connection = 1;
 			break;
 		case '?':
 		default:
@@ -73,24 +119,13 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		err(1, "socket");
+	switch (cmd) {
+	case 0:		/* No I/O specified */
+		break;
+	case 'C':	/* Read current value */
+	case 'L':	/* Read last value */
+		s = write_command(argv[0], cmd);
 
-	DPRINTF("Connecting to %s", argv[0]);
-
-	remote.sun_family = AF_UNIX;
-	strcpy(remote.sun_path, argv[0]);
-	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-	if (connect(s, (struct sockaddr *)&remote, len) == -1)
-		err(2, "connect");
-
-	DPRINTF("Connected");
-
-	if (write(s, &cmd, 1) == -1)
-		err(3, "write");
-	DPRINTF("Wrote command");
-
-	if (cmd == 'R') {
 		/* Read content length and some data */
 		iov[0].iov_base = cbuff;
 		iov[0].iov_len = CONTENT_LENGTH_DIGITS;
@@ -108,14 +143,21 @@ main(int argc, char *argv[])
 		if (write(STDOUT_FILENO, buff, n) == -1)
 			err(4, "write");
 		content_length -= n;
+
+		/* Read rest of data */
+		while (content_length > 0) {
+			if ((n = read(s, buff, sizeof(buff))) == -1)
+				err(5, "read");
+			DPRINTF("Read %d bytes", n);
+			if (write(STDOUT_FILENO, buff, n) == -1)
+				err(4, "write");
+			content_length -= n;
+		}
+		break;
 	}
-	while (content_length > 0) {
-		if ((n = read(s, buff, sizeof(buff))) == -1)
-			err(5, "read");
-		DPRINTF("Read %d bytes", n);
-		if (write(STDOUT_FILENO, buff, n) == -1)
-			err(4, "write");
-		content_length -= n;
-	}
+
+	if (quit)
+		(void)write_command(argv[0], 'Q');
+
 	return 0;
 }

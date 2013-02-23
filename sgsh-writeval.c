@@ -95,7 +95,8 @@ struct client {
 	enum {
 		s_inactive,		/* Free (unused or closed) */
 		s_read_command,		/* Waiting for a command (Q or R) to be read */
-		s_send_response,	/* Waiting for a response to be written */
+		s_send_current,		/* Waiting for the current value to be written */
+		s_send_last,		/* Waiting for the last (before EOF) value to be written */
 		s_sending_response,	/* A response is being written */
 		s_wait_close,		/* Wait for the client to close the connection */
 	} state;
@@ -298,12 +299,15 @@ read_command(struct client *c)
 	default:		/* Have data. Insert buffer at the end of the queue. */
 		DPRINTF("Read command %c from client %p", cmd, c);
 		switch (cmd) {
-		case 'R':
-			c->state = s_send_response;
+		case 'L':
+			c->state = s_send_last;
 			break;
 		case 'Q':
 			(void)unlink(socket_path);
 			exit(0);
+		case 'C':
+			c->state = s_send_current;
+			break;
 		default:
 			fprintf(stderr, "Unknown command [%c]\n", cmd);
 			exit(1);
@@ -417,7 +421,26 @@ buffer_read(void)
 		break;
 	case 0:			/* EOF */
 		reached_eof = 1;
-		free(b);
+		if (have_record) {
+			free(b);
+			break;
+		}
+		if (head == NULL) {
+			/* Setup an empty record */
+			b->count = 0;
+			b->prev = b->next = NULL;
+			head = tail = b;
+			last_record_begin.b = last_record_end.b = b;
+			last_record_begin.pos = last_record_end.pos = 0;
+		} else {
+			free(b);
+			/* Setup all input as a record */
+			last_record_begin.b = head;
+			last_record_end.b = tail;
+			last_record_begin.pos = 0;
+			last_record_end.pos = tail->count;
+		}
+		have_record = 1;
 		break;
 	default:		/* Have data. Insert buffer at the end of the queue. */
 		b->prev = tail;
@@ -532,12 +555,21 @@ main(int argc, char *argv[])
 				FD_SET(clients[i].fd, &source_fds);
 				max_fd = MAX(clients[i].fd, max_fd);
 				break;
-			case s_send_response:		/* Waiting for a response to be written */
-				if (have_record) {
-			case s_sending_response:	/* A response is being sent */
+			case s_send_last:		/* Waiting for the last (before EOF) value to be written */
+				if (reached_eof) {
 					FD_SET(clients[i].fd, &sink_fds);
 					max_fd = MAX(clients[i].fd, max_fd);
 				}
+				break;
+			case s_send_current:		/* Waiting for a response to be written */
+				if (have_record) {
+					FD_SET(clients[i].fd, &sink_fds);
+					max_fd = MAX(clients[i].fd, max_fd);
+				}
+				break;
+			case s_sending_response:	/* A response is being sent */
+				FD_SET(clients[i].fd, &sink_fds);
+				max_fd = MAX(clients[i].fd, max_fd);
 				break;
 			}
 
@@ -558,7 +590,9 @@ main(int argc, char *argv[])
 				if (FD_ISSET(clients[i].fd, &source_fds))
 					read_command(&clients[i]);
 				break;
-			case s_send_response:		/* Waiting for a response to be written */
+			case s_send_last:		/* Waiting for the last (before EOF) value to be written */
+				/* FALLTHROUGH */
+			case s_send_current:		/* Waiting for a response to be written */
 				if (FD_ISSET(clients[i].fd, &sink_fds)) {
 					assert(have_record);
 					/* Start writing the most fresh last record */
