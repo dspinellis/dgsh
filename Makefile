@@ -20,10 +20,12 @@ else
 CFLAGS=-O -Wall
 endif
 
+EXECUTABLES=sgsh teebuff sgsh-writeval sgsh-readval
+
 %.png: %.sh
 	./sgsh -g $< | dot -Tpng >$@
 
-all: sgsh teebuff sgsh-writeval sgsh-readval
+all: $(EXECUTABLES)
 
 test-sgsh: sgsh teebuff
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
@@ -68,3 +70,6 @@ regression-seed:
 		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
 		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
 	done
+
+clean:
+	rm -f *.o *.exe
