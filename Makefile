@@ -38,6 +38,9 @@ test-sgsh: sgsh teebuff
 test-teebuff: teebuff charcount test-teebuff.sh
 	./test-teebuff.sh
 
+test-kvstore: test-kvstore.sh
+	./test-kvstore.sh
+
 sgsh: sgsh.pl
 	perl -c sgsh.pl
 	install sgsh.pl sgsh
