@@ -49,18 +49,24 @@ Usage: $0 [-kng] [-s shell] [-t tee] [file]
 -k		Keep temporary script file
 -n		Do not run the generated script
 -o filename	Write the script in the specified file (- is stdout) and exit
+-p path		Path where the sgsh helper programs are located
 -s shell	Specify shell to use (/bin/sh is the default)
 -t tee		Path to the teebuff command
 };
 }
 
-our($opt_g, $opt_k, $opt_n, $opt_o, $opt_s, $opt_t);
+our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'teebuff';
-if (!getopts('gkno:s:t:')) {
+if (!getopts('gkno:p:s:t:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
+
+# Ensure defined path ends with a /
+$opt_p .= '/' if (defined($opt_p) && $opt_p !~ m|/$|);
+# Add path to opt_t unless it has one
+$opt_t = "$opt_p$opt_t" unless ($opt_t =~ m|/|);
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
