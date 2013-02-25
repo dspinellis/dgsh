@@ -2,7 +2,7 @@
 digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
-	node_tee_0 [label="teebuff "];
+	node_tee_0 [label="sgsh-tee "];
 	node_cmd_0_1_0 [label="sed 's/.*\\(.\\)\\(.\\)\\2\\1.*/p: \\1\\2-\\2\\1/;t\lg'\l"];
 	node_cmd_0_2_0 [label="sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \\1/;t\lg'\l"];
 	node_cmd_0_3_0 [label="awk '{if (length($1) > 12) print \"l:\", length($1);\lelse print \"\"}'\l"];

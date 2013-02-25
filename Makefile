@@ -20,14 +20,14 @@ else
 CFLAGS=-O -Wall
 endif
 
-EXECUTABLES=sgsh teebuff sgsh-writeval sgsh-readval
+EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
 
 %.png: %.sh
 	./sgsh -g $< | dot -Tpng >$@
 
 all: $(EXECUTABLES)
 
-test-sgsh: sgsh teebuff
+test-sgsh: sgsh sgsh-tee
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
 	./sgsh -p . example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
@@ -35,8 +35,8 @@ test-sgsh: sgsh teebuff
 	./sgsh -p . example/word-properties.sh file://`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 
-test-teebuff: teebuff charcount test-teebuff.sh
-	./test-teebuff.sh
+test-tee: sgsh-tee charcount test-tee.sh
+	./test-tee.sh
 
 test-kvstore: test-kvstore.sh
 	./test-kvstore.sh

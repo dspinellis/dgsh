@@ -2,7 +2,7 @@
 digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
-	node_tee_0 [label="teebuff "];
+	node_tee_0 [label="sgsh-tee "];
 	node_cmd_0_0_0 -> "$NBYTES";
 	node_cmd_0_1_0 -> "$FILETYPE";
 	node_cmd_0_2_0 -> "$COMPRESS";

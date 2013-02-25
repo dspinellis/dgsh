@@ -74,17 +74,17 @@ $SGDIR/npi-7.5.0
 #
 
 </dev/null  find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |
-teebuff  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 &
+sgsh-tee  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 &
  <$SGDIR/npi-1.0.0 tr \\0 \\n |
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
 		awk '{s += length($1); n++} END {print s / n}' | sgsh-writeval $SGDIR/FNAMELEN &
  <$SGDIR/npi-1.1.0 xargs -0 cat |
-teebuff  $SGDIR/npi-2.0.0 $SGDIR/npi-2.1.0 $SGDIR/npi-2.2.0 $SGDIR/npi-2.3.0 $SGDIR/npi-2.4.0 &
+sgsh-tee  $SGDIR/npi-2.0.0 $SGDIR/npi-2.1.0 $SGDIR/npi-2.2.0 $SGDIR/npi-2.3.0 $SGDIR/npi-2.4.0 &
  <$SGDIR/npi-2.0.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
-teebuff  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SGDIR/npi-3.4.0 &
+sgsh-tee  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SGDIR/npi-3.4.0 &
  <$SGDIR/npi-3.0.0  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | sgsh-writeval $SGDIR/NSTRUCT &
  <$SGDIR/npi-3.1.0 grep -cw typedef | sgsh-writeval $SGDIR/NTYPEDEF &
  <$SGDIR/npi-3.2.0 grep -cw void | sgsh-writeval $SGDIR/NVOID &
@@ -100,17 +100,17 @@ teebuff  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SG
  <$SGDIR/npi-2.3.0 egrep -c '/\*|//' | sgsh-writeval $SGDIR/NCOMMENT &
  <$SGDIR/npi-2.4.0 grep -ci copyright | sgsh-writeval $SGDIR/NCOPYRIGHT &
 </dev/null  find "$@" -name \*.c -type f -print0 |
-teebuff  $SGDIR/npi-4.0.0 $SGDIR/npi-4.1.0 &
+sgsh-tee  $SGDIR/npi-4.0.0 $SGDIR/npi-4.1.0 &
  <$SGDIR/npi-4.0.0 tr \\0 \\n |
-teebuff  $SGDIR/npi-5.0.0 $SGDIR/npi-5.1.0 &
+sgsh-tee  $SGDIR/npi-5.0.0 $SGDIR/npi-5.1.0 &
  <$SGDIR/npi-5.0.0 wc -l | sgsh-writeval $SGDIR/NCFILE &
  <$SGDIR/npi-5.1.0 sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l | sgsh-writeval $SGDIR/NCDIR &
  <$SGDIR/npi-4.1.0 xargs -0 cat |
-teebuff  $SGDIR/npi-6.0.0 $SGDIR/npi-6.1.0 &
+sgsh-tee  $SGDIR/npi-6.0.0 $SGDIR/npi-6.1.0 &
  <$SGDIR/npi-6.0.0 wc -lc | awk '{OFS=":"; print $1, $2}' | sgsh-writeval $SGDIR/CLINESCHAR &
  <$SGDIR/npi-6.1.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
-teebuff  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $SGDIR/npi-7.4.0 $SGDIR/npi-7.5.0 &
+sgsh-tee  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $SGDIR/npi-7.4.0 $SGDIR/npi-7.5.0 &
  <$SGDIR/npi-7.0.0 grep -c '^{' | sgsh-writeval $SGDIR/NFUNCTION &
  <$SGDIR/npi-7.1.0 grep -cw goto | sgsh-writeval $SGDIR/NGOTO &
  <$SGDIR/npi-7.2.0 grep -cw register | sgsh-writeval $SGDIR/NREGISTER &

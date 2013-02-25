@@ -45,7 +45,7 @@ sed 's/^MD5(//;s/)= / /' |
 # Sort by MD5 sum
 sort -k2 |
 
-teebuff  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 &
+sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 &
  <$SGDIR/npi-0.0.0 awk '{print $2}' | uniq -d >$SGDIR/npfo-dupes.0 &
 ln -s $SGDIR/npi-0.1.0 $SGDIR/npfo-names.0
 # Gather the results

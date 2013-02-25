@@ -51,13 +51,13 @@ Usage: $0 [-kng] [-s shell] [-t tee] [file]
 -o filename	Write the script in the specified file (- is stdout) and exit
 -p path		Path where the sgsh helper programs are located
 -s shell	Specify shell to use (/bin/sh is the default)
--t tee		Path to the teebuff command
+-t tee		Path to the sgsh-tee command
 };
 }
 
 our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_t);
 $opt_s = '/bin/sh';
-$opt_t = 'teebuff';
+$opt_t = 'sgsh-tee';
 if (!getopts('gkno:p:s:t:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
@@ -687,7 +687,7 @@ scatter_graph_io
 
 	my $scatter_n = $global_scatter_n++;
 
-	my $show_teebuff = 0;
+	my $show_tee = 0;
 
 	my ($parallel, %scatter_opts) = parse_scatter_arguments($command);
 
@@ -702,16 +702,16 @@ scatter_graph_io
 	my $tee_node_name = "node_tee_$scatter_n";
 	# Create tee, if needed
 	if ($scatter_targets * $parallel > 1) {
-		$show_teebuff = 1 if ($level == 0);
+		$show_tee = 1 if ($level == 0);
 		# Create arguments
 		my $tee_args = '';
 		if ($scatter_opts{'s'}) {
 			$tee_args .= ' -s';
-			$show_teebuff = 1;
+			$show_tee = 1;
 		}
 		if ($scatter_opts{'l'}) {
 			$tee_args .= ' -l';
-			$show_teebuff = 1;
+			$show_tee = 1;
 		}
 		for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
 			for (my $p = 0; $p < $parallel; $p++) {
@@ -722,7 +722,7 @@ scatter_graph_io
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($opt_g && $show_teebuff);
+		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($opt_g && $show_tee);
 	}
 
 	# Process the commands
@@ -759,10 +759,10 @@ scatter_graph_io
 				# Generate scatter edges
 				for my $output_edge (@output_edges) {
 					$edge{$output_edge}->{lhs} =
-						 ($#output_edges > 0 && $show_teebuff) ? $tee_node_name : $node_name;
+						 ($#output_edges > 0 && $show_tee) ? $tee_node_name : $node_name;
 				}
-				# Connect our command to teebuff
-				print qq{\t$node_name -> $tee_node_name\n} if ($opt_g && $#output_edges > 0 && $show_teebuff);
+				# Connect our command to sgsh-tee
+				print qq{\t$node_name -> $tee_node_name\n} if ($opt_g && $#output_edges > 0 && $show_tee);
 			} elsif ($c->{output} eq 'file') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
