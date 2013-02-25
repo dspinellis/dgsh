@@ -30,6 +30,13 @@ then
 	fail "Single record"
 fi
 
+section 'test record separator'
+echo -n record1:record2 | ./sgsh-writeval -t : testsocket 2>/dev/null &
+if test "`./sgsh-readval -lq testsocket 2>/dev/null`" != 'record1:'
+then
+	fail "Record separator"
+fi
+
 section 'test reading of records in stream'
 (echo record one; sleep 1; echo record two; sleep 3; echo record three) | ./sgsh-writeval testsocket 2>/dev/null &
 

@@ -65,6 +65,8 @@ static int have_record;
 /* Record separator (normally terminator) */
 static char rs = '\n';
 
+static int rl = 0;
+
 /* Queue (doubly linked list) of buffers used for storing the last read record */
 struct buffer {
 	struct buffer *next;
@@ -492,7 +494,7 @@ get_free_client(void)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s socket_name\n", name);
+	fprintf(stderr, "Usage: %s [-l length|-t record_separator] socket_name\n", name);
 	exit(1);
 }
 
@@ -502,12 +504,35 @@ main(int argc, char *argv[])
 	int max_fd, sock;
 	socklen_t len;
 	struct sockaddr_un local, remote;
-
-	if (argc != 2)
-		usage(argv[0]);
+	int ch;
 
 	program_name = argv[0];
-	socket_path = argv[1];
+
+	while ((ch = getopt(argc, argv, "l:t:")) != -1) {
+		switch (ch) {
+		case 'l':
+			rl = atoi(optarg);
+			if (rl <= 0)
+				usage(program_name);
+			break;
+		case 't':
+			/* We allow \0 as rs */
+			if (strlen(optarg) > 1)
+				usage(program_name);
+			rs = *optarg;
+			break;
+		case '?':
+		default:
+			usage(program_name);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		usage(program_name);
+
+	socket_path = argv[0];
 	(void)unlink(socket_path);
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
