@@ -140,16 +140,18 @@ static const char *socket_path;
 static const char *socket_path;
 
 
-/* Increment dp by one byte. Return false if no more bytes are available */
+/*
+ * Increment dp by one byte.
+ * If no more bytes are available return false
+ * leaving pos to point one byte past the last available one
+ */
 static bool
 dpointer_increment(struct dpointer *dp)
 {
 	dp->pos++;
 	if (dp->pos == dp->b->size) {
-		if (!dp->b->next) {
-			dp->pos--;
+		if (!dp->b->next)
 			return false;
-		}
 		dp->b = dp->b->next;
 		dp->pos = 0;
 	}
@@ -210,6 +212,36 @@ dpointer_subtract(struct dpointer *dp, int n)
 		}
 	}
 }
+/*
+ * Move back dp the specified number of records.
+ * Precondition: Enough records are available and dp
+ * points past the end of a record.
+ * Postcondition: dp will point at the beginning of
+ * a record.
+ */
+static void
+dpointer_move_back(struct dpointer *dp, int n)
+{
+	DPRINTF("Moving back from %p.%d (size=%d, prev=%p) n=%d",
+		dp->b, dp->pos, dp->b->size, dp->b->prev, n);
+	for (;;) {
+		if (dpointer_decrement(dp)) {
+			if (dp->b->data[dp->pos] == rs && --n == -1) {
+				dpointer_increment(dp);
+				DPRINTF("dpoint_move_back returns: %p.%d (size=%d, prev=%p) n=%d",
+					dp->b, dp->pos, dp->b->size, dp->b->prev, n);
+				return;
+			}
+		} else {
+			if (--n == -1) {
+				DPRINTF("dpoint_move_back (at begin) returns: %p.%d (size=%d, prev=%p) n=%d",
+					dp->b, dp->pos, dp->b->size, dp->b->prev, n);
+				return;
+			} else
+				assert(0);	/* Not enough records available */
+		}
+	}
+}
 
 /* Return the oldest of the two buffers (the one that comes first in the list) */
 static struct buffer *
@@ -267,41 +299,6 @@ free_unused_buffers(void)
 	assert(0);
 }
 
-/* Return the last position of the record terminator in n bytes starting at s */
-const char *
-find_rs(const char *s, size_t n)
-{
-	const char *cp;
-
-	for (cp = s + n; n > 0; n--)
-		if (*--cp == rs)
-			return cp;
-	return NULL;
-}
-
-/*
- * Find the last record separator, in the area ending
- * at the specified buffer and (excluded) position.
- * Return the position of that separator as a dpointer;
- * return with b set to 0 if no separator was found.
- */
-static struct dpointer
-find_last_rs(struct buffer *b, int end_pos)
-{
-	const char *p;
-	struct buffer *bp;
-	struct dpointer result;
-
-	for (bp = b; bp; bp = bp->prev)
-		if ((p = find_rs(bp->data, bp == b ? end_pos : bp->size))) {
-			result.b = bp;
-			result.pos = p - bp->data;
-			return result;
-		}
-	result.b = 0;
-	return result;
-}
-
 /* Return the content length of the client's buffer */
 static unsigned int
 content_length(struct client *c)
@@ -329,44 +326,20 @@ content_length(struct client *c)
 static void
 update_current_record_by_rs(void)
 {
-	struct dpointer dp_end, dp_begin;
+	/* Point to the end of read data */
+	current_record_end.b = tail;
+	current_record_end.pos = tail->size;
 
-	if (time_window) {
-		;/* XXX */
-	}
+	/* Remove data that forms an incomplete record */
+	dpointer_move_back(&current_record_end, 0);
 
-	dp_end = find_last_rs(tail, tail->size);
-	if (dp_end.b == NULL) {
-		DPRINTF("update_current_record: no rs found");
-		return;		/* Not found */
-	}
-	dp_end.pos++;		/* Point past the end */
-	if (memcmp(&dp_end, &current_record_end, sizeof(dp_end)) == 0) {
-		DPRINTF("update_current_record: same as before");
-		return;		/* Same as before */
-	}
+	/* Go back to the end of the specified record */
+	dpointer_move_back(&current_record_end, record_rbegin.r);
 
-	/* Scan for the begin rs one character before the end */
-	if (dp_end.pos == 1)
-		dp_begin = find_last_rs(dp_end.b->prev, dp_end.b->prev ? dp_end.b->prev->size : 0);
-	else
-		dp_begin = find_last_rs(dp_end.b, dp_end.pos - 1);
+	/* Go further back to the begin of the specified record */
+	current_record_begin = current_record_end;
+	dpointer_move_back(&current_record_begin, record_rend.r - record_rbegin.r);
 
-	if (dp_begin.b == NULL) {
-		/* No other found. This is the first record. */
-		dp_begin.b = head;
-		dp_begin.pos = 0;
-	} else {
-		/* Advance by one character past the found rs */
-		dp_begin.pos++;
-		if (dp_begin.pos == dp_begin.b->size) {
-			dp_begin.b = dp_begin.b->next;
-			dp_begin.pos = 0;
-		}
-	}
-
-	current_record_begin = dp_begin;
-	current_record_end = dp_end;
 	have_record = true;
 	free_unused_buffers();
 }
@@ -382,13 +355,6 @@ update_current_record_by_rl(void)
 	if (time_window) {
 		;/* XXX */
 	}
-
-	assert(tail);
-	DPRINTF("update_current_record_by_rl tail->record_count=%lld record_rend.r=%d",
-		tail->record_count, record_rend.r);
-	if (tail->record_count - record_rend.r < 0)
-		/* Not enough records */
-		return;
 
 	/* Point to the end of read data */
 	current_record_end.b = tail;
@@ -415,6 +381,13 @@ update_current_record_by_rl(void)
 static void
 update_current_record(void)
 {
+	assert(tail);
+	DPRINTF("update_current_record tail->record_count=%lld record_rend.r=%d",
+		tail->record_count, record_rend.r);
+	if (tail->record_count - record_rend.r < 0)
+		/* Not enough records */
+		return;
+
 	if (rl == 0)
 		update_current_record_by_rs();
 	else
