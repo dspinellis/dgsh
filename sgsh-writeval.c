@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,7 @@
 #include <unistd.h>
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define CONTENT_LENGTH_DIGITS 10
 #define CONTENT_LENGTH_FORMAT "%010u"
@@ -56,22 +58,47 @@
 #define BUFFER_SIZE PIPE_BUF
 #endif
 
-/* True once we reach the end of file on standard input */
-static int reached_eof;
-
-/* True if a complete record (ending in rs) is available */
-static int have_record;
-
+/* User options start here */
 /* Record separator (normally terminator) */
 static char rs = '\n';
 
+/* Record length; 0 if we use a record separator */
 static int rl = 0;
+
+/* True if the begin and end are specified using a time window */
+static bool time_window;
+
+/*
+ * Specified response record.
+ * This is specified using reverse iterators (counted from the end of the stream).
+ * The _rbegin is inclusive, _rend is exclusive
+ * Examples:
+ * To get the last record use the range rbegin = 0 rend = 1
+ * To get 5 records starting 10 records away from the end
+ * use the range rbegin = 10 rend = 15
+ */
+static union {
+	time_t t;	/* Used if time_window is true */
+	int r;		/* Used if time_window is false */
+} record_rbegin, record_rend;
+
+/* User options end here */
+
+/* True once we reach the end of file on standard input */
+static bool reached_eof;
+
+/* True if a complete record (ending in rs) is available */
+static bool have_record;
 
 /* Queue (doubly linked list) of buffers used for storing the last read record */
 struct buffer {
 	struct buffer *next;
 	struct buffer *prev;
-	int count;		/* Actual number of bytes stored */
+	int size;				/* Actual number of bytes stored */
+	time_t timestamp;			/* Time the buffer was read */
+	long long record_count;			/* Total number of complete records read (including this buffer)
+						   (0-based ordinal of first record not in buffer) */
+	long long byte_count;			/* Total number of bytes read (including this buffer) */
 	char data[BUFFER_SIZE];
 };
 
@@ -87,7 +114,7 @@ struct dpointer {
 };
 
 /* The last complete record read */
-static struct dpointer last_record_begin, last_record_end;
+static struct dpointer current_record_begin, current_record_end;
 
 /* The clients we're talking to */
 struct client {
@@ -111,6 +138,78 @@ static const char *program_name;
 static const char *socket_path;
 
 static const char *socket_path;
+
+
+/* Increment dp by one byte. Return false if no more bytes are available */
+static bool
+dpointer_increment(struct dpointer *dp)
+{
+	dp->pos++;
+	if (dp->pos == dp->b->size) {
+		if (!dp->b->next) {
+			dp->pos--;
+			return false;
+		}
+		dp->b = dp->b->next;
+		dp->pos = 0;
+	}
+	return true;
+}
+
+/* Decrement dp by one byte. Return false if no more bytes are available */
+static bool
+dpointer_decrement(struct dpointer *dp)
+{
+	dp->pos--;
+	if (dp->pos == -1) {
+		if (!dp->b->prev) {
+			dp->pos++;
+			return false;
+		}
+		dp->b = dp->b->prev;
+		dp->pos = dp->b->size - 1;
+	}
+	return true;
+}
+
+/*
+ * Add to dp the specified number of bytes.
+ * Precondition: Enough bytes are available
+ */
+static void
+dpointer_add(struct dpointer *dp, int n)
+{
+	while (n > 0) {
+		int add = MIN(dp->b->size - dp->pos, n);
+		n -= add;
+		dp->pos += add;
+		if (dp->pos == dp->b->size) {
+			assert(dp->b->next);
+			dp->b = dp->b->next;
+			dp->pos = 0;
+		}
+	}
+}
+
+/*
+ * Subtract from dp the specified number of bytes.
+ * Precondition: Enough bytes are available
+ */
+static void
+dpointer_subtract(struct dpointer *dp, int n)
+{
+	DPRINTF("Subtracting from %p (size=%d, prev=%p) %d", dp->b, dp->b->size, dp->b->prev, n);
+	while (n > 0) {
+		int subtract = MIN((dp->pos + 1) - 0, n);
+		n -= subtract;
+		dp->pos -= subtract;
+		if (dp->pos == -1) {
+			assert(dp->b->prev);
+			dp->b = dp->b->prev;
+			dp->pos = dp->b->size - 1;
+		}
+	}
+}
 
 /* Return the oldest of the two buffers (the one that comes first in the list) */
 static struct buffer *
@@ -147,14 +246,14 @@ update_oldest_buffer(void)
 	DPRINTF("Oldest buffer beeing written is %p", oldest_buffer_being_written);
 }
 
-/* Free buffers preceding last_record_begin */
+/* Free buffers preceding current_record_begin */
 static void
 free_unused_buffers(void)
 {
 	struct buffer *b, *bnext;
 
 	for (b = head; b; b = bnext) {
-		if (b == last_record_begin.b || b == oldest_buffer_being_written) {
+		if (b == current_record_begin.b || b == oldest_buffer_being_written) {
 			head = b;
 			b->prev = NULL;
 			DPRINTF("After freeing buffer(s) head=%p tail=%p", head, tail);
@@ -164,7 +263,7 @@ free_unused_buffers(void)
 		DPRINTF("Freeing buffer %p prev=%p next=%p", b, b->prev, b->next);
 		free(b);
 	}
-	/* Should have encountered last_record_begin.b along the way. */
+	/* Should have encountered current_record_begin.b along the way. */
 	assert(0);
 }
 
@@ -194,7 +293,7 @@ find_last_rs(struct buffer *b, int end_pos)
 	struct dpointer result;
 
 	for (bp = b; bp; bp = bp->prev)
-		if ((p = find_rs(bp->data, bp == b ? end_pos : bp->count))) {
+		if ((p = find_rs(bp->data, bp == b ? end_pos : bp->size))) {
 			result.b = bp;
 			result.pos = p - bp->data;
 			return result;
@@ -213,9 +312,9 @@ content_length(struct client *c)
 	if (c->write_begin.b == c->write_end.b)
 		length = c->write_end.pos - c->write_begin.pos;
 	else {
-		length = c->write_begin.b->count - c->write_begin.pos;
+		length = c->write_begin.b->size - c->write_begin.pos;
 		for (bp = c->write_begin.b->next; bp && bp != c->write_end.b; bp = bp->next)
-			length += bp->count;
+			length += bp->size;
 		length +=  c->write_end.pos;
 	}
 	DPRINTF("content_length returns %u", length);
@@ -223,28 +322,33 @@ content_length(struct client *c)
 }
 
 /*
- * Update the pointers to the last record read.
+ * Update the pointers to the current response record based on the defined
+ * record separator.
  * Set have_record if a record is available.
  */
 static void
-update_last_record(void)
+update_current_record_by_rs(void)
 {
 	struct dpointer dp_end, dp_begin;
 
-	dp_end = find_last_rs(tail, tail->count);
+	if (time_window) {
+		;/* XXX */
+	}
+
+	dp_end = find_last_rs(tail, tail->size);
 	if (dp_end.b == NULL) {
-		DPRINTF("update_last_record: no rs found");
+		DPRINTF("update_current_record: no rs found");
 		return;		/* Not found */
 	}
 	dp_end.pos++;		/* Point past the end */
-	if (memcmp(&dp_end, &last_record_end, sizeof(dp_end)) == 0) {
-		DPRINTF("update_last_record: same as before");
+	if (memcmp(&dp_end, &current_record_end, sizeof(dp_end)) == 0) {
+		DPRINTF("update_current_record: same as before");
 		return;		/* Same as before */
 	}
 
 	/* Scan for the begin rs one character before the end */
 	if (dp_end.pos == 1)
-		dp_begin = find_last_rs(dp_end.b->prev, dp_end.b->prev ? dp_end.b->prev->count : 0);
+		dp_begin = find_last_rs(dp_end.b->prev, dp_end.b->prev ? dp_end.b->prev->size : 0);
 	else
 		dp_begin = find_last_rs(dp_end.b, dp_end.pos - 1);
 
@@ -255,18 +359,68 @@ update_last_record(void)
 	} else {
 		/* Advance by one character past the found rs */
 		dp_begin.pos++;
-		if (dp_begin.pos == dp_begin.b->count) {
+		if (dp_begin.pos == dp_begin.b->size) {
 			dp_begin.b = dp_begin.b->next;
 			dp_begin.pos = 0;
 		}
 	}
 
-	last_record_begin = dp_begin;
-	last_record_end = dp_end;
-	have_record = 1;
-	DPRINTF("update_last_record: begin b=%p pos=%d", last_record_begin.b, last_record_begin.pos);
-	DPRINTF("update_last_record: end b=%p pos=%d", last_record_end.b, last_record_end.pos);
+	current_record_begin = dp_begin;
+	current_record_end = dp_end;
+	have_record = true;
 	free_unused_buffers();
+}
+
+/*
+ * Update the pointers to the current response record based on the defined
+ * record length.
+ * Set have_record if a record is available.
+ */
+static void
+update_current_record_by_rl(void)
+{
+	if (time_window) {
+		;/* XXX */
+	}
+
+	assert(tail);
+	DPRINTF("update_current_record_by_rl tail->record_count=%lld record_rend.r=%d",
+		tail->record_count, record_rend.r);
+	if (tail->record_count - record_rend.r < 0)
+		/* Not enough records */
+		return;
+
+	/* Point to the end of read data */
+	current_record_end.b = tail;
+	current_record_end.pos = tail->size;
+
+	/* Remove data that forms an incomplete record */
+	dpointer_subtract(&current_record_end, tail->byte_count % rl);
+
+	/* Go back to the end of the specified record */
+	dpointer_subtract(&current_record_end, record_rbegin.r * rl);
+
+	/* Go further back to the begin of the specified record */
+	current_record_begin = current_record_end;
+	dpointer_subtract(&current_record_begin, (record_rend.r - record_rbegin.r) * rl);
+
+	have_record = true;
+	free_unused_buffers();
+}
+
+/*
+ * Update the pointers to the current response record.
+ * Called routines will set have_record if a record is available.
+ */
+static void
+update_current_record(void)
+{
+	if (rl == 0)
+		update_current_record_by_rs();
+	else
+		update_current_record_by_rl();
+	DPRINTF("update_current_record: begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
+	DPRINTF("update_current_record: end b=%p pos=%d", current_record_end.b, current_record_end.pos);
 }
 
 /*
@@ -339,10 +493,10 @@ write_record(struct client *c, int write_length)
 		DPRINTF("Single buffer %p: writing %d bytes. write_end.pos=%d write_begin.pos=%d",
 			c->write_begin.b, towrite, c->write_end.pos, c->write_begin.pos);
 	} else {
-		towrite = c->write_begin.b->count - c->write_begin.pos;
-		DPRINTF("Multiple buffers %p %p: writing %d bytes. write_begin.b->count=%d write_begin.pos=%d",
+		towrite = c->write_begin.b->size - c->write_begin.pos;
+		DPRINTF("Multiple buffers %p %p: writing %d bytes. write_begin.b->size=%d write_begin.pos=%d",
 			c->write_begin.b, c->write_end.b,
-			towrite, c->write_begin.b->count, c->write_begin.pos);
+			towrite, c->write_begin.b->size, c->write_begin.pos);
 	}
 
 	iov[1].iov_base = c->write_begin.b->data + c->write_begin.pos;
@@ -381,7 +535,7 @@ write_record(struct client *c, int write_length)
 	 * and either the end is in another buffer, or we haven't
 	 * reached it.
 	 */
-	if (c->write_begin.pos < c->write_begin.b->count &&
+	if (c->write_begin.pos < c->write_begin.b->size &&
 	    (c->write_begin.b != c->write_end.b || c->write_begin.pos < c->write_end.pos)) {
 		DPRINTF("Continuing with same buffer");
 		return;
@@ -391,13 +545,37 @@ write_record(struct client *c, int write_length)
 	if (c->write_begin.b != c->write_end.b) {
 		c->write_begin.b = c->write_begin.b->next;
 		c->write_begin.pos = 0;
-		DPRINTF("Moving to next buffer %p with size %u", c->write_begin.b, c->write_begin.b->count);
+		DPRINTF("Moving to next buffer %p with size %u", c->write_begin.b, c->write_begin.b->size);
 		return;
 	}
 
 	/* Done with this client */
 	DPRINTF("No more data to write for client %p", c);
 	c->state = s_wait_close;
+}
+
+/* Set the buffer's counters */
+void
+set_buffer_counters(struct buffer *b)
+{
+	if (time_window)
+		time(&b->timestamp);
+
+	if (rl == 0) {
+		/* Count records using RS */
+		int i;
+
+		b->record_count = b->prev ? b->prev->record_count : 0;
+		for (i = 0; i < b->size; i++)
+			if (b->data[i] == rs)
+				b->record_count++;
+	} else {
+		/* Count records using RL */
+
+		b->byte_count = b->prev ? b->prev->byte_count : 0;
+		b->byte_count += b->size;
+		b->record_count = b->byte_count / rl;
+	}
 }
 
 /* Read data from STDIN into a new buffer */
@@ -410,7 +588,7 @@ buffer_read(void)
 		err(1, "Unable to allocate read buffer");
 
 	DPRINTF("Calling read on stdin for buffer %p", b);
-	switch (b->count = read(STDIN_FILENO, b->data, sizeof(b->data))) {
+	switch (b->size = read(STDIN_FILENO, b->data, sizeof(b->data))) {
 	case -1: 		/* Error */
 		switch (errno) {
 		case EAGAIN:
@@ -422,27 +600,27 @@ buffer_read(void)
 		}
 		break;
 	case 0:			/* EOF */
-		reached_eof = 1;
+		reached_eof = true;
 		if (have_record) {
 			free(b);
 			break;
 		}
 		if (head == NULL) {
 			/* Setup an empty record */
-			b->count = 0;
+			b->size = 0;
 			b->prev = b->next = NULL;
 			head = tail = b;
-			last_record_begin.b = last_record_end.b = b;
-			last_record_begin.pos = last_record_end.pos = 0;
+			current_record_begin.b = current_record_end.b = b;
+			current_record_begin.pos = current_record_end.pos = 0;
 		} else {
 			free(b);
 			/* Setup all input as a record */
-			last_record_begin.b = head;
-			last_record_end.b = tail;
-			last_record_begin.pos = 0;
-			last_record_end.pos = tail->count;
+			current_record_begin.b = head;
+			current_record_end.b = tail;
+			current_record_begin.pos = 0;
+			current_record_end.pos = tail->size;
 		}
-		have_record = 1;
+		have_record = true;
 		break;
 	default:		/* Have data. Insert buffer at the end of the queue. */
 		b->prev = tail;
@@ -453,8 +631,9 @@ buffer_read(void)
 		if (!head)
 			head = b;
 		DPRINTF("Read %d bytes into %p prev=%p next=%p head=%p tail=%p",
-			b->count, b, b->prev, b->next, head, tail);
-		update_last_record();
+			b->size, b, b->prev, b->next, head, tail);
+		set_buffer_counters(b);
+		update_current_record();
 		break;
 	}
 }
@@ -507,6 +686,9 @@ main(int argc, char *argv[])
 	int ch;
 
 	program_name = argv[0];
+	/* By default return the last record read */
+	record_rbegin.r = 0;
+	record_rend.r = 1;
 
 	while ((ch = getopt(argc, argv, "l:t:")) != -1) {
 		switch (ch) {
@@ -549,7 +731,7 @@ main(int argc, char *argv[])
 
 	non_block(sock);
 
-	reached_eof = 0;
+	reached_eof = false;
 	for (;;) {
 		fd_set source_fds;
 		fd_set sink_fds;
@@ -621,8 +803,8 @@ main(int argc, char *argv[])
 				if (FD_ISSET(clients[i].fd, &sink_fds)) {
 					assert(have_record);
 					/* Start writing the most fresh last record */
-					clients[i].write_begin = last_record_begin;
-					clients[i].write_end = last_record_end;
+					clients[i].write_begin = current_record_begin;
+					clients[i].write_end = current_record_end;
 					clients[i].state = s_sending_response;
 					oldest_buffer_being_written =
 						oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);

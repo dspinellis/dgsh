@@ -13,7 +13,8 @@ sequence()
 # Fail with an error message
 fail()
 {
-	echo $1 1>&2
+	echo "Fail: $1" 1>&2
+	./sgsh-readval -q testsocket 2>/dev/null
 	exit 1
 }
 
@@ -30,6 +31,13 @@ then
 	fail "Single record"
 fi
 
+section 'test single result fixed width'
+echo -n 0123456789 | ./sgsh-writeval -l 10 testsocket 2>/dev/null &
+if test "`./sgsh-readval -lq testsocket 2>/dev/null`" != '0123456789'
+then
+	fail "Single record fixed width"
+fi
+
 section 'test record separator'
 echo -n record1:record2 | ./sgsh-writeval -t : testsocket 2>/dev/null &
 if test "`./sgsh-readval -lq testsocket 2>/dev/null`" != 'record1:'
@@ -37,7 +45,32 @@ then
 	fail "Record separator"
 fi
 
-section 'test reading of records in stream'
+section 'test reading of fixed-length records in stream'
+(echo -n A12345A7AB; sleep 1; echo -n 12345B7BC; sleep 3; echo -n 12345C7CD) | ./sgsh-writeval -l 9 testsocket 2>/dev/null &
+
+TRY="`./sgsh-readval testsocket 2>/dev/null`"
+if test "$TRY" != A12345A7A
+then
+	fail "Record one [$TRY]"
+fi
+
+sleep 2
+if test "`./sgsh-readval -c testsocket 2>/dev/null`" != B12345B7B
+then
+	fail "Record two"
+fi
+
+sleep 3
+TRY="`./sgsh-readval testsocket 2>/dev/null`"
+if test "$TRY" != C12345C7C
+then
+	fail "Record three: got [$TRY]"
+fi
+
+./sgsh-readval -q testsocket 2>/dev/null
+
+
+section 'test reading of newline-separated records in stream'
 (echo record one; sleep 1; echo record two; sleep 3; echo record three) | ./sgsh-writeval testsocket 2>/dev/null &
 
 if test "`./sgsh-readval testsocket 2>/dev/null`" != 'record one'
