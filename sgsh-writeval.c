@@ -59,10 +59,10 @@
 #endif
 
 /* User options start here */
-/* Record separator (normally terminator) */
-static char rs = '\n';
+/* Record terminator */
+static char rt = '\n';
 
-/* Record length; 0 if we use a record separator */
+/* Record length; 0 if we use a record terminator */
 static int rl = 0;
 
 /* True if the begin and end are specified using a time window */
@@ -87,7 +87,7 @@ static union {
 /* True once we reach the end of file on standard input */
 static bool reached_eof;
 
-/* True if a complete record (ending in rs) is available */
+/* True if a complete record (ending in rt) is available */
 static bool have_record;
 
 /* Queue (doubly linked list) of buffers used for storing the last read record */
@@ -226,7 +226,7 @@ dpointer_move_back(struct dpointer *dp, int n)
 		dp->b, dp->pos, dp->b->size, dp->b->prev, n);
 	for (;;) {
 		if (dpointer_decrement(dp)) {
-			if (dp->b->data[dp->pos] == rs && --n == -1) {
+			if (dp->b->data[dp->pos] == rt && --n == -1) {
 				dpointer_increment(dp);
 				DPRINTF("dpoint_move_back returns: %p.%d (size=%d, prev=%p) n=%d",
 					dp->b, dp->pos, dp->b->size, dp->b->prev, n);
@@ -320,10 +320,10 @@ content_length(struct client *c)
 
 /*
  * Update the pointers to the current response record based on the defined
- * record separator.
+ * record terminator.
  */
 static void
-update_current_record_by_rs(void)
+update_current_record_by_rt(void)
 {
 	/* Point to the end of read data */
 	current_record_end.b = tail;
@@ -381,7 +381,7 @@ update_current_record(void)
 		return;
 
 	if (rl == 0)
-		update_current_record_by_rs();
+		update_current_record_by_rt();
 	else
 		update_current_record_by_rl();
 	DPRINTF("update_current_record: begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
@@ -534,7 +534,7 @@ set_buffer_counters(struct buffer *b)
 
 		b->record_count = b->prev ? b->prev->record_count : 0;
 		for (i = 0; i < b->size; i++)
-			if (b->data[i] == rs)
+			if (b->data[i] == rt)
 				b->record_count++;
 	} else {
 		/* Count records using RL */
@@ -640,7 +640,7 @@ get_free_client(void)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-l length|-t record_separator] socket_name\n", name);
+	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n", name);
 	exit(1);
 }
 
@@ -651,24 +651,40 @@ main(int argc, char *argv[])
 	socklen_t len;
 	struct sockaddr_un local, remote;
 	int ch;
+	char unit;
 
 	program_name = argv[0];
 	/* By default return the last record read */
 	record_rbegin.r = 0;
 	record_rend.r = 1;
 
-	while ((ch = getopt(argc, argv, "l:t:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:e:l:t:u:")) != -1) {
 		switch (ch) {
-		case 'l':
+		case 'b':	/* Begin record, measured from the end (0) */
+			record_rend.r = atoi(optarg);
+			if (record_rend.r < 0)
+				usage(program_name);
+			break;
+		case 'e':	/* End record, measured from the end (0) */
+			record_rbegin.r = atoi(optarg);
+			if (record_rbegin.r < 0)
+				usage(program_name);
+			break;
+		case 'l':	/* Fixed record length */
 			rl = atoi(optarg);
 			if (rl <= 0)
 				usage(program_name);
 			break;
-		case 't':
-			/* We allow \0 as rs */
+		case 't':	/* Record terminator */
+			/* We allow \0 as rt */
 			if (strlen(optarg) > 1)
 				usage(program_name);
-			rs = *optarg;
+			rt = *optarg;
+			break;
+		case 'u':		/* Measurement unit */
+			if (strlen(optarg) != 1 || strchr("smhdr", *optarg) == NULL)
+				usage(program_name);
+			unit = *optarg;
 			break;
 		case '?':
 		default:

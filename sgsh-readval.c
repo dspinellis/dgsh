@@ -46,7 +46,7 @@ static int retry_connection;
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] socket_name\n", name);
+	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n", name);
 	exit(1);
 }
 
