@@ -638,9 +638,10 @@ get_free_client(void)
 }
 
 static void
-usage(const char *name)
+usage(void)
 {
-	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n", name);
+	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n",
+		program_name);
 	exit(1);
 }
 
@@ -663,39 +664,39 @@ main(int argc, char *argv[])
 		case 'b':	/* Begin record, measured from the end (0) */
 			record_rend.r = atoi(optarg);
 			if (record_rend.r < 0)
-				usage(program_name);
+				usage();
 			break;
 		case 'e':	/* End record, measured from the end (0) */
 			record_rbegin.r = atoi(optarg);
 			if (record_rbegin.r < 0)
-				usage(program_name);
+				usage();
 			break;
 		case 'l':	/* Fixed record length */
 			rl = atoi(optarg);
 			if (rl <= 0)
-				usage(program_name);
+				usage();
 			break;
 		case 't':	/* Record terminator */
 			/* We allow \0 as rt */
 			if (strlen(optarg) > 1)
-				usage(program_name);
+				usage();
 			rt = *optarg;
 			break;
 		case 'u':		/* Measurement unit */
 			if (strlen(optarg) != 1 || strchr("smhdr", *optarg) == NULL)
-				usage(program_name);
+				usage();
 			unit = *optarg;
 			break;
 		case '?':
 		default:
-			usage(program_name);
+			usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
 	if (argc != 1)
-		usage(program_name);
+		usage();
 
 	socket_path = argv[0];
 	(void)unlink(socket_path);

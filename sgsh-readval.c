@@ -43,10 +43,12 @@
 
 static int retry_connection;
 
+static const char *program_name;
+
 static void
-usage(const char *name)
+usage(void)
 {
-	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n", name);
+	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n", program_name);
 	exit(1);
 }
 
@@ -93,6 +95,8 @@ main(int argc, char *argv[])
 	int quit = 0;
 	char cmd = 0;
 
+	program_name = argv[0];
+
 	/* Default if nothing else is specified */
 	if (argc == 2)
 		cmd = 'C';
@@ -113,11 +117,14 @@ main(int argc, char *argv[])
 			break;
 		case '?':
 		default:
-			usage(argv[0]);
+			usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (argc != 1)
+		usage();
 
 	switch (cmd) {
 	case 0:		/* No I/O specified */
