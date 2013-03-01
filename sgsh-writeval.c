@@ -321,7 +321,6 @@ content_length(struct client *c)
 /*
  * Update the pointers to the current response record based on the defined
  * record separator.
- * Set have_record if a record is available.
  */
 static void
 update_current_record_by_rs(void)
@@ -339,15 +338,11 @@ update_current_record_by_rs(void)
 	/* Go further back to the begin of the specified record */
 	current_record_begin = current_record_end;
 	dpointer_move_back(&current_record_begin, record_rend.r - record_rbegin.r);
-
-	have_record = true;
-	free_unused_buffers();
 }
 
 /*
  * Update the pointers to the current response record based on the defined
  * record length.
- * Set have_record if a record is available.
  */
 static void
 update_current_record_by_rl(void)
@@ -369,14 +364,11 @@ update_current_record_by_rl(void)
 	/* Go further back to the begin of the specified record */
 	current_record_begin = current_record_end;
 	dpointer_subtract(&current_record_begin, (record_rend.r - record_rbegin.r) * rl);
-
-	have_record = true;
-	free_unused_buffers();
 }
 
 /*
  * Update the pointers to the current response record.
- * Called routines will set have_record if a record is available.
+ * Set have_record if a record is available.
  */
 static void
 update_current_record(void)
@@ -394,6 +386,8 @@ update_current_record(void)
 		update_current_record_by_rl();
 	DPRINTF("update_current_record: begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
 	DPRINTF("update_current_record: end b=%p pos=%d", current_record_end.b, current_record_end.pos);
+	have_record = true;
+	free_unused_buffers();
 }
 
 /*
