@@ -20,7 +20,7 @@ else
 CFLAGS=-O -Wall
 endif
 
-EXECUTABLES=sgsh sgsh-writeval sgsh-writeval sgsh-readval
+EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
 
 %.png: %.sh
 	./sgsh -g $< | dot -Tpng >$@
