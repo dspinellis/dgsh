@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Regression tests for teebuff
+# Regression tests for sgsh-tee
 #
 
 # Ensure that the files passed as 2nd and 3rd arguments are the same
@@ -84,12 +84,12 @@ do
 	# Test buffering
 	for flags2 in '' -l
 	do
-		test=teebuff-fastout$flags$flags2
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 >/dev/null 2>test/teebuff-buffer/$test.test
-		ensure_similar_buffers "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
-		test=teebuff-lagout$flags$flags2
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 2>test/teebuff-buffer/$test.test | (sleep 1 ; cat >/dev/null)
-		ensure_similar_buffers "$test" test/teebuff-buffer/$test.ok test/teebuff-buffer/$test.test
+		test=tee-fastout$flags$flags2
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 >/dev/null 2>test/tee/$test.test
+		ensure_similar_buffers "$test" test/tee/$test.ok test/tee/$test.test
+		test=tee-lagout$flags$flags2
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 2>test/tee/$test.test | (sleep 1 ; cat >/dev/null)
+		ensure_similar_buffers "$test" test/tee/$test.ok test/tee/$test.test
 	done
 done
 exit 0
