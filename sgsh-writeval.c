@@ -939,12 +939,10 @@ double_to_timeval(double d)
 	return t;
 }
 
-int
-main(int argc, char *argv[])
+/* Parse the program's arguments */
+static void
+parse_arguments(int argc, char *argv[])
 {
-	int max_fd, sock;
-	socklen_t len;
-	struct sockaddr_un local, remote;
 	int ch;
 	char unit = 'r';
 
@@ -972,7 +970,7 @@ main(int argc, char *argv[])
 				usage();
 			rt = *optarg;
 			break;
-		case 'u':		/* Measurement unit */
+		case 'u':	/* Measurement unit */
 			if (strlen(optarg) != 1 || strchr("smhdr", *optarg) == NULL)
 				usage();
 			unit = *optarg;
@@ -1019,6 +1017,173 @@ main(int argc, char *argv[])
 	}
 
 	socket_path = argv[0];
+}
+
+/*
+ * Handle the events associated with the following elements
+ * The passed socket
+ * Standard input
+ * Communicating clients
+ * Elapsed time values
+ * This is called in an endless loop to do the following things:
+ *   Setup select(2) arguments
+ *   Call select(2)
+ *   Process events that can be processed
+ */
+static void
+handle_events(int sock)
+{
+	fd_set source_fds;
+	fd_set sink_fds;
+	struct timeval wait_time, *waitptr;
+	bool set_waitptr;
+	int i, max_fd, nfds;
+	socklen_t len;
+	struct sockaddr_un remote;
+
+	/* Set the fds that interest us */
+	FD_ZERO(&source_fds);
+	FD_ZERO(&sink_fds);
+	waitptr = NULL;
+
+	max_fd = -1;
+	/* Read from standard input */
+	if (!reached_eof) {
+		FD_SET(STDIN_FILENO, &source_fds);
+		max_fd = STDIN_FILENO;
+	}
+
+	/* Accept incoming connection */
+	FD_SET(sock, &source_fds);
+	max_fd = MAX(sock, max_fd);
+
+	/* I/O with a client */
+	set_waitptr = false;
+	for (i = 0; i < MAX_CLIENTS; i++)
+		switch (clients[i].state) {
+		case s_inactive:		/* Free (unused or closed) */
+			break;
+		case s_wait_close:		/* Wait for the client to close the connection */
+		case s_read_command:		/* Waiting for a command (Q or R) to be read */
+			FD_SET(clients[i].fd, &source_fds);
+			max_fd = MAX(clients[i].fd, max_fd);
+			break;
+		case s_send_last:		/* Waiting for the last (before EOF) value to be written */
+			if (reached_eof) {
+				FD_SET(clients[i].fd, &sink_fds);
+				max_fd = MAX(clients[i].fd, max_fd);
+			}
+			break;
+		case s_send_current:		/* Waiting for a response to be written */
+			if (have_record) {
+				FD_SET(clients[i].fd, &sink_fds);
+				max_fd = MAX(clients[i].fd, max_fd);
+			} else if (time_window)
+				set_waitptr = true;
+			break;
+		case s_sending_response:	/* A response is being sent */
+			FD_SET(clients[i].fd, &sink_fds);
+			max_fd = MAX(clients[i].fd, max_fd);
+			break;
+		}
+
+	if (set_waitptr) {
+		/*
+		 * Find the oldest buffer that hasn't yet entered the time
+		 * window and arrange for select(2) to wait for it to enter.
+		 */
+		struct buffer *bp, *candidate_buffer = NULL;
+		struct timeval now, abs_rbegin_time;
+
+		gettimeofday(&now, NULL);
+		timersub(&now, &record_rbegin.t, &abs_rbegin_time);
+		DPRINTF("have to wait for a buffer to enter window %lld.%06d",
+			(long long)abs_rbegin_time.tv_sec, (int)abs_rbegin_time.tv_usec);
+		/*
+		 * rbegin = 10
+		 * 13            19     20    21  23
+		 * abs_rbegin    ...    ... tail  now
+		 */
+		for (bp = tail; bp && timercmp(&bp->timestamp, &abs_rbegin_time, >); bp = bp->prev)
+			candidate_buffer = bp;
+		if (candidate_buffer) {
+			/* There is a buffer worth waiting for */
+			waitptr = &wait_time;
+			timersub(&candidate_buffer->timestamp, &abs_rbegin_time, waitptr);
+			DPRINTF("waiting %lld.%06d for %p %lld.%06d to enter the window",
+				(long long)wait_time.tv_sec, (int)wait_time.tv_usec,
+				candidate_buffer,
+				(long long)candidate_buffer->timestamp.tv_sec,
+				(int)candidate_buffer->timestamp.tv_usec);
+		} else
+			DPRINTF("No candidate buffer found");
+	}
+
+	TIMESTAMP("Calling select");
+	if ((nfds = select(max_fd + 1, &source_fds, &sink_fds, NULL, waitptr)) < 0)
+		err(3, "select");
+	TIMESTAMP("Select returns");
+
+	if (FD_ISSET(STDIN_FILENO, &source_fds))
+		buffer_read();
+
+	if (waitptr && nfds == 0)
+		/* Expired timer; records may have entered the window */
+		update_current_record();
+
+	for (i = 0; i < MAX_CLIENTS; i++)
+		switch (clients[i].state) {
+		case s_inactive:		/* Free (unused or closed) */
+			break;
+		case s_read_command:		/* Waiting for a command (Q or R) to be read */
+		case s_wait_close:		/* Wait for the client to close the connection */
+			if (FD_ISSET(clients[i].fd, &source_fds))
+				read_command(&clients[i]);
+			break;
+		case s_send_last:		/* Waiting for the last (before EOF) value to be written */
+			/* FALLTHROUGH */
+		case s_send_current:		/* Waiting for a response to be written */
+			if (FD_ISSET(clients[i].fd, &sink_fds)) {
+				assert(have_record);
+				/* Start writing the most fresh last record */
+				clients[i].write_begin = current_record_begin;
+				clients[i].write_end = current_record_end;
+				clients[i].state = s_sending_response;
+				oldest_buffer_being_written =
+					oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
+				write_record(&clients[i], 1);
+			}
+			break;
+		case s_sending_response:	/* A response is being written */
+			if (FD_ISSET(clients[i].fd, &sink_fds))
+				write_record(&clients[i], 0);
+			break;
+		}
+
+	if (FD_ISSET(sock, &source_fds)) {
+		int rsock;
+		struct client *c;
+
+		len = sizeof(remote);
+		rsock = accept(sock, (struct sockaddr *)&remote, &len);
+		if (rsock == -1 && errno != EAGAIN)
+			err(5, "accept");
+
+		c = get_free_client();
+		non_block(rsock);
+		c->fd = rsock;
+		c->state = s_read_command;
+	}
+}
+
+int
+main(int argc, char *argv[])
+{
+	int sock;
+	socklen_t len;
+	struct sockaddr_un local;
+
+	parse_arguments(argc, argv);
 	(void)unlink(socket_path);
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -1036,145 +1201,6 @@ main(int argc, char *argv[])
 	non_block(sock);
 
 	reached_eof = false;
-	for (;;) {
-		fd_set source_fds;
-		fd_set sink_fds;
-		struct timeval wait_time, *waitptr;
-		bool set_waitptr;
-		int i, nfds;
-
-		/* Set the fds that interest us */
-		FD_ZERO(&source_fds);
-		FD_ZERO(&sink_fds);
-		waitptr = NULL;
-
-		max_fd = -1;
-		/* Read from standard input */
-		if (!reached_eof) {
-			FD_SET(STDIN_FILENO, &source_fds);
-			max_fd = STDIN_FILENO;
-		}
-
-		/* Accept incoming connection */
-		FD_SET(sock, &source_fds);
-		max_fd = MAX(sock, max_fd);
-
-		/* I/O with a client */
-		set_waitptr = false;
-		for (i = 0; i < MAX_CLIENTS; i++)
-			switch (clients[i].state) {
-			case s_inactive:		/* Free (unused or closed) */
-				break;
-			case s_wait_close:		/* Wait for the client to close the connection */
-			case s_read_command:		/* Waiting for a command (Q or R) to be read */
-				FD_SET(clients[i].fd, &source_fds);
-				max_fd = MAX(clients[i].fd, max_fd);
-				break;
-			case s_send_last:		/* Waiting for the last (before EOF) value to be written */
-				if (reached_eof) {
-					FD_SET(clients[i].fd, &sink_fds);
-					max_fd = MAX(clients[i].fd, max_fd);
-				}
-				break;
-			case s_send_current:		/* Waiting for a response to be written */
-				if (have_record) {
-					FD_SET(clients[i].fd, &sink_fds);
-					max_fd = MAX(clients[i].fd, max_fd);
-				} else if (time_window)
-					set_waitptr = true;
-				break;
-			case s_sending_response:	/* A response is being sent */
-				FD_SET(clients[i].fd, &sink_fds);
-				max_fd = MAX(clients[i].fd, max_fd);
-				break;
-			}
-
-		if (set_waitptr) {
-			/*
-			 * Find the oldest buffer that hasn't yet entered the time
-			 * window and arrange for select(2) to wait for it to enter.
-			 */
-			struct buffer *bp, *candidate_buffer = NULL;
-			struct timeval now, abs_rbegin_time;
-
-			gettimeofday(&now, NULL);
-			timersub(&now, &record_rbegin.t, &abs_rbegin_time);
-			DPRINTF("have to wait for a buffer to enter window %lld.%06d",
-				(long long)abs_rbegin_time.tv_sec, (int)abs_rbegin_time.tv_usec);
-			/*
-			 * rbegin = 10
-			 * 13            19     20    21  23
-			 * abs_rbegin    ...    ... tail  now
-			 */
-			for (bp = tail; bp && timercmp(&bp->timestamp, &abs_rbegin_time, >); bp = bp->prev)
-				candidate_buffer = bp;
-			if (candidate_buffer) {
-				/* There is a buffer worth waiting for */
-				waitptr = &wait_time;
-				timersub(&candidate_buffer->timestamp, &abs_rbegin_time, waitptr);
-				DPRINTF("waiting %lld.%06d for %p %lld.%06d to enter the window",
-					(long long)wait_time.tv_sec, (int)wait_time.tv_usec,
-					candidate_buffer,
-					(long long)candidate_buffer->timestamp.tv_sec,
-					(int)candidate_buffer->timestamp.tv_usec);
-			} else
-				DPRINTF("No candidate buffer found");
-		}
-
-		TIMESTAMP("Calling select");
-		if ((nfds = select(max_fd + 1, &source_fds, &sink_fds, NULL, waitptr)) < 0)
-			err(3, "select");
-		TIMESTAMP("Select returns");
-
-		if (FD_ISSET(STDIN_FILENO, &source_fds))
-			buffer_read();
-
-		if (waitptr && nfds == 0)
-			/* Expired timer; records may have entered the window */
-			update_current_record();
-
-		for (i = 0; i < MAX_CLIENTS; i++)
-			switch (clients[i].state) {
-			case s_inactive:		/* Free (unused or closed) */
-				break;
-			case s_read_command:		/* Waiting for a command (Q or R) to be read */
-			case s_wait_close:		/* Wait for the client to close the connection */
-				if (FD_ISSET(clients[i].fd, &source_fds))
-					read_command(&clients[i]);
-				break;
-			case s_send_last:		/* Waiting for the last (before EOF) value to be written */
-				/* FALLTHROUGH */
-			case s_send_current:		/* Waiting for a response to be written */
-				if (FD_ISSET(clients[i].fd, &sink_fds)) {
-					assert(have_record);
-					/* Start writing the most fresh last record */
-					clients[i].write_begin = current_record_begin;
-					clients[i].write_end = current_record_end;
-					clients[i].state = s_sending_response;
-					oldest_buffer_being_written =
-						oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
-					write_record(&clients[i], 1);
-				}
-				break;
-			case s_sending_response:		/* A response is being written */
-				if (FD_ISSET(clients[i].fd, &sink_fds))
-					write_record(&clients[i], 0);
-				break;
-			}
-
-		if (FD_ISSET(sock, &source_fds)) {
-			int rsock;
-			struct client *c;
-
-			len = sizeof(remote);
-			rsock = accept(sock, (struct sockaddr *)&remote, &len);
-			if (rsock == -1 && errno != EAGAIN)
-				err(5, "accept");
-
-			c = get_free_client();
-			non_block(rsock);
-			c->fd = rsock;
-			c->state = s_read_command;
-		}
-	}
+	for (;;)
+		handle_events(sock);
 }
