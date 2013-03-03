@@ -35,7 +35,7 @@ test-sgsh: sgsh sgsh-writeval sgsh-readval
 	./sgsh -p . example/word-properties.sh file://`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 
-test-tee: sgsh-writeval charcount test-tee.sh
+test-tee: sgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
 test-kvstore: test-kvstore.sh
