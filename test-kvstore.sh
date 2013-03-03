@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# Make versions that will exercise the buffers
-make clean
-make DEBUG=1
 
 # Helper functions {{{1
 # Repeat x times
@@ -55,8 +52,8 @@ testcase()
 section 'Simple tests' # {{{2
 
 testcase "Single record" # {{{3
-echo single record | ./sgsh-writeval testsocket 2>/dev/null &
-TRY="`./sgsh-readval -l testsocket 2>/dev/null `"
+echo single record | ./sgsh-writeval testsocket &
+TRY="`./sgsh-readval -l testsocket `"
 EXPECT='single record'
 check
 
@@ -419,5 +416,3 @@ done
 rm -f sorted-words read-words-*
 echo "OK"
 
-# Remove the debug build versions {{{1
-make clean

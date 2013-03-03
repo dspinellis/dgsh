@@ -39,7 +39,12 @@ test-tee: sgsh-writeval charcount test-tee.sh
 	./test-tee.sh
 
 test-kvstore: test-kvstore.sh
+	# Make versions that will exercise the buffers
+	$(MAKE) clean
+	$(MAKE) DEBUG=1
 	./test-kvstore.sh
+	# Remove the debug build versions {{{1
+	$(MAKE) clean
 
 sgsh: sgsh.pl
 	perl -c sgsh.pl
