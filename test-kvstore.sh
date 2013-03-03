@@ -15,7 +15,7 @@ fail()
 	./sgsh-readval -q testsocket 2>/dev/null
 	exit 1
 }
-	
+
 # Verify a test result
 # -n disables the termination of writeval
 check()
@@ -52,8 +52,8 @@ testcase()
 section 'Simple tests' # {{{2
 
 testcase "Single record" # {{{3
-echo single record | ./sgsh-writeval testsocket &
-TRY="`./sgsh-readval -l testsocket `"
+echo single record | ./sgsh-writeval testsocket 2>/dev/null &
+TRY="`./sgsh-readval -l testsocket 2>/dev/null `"
 EXPECT='single record'
 check
 

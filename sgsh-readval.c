@@ -56,7 +56,8 @@ usage(void)
 static int
 write_command(const char *name, char cmd)
 {
-	int s, len;
+	int s;
+	socklen_t len;
 	struct sockaddr_un remote;
 
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -65,8 +66,11 @@ write_command(const char *name, char cmd)
 	DPRINTF("Connecting to %s", name);
 
 	remote.sun_family = AF_UNIX;
+	if (strlen(name) >= sizeof(remote.sun_path) - 1)
+		errx(6, "Socket name [%s] must be shorter than %d characters",
+			name, sizeof(remote.sun_path));
 	strcpy(remote.sun_path, name);
-	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+	len = strlen(remote.sun_path) + 1 + sizeof(remote.sun_family);
 again:
 	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
 		if (retry_connection && errno == ENOENT) {
