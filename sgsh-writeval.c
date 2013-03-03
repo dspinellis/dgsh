@@ -736,7 +736,7 @@ write_record(struct client *c, int write_length)
 
 	iov[1].iov_base = c->write_begin.b->data + c->write_begin.pos;
 	iov[1].iov_len = towrite;
-	DPRINTF("Writing [%.*s]", iov[1].iov_len, (char *)iov[1].iov_base);
+	DPRINTF("Writing [%.*s]", (int)iov[1].iov_len, (char *)iov[1].iov_base);
 
 	if (write_length) {
 		snprintf(length, sizeof(length), CONTENT_LENGTH_FORMAT, content_length(c));
@@ -1186,7 +1186,7 @@ main(int argc, char *argv[])
 	parse_arguments(argc, argv);
 
 	if (strlen(socket_path) >= sizeof(local.sun_path) - 1)
-		errx(6, "Socket name [%s] must be shorter than %d characters",
+		errx(6, "Socket name [%s] must be shorter than %lu characters",
 			socket_path, sizeof(local.sun_path));
 
 	(void)unlink(socket_path);

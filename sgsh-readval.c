@@ -67,7 +67,7 @@ write_command(const char *name, char cmd)
 
 	remote.sun_family = AF_UNIX;
 	if (strlen(name) >= sizeof(remote.sun_path) - 1)
-		errx(6, "Socket name [%s] must be shorter than %d characters",
+		errx(6, "Socket name [%s] must be shorter than %lu characters",
 			name, sizeof(remote.sun_path));
 	strcpy(remote.sun_path, name);
 	len = strlen(remote.sun_path) + 1 + sizeof(remote.sun_family);
