@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <assert.h>
@@ -47,11 +48,13 @@
 
 #ifdef DEBUG
 /* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define DPRINTF(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
+#define DPRINTFX(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /* Small buffer size to catch errors with data spanning buffers */
 #define BUFFER_SIZE 5
 #else
+#define DPRINTFX(fmt, ...)
 #define DPRINTF(fmt, ...)
 
 /* PIPE_BUF is a reasonable size heuristic. */
@@ -78,8 +81,9 @@ static bool time_window;
  * use the range rbegin = 10 rend = 15
  */
 static union {
-	time_t t;	/* Used if time_window is true */
-	int r;		/* Used if time_window is false */
+	struct timeval t;	/* Used if time_window is true */
+	int r;			/* Used if time_window is false */
+	double d;		/* Used when parsing */
 } record_rbegin, record_rend;
 
 /* User options end here */
@@ -95,7 +99,7 @@ struct buffer {
 	struct buffer *next;
 	struct buffer *prev;
 	int size;				/* Actual number of bytes stored */
-	time_t timestamp;			/* Time the buffer was read */
+	struct timeval timestamp;		/* Time the buffer was read */
 	long long record_count;			/* Total number of complete records read (including this buffer)
 						   (0-based ordinal of first record not in buffer) */
 	long long byte_count;			/* Total number of bytes read (including this buffer) */
@@ -148,6 +152,7 @@ static const char *socket_path;
 static bool
 dpointer_increment(struct dpointer *dp)
 {
+	DPRINTF("%p pos=%d", dp->b, dp->pos);
 	dp->pos++;
 	if (dp->pos == dp->b->size) {
 		if (!dp->b->next)
@@ -155,6 +160,7 @@ dpointer_increment(struct dpointer *dp)
 		dp->b = dp->b->next;
 		dp->pos = 0;
 	}
+	DPRINTF("return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
@@ -162,6 +168,7 @@ dpointer_increment(struct dpointer *dp)
 static bool
 dpointer_decrement(struct dpointer *dp)
 {
+	DPRINTF("%p pos=%d", dp->b, dp->pos);
 	dp->pos--;
 	if (dp->pos == -1) {
 		if (!dp->b->prev) {
@@ -171,75 +178,114 @@ dpointer_decrement(struct dpointer *dp)
 		dp->b = dp->b->prev;
 		dp->pos = dp->b->size - 1;
 	}
+	DPRINTF("return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
 /*
  * Add to dp the specified number of bytes.
- * Precondition: Enough bytes are available
+ * Return true of OK.
+ * If not enough bytes are available return false
+ * and set dp to point to the last byte in the buffer.
  */
-static void
+static bool
 dpointer_add(struct dpointer *dp, int n)
 {
+	DPRINTF("%p pos=%d n=%d", dp->b, dp->pos, n);
 	while (n > 0) {
 		int add = MIN(dp->b->size - dp->pos, n);
 		n -= add;
 		dp->pos += add;
 		if (dp->pos == dp->b->size) {
-			assert(dp->b->next);
+			if (!dp->b->next)
+				return false;
 			dp->b = dp->b->next;
 			dp->pos = 0;
 		}
 	}
+	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	return true;
 }
 
 /*
  * Subtract from dp the specified number of bytes.
- * Precondition: Enough bytes are available
+ * Return true of OK.
+ * If not enough bytes are available return false
+ * and set dp to point beyond the first available byte.
  */
-static void
+static bool
 dpointer_subtract(struct dpointer *dp, int n)
 {
-	DPRINTF("Subtracting from %p (size=%d, prev=%p) %d", dp->b, dp->b->size, dp->b->prev, n);
+	DPRINTF("%p pos=%d n=%d", dp->b, dp->pos, n);
 	while (n > 0) {
 		int subtract = MIN((dp->pos + 1) - 0, n);
 		n -= subtract;
 		dp->pos -= subtract;
 		if (dp->pos == -1) {
-			assert(dp->b->prev);
+			if (!dp->b->prev)
+				return false;
 			dp->b = dp->b->prev;
 			dp->pos = dp->b->size - 1;
 		}
 	}
+	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	return true;
 }
+
 /*
- * Move back dp the specified number of records.
- * Precondition: Enough records are available and dp
- * points past the end of a record.
+ * Move back dp the specified number of rt-terminated records.
  * Postcondition: dp will point at the beginning of
  * a record.
+ * Return true if OK, false if not enough records are available
+ * Example: to move back over one complete record, the function will
+ * encounter two rts, and return with pos set immediately after the
+ * second one.
  */
-static void
+static bool
 dpointer_move_back(struct dpointer *dp, int n)
 {
-	DPRINTF("Moving back from %p.%d (size=%d, prev=%p) n=%d",
+	DPRINTF("%p pos=%d (size=%d, prev=%p) n=%d",
 		dp->b, dp->pos, dp->b->size, dp->b->prev, n);
 	for (;;) {
 		if (dpointer_decrement(dp)) {
 			if (dp->b->data[dp->pos] == rt && --n == -1) {
 				dpointer_increment(dp);
-				DPRINTF("dpoint_move_back returns: %p.%d (size=%d, prev=%p) n=%d",
-					dp->b, dp->pos, dp->b->size, dp->b->prev, n);
-				return;
+				DPRINTF("return %p pos=%d", dp->b, dp->pos);
+				return true;
 			}
 		} else {
 			if (--n == -1) {
-				DPRINTF("dpoint_move_back (at begin) returns: %p.%d (size=%d, prev=%p) n=%d",
-					dp->b, dp->pos, dp->b->size, dp->b->prev, n);
-				return;
+				DPRINTF("(at begin) returns: %p pos=%d", dp->b, dp->pos);
+				return true;
 			} else
-				assert(0);	/* Not enough records available */
+				return false;	/* Not enough records available */
 		}
+	}
+}
+
+/*
+ * Move forward dp the specified number of rt-terminated records.
+ * Postcondition: dp will point past the end of a record.
+ * Return true if OK, false if not enough records are available
+ */
+static bool
+dpointer_move_forward(struct dpointer *dp, int n)
+{
+	DPRINTF("%p pos=%d (size=%d, next=%p) n=%d",
+		dp->b, dp->pos, dp->b->size, dp->b->next, n);
+	/* Cover the case where we are already at the beginning of the record */
+	if (!dpointer_decrement(dp)) {
+		DPRINTF("return %p pos=%d (at head)", dp->b, dp->pos);
+		return true;
+	}
+	for (;;) {
+		if (dp->b->data[dp->pos] == rt && --n == -1) {
+			dpointer_increment(dp);
+			DPRINTF("return %p pos=%d", dp->b, dp->pos);
+			return true;
+		}
+		if (!dpointer_increment(dp))
+				return false;	/* Not enough records available */
 	}
 }
 
@@ -278,14 +324,14 @@ update_oldest_buffer(void)
 	DPRINTF("Oldest buffer beeing written is %p", oldest_buffer_being_written);
 }
 
-/* Free buffers preceding current_record_begin */
+/* Free buffers preceding in position the used buffer */
 static void
-free_unused_buffers(void)
+free_unused_buffers_by_position(struct buffer *used)
 {
 	struct buffer *b, *bnext;
 
 	for (b = head; b; b = bnext) {
-		if (b == current_record_begin.b || b == oldest_buffer_being_written) {
+		if (b == used || b == oldest_buffer_being_written) {
 			head = b;
 			b->prev = NULL;
 			DPRINTF("After freeing buffer(s) head=%p tail=%p", head, tail);
@@ -295,8 +341,41 @@ free_unused_buffers(void)
 		DPRINTF("Freeing buffer %p prev=%p next=%p", b, b->prev, b->next);
 		free(b);
 	}
-	/* Should have encountered current_record_begin.b along the way. */
+	/* Should have encountered used along the way. */
 	assert(0);
+}
+
+/* Free buffers preceding in time (older than) the used buffer */
+static void
+free_unused_buffers_by_time(struct timeval *used)
+{
+	struct buffer *b;
+
+	DPRINTF("Free buffers older than %lld.%06d",
+		(long long)used->tv_sec, (int)used->tv_usec);
+
+	/* Find first useful record */
+	for (b = head; b; b = b->next)
+		if (timercmp(&b->timestamp, used, >=) || b == oldest_buffer_being_written)
+			break;
+	assert(b);	/* Should have encountered used along the way. */
+
+	DPRINTF("First used buffer is %p", b);
+	/* Must now leave another record in case a record extends backward */
+	if (rl) {
+		int n = rl;
+
+		do {
+			b = b->prev;
+		} while (b && (n -= b->size) > 0);
+	} else {
+		do {
+			b = b->prev;
+		} while (b && !memchr(b->data, rt, b->size));
+	}
+	DPRINTF("After extending back %p", b);
+	if (b)
+		free_unused_buffers_by_position(b);
 }
 
 /* Return the content length of the client's buffer */
@@ -314,7 +393,7 @@ content_length(struct client *c)
 			length += bp->size;
 		length +=  c->write_end.pos;
 	}
-	DPRINTF("content_length returns %u", length);
+	DPRINTF("return %u", length);
 	return length;
 }
 
@@ -323,21 +402,26 @@ content_length(struct client *c)
  * record terminator.
  */
 static void
-update_current_record_by_rt(void)
+update_current_record_by_rt_number(void)
 {
+	bool ret;
+
 	/* Point to the end of read data */
 	current_record_end.b = tail;
 	current_record_end.pos = tail->size;
 
 	/* Remove data that forms an incomplete record */
-	dpointer_move_back(&current_record_end, 0);
+	ret = dpointer_move_back(&current_record_end, 0);
+	assert(ret);
 
 	/* Go back to the end of the specified record */
-	dpointer_move_back(&current_record_end, record_rbegin.r);
+	ret = dpointer_move_back(&current_record_end, record_rbegin.r);
+	assert(ret);
 
 	/* Go further back to the begin of the specified record */
 	current_record_begin = current_record_end;
-	dpointer_move_back(&current_record_begin, record_rend.r - record_rbegin.r);
+	ret = dpointer_move_back(&current_record_begin, record_rend.r - record_rbegin.r);
+	assert(ret);
 }
 
 /*
@@ -345,26 +429,153 @@ update_current_record_by_rt(void)
  * record length.
  */
 static void
-update_current_record_by_rl(void)
+update_current_record_by_rl_number(void)
 {
-	if (time_window) {
-		;/* XXX */
-	}
+	bool ret;
 
 	/* Point to the end of read data */
 	current_record_end.b = tail;
 	current_record_end.pos = tail->size;
 
 	/* Remove data that forms an incomplete record */
-	dpointer_subtract(&current_record_end, tail->byte_count % rl);
+	ret = dpointer_subtract(&current_record_end, tail->byte_count % rl);
+	assert(ret);
 
 	/* Go back to the end of the specified record */
-	dpointer_subtract(&current_record_end, record_rbegin.r * rl);
+	ret = dpointer_subtract(&current_record_end, record_rbegin.r * rl);
+	assert(ret);
 
 	/* Go further back to the begin of the specified record */
 	current_record_begin = current_record_end;
-	dpointer_subtract(&current_record_begin, (record_rend.r - record_rbegin.r) * rl);
+	ret = dpointer_subtract(&current_record_begin, (record_rend.r - record_rbegin.r) * rl);
+	assert(ret);
 }
+
+/*
+ * Update the pointers to the current response record to include the first
+ * record terminated record beginning in or after the begin buffer and
+ * the last record beginning in the end buffer.
+ * Set have_record to true if the corresponding data range exists
+ */
+static void
+update_current_record_by_rt_time(struct buffer *begin, struct buffer *end)
+{
+	/* Point to the begin of the data window */
+	current_record_begin.b = begin;
+	current_record_begin.pos = 0;
+
+	/* Go to the begin of a record starting at or after the buffer */
+	if (!dpointer_move_forward(&current_record_begin, 0))
+		return;
+
+	/* Point to the end of the data window */
+	current_record_end.b = end;
+	current_record_end.pos = end->size;
+	dpointer_decrement(&current_record_end);
+
+	/* Adjust data that forms an incomplete record */
+	if (!dpointer_move_forward(&current_record_end, 0)) {
+		current_record_end.b = end;
+		current_record_end.pos = end->size;
+		if (!dpointer_move_back(&current_record_end, 0))
+			return;
+		if (memcmp(&current_record_begin, &current_record_end, sizeof(struct dpointer)) == 0)
+			return;
+	}
+
+	have_record = true;
+}
+
+/*
+ * Update the pointers to the current response record to include the first
+ * fixed length record beginning in or after the begin buffer and
+ * the last record beginning in the end buffer.
+ * Set have_record to true if the corresponding data range exists
+ */
+static void
+update_current_record_by_rl_time(struct buffer *begin, struct buffer *end)
+{
+	int mod;
+
+	DPRINTF("Adjusting begin");
+	current_record_begin.b = begin;
+	current_record_begin.pos = 0;
+	if (begin->prev && (mod = begin->prev->byte_count % rl) != 0)
+		/*
+		 * Example: rl == 10, prev->byte_count == 53
+		 * mod = 3, dpointer_add(..., 7)
+		 */
+		if (!dpointer_add(&current_record_begin, rl - mod))
+			return;		/* Next record not there */
+
+	DPRINTF("Adjusting end");
+	current_record_end.b = end;
+	current_record_end.pos = end->size;
+	if ((mod = end->byte_count % rl) != 0) {
+		/*
+		 * Example: rl == 10, end->byte_count == 82
+		 * mod = 2, dpointer_add(..., 8)
+		 * Decrement and increment to convert between an iterator
+		 * pointing beyond the range, and valid positions that dpointer_add
+		 * can handle correctly.
+		 */
+		if (!dpointer_decrement(&current_record_end) ||
+		    !dpointer_add(&current_record_end, rl - mod)) {
+			DPRINTF("incomplete last record");
+			/* Try going back */
+			current_record_end.b = end;
+			current_record_end.pos = end->size;
+			if (!dpointer_subtract(&current_record_end, mod))
+				return;
+		} else
+			(void)dpointer_increment(&current_record_end);
+	}
+
+	if (memcmp(&current_record_begin, &current_record_end, sizeof(struct dpointer)) == 0)
+		return;
+	have_record = true;
+}
+
+#ifdef DEBUG
+/* Dump the buffer list using relative timestamps */
+static void
+dump_buffer_times(void)
+{
+	struct buffer *bp;
+	struct timeval now, t;
+
+	gettimeofday(&now, NULL);
+
+	DPRINTFX("update_current_record: now=%lld.%06d rend=%lld.%06d rbegin=%lld.%06d",
+		(long long)now.tv_sec, (int)now.tv_usec,
+		(long long)record_rend.t.tv_sec, (int)record_rend.t.tv_usec,
+		(long long)record_rbegin.t.tv_sec, (int)record_rbegin.t.tv_usec);
+	for (bp = head; bp != NULL; bp = bp->next) {
+		timersub(&now, &bp->timestamp, &t);
+
+		DPRINTFX("\t%p size=%3d byte_count=%5lld Tr=%3lld.%06d Ta=%3lld.%06d [%.*s]",
+			bp, bp->size, bp->byte_count,
+			(long long)t.tv_sec, (int)t.tv_usec,
+			(long long)bp->timestamp.tv_sec, (int)bp->timestamp.tv_usec,
+			bp->size, bp->data);
+	}
+}
+
+static void
+timestamp(const char *msg)
+{
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	DPRINTFX("%lld.%06d %s", (long long)now.tv_sec, (int)now.tv_usec, msg);
+}
+
+#define TIMESTAMP(x) timestamp(x)
+#define DUMP_BUFFER_TIMES() dump_buffer_times()
+
+#else
+#define DUMP_BUFFER_TIMES()
+#define TIMESTAMP(x)
+#endif
 
 /*
  * Update the pointers to the current response record.
@@ -373,21 +584,77 @@ update_current_record_by_rl(void)
 static void
 update_current_record(void)
 {
-	assert(tail);
-	DPRINTF("update_current_record tail->record_count=%lld record_rend.r=%d",
-		tail->record_count, record_rend.r);
-	if (tail->record_count - record_rend.r < 0)
-		/* Not enough records */
-		return;
+	assert(head && tail);
 
-	if (rl == 0)
-		update_current_record_by_rt();
-	else
-		update_current_record_by_rl();
-	DPRINTF("update_current_record: begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
-	DPRINTF("update_current_record: end b=%p pos=%d", current_record_end.b, current_record_end.pos);
-	have_record = true;
-	free_unused_buffers();
+	if (time_window) {
+		struct timeval now, tbegin, tend;	/* In absolute time units */
+		struct buffer *bbegin, *bend, *begin_candidate = NULL;
+
+		DUMP_BUFFER_TIMES();
+		have_record = false;		/* Records in the window come and go */
+
+		/* Convert to absolute time */
+		gettimeofday(&now, NULL);
+		timersub(&now, &record_rend.t, &tbegin);
+
+		DPRINTF("tail->timestamp=%lld.%06d tbegin=%lld.%06d",
+			(long long)tail->timestamp.tv_sec, (int)tail->timestamp.tv_usec,
+			(long long)tbegin.tv_sec, (int)tbegin.tv_usec);
+
+		if (timercmp(&tail->timestamp, &tbegin, <)) {
+			free_unused_buffers_by_position(tail);
+			return;		/* No records fresh enough */
+		}
+
+		timersub(&now, &record_rbegin.t, &tend);
+
+		DPRINTF("head->timestamp=%lld.%06d tend=%lld.%06d",
+			(long long)head->timestamp.tv_sec, (int)head->timestamp.tv_usec,
+			(long long)tend.tv_sec, (int)tend.tv_usec);
+
+		if (timercmp(&head->timestamp, &tend, >))
+			return;		/* No records old enough */
+
+		/* Find the record range */
+		DPRINTF("Looking for record range");
+		for (bend = tail; timercmp(&bend->timestamp, &tend, >); bend = bend->prev)
+			;
+		DPRINTF("bend=%p %lld.%06d", bend, (long long)bend->timestamp.tv_sec, (int)bend->timestamp.tv_usec);
+
+		for (bbegin = bend; bbegin && timercmp(&bbegin->timestamp, &tbegin, >); bbegin = bbegin->prev)
+			begin_candidate = bbegin;
+
+		if (!begin_candidate) {
+			free_unused_buffers_by_time(&tbegin);
+			return;		/* No records within the window */
+		}
+		bbegin = begin_candidate;
+		DPRINTF("bbegin=%p %lld.%06d", bbegin, (long long)bbegin->timestamp.tv_sec, (int)bbegin->timestamp.tv_usec);
+
+		if (rl)
+			update_current_record_by_rl_time(bbegin, bend);
+		else
+			update_current_record_by_rt_time(bbegin, bend);
+
+		free_unused_buffers_by_time(&tbegin);
+	} else {
+		DPRINTF("tail->record_count=%lld record_rend.r=%d",
+			tail->record_count, record_rend.r);
+		if (tail->record_count - record_rend.r < 0)
+			/* Not enough records */
+			return;
+
+		if (rl)
+			update_current_record_by_rl_number();
+		else
+			update_current_record_by_rt_number();
+		have_record = true;
+		free_unused_buffers_by_position(current_record_begin.b);
+	}
+
+	DPRINTF("have_record=%d", have_record);
+	DPRINTF("begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
+	DPRINTF("end b=%p pos=%d", current_record_end.b, current_record_end.pos);
 }
 
 /*
@@ -430,10 +697,11 @@ read_command(struct client *c)
 			exit(0);
 		case 'C':
 			c->state = s_send_current;
+			if (time_window)
+				update_current_record();	/* Refresh have_record */
 			break;
 		default:
-			fprintf(stderr, "Unknown command [%c]\n", cmd);
-			exit(1);
+			errx(5, "Unknown command [%c]", cmd);
 		}
 	}
 }
@@ -468,6 +736,7 @@ write_record(struct client *c, int write_length)
 
 	iov[1].iov_base = c->write_begin.b->data + c->write_begin.pos;
 	iov[1].iov_len = towrite;
+	DPRINTF("Writing [%.*s]", iov[1].iov_len, (char *)iov[1].iov_base);
 
 	if (write_length) {
 		snprintf(length, sizeof(length), CONTENT_LENGTH_FORMAT, content_length(c));
@@ -487,10 +756,8 @@ write_record(struct client *c, int write_length)
 		}
 
 	if (write_length) {
-		if (n < CONTENT_LENGTH_DIGITS) {
-			fprintf(stderr, "Short content length record write: %d\n", n);
-			exit(1);
-		}
+		if (n < CONTENT_LENGTH_DIGITS)
+			errx(5, "Short content length record write: %d", n);
 		n -= CONTENT_LENGTH_DIGITS;
 	}
 
@@ -526,7 +793,7 @@ void
 set_buffer_counters(struct buffer *b)
 {
 	if (time_window)
-		time(&b->timestamp);
+		gettimeofday(&b->timestamp, NULL);
 
 	if (rl == 0) {
 		/* Count records using RS */
@@ -550,6 +817,7 @@ static void
 buffer_read(void)
 {
 	struct buffer *b;
+	struct timeval now, abs_rend_time;
 
 	if ((b = malloc(sizeof(struct buffer))) == NULL)
 		err(1, "Unable to allocate read buffer");
@@ -568,26 +836,22 @@ buffer_read(void)
 		break;
 	case 0:			/* EOF */
 		reached_eof = true;
+		if (time_window) {
+			/* Make abs_rend_time the latest absolute time that interests us */
+			gettimeofday(&now, NULL);
+			timeradd(&now, &record_rend.t, &abs_rend_time);
+		}
 		if (have_record) {
 			free(b);
-			break;
-		}
-		if (head == NULL) {
-			/* Setup an empty record */
+		} else if (!time_window || timercmp(&tail->timestamp, &abs_rend_time, >)) {
+			/* Setup an empty record, if there will never be a record to send */
 			b->size = 0;
 			b->prev = b->next = NULL;
 			head = tail = b;
 			current_record_begin.b = current_record_end.b = b;
 			current_record_begin.pos = current_record_end.pos = 0;
-		} else {
-			free(b);
-			/* Setup all input as a record */
-			current_record_begin.b = head;
-			current_record_end.b = tail;
-			current_record_begin.pos = 0;
-			current_record_end.pos = tail->size;
+			have_record = true;
 		}
-		have_record = true;
 		break;
 	default:		/* Have data. Insert buffer at the end of the queue. */
 		b->prev = tail;
@@ -632,9 +896,7 @@ get_free_client(void)
 	for (i = 0; i < MAX_CLIENTS; i++)
 		if (clients[i].state == s_inactive)
 			return &clients[i];
-	fprintf(stderr, "%s: Maximum number of clients exceeded for socket %s\n",
-		program_name, socket_path);
-	exit(1);
+	errx(5, "Maximum number of clients exceeded for socket %s", socket_path);
 }
 
 static void
@@ -645,6 +907,38 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * Parse a number >= 0
+ * Exit with an error if an error occurs
+ */
+static double
+parse_double(const char *s)
+{
+	char *endptr;
+	double d;
+
+	errno = 0;
+	d = strtod(s, &endptr);
+	if (endptr - s != strlen(s) || *s == 0)
+		errx(6, "Error in parsing [%s] as a number", s);
+	if (errno != 0)
+		err(6, "[%s]", s);
+	if (d < 0)
+		errx(6, "Argument [%s] cannot be negative", s);
+	return d;
+}
+
+/* Return the passed double as a timeval */
+struct timeval
+double_to_timeval(double d)
+{
+	struct timeval t;
+
+	t.tv_sec = (time_t)d;
+	t.tv_usec = (int)((d - t.tv_sec) * 1e6);
+	return t;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -652,24 +946,20 @@ main(int argc, char *argv[])
 	socklen_t len;
 	struct sockaddr_un local, remote;
 	int ch;
-	char unit;
+	char unit = 'r';
 
 	program_name = argv[0];
 	/* By default return the last record read */
-	record_rbegin.r = 0;
-	record_rend.r = 1;
+	record_rbegin.d = 0;
+	record_rend.d = 1;
 
 	while ((ch = getopt(argc, argv, "b:e:l:t:u:")) != -1) {
 		switch (ch) {
 		case 'b':	/* Begin record, measured from the end (0) */
-			record_rend.r = atoi(optarg);
-			if (record_rend.r < 0)
-				usage();
+			record_rend.d = parse_double(optarg);
 			break;
 		case 'e':	/* End record, measured from the end (0) */
-			record_rbegin.r = atoi(optarg);
-			if (record_rbegin.r < 0)
-				usage();
+			record_rbegin.d = parse_double(optarg);
 			break;
 		case 'l':	/* Fixed record length */
 			rl = atoi(optarg);
@@ -698,6 +988,36 @@ main(int argc, char *argv[])
 	if (argc != 1)
 		usage();
 
+	switch (unit) {
+	case 'r':
+		if (record_rbegin.d != (int)record_rbegin.d ||
+		    record_rend.d != (int)record_rend.d)
+		    	errx(6, "Record numbers must be integers");
+		record_rbegin.r = (int)record_rbegin.d;
+		record_rend.r = (int)record_rend.d;
+		time_window = false;
+		break;
+	case 'd':
+		record_rbegin.d *= 24;
+		record_rend.d *= 24;
+		/* FALLTHROUGH */
+	case 'h':
+		record_rbegin.d *= 60;
+		record_rend.d *= 60;
+		/* FALLTHROUGH */
+	case 'm':
+		record_rbegin.d *= 60;
+		record_rend.d *= 60;
+		/* FALLTHROUGH */
+	case 's':
+		record_rbegin.t = double_to_timeval(record_rbegin.d);
+		record_rend.t = double_to_timeval(record_rend.d);
+		if (!timercmp(&record_rbegin.t, &record_rend.t, <))
+			errx(6, "Begin time must be older than end time");
+		time_window = true;
+		break;
+	}
+
 	socket_path = argv[0];
 	(void)unlink(socket_path);
 
@@ -719,11 +1039,14 @@ main(int argc, char *argv[])
 	for (;;) {
 		fd_set source_fds;
 		fd_set sink_fds;
-		int i;
+		struct timeval wait_time, *waitptr;
+		bool set_waitptr;
+		int i, nfds;
 
 		/* Set the fds that interest us */
 		FD_ZERO(&source_fds);
 		FD_ZERO(&sink_fds);
+		waitptr = NULL;
 
 		max_fd = -1;
 		/* Read from standard input */
@@ -737,6 +1060,7 @@ main(int argc, char *argv[])
 		max_fd = MAX(sock, max_fd);
 
 		/* I/O with a client */
+		set_waitptr = false;
 		for (i = 0; i < MAX_CLIENTS; i++)
 			switch (clients[i].state) {
 			case s_inactive:		/* Free (unused or closed) */
@@ -756,7 +1080,8 @@ main(int argc, char *argv[])
 				if (have_record) {
 					FD_SET(clients[i].fd, &sink_fds);
 					max_fd = MAX(clients[i].fd, max_fd);
-				}
+				} else if (time_window)
+					set_waitptr = true;
 				break;
 			case s_sending_response:	/* A response is being sent */
 				FD_SET(clients[i].fd, &sink_fds);
@@ -764,13 +1089,49 @@ main(int argc, char *argv[])
 				break;
 			}
 
-		DPRINTF("Calling select");
-		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
+		if (set_waitptr) {
+			/*
+			 * Find the oldest buffer that hasn't yet entered the time
+			 * window and arrange for select(2) to wait for it to enter.
+			 */
+			struct buffer *bp, *candidate_buffer = NULL;
+			struct timeval now, abs_rbegin_time;
+
+			gettimeofday(&now, NULL);
+			timersub(&now, &record_rbegin.t, &abs_rbegin_time);
+			DPRINTF("have to wait for a buffer to enter window %lld.%06d",
+				(long long)abs_rbegin_time.tv_sec, (int)abs_rbegin_time.tv_usec);
+			/*
+			 * rbegin = 10
+			 * 13            19     20    21  23
+			 * abs_rbegin    ...    ... tail  now
+			 */
+			for (bp = tail; bp && timercmp(&bp->timestamp, &abs_rbegin_time, >); bp = bp->prev)
+				candidate_buffer = bp;
+			if (candidate_buffer) {
+				/* There is a buffer worth waiting for */
+				waitptr = &wait_time;
+				timersub(&candidate_buffer->timestamp, &abs_rbegin_time, waitptr);
+				DPRINTF("waiting %lld.%06d for %p %lld.%06d to enter the window",
+					(long long)wait_time.tv_sec, (int)wait_time.tv_usec,
+					candidate_buffer,
+					(long long)candidate_buffer->timestamp.tv_sec,
+					(int)candidate_buffer->timestamp.tv_usec);
+			} else
+				DPRINTF("No candidate buffer found");
+		}
+
+		TIMESTAMP("Calling select");
+		if ((nfds = select(max_fd + 1, &source_fds, &sink_fds, NULL, waitptr)) < 0)
 			err(3, "select");
-		DPRINTF("Select returns");
+		TIMESTAMP("Select returns");
 
 		if (FD_ISSET(STDIN_FILENO, &source_fds))
 			buffer_read();
+
+		if (waitptr && nfds == 0)
+			/* Expired timer; records may have entered the window */
+			update_current_record();
 
 		for (i = 0; i < MAX_CLIENTS; i++)
 			switch (clients[i].state) {
@@ -796,10 +1157,8 @@ main(int argc, char *argv[])
 				}
 				break;
 			case s_sending_response:		/* A response is being written */
-				if (FD_ISSET(clients[i].fd, &sink_fds)) {
-					assert(have_record);
+				if (FD_ISSET(clients[i].fd, &sink_fds))
 					write_record(&clients[i], 0);
-				}
 				break;
 			}
 
