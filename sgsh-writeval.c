@@ -1184,14 +1184,19 @@ main(int argc, char *argv[])
 	struct sockaddr_un local;
 
 	parse_arguments(argc, argv);
+
+	if (strlen(socket_path) >= sizeof(local.sun_path) - 1)
+		errx(6, "Socket name [%s] must be shorter than %d characters",
+			socket_path, sizeof(local.sun_path));
+
 	(void)unlink(socket_path);
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		err(2, "Error creating socket");
 
 	local.sun_family = AF_UNIX;
-	strncpy(local.sun_path, socket_path, sizeof(local.sun_path));
-	len = strlen(local.sun_path) + sizeof(local.sun_family);
+	strcpy(local.sun_path, socket_path);
+	len = strlen(local.sun_path) + 1 + sizeof(local.sun_family);
 	if (bind(sock, (struct sockaddr *)&local, len) == -1)
 		err(3, "Error binding socket to Unix domain address %s", argv[1]);
 
