@@ -80,4 +80,4 @@ regression-seed:
 	done
 
 clean:
-	rm -f *.o *.exe
+	rm -f *.o *.exe $(EXECUTABLES)
