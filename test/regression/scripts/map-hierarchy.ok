@@ -1,6 +1,6 @@
 #!/bin/sh
 # Automatically generated file
-# Source file example/map_hierarchy.sh
+# Source file example/map-hierarchy.sh
 
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
