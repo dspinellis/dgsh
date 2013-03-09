@@ -1187,7 +1187,7 @@ main(int argc, char *argv[])
 
 	if (strlen(socket_path) >= sizeof(local.sun_path) - 1)
 		errx(6, "Socket name [%s] must be shorter than %lu characters",
-			socket_path, sizeof(local.sun_path));
+			socket_path, (long unsigned)sizeof(local.sun_path));
 
 	(void)unlink(socket_path);
 
