@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,16 +52,16 @@ struct buffer {
 };
 
 /* Scatter the output across the files, rather than copying it. */
-static int opt_scatter;
+static bool opt_scatter = false;
 
 /* Split scattered data on line boundaries */
-static int opt_line;
+static bool opt_line = false;
 
 /* Allocated bufffer information */
 static int buffers_allocated, buffers_freed, max_buffers_allocated;
 
 /* Set to true when we reach EOF on input */
-static int reached_eof = 0;
+static bool reached_eof = false;
 
 /* Information regarding the files we write to */
 struct sink_info {
@@ -68,7 +69,7 @@ struct sink_info {
 	int fd;			/* Output file descriptor */
 	off_t pos_written;	/* Position up to which written */
 	off_t pos_to_write;	/* Position up to which to write */
-	int active;		/* True if this sink is still active */
+	bool active;		/* True if this sink is still active */
 };
 
 /*
@@ -258,7 +259,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	off_t pos_assigned = 0;
 	size_t available_data, data_per_sink;
 	size_t data_to_assign = 0;
-	int use_reliable = 0;
+	bool use_reliable = false;
 
 	/* Easy case: distribute to all files. */
 	if (!opt_scatter) {
@@ -333,7 +334,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 						 * scan further forward, and can defer writing the
 						 * last chunk, until more data is read.
 						 */
-						use_reliable = 1;
+						use_reliable = true;
 						goto reliable;
 					}
 				}
@@ -416,7 +417,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				switch (errno) {
 				/* EPIPE is acceptable, for the sink's reader can terminate early. */
 				case EPIPE:
-					si->active = 0;
+					si->active = false;
 					(void)close(si->fd);
 					#ifdef DEBUG
 					fprintf(stderr, "EPIPE for %s\n", si->name);
@@ -527,7 +528,7 @@ main(int argc, char *argv[])
 	int ch;
 	const char *progname = argv[0];
 	enum state state = read_ob;
-	int opt_memory_stats = 0;
+	bool opt_memory_stats = false;
 
 	while ((ch = getopt(argc, argv, "b:silm")) != -1) {
 		switch (ch) {
@@ -538,13 +539,13 @@ main(int argc, char *argv[])
 			state = read_ib;
 			break;
 		case 'l':
-			opt_line = 1;
+			opt_line = true;
 			break;
 		case 'm':	/* Provide memory use statistics on termination */
-			opt_memory_stats = 1;
+			opt_memory_stats = true;
 			break;
 		case 's':
-			opt_scatter = 1;
+			opt_scatter = true;
 			break;
 		case '?':
 		default:
@@ -561,7 +562,7 @@ main(int argc, char *argv[])
 		/* Output to stdout */
 		files[0].fd = max_fd = STDOUT_FILENO;
 		files[0].name = "standard output";
-		files[0].active = 1;
+		files[0].active = true;
 		files[0].pos_written = files[0].pos_to_write = 0;
 		non_block(files[0].fd, files[0].name);
 		argc = 1;
@@ -574,7 +575,7 @@ main(int argc, char *argv[])
 				err(2, "Error opening %s", argv[i]);
 			max_fd = MAX(files[i].fd, max_fd);
 			files[i].name = argv[i];
-			files[i].active = 1;
+			files[i].active = true;
 			files[i].pos_written = files[i].pos_to_write = 0;
 			non_block(files[i].fd, files[i].name);
 		}
@@ -645,7 +646,7 @@ main(int argc, char *argv[])
 						/* No more data to write; close fd to avoid deadlocks downstream. */
 						if (close(si->fd) == -1)
 							err(2, "Error closing %s", si->name);
-						si->active = 0;
+						si->active = false;
 					}
 				}
 			if (active_fds == 0) {
@@ -663,7 +664,7 @@ main(int argc, char *argv[])
 			if (FD_ISSET(STDIN_FILENO, &source_fds))
 				switch (source_read(&source_fds)) {
 				case -1:
-					reached_eof = 1;
+					reached_eof = true;
 					state = drain_ib;
 					break;
 				case 0:
@@ -678,7 +679,7 @@ main(int argc, char *argv[])
 			if (FD_ISSET(STDIN_FILENO, &source_fds))
 				switch (source_read(&source_fds)) {
 				case -1:
-					reached_eof = 1;
+					reached_eof = true;
 					state = drain_ob;
 					break;
 				case 0:
