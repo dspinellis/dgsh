@@ -73,7 +73,7 @@ test-regression:
 	done
 
 # Seed the regression test data
-regression-seed:
+seed-regression:
 	for i in example/*.sh ; do \
 		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
 		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
