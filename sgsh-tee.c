@@ -113,9 +113,7 @@ memory_allocate(int pool)
 	for (i = allocated_pool_end; i <= pool; i++) {
 		if ((buffers[i] = malloc(buffer_size)) == NULL)
 			err(1, "Unable to allocate %d bytes for buffer %d", buffer_size, i);
-		#ifdef DEBUG
-		fprintf(stderr, "Allocated buffer %d to %p\n", i, buffers[i]);
-		#endif
+		DPRINTF("Allocated buffer %d to %p", i, buffers[i]);
 		buffers_allocated++;
 		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 	}
@@ -137,9 +135,9 @@ memory_free(off_t pos)
 		buffers_freed++;
 		#ifdef DEBUG
 		buffers[i] = NULL;
-		fprintf(stderr, "Freed buffer %d (pos = %ld, begin=%d end=%d)\n",
-			i, (long)pos, pool_begin, pool_end);
 		#endif
+		DPRINTF("Freed buffer %d (pos = %ld, begin=%d end=%d)",
+			i, (long)pos, pool_begin, pool_end);
 	}
 	pool_begin = pool_end;
 }
@@ -158,10 +156,8 @@ source_buffer(off_t pos)
 	memory_allocate(pool);
 	b.p = buffers[pool] + pool_offset;
 	b.size = buffer_size - pool_offset;
-	#ifdef DEBUG
-	fprintf(stderr, "Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
+	DPRINTF("Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
 		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
-	#endif
 	return b;
 }
 
@@ -179,10 +175,8 @@ sink_buffer(struct sink_info *si)
 
 	b.p = buffers[pool] + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
-	#ifdef DEBUG
-	fprintf(stderr, "Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p\n",
+	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
 		(long)si->pos_written, (long)si->pos_to_write, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
-	#endif
 	return b;
 }
 
@@ -207,10 +201,8 @@ sink_buffer_length(off_t start, off_t end)
 	size_t pool_offset = start % buffer_size;
 	size_t source_bytes = end - start;
 
-	#ifdef DEBUG
-	fprintf(stderr, "sink_buffer_length(%ld, %ld) = %ld\n",
+	DPRINTF("sink_buffer_length(%ld, %ld) = %ld",
 		(long)start, (long)end,  (long)MIN(buffer_size - pool_offset, source_bytes));
-	#endif
 	return MIN(buffer_size - pool_offset, source_bytes);
 }
 
@@ -229,17 +221,13 @@ source_read(fd_set *source_fds)
 	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
-			#ifdef DEBUG
-			fprintf(stderr, "EAGAIN on standard input\n");
-			#endif
+			DPRINTF("EAGAIN on standard input");
 			return 0;
 		default:
 			err(3, "Read from standard input");
 		}
 	source_pos_read += n;
-	#ifdef DEBUG
-	fprintf(stderr, "Read %d out of %d bytes\n", n, b.size);
-	#endif
+	DPRINTF("Read %d out of %d bytes", n, b.size);
 	/* Return -1 on EOF */
 	return n ? n : -1;
 }
@@ -293,10 +281,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 		if (si->pos_written != si->pos_to_write || !FD_ISSET(si->fd, sink_fds))
 			continue;
 
-		#ifdef DEBUG
-		fprintf(stderr, "pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld\n",
+		DPRINTF("pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld",
 			(long)pos_assigned, (long)source_pos_read, (long)available_data, available_sinks, (long)data_per_sink);
-		#endif
 		/* First file also gets the remainder bytes. */
 		if (data_to_assign == 0)
 			data_to_assign = sink_buffer_length(pos_assigned,
@@ -357,10 +343,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 						} else {
 							/* No newline found in buffer; defer writing. */
 							si->pos_to_write = pos_assigned;
-							#ifdef DEBUG
-							fprintf(stderr, "scatter to file[%d] no newline from %ld to %ld\n",
+							DPRINTF("scatter to file[%d] no newline from %ld to %ld",
 								si - files, (long)pos_assigned, (long)data_end);
-							#endif
 							return;
 						}
 					}
@@ -378,10 +362,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 		} else
 			pos_assigned += data_to_assign;
 		si->pos_to_write = pos_assigned;
-		#ifdef DEBUG
-		fprintf(stderr, "scatter to file[%d] pos_written=%ld pos_to_write=%ld\n",
+		DPRINTF("scatter to file[%d] pos_written=%ld pos_to_write=%ld",
 			si - files, (long)si->pos_written, (long)si->pos_to_write);
-		#endif
 	}
 }
 
@@ -416,14 +398,10 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				case EPIPE:
 					si->active = false;
 					(void)close(si->fd);
-					#ifdef DEBUG
-					fprintf(stderr, "EPIPE for %s\n", si->name);
-					#endif
+					DPRINTF("EPIPE for %s", si->name);
 					break;
 				case EAGAIN:
-					#ifdef DEBUG
-					fprintf(stderr, "EAGAIN for %s\n", si->name);
-					#endif
+					DPRINTF("EAGAIN for %s", si->name);
 					n = 0;
 					break;
 				default:
@@ -433,18 +411,14 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				si->pos_written += n;
 				written += n;
 			}
-			#ifdef DEBUG
-			fprintf(stderr, "Wrote %d out of %d bytes for file %s\n",
+			DPRINTF("Wrote %d out of %d bytes for file %s",
 				n, b.size, si->name);
-			#endif
 		}
 		if (si->active)
 			min_pos = MIN(min_pos, si->pos_written);
 	}
 	memory_free(min_pos);
-	#ifdef DEBUG
-	fprintf(stderr, "Wrote %d total bytes\n", written);
-	#endif
+	DPRINTF("Wrote %d total bytes", written);
 	return written;
 }
 
@@ -642,10 +616,8 @@ main(int argc, char *argv[])
 					if (si->pos_written < si->pos_to_write)
 						active_fds++;
 					else {
-						#ifdef DEBUG
-						fprintf(stderr, "Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld\n",
-						si->name, (long)si->pos_written, (long)source_pos_read);
-						#endif
+						DPRINTF("Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld",
+							si->name, (long)si->pos_written, (long)source_pos_read);
 						/* No more data to write; close fd to avoid deadlocks downstream. */
 						if (close(si->fd) == -1)
 							err(2, "Error closing %s", si->name);
