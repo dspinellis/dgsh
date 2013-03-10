@@ -543,7 +543,7 @@ scatter_code_and_pipes_code
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= ' |' unless $c->{body} eq '';
-				$code .= " ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} $c->{store_flags} &\n";
+				$code .= " ${opt_p}sgsh-writeval $c->{store_flags} \$SGDIR/$c->{store_name} &\n";
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
