@@ -93,11 +93,11 @@ my %defined_gather_file;
 # Map containing all used gather file names
 my %used_gather_file;
 
-# Map containing all defined gather variable names
-my %defined_gather_variable;
+# Map containing all defined gather store names
+my %defined_gather_store;
 
-# Map containing all used gather variable names
-my %used_gather_variable;
+# Map containing all used gather store names
+my %used_gather_store;
 
 # Map from /stream/ file names into an array of named pipes
 # For code and the graph structure
@@ -136,7 +136,7 @@ my $SCATTER_INPUT = q!^[^'#"]*-\|!;
 # .|
 my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |store:name
-my $GATHER_VARIABLE_OUTPUT = q!\|\s*store\:(\w+)\s*(\#.*)?$!;
+my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*(\#.*)?$!;
 # |>/stream/name
 my $GATHER_FILE_OUTPUT = q!\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
 # |.
@@ -298,16 +298,16 @@ parse_scatter_command_sequence
 # scatter_command = ('.|' | '-|')
 #	[body]
 #	('|>' filename |
-#	 '|=' varname |
+#	 '|store:' varname |
 #	 '|{' flags scatter_command_sequence |
 #	 '|.')
 # The return is a hash with the following elements:
 # input: 		none|scatter
 # body:			Command's text
-# output:		none|scatter|file|variable
+# output:		none|scatter|file|store
 # scatter_commands:	When output = scatter
 # scatter_flags:	When output = scatter
-# variable_name:	When output = variable
+# store_name:		When output = store
 # file_name:		When output = file
 sub
 parse_scatter_command
@@ -347,13 +347,13 @@ parse_scatter_command
 			return \%command;
 		}
 
-		# Gather variable output endpoint: |=
-		if (s/$GATHER_VARIABLE_OUTPUT//o) {
+		# Gather store output endpoint: |store:
+		if (s/$GATHER_STORE_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Variable \$$1 already used for output") if (defined($defined_gather_variable{$1}));
-			$defined_gather_variable{$1} = 1;
-			$command{output} = 'variable';
-			$command{variable_name} = $1;
+			error("Variable \$$1 already used for output") if (defined($defined_gather_store{$1}));
+			$defined_gather_store{$1} = 1;
+			$command{output} = 'store';
+			$command{store_name} = $1;
 			$command{body} .= $_;
 			return \%command;
 		}
@@ -538,10 +538,10 @@ scatter_code_and_pipes_code
 			} elsif ($c->{output} eq 'file') {
 				$code .= " >\$SGDIR/npfo-$c->{file_name}.$p &\n";
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
-			} elsif ($c->{output} eq 'variable') {
+			} elsif ($c->{output} eq 'store') {
 				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{variable_name} &\n";
-				$kvstores .= "{\$SGDIR/$c->{variable_name}}";
+				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} &\n";
+				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
 			}
@@ -600,7 +600,7 @@ unget_line
 
 # Verify the code
 # Ensure that all /stream files are used exactly once
-# Ensure that all variables are used in the gather block
+# Ensure that all stores are used in the gather block
 # Ensure that the scatter code implements a DAG
 sub
 verify_code
@@ -632,7 +632,7 @@ verify_code
 			$used_gather_file{$file_name} = 1;
 		}
 		while ($tmp_command =~ s|store:(\w+)||) {
-			$used_gather_variable{$1} = 1;
+			$used_gather_store{$1} = 1;
 		}
 	}
 
@@ -640,8 +640,8 @@ verify_code
 		for my $gf (keys %defined_gather_file) {
 			error("Gather file /stream/$gf is never read\n") unless (defined($used_gather_file{$gf}));
 		}
-		for my $gv (keys %defined_gather_variable) {
-			warning("Gather variable $gv set but not used\n") unless (defined($used_gather_variable{$gv}));
+		for my $gv (keys %defined_gather_store) {
+			warning("Gather store $gv set but not used\n") unless (defined($used_gather_store{$gv}));
 		}
 
 		my @cycle;
@@ -766,9 +766,9 @@ scatter_graph_io
 			} elsif ($c->{output} eq 'file') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
-			} elsif ($c->{output} eq 'variable') {
+			} elsif ($c->{output} eq 'store') {
 				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				print qq(\t$node_name -> "\$$c->{variable_name}";\n) if ($opt_g);
+				print qq(\t$node_name -> "\$$c->{store_name}";\n) if ($opt_g);
 			} else {
 				die "Tailless command";
 			}
