@@ -356,6 +356,7 @@ parse_scatter_command
 			$command{output} = 'store';
 			$command{store_name} = $1;
 			$command{store_flags} = $2;
+			$command{store_flags} =~ s/\n//;
 			$command{body} .= $_;
 			return \%command;
 		}
