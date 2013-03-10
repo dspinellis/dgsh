@@ -33,14 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define CONTENT_LENGTH_DIGITS 10
-
-#ifdef DEBUG
-/* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
-#else
-#define DPRINTF(fmt, ...)
-#endif
+#include "sgsh.h"
 
 static bool retry_connection = true;
 

@@ -29,10 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-/* #define DEBUG */
+#include "sgsh.h"
 
 /*
  * Data that can't be written is stored in a sequential pool of buffers

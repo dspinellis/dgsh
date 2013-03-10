@@ -40,23 +40,12 @@
 #include <unistd.h>
 #include <unistd.h>
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-#define CONTENT_LENGTH_DIGITS 10
-#define CONTENT_LENGTH_FORMAT "%010u"
+#include "sgsh.h"
 
 #ifdef DEBUG
-/* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
-#define DPRINTFX(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
-
 /* Small buffer size to catch errors with data spanning buffers */
 #define BUFFER_SIZE 5
 #else
-#define DPRINTFX(fmt, ...)
-#define DPRINTF(fmt, ...)
-
 /* PIPE_BUF is a reasonable size heuristic. */
 #define BUFFER_SIZE PIPE_BUF
 #endif
