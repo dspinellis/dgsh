@@ -59,7 +59,7 @@ png: sgsh
 	done
 
 # Regression test based on generated output files
-regression:
+test-regression:
 	# Sort files by size to get the easiest problems first
 	# Generated dot graphs
 	for i in `ls -rS example/*.sh` ; do \
