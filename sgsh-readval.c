@@ -42,11 +42,12 @@ static const char *program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n"
+	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] -s path\n"
 		"-c"		"\tRead the current value from the store\n"
 		"-l"		"\tRead the last (before EOF) value from the store (default)\n"
 		"-n"		"\tDo not retry failed connection to write store\n"
-		"-q"		"\tAsk the write-end to quit\n",
+		"-q"		"\tAsk the write-end to quit\n"
+		"-s path"	"\tSpecify the socket to connect to\n",
 		program_name);
 	exit(1);
 }
@@ -97,14 +98,15 @@ main(int argc, char *argv[])
 	struct iovec iov[2];
 	int quit = 0;
 	char cmd = 0;
+	const char *socket_path = NULL;
 
 	program_name = argv[0];
 
 	/* Default if nothing else is specified */
-	if (argc == 2)
+	if (argc == 3)
 		cmd = 'L';
 
-	while ((ch = getopt(argc, argv, "clnq")) != -1) {
+	while ((ch = getopt(argc, argv, "clnqs:")) != -1) {
 		switch (ch) {
 		case 'c':	/* Read current value */
 			cmd = 'C';
@@ -118,6 +120,9 @@ main(int argc, char *argv[])
 		case 'q':
 			quit = 1;
 			break;
+		case 's':
+			socket_path = optarg;
+			break;
 		case '?':
 		default:
 			usage();
@@ -126,7 +131,7 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1)
+	if (argc != 0 || socket_path == NULL)
 		usage();
 
 	switch (cmd) {
@@ -134,7 +139,7 @@ main(int argc, char *argv[])
 		break;
 	case 'C':	/* Read current value */
 	case 'L':	/* Read last value */
-		s = write_command(argv[0], cmd);
+		s = write_command(socket_path, cmd);
 
 		/* Read content length and some data */
 		iov[0].iov_base = cbuff;
@@ -167,7 +172,7 @@ main(int argc, char *argv[])
 	}
 
 	if (quit)
-		(void)write_command(argv[0], 'Q');
+		(void)write_command(socket_path, 'Q');
 
 	return 0;
 }

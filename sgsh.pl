@@ -221,7 +221,7 @@ digraph D {
 # is removed on termination and that the exit code
 # after a signal is that of the shell: 128 + signal number
 my $stop_kvstores = $kvstores;
-$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q "|g;
+$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
 $stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
 print $output_fh q{
 export SGDIR=/tmp/sg-$$
@@ -544,7 +544,7 @@ scatter_code_and_pipes_code
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= ' |' unless $c->{body} eq '';
-				$code .= " ${opt_p}sgsh-writeval $c->{store_flags} \$SGDIR/$c->{store_name} &\n";
+				$code .= " ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} &\n";
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
@@ -573,7 +573,7 @@ gather_code
 		}
 
 		# Substitute store:name points with corresponding invocation of sgsh-reaval
-		$command =~ s|store:(\w+)|${opt_p}sgsh-readval \$SGDIR/$1|g;
+		$command =~ s|store:(\w+)|${opt_p}sgsh-readval -s \$SGDIR/$1|g;
 
 		$code .= $command;
 	}

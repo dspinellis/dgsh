@@ -130,9 +130,6 @@ static struct client clients[MAX_CLIENTS];
 static const char *program_name;
 static const char *socket_path;
 
-static const char *socket_path;
-
-
 /*
  * Increment dp by one byte.
  * If no more bytes are available return false
@@ -891,11 +888,12 @@ get_free_client(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n"
-		"-l len"	"\tProcess fixed-width len-sized records\n"
-		"-t char"	"\tProcess char-terminated records (newline default)\n"
+	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] -s path\n"
 		"-b n"		"\tStore records beginning in a window n away from the end (default 1)\n"
 		"-e n"		"\tStore records ending in a window n away from the end (default 0)\n"
+		"-l len"	"\tProcess fixed-width len-sized records\n"
+		"-s path"	"\tSpecify the socket to connect to\n"
+		"-t char"	"\tProcess char-terminated records (newline default)\n"
 		"-u unit"	"\tSpecify the unit of window boundaries\n"
 		""		"\ts: seconds\n"
 		""		"\tm: minutes\n"
@@ -950,7 +948,7 @@ parse_arguments(int argc, char *argv[])
 	record_rbegin.d = 0;
 	record_rend.d = 1;
 
-	while ((ch = getopt(argc, argv, "b:e:l:t:u:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:e:l:s:t:u:")) != -1) {
 		switch (ch) {
 		case 'b':	/* Begin record, measured from the end (0) */
 			record_rend.d = parse_double(optarg);
@@ -962,6 +960,9 @@ parse_arguments(int argc, char *argv[])
 			rl = atoi(optarg);
 			if (rl <= 0)
 				usage();
+			break;
+		case 's':
+			socket_path = optarg;
 			break;
 		case 't':	/* Record terminator */
 			/* We allow \0 as rt */
@@ -982,7 +983,7 @@ parse_arguments(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1)
+	if (argc != 0 || socket_path == NULL)
 		usage();
 
 	switch (unit) {
@@ -1014,8 +1015,6 @@ parse_arguments(int argc, char *argv[])
 		time_window = true;
 		break;
 	}
-
-	socket_path = argv[0];
 }
 
 /*

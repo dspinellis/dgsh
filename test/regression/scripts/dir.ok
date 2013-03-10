@@ -4,9 +4,9 @@
 
 export SGDIR=/tmp/sg-$$
 rm -rf $SGDIR
-trap 'sgsh-readval -q "$SGDIR/NFILES" 2>/dev/null
-sgsh-readval -q "$SGDIR/NDIRS" 2>/dev/null
-sgsh-readval -q "$SGDIR/NBYTES" 2>/dev/null
+trap 'sgsh-readval -q -s "$SGDIR/NFILES" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/NDIRS" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
 rm -rf "$SGDIR"' 0
 trap 'exit $?' 1 2 3 15
 mkdir $SGDIR
@@ -44,11 +44,11 @@ FREE=`df -h . | awk '!/Use%/{print $4}'`
 ls -n |
 sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 &
  <$SGDIR/npi-0.0.0 awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' >$SGDIR/npfo-files.0 &
- <$SGDIR/npi-0.1.0 wc -l | sgsh-writeval $SGDIR/NFILES &
- <$SGDIR/npi-0.2.0 grep -c '^d' | sgsh-writeval $SGDIR/NDIRS &
- <$SGDIR/npi-0.3.0 awk '{s += $5} END {print s}' | sgsh-writeval $SGDIR/NBYTES &
+ <$SGDIR/npi-0.1.0 wc -l | sgsh-writeval  -s $SGDIR/NFILES &
+ <$SGDIR/npi-0.2.0 grep -c '^d' | sgsh-writeval  -s $SGDIR/NDIRS &
+ <$SGDIR/npi-0.3.0 awk '{s += $5} END {print s}' | sgsh-writeval  -s $SGDIR/NBYTES &
 # Gather the results
 	cat $SGDIR/npfo-files.0
-	echo "               `sgsh-readval $SGDIR/NFILES` File(s) `sgsh-readval $SGDIR/NBYTES` bytes"
-	echo "               `sgsh-readval $SGDIR/NDIRS` Dir(s) $FREE bytes free"
+	echo "               `sgsh-readval -s $SGDIR/NFILES` File(s) `sgsh-readval -s $SGDIR/NBYTES` bytes"
+	echo "               `sgsh-readval -s $SGDIR/NDIRS` Dir(s) $FREE bytes free"
 
