@@ -128,24 +128,26 @@ scatter |{
 
 # Gather and print the results
 |} gather |{
-	echo "FNAMELEN: `store:FNAMELEN`"
-	echo "NSTRUCT: `store:NSTRUCT`"
-	echo "NTYPEDEF: `store:NTYPEDEF`"
-	echo "IDLEN: `store:IDLEN`"
-	echo "CHLINESCHAR: `store:CHLINESCHAR`"
-	echo "NCCHAR: `store:NCCHAR`"
-	echo "NCOMMENT: `store:NCOMMENT`"
-	echo "NCOPYRIGHT: `store:NCOPYRIGHT`"
-	echo "NCFILE: `store:NCFILE`"
-	echo "NCDIR: `store:NCDIR`"
-	echo "CLINESCHAR: `store:CLINESCHAR`"
-	echo "NFUNCTION: `store:NFUNCTION`"
-	echo "NGOTO: `store:NGOTO`"
-	echo "NREGISTER: `store:NREGISTER`"
-	echo "NMACRO: `store:NMACRO`"
-	echo "NINCLUDE: `store:NINCLUDE`"
-	echo "NCONST: `store:NCONST`"
-	echo "NVOID: `store:NVOID`"
-	echo "NHFILE: `store:NHFILE`"
-	echo "NGETS: `store:NGETS`"
+cat <<EOF
+FNAMELEN: `store:FNAMELEN`
+NSTRUCT: `store:NSTRUCT`
+NTYPEDEF: `store:NTYPEDEF`
+IDLEN: `store:IDLEN`
+CHLINESCHAR: `store:CHLINESCHAR`
+NCCHAR: `store:NCCHAR`
+NCOMMENT: `store:NCOMMENT`
+NCOPYRIGHT: `store:NCOPYRIGHT`
+NCFILE: `store:NCFILE`
+NCDIR: `store:NCDIR`
+CLINESCHAR: `store:CLINESCHAR`
+NFUNCTION: `store:NFUNCTION`
+NGOTO: `store:NGOTO`
+NREGISTER: `store:NREGISTER`
+NMACRO: `store:NMACRO`
+NINCLUDE: `store:NINCLUDE`
+NCONST: `store:NCONST`
+NVOID: `store:NVOID`
+NHFILE: `store:NHFILE`
+NGETS: `store:NGETS`
+EOF
 |}

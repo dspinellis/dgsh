@@ -119,24 +119,26 @@ sgsh-tee  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $S
  <$SGDIR/npi-7.5.0 grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l | sgsh-writeval $SGDIR/NCONST &
 </dev/null  find "$@" -name \*.h -type f | wc -l | sgsh-writeval $SGDIR/NHFILE &
 # Gather the results
-	echo "FNAMELEN: `sgsh-readval -lr $SGDIR/FNAMELEN`"
-	echo "NSTRUCT: `sgsh-readval -lr $SGDIR/NSTRUCT`"
-	echo "NTYPEDEF: `sgsh-readval -lr $SGDIR/NTYPEDEF`"
-	echo "IDLEN: `sgsh-readval -lr $SGDIR/IDLEN`"
-	echo "CHLINESCHAR: `sgsh-readval -lr $SGDIR/CHLINESCHAR`"
-	echo "NCCHAR: `sgsh-readval -lr $SGDIR/NCCHAR`"
-	echo "NCOMMENT: `sgsh-readval -lr $SGDIR/NCOMMENT`"
-	echo "NCOPYRIGHT: `sgsh-readval -lr $SGDIR/NCOPYRIGHT`"
-	echo "NCFILE: `sgsh-readval -lr $SGDIR/NCFILE`"
-	echo "NCDIR: `sgsh-readval -lr $SGDIR/NCDIR`"
-	echo "CLINESCHAR: `sgsh-readval -lr $SGDIR/CLINESCHAR`"
-	echo "NFUNCTION: `sgsh-readval -lr $SGDIR/NFUNCTION`"
-	echo "NGOTO: `sgsh-readval -lr $SGDIR/NGOTO`"
-	echo "NREGISTER: `sgsh-readval -lr $SGDIR/NREGISTER`"
-	echo "NMACRO: `sgsh-readval -lr $SGDIR/NMACRO`"
-	echo "NINCLUDE: `sgsh-readval -lr $SGDIR/NINCLUDE`"
-	echo "NCONST: `sgsh-readval -lr $SGDIR/NCONST`"
-	echo "NVOID: `sgsh-readval -lr $SGDIR/NVOID`"
-	echo "NHFILE: `sgsh-readval -lr $SGDIR/NHFILE`"
-	echo "NGETS: `sgsh-readval -lr $SGDIR/NGETS`"
+cat <<EOF
+FNAMELEN: `sgsh-readval $SGDIR/FNAMELEN`
+NSTRUCT: `sgsh-readval $SGDIR/NSTRUCT`
+NTYPEDEF: `sgsh-readval $SGDIR/NTYPEDEF`
+IDLEN: `sgsh-readval $SGDIR/IDLEN`
+CHLINESCHAR: `sgsh-readval $SGDIR/CHLINESCHAR`
+NCCHAR: `sgsh-readval $SGDIR/NCCHAR`
+NCOMMENT: `sgsh-readval $SGDIR/NCOMMENT`
+NCOPYRIGHT: `sgsh-readval $SGDIR/NCOPYRIGHT`
+NCFILE: `sgsh-readval $SGDIR/NCFILE`
+NCDIR: `sgsh-readval $SGDIR/NCDIR`
+CLINESCHAR: `sgsh-readval $SGDIR/CLINESCHAR`
+NFUNCTION: `sgsh-readval $SGDIR/NFUNCTION`
+NGOTO: `sgsh-readval $SGDIR/NGOTO`
+NREGISTER: `sgsh-readval $SGDIR/NREGISTER`
+NMACRO: `sgsh-readval $SGDIR/NMACRO`
+NINCLUDE: `sgsh-readval $SGDIR/NINCLUDE`
+NCONST: `sgsh-readval $SGDIR/NCONST`
+NVOID: `sgsh-readval $SGDIR/NVOID`
+NHFILE: `sgsh-readval $SGDIR/NHFILE`
+NGETS: `sgsh-readval $SGDIR/NGETS`
+EOF
 
