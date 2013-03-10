@@ -29,7 +29,7 @@ my $graph;
 eval 'require Graph';
 if ($@) {
 	print STDERR "Warning: Perl Graph module is missing.\n";
-	print STDERR "Cycles in /sgsh files will not be reported.\n";
+	print STDERR "Cycles in /stream files will not be reported.\n";
 } else {
 	$graph = Graph->new();
 }
@@ -99,7 +99,7 @@ my %defined_gather_variable;
 # Map containing all used gather variable names
 my %used_gather_variable;
 
-# Map from /sgsh/ file names into an array of named pipes
+# Map from /stream/ file names into an array of named pipes
 # For code and the graph structure
 my %parallel_file_map;
 my %parallel_graph_file_map;
@@ -135,14 +135,14 @@ my $BLOCK_END = q!^[^'#"]*\|\}\s*(\#.*)?$!;
 my $SCATTER_INPUT = q!^[^'#"]*-\|!;
 # .|
 my $NO_INPUT = q!^[^'#"]*\.\|!;
-# |= name
-my $GATHER_VARIABLE_OUTPUT = q!\|\=\s*(\w+)\s*(\#.*)?$!;
-# |>/sgsh/name
-my $GATHER_FILE_OUTPUT = q!\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
+# |store:name
+my $GATHER_VARIABLE_OUTPUT = q!\|\s*store\:(\w+)\s*(\#.*)?$!;
+# |>/stream/name
+my $GATHER_FILE_OUTPUT = q!\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
 # |.
 my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
-# -||>/sgsh/name
-my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/sgsh\/(\w+)\s*(\#.*)?$!;
+# -||>/stream/name
+my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
 my $COMMENT_LINE = '^\s*(\#.*)?$';
 
@@ -361,7 +361,7 @@ parse_scatter_command
 		# Gather file output endpoint: |>
 		if (s/$GATHER_FILE_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Output file /sgsh/$1 already used for output") if (defined($defined_gather_file{$1}));
+			error("Output file /stream/$1 already used for output") if (defined($defined_gather_file{$1}));
 			$defined_gather_file{$1} = 1;
 			undef @{$parallel_file_map{$1}};
 			undef @{$parallel_graph_file_map{$1}};
@@ -519,10 +519,10 @@ scatter_code_and_pipes_code
 			# Generate body sans trailing newline
 			my $body = $c->{body};
 			chop $body;
-			# Substitute /sgsh/... gather points with corresponding named pipe
-			while ($body =~ m|/sgsh/(\w+)|) {
+			# Substitute /stream/... gather points with corresponding named pipe
+			while ($body =~ m|/stream/(\w+)|) {
 				my $file_name = $1;
-				$body =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+				$body =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
 			}
 			$code .= $body;
 
@@ -560,20 +560,20 @@ gather_code
 	my $code;
 
 	$code .= "# Gather the results\n";
-	# Set the variables
-	for my $var (keys %defined_gather_variable) {
+
+	for my $command (@{$commands}) {
+		# Substitute /stream/... gather points with corresponding named pipe
+		while ($command =~ m|/stream/(\w+)|) {
+			my $file_name = $1;
+			$command =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+		}
+
+		# Substitute store:name points with corresponding invocation of sgsh-reaval
 		# Ask for last record (-l) and quit the server (-q)
 		# To avoid race condition with the socket setup code
 		# ask to retry connection to socket if it is missing (-r)
-		$code .= qq[$var="\`${opt_p}sgsh-readval -lqr \$SGDIR\/$var\`"\n];
-	}
+		$command =~ s|store:(\w+)|${opt_p}sgsh-readval -lr \$SGDIR/$1|g;
 
-	for my $command (@{$commands}) {
-		# Substitute /sgsh/... gather points with corresponding named pipe
-		while ($command =~ m|/sgsh/(\w+)|) {
-			my $file_name = $1;
-			$command =~ s|/sgsh/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
-		}
 		$code .= $command;
 	}
 
@@ -599,7 +599,7 @@ unget_line
 }
 
 # Verify the code
-# Ensure that all /sgsh files are used exactly once
+# Ensure that all /stream files are used exactly once
 # Ensure that all variables are used in the gather block
 # Ensure that the scatter code implements a DAG
 sub
@@ -611,10 +611,10 @@ verify_code
 	for my $c (@{$commands}) {
 		my $body = $c->{body};
 		chop $body;
-		while ($body =~ s|/sgsh/(\w+)||) {
+		while ($body =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined gather file name /sgsh/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
-			error("Gather file name /sgsh/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
+			error("Undefined gather file name /stream/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
+			error("Gather file name /stream/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
 			$used_gather_file{$file_name} = 1;
 		}
 
@@ -625,28 +625,28 @@ verify_code
 
 	for my $command (@{$gather_commands}) {
 		my $tmp_command = $command;
-		while ($tmp_command =~ s|/sgsh/(\w+)||) {
+		while ($tmp_command =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined gather file name /sgsh/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
-			error("Gather file name /sgsh/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
+			error("Undefined gather file name /stream/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
+			error("Gather file name /stream/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
 			$used_gather_file{$file_name} = 1;
 		}
-		while ($tmp_command =~ s|\$(\w+)||) {
+		while ($tmp_command =~ s|store:(\w+)||) {
 			$used_gather_variable{$1} = 1;
 		}
 	}
 
 	if ($level == 0) {
 		for my $gf (keys %defined_gather_file) {
-			error("Gather file /sgsh/$gf is never read\n") unless (defined($used_gather_file{$gf}));
+			error("Gather file /stream/$gf is never read\n") unless (defined($used_gather_file{$gf}));
 		}
 		for my $gv (keys %defined_gather_variable) {
-			warning("Gather variable \$$gv set but not used\n") unless (defined($used_gather_variable{$gv}));
+			warning("Gather variable $gv set but not used\n") unless (defined($used_gather_variable{$gv}));
 		}
 
 		my @cycle;
 		if (defined($graph) && (@cycle = $graph->find_a_cycle())) {
-			print STDERR "The following dependencies across /sgsh files form a cycle:\n";
+			print STDERR "The following dependencies across /stream files form a cycle:\n";
 			for my $node (@cycle) {
 				print "$node_label{$node}\n";
 			}
@@ -799,7 +799,7 @@ scatter_graph_body
 			# Generate body sans trailing newline and update corresponding edges
 			my $body = $c->{body};
 			chop $body;
-			while ($body =~ s|/sgsh/(\w+)||) {
+			while ($body =~ s|/stream/(\w+)||) {
 				my $file_name = $1;
 				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 					$edge{"$file_name_p"}->{rhs} = $node_name;
@@ -843,7 +843,7 @@ gather_graph
 		my $is_node = 0;
 		my $node_name = "gather_node_$n";
 		my $command_tmp = $command;
-		while ($command_tmp =~ s|/sgsh/(\w+)||) {
+		while ($command_tmp =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 				$edge{"$file_name_p"}->{rhs} = $node_name;

@@ -48,17 +48,12 @@ sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 $S
  <$SGDIR/npi-0.3.0 bzip2 -c | wc -c | sgsh-writeval $SGDIR/BZIP2 &
  <$SGDIR/npi-0.4.0 gzip -c | wc -c | sgsh-writeval $SGDIR/GZIP &
 # Gather the results
-NBYTES="`sgsh-readval -lqr $SGDIR/NBYTES`"
-GZIP="`sgsh-readval -lqr $SGDIR/GZIP`"
-BZIP2="`sgsh-readval -lqr $SGDIR/BZIP2`"
-COMPRESS="`sgsh-readval -lqr $SGDIR/COMPRESS`"
-FILETYPE="`sgsh-readval -lqr $SGDIR/FILETYPE`"
 	cat <<EOF
 File URL:      $1
-File type:     $FILETYPE
-Original size: $NBYTES bytes
-compress:      $COMPRESS bytes
-gzip:          $GZIP bytes
-bzip2:         $BZIP2 bytes
+File type:     `sgsh-readval -lr $SGDIR/FILETYPE`
+Original size: `sgsh-readval -lr $SGDIR/NBYTES` bytes
+compress:      `sgsh-readval -lr $SGDIR/COMPRESS` bytes
+gzip:          `sgsh-readval -lr $SGDIR/GZIP` bytes
+bzip2:         `sgsh-readval -lr $SGDIR/BZIP2` bytes
 EOF
 

@@ -41,22 +41,22 @@ line_signatures()
 
 scatter |{
 	# Generate the signatures for the two hierarchies
-	.| line_signatures $1 |>/sgsh/a
-	.| line_signatures $2 |>/sgsh/b
+	.| line_signatures $1 |>/stream/a
+	.| line_signatures $2 |>/stream/b
 
 	# Join signatures on file name and content
-	.| join -t: -1 2 -2 2 /sgsh/a /sgsh/b |
+	.| join -t: -1 2 -2 2 /stream/a /stream/b |
 	# Print filename dir1 dir2
 	sed 's/;/:/g' |
 	awk -F: 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 	# Unique occurrences
 	sort -u |{
 		# Commands to copy
-		-| awk '{print "cp " $2 "/" $1 " new/" $3 "/" $1}' |>/sgsh/cp
-		-| awk '{print "mkdir -p new/" $3}' | sort -u |>/sgsh/mkdir
+		-| awk '{print "cp " $2 "/" $1 " new/" $3 "/" $1}' |>/stream/cp
+		-| awk '{print "mkdir -p new/" $3}' | sort -u |>/stream/mkdir
 	|}
 |} gather |{
 	# Order: first make directories, then copy files
-	cat /sgsh/mkdir /sgsh/cp |
+	cat /stream/mkdir /stream/cp |
 	sh
 |}

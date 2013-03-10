@@ -24,11 +24,11 @@ awk '{$2 = ++n " " $2; print}' "$*" |
 # Two parallel line scatter invocations
 scatter |{ -sl -p 20
 
-	-| /usr/local/sbin/logresolve | ./teebuff -i |>/sgsh/resolved
+	-| /usr/local/sbin/logresolve | ./teebuff -i |>/stream/resolved
 
 |} gather |{
 	# Merge the files on the second numerical field
-	sort -m -k2n /sgsh/resolved |
+	sort -m -k2n /stream/resolved |
 
 	# Remove second field
 	cut -d ' ' -f 1,3-

@@ -35,22 +35,22 @@ tr -cs a-zA-Z \\n |
 sort -u |
 scatter |{
 	# Pass through the original words
-	-||>/sgsh/words
+	-||>/stream/words
 
 	# List two-letter palindromes
 	-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
-		g' |>/sgsh/palindromes
+		g' |>/stream/palindromes
 
 	# List four consecutive consonants
 	-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
-		g' |>/sgsh/consonants
+		g' |>/stream/consonants
 
 	# List length of words longer than 12 characters
 	-| awk '{if (length($1) > 12) print "l:", length($1);
-		else print ""}' |>/sgsh/long
+		else print ""}' |>/stream/long
 |} gather |{
 	# Paste the four streams side-by-side
-	paste /sgsh/words /sgsh/palindromes /sgsh/consonants /sgsh/long |
+	paste /stream/words /stream/palindromes /stream/consonants /stream/long |
 	# List only words satisfying one or more properties
 	grep :
 |}

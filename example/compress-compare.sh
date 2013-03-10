@@ -21,18 +21,18 @@
 
 curl -s "$1" |
 scatter |{
-	-| wc -c |= NBYTES
-	-| file - |= FILETYPE
-	-| compress -c | wc -c |= COMPRESS
-	-| bzip2 -c | wc -c |= BZIP2
-	-| gzip -c | wc -c |= GZIP
+	-| wc -c |store:NBYTES
+	-| file - |store:FILETYPE
+	-| compress -c | wc -c |store:COMPRESS
+	-| bzip2 -c | wc -c |store:BZIP2
+	-| gzip -c | wc -c |store:GZIP
 |} gather |{
 	cat <<EOF
 File URL:      $1
-File type:     $FILETYPE
-Original size: $NBYTES bytes
-compress:      $COMPRESS bytes
-gzip:          $GZIP bytes
-bzip2:         $BZIP2 bytes
+File type:     `store:FILETYPE`
+Original size: `store:NBYTES` bytes
+compress:      `store:COMPRESS` bytes
+gzip:          `store:GZIP` bytes
+bzip2:         `store:BZIP2` bytes
 EOF
 |}

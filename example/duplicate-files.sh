@@ -34,14 +34,14 @@ sort -k2 |
 scatter |{
 
 	 # Print an MD5 sum for each file that appears more than once
-	 -| awk '{print $2}' | uniq -d |>/sgsh/dupes
+	 -| awk '{print $2}' | uniq -d |>/stream/dupes
 
 	 # Pass through the filename md5sum pairs
-	 -||>/sgsh/names
+	 -||>/stream/names
 
 |} gather |{
 	# Join the repeated MD5 sums with the corresponding file names
-	join -2 2 /sgsh/dupes /sgsh/names |
+	join -2 2 /stream/dupes /stream/names |
 	# Output same files on a single line
 	awk '
 	BEGIN {ORS=""}

@@ -29,7 +29,7 @@ scatter |{
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
-		awk '{s += length($1); n++} END {print s / n}' |=FNAMELEN
+		awk '{s += length($1); n++} END {print s / n}' |store:FNAMELEN
 
 		-| xargs -0 cat |{
 
@@ -38,26 +38,26 @@ scatter |{
 			cpp -P 2>/dev/null |{
 
 				# Structure definitions
-				-|  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |=NSTRUCT
+				-|  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |store:NSTRUCT
 				#}}
 
 				# Type definitions
-				-| grep -cw typedef |=NTYPEDEF
+				-| grep -cw typedef |store:NTYPEDEF
 
 				# Use of void
-				-| grep -cw void |=NVOID
+				-| grep -cw void |store:NVOID
 
 				# Use of gets
-				-| grep -cw gets |=NGETS
+				-| grep -cw gets |store:NGETS
 
 				# Average identifier length
 				-| tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' |=IDLEN
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' |store:IDLEN
 			|}
 
 			# Lines and characters
-			-| wc -lc | awk '{OFS=":"; print $1, $2}' |=CHLINESCHAR
+			-| wc -lc | awk '{OFS=":"; print $1, $2}' |store:CHLINESCHAR
 
 			# Non-comment characters (rounded thousands)
 			# -traditional avoids expansion of tabs
@@ -67,13 +67,13 @@ scatter |{
 			-| sed 's/#/@/g' |
 			cpp -traditional -P 2>/dev/null |
 			wc -c |
-			awk '{OFMT = "%.0f"; print $1/1000}' |=NCCHAR
+			awk '{OFMT = "%.0f"; print $1/1000}' |store:NCCHAR
 
 			# Number of comments
-			-| egrep -c '/\*|//' |=NCOMMENT
+			-| egrep -c '/\*|//' |store:NCOMMENT
 
 			# Occurences of the word Copyright
-			-| grep -ci copyright |=NCOPYRIGHT
+			-| grep -ci copyright |store:NCOPYRIGHT
 		|}
 	|}
 
@@ -84,68 +84,68 @@ scatter |{
 		-| tr \\0 \\n |{
 
 			# Number of C files
-			-| wc -l |=NCFILE
+			-| wc -l |store:NCFILE
 
 			# Number of directories containing C files
-			-| sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l |=NCDIR
+			-| sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l |store:NCDIR
 		|}
 
 		# C code
 		-| xargs -0 cat |{
 
 			# Lines and characters
-			-| wc -lc | awk '{OFS=":"; print $1, $2}' |=CLINESCHAR
+			-| wc -lc | awk '{OFS=":"; print $1, $2}' |store:CLINESCHAR
 
 			# C code without comments and strings
 			-| sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |{
 
 				# Number of functions
-				-| grep -c '^{' |=NFUNCTION
+				-| grep -c '^{' |store:NFUNCTION
 				# } (match preceding open)
 
 				# Number of gotos
-				-| grep -cw goto |=NGOTO
+				-| grep -cw goto |store:NGOTO
 
 				# Occurrences of the register keyword
-				-| grep -cw register |=NREGISTER
+				-| grep -cw register |store:NREGISTER
 
 				# Number of macro definitions
-				-| grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' |=NMACRO
+				-| grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' |store:NMACRO
 
 				# Number of include directives
-				-| grep -c '@[ 	]*include' |=NINCLUDE
+				-| grep -c '@[ 	]*include' |store:NINCLUDE
 
 				# Number of constants
-				-| grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l |=NCONST
+				-| grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l |store:NCONST
 
 			|}
 		|}
 	|}
 
 	# Header files
-	.| find "$@" -name \*.h -type f | wc -l |=NHFILE
+	.| find "$@" -name \*.h -type f | wc -l |store:NHFILE
 
 # Gather and print the results
 |} gather |{
-	echo "FNAMELEN: $FNAMELEN"
-	echo "NSTRUCT: $NSTRUCT"
-	echo "NTYPEDEF: $NTYPEDEF"
-	echo "IDLEN: $IDLEN"
-	echo "CHLINESCHAR: $CHLINESCHAR"
-	echo "NCCHAR: $NCCHAR"
-	echo "NCOMMENT: $NCOMMENT"
-	echo "NCOPYRIGHT: $NCOPYRIGHT"
-	echo "NCFILE: $NCFILE"
-	echo "NCDIR: $NCDIR"
-	echo "CLINESCHAR: $CLINESCHAR"
-	echo "NFUNCTION: $NFUNCTION"
-	echo "NGOTO: $NGOTO"
-	echo "NREGISTER: $NREGISTER"
-	echo "NMACRO: $NMACRO"
-	echo "NINCLUDE: $NINCLUDE"
-	echo "NCONST: $NCONST"
-	echo "NVOID: $NVOID"
-	echo "NHFILE: $NHFILE"
-	echo "NGETS: $NGETS"
+	echo "FNAMELEN: `store:FNAMELEN`"
+	echo "NSTRUCT: `store:NSTRUCT`"
+	echo "NTYPEDEF: `store:NTYPEDEF`"
+	echo "IDLEN: `store:IDLEN`"
+	echo "CHLINESCHAR: `store:CHLINESCHAR`"
+	echo "NCCHAR: `store:NCCHAR`"
+	echo "NCOMMENT: `store:NCOMMENT`"
+	echo "NCOPYRIGHT: `store:NCOPYRIGHT`"
+	echo "NCFILE: `store:NCFILE`"
+	echo "NCDIR: `store:NCDIR`"
+	echo "CLINESCHAR: `store:CLINESCHAR`"
+	echo "NFUNCTION: `store:NFUNCTION`"
+	echo "NGOTO: `store:NGOTO`"
+	echo "NREGISTER: `store:NREGISTER`"
+	echo "NMACRO: `store:NMACRO`"
+	echo "NINCLUDE: `store:NINCLUDE`"
+	echo "NCONST: `store:NCONST`"
+	echo "NVOID: `store:NVOID`"
+	echo "NHFILE: `store:NHFILE`"
+	echo "NGETS: `store:NGETS`"
 |}
