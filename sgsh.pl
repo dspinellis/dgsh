@@ -136,7 +136,7 @@ my $SCATTER_INPUT = q!^[^'#"]*-\|!;
 # .|
 my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |store:name
-my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*(\#.*)?$!;
+my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*([^#]*)(\#.*)?$!;
 # |>/stream/name
 my $GATHER_STREAM_OUTPUT = q!\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
 # |.
@@ -355,6 +355,7 @@ parse_scatter_command
 			$defined_store{$1} = 1;
 			$command{output} = 'store';
 			$command{store_name} = $1;
+			$command{store_flags} = $2;
 			$command{body} .= $_;
 			return \%command;
 		}
@@ -541,7 +542,7 @@ scatter_code_and_pipes_code
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} &\n";
+				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} $c->{store_flags} &\n";
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
