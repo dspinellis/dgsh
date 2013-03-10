@@ -454,7 +454,13 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b buffer_size] [-i] [-l] [-m] [-s]\n", name);
+	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s]\n"
+		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
+		"-i"		"\tInput-size buffering\n"
+		"-l"		"\tSplit scattered data on line boundaries\n"
+		"-m"		"\tProvide memory use statistics on termination\n"
+		"-s"		"\tScatter the input across the files, rather than copying it to all\n",
+		name);
 	exit(1);
 }
 
