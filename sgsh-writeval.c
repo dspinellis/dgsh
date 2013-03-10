@@ -535,14 +535,14 @@ dump_buffer_times(void)
 
 	gettimeofday(&now, NULL);
 
-	DPRINTFX("update_current_record: now=%lld.%06d rend=%lld.%06d rbegin=%lld.%06d",
+	DPRINTF("update_current_record: now=%lld.%06d rend=%lld.%06d rbegin=%lld.%06d",
 		(long long)now.tv_sec, (int)now.tv_usec,
 		(long long)record_rend.t.tv_sec, (int)record_rend.t.tv_usec,
 		(long long)record_rbegin.t.tv_sec, (int)record_rbegin.t.tv_usec);
 	for (bp = head; bp != NULL; bp = bp->next) {
 		timersub(&now, &bp->timestamp, &t);
 
-		DPRINTFX("\t%p size=%3d byte_count=%5lld Tr=%3lld.%06d Ta=%3lld.%06d [%.*s]",
+		DPRINTF("\t%p size=%3d byte_count=%5lld Tr=%3lld.%06d Ta=%3lld.%06d [%.*s]",
 			bp, bp->size, bp->byte_count,
 			(long long)t.tv_sec, (int)t.tv_usec,
 			(long long)bp->timestamp.tv_sec, (int)bp->timestamp.tv_usec,
@@ -555,7 +555,7 @@ timestamp(const char *msg)
 {
 	struct timeval now;
 	gettimeofday(&now, NULL);
-	DPRINTFX("%lld.%06d %s", (long long)now.tv_sec, (int)now.tv_usec, msg);
+	DPRINTF("%lld.%06d %s", (long long)now.tv_sec, (int)now.tv_usec, msg);
 }
 
 #define TIMESTAMP(x) timestamp(x)
