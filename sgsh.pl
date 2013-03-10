@@ -532,7 +532,7 @@ scatter_code_and_pipes_code
 			if ($c->{output} eq 'none') {
 				$code .= " >/dev/null\n";
 			} elsif ($c->{output} eq 'scatter') {
-				$code .= " |\n";
+				$code .= " |\n" unless $c->{body} eq '';
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c);
 				$code .= $code2;
 				$pipes .= $pipes2;
@@ -542,7 +542,8 @@ scatter_code_and_pipes_code
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} $c->{store_flags} &\n";
+				$code .= ' |' unless $c->{body} eq '';
+				$code .= " ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} $c->{store_flags} &\n";
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
