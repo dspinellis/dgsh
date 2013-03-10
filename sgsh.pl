@@ -569,10 +569,7 @@ gather_code
 		}
 
 		# Substitute store:name points with corresponding invocation of sgsh-reaval
-		# Ask for last record (-l) and quit the server (-q)
-		# To avoid race condition with the socket setup code
-		# ask to retry connection to socket if it is missing (-r)
-		$command =~ s|store:(\w+)|${opt_p}sgsh-readval -lr \$SGDIR/$1|g;
+		$command =~ s|store:(\w+)|${opt_p}sgsh-readval \$SGDIR/$1|g;
 
 		$code .= $command;
 	}

@@ -74,7 +74,7 @@ section 'Reading of fixed-length records in stream' # {{{2
 (echo -n A12345A7AB; sleep 1; echo -n 12345B7BC; sleep 3; echo -n 12345C7CD) | ./sgsh-writeval -l 9 testsocket 2>/dev/null &
 
 testcase "Record one" # {{{3
-TRY="`./sgsh-readval testsocket 2>/dev/null`"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null`"
 EXPECT=A12345A7A
 check -n
 
@@ -86,18 +86,20 @@ check -n
 
 testcase "Record three" # {{{3
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null`"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null`"
 EXPECT=C12345C7C
 check
 
-./sgsh-readval -q testsocket 2>/dev/null
+# The socket is no longer there
+# Verify that readval doesn't block retrying
+./sgsh-readval -nq testsocket 2>/dev/null
 
 
 section 'Reading of newline-separated records in stream' # {{{2
 (echo record one; sleep 1; echo record two; sleep 3; echo record three) | ./sgsh-writeval testsocket 2>/dev/null &
 
 testcase "Record one" # {{{3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='record one'
 check -n
 
@@ -109,7 +111,7 @@ check -n
 
 testcase "Record three" # {{{3
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='record three'
 check
 
@@ -118,6 +120,12 @@ section 'Reading last record' # {{{2
 testcase "Last record" # {{{3
 (echo record one; sleep 1; echo last record) | ./sgsh-writeval testsocket 2>/dev/null &
 TRY="`./sgsh-readval -l testsocket 2>/dev/null `"
+EXPECT='last record'
+check
+
+testcase "Last record as default" # {{{3
+(echo record one; sleep 1; echo last record) | ./sgsh-writeval testsocket 2>/dev/null &
+TRY="`./sgsh-readval testsocket 2>/dev/null `"
 EXPECT='last record'
 check
 
@@ -139,21 +147,21 @@ section 'Window from stream' # {{{2
 testcase "Second record" # {{{3
 (echo first record ; echo second record ; echo third record; sleep 2) | ./sgsh-writeval -b 2 -e 1 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='second record'
 check
 
 testcase "First record" # {{{3
 (echo first record ; echo second record ; echo third record; sleep 2) | ./sgsh-writeval -b 3 -e 2 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='first record'
 check
 
 testcase "Second record" # {{{3
 (echo first record ; echo second record ; echo third record; sleep 2) | ./sgsh-writeval -b 3 -e 1 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='first record
 second record'
 check
@@ -161,7 +169,7 @@ check
 testcase "All records" # {{{3
 (echo first record ; echo second record ; echo third record; sleep 2) | ./sgsh-writeval -b 3 -e 0 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='first record
 second record
 third record'
@@ -172,28 +180,28 @@ section 'Window from fixed record stream' # {{{2
 testcase "Middle record" # {{{3
 (echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | ./sgsh-writeval -l 4 -b 2 -e 1 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='1111'
 check
 
 testcase "First record" # {{{3
 (echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | ./sgsh-writeval -l 4 -b 3 -e 2 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='0000'
 check
 
 testcase "First two records" # {{{3
 (echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | ./sgsh-writeval -l 4 -b 3 -e 1 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='00001111'
 check
 
 testcase "All records" # {{{3
 (echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | ./sgsh-writeval -l 4 -b 3 -e 0 testsocket 2>/dev/null &
 sleep 1
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='000011112222'
 check
 
@@ -205,7 +213,7 @@ testcase "First record" # {{{3
 (echo First record ; sleep 1 ; echo Second--record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 3.5 -e 2.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='First record'
 check
 
@@ -213,7 +221,7 @@ testcase "Middle record" # {{{3
 (echo First record ; sleep 1 ; echo Second record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 2.5 -e 1.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='Second record'
 check
 
@@ -221,7 +229,7 @@ testcase "First two records (full buffer)" # {{{3
 (echo First record ; sleep 1 ; echo Second--record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 3.5 -e 1.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='First record
 Second--record'
 check
@@ -230,7 +238,7 @@ testcase "First two records (incomplete buffer)" # {{{3
 (echo First record ; sleep 1 ; echo Second record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 3.5 -e 1.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='First record
 Second record'
 check
@@ -239,7 +247,7 @@ testcase "Last record" # {{{3
 (echo First record ; sleep 1 ; echo Second--record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 1.5 -e 0.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='The third record'
 check
 
@@ -247,7 +255,7 @@ testcase "All records" # {{{3
 (echo First record ; sleep 1 ; echo Second--record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 3.5 -e 0.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='First record
 Second--record
 The third record'
@@ -257,7 +265,7 @@ testcase "First record after wait" # {{{3
 (echo First record ; sleep 1 ; echo Second--record ; sleep 1 ; echo The third record; sleep 3) | ./sgsh-writeval -u s -b 4.5 -e 3.5 testsocket 2>/dev/null &
 #Rel  3                             2                               1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='First record'
 check
 
@@ -267,7 +275,7 @@ testcase "Fixed record stream, first record" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | ./sgsh-writeval -l 4 -u s -b 3.5 -e 2.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='0000'
 check
 
@@ -275,7 +283,7 @@ testcase "First two records" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | ./sgsh-writeval -l 4 -u s -b 3.5 -e 1.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='000011112222'
 check
 
@@ -283,7 +291,7 @@ testcase "Middle record" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | ./sgsh-writeval -l 4 -u s -b 2.5 -e 1.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='11112222'
 check
 
@@ -291,7 +299,7 @@ testcase "Last record" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | ./sgsh-writeval -l 4 -u s -b 1.5 -e 0.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='2222'
 check
 
@@ -299,7 +307,7 @@ testcase "All records" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | ./sgsh-writeval -l 4 -u s -b 3.5 -e 0.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='000011112222'
 check
 
@@ -308,7 +316,7 @@ testcase "First record after wait" # {{{3
 (echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | ./sgsh-writeval -l 4 -u s -b 4.5 -e 3.5 testsocket 2>/dev/null &
 #Rel     3                       2                          1
 sleep 3
-TRY="`./sgsh-readval testsocket 2>/dev/null `"
+TRY="`./sgsh-readval -c testsocket 2>/dev/null `"
 EXPECT='0000'
 check
 
@@ -328,7 +336,7 @@ NUMREADS=300
 	do
 			for j in `sequence $NUMREADS`
 			do
-				./sgsh-readval testsocket 2>/dev/null
+				./sgsh-readval -c testsocket 2>/dev/null
 			done >read-words-$i &
 	done
 
@@ -384,7 +392,7 @@ echo -n "	Running clients"
 	do
 			for j in `sequence $NUMREADS`
 			do
-				./sgsh-readval testsocket 2>/dev/null
+				./sgsh-readval -c testsocket 2>/dev/null
 			done >read-words-$i &
 	done
 

@@ -24,6 +24,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/un.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
@@ -41,14 +42,19 @@
 #define DPRINTF(fmt, ...)
 #endif
 
-static int retry_connection;
+static bool retry_connection = true;
 
 static const char *program_name;
 
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n", program_name);
+	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] path\n"
+		"-c"		"\tRead the current value from the store\n"
+		"-l"		"\tRead the last (before EOF) value from the store (default)\n"
+		"-n"		"\tDo not retry failed connection to write store\n"
+		"-q"		"\tAsk the write-end to quit\n",
+		program_name);
 	exit(1);
 }
 
@@ -103,9 +109,9 @@ main(int argc, char *argv[])
 
 	/* Default if nothing else is specified */
 	if (argc == 2)
-		cmd = 'C';
+		cmd = 'L';
 
-	while ((ch = getopt(argc, argv, "clqr")) != -1) {
+	while ((ch = getopt(argc, argv, "clnq")) != -1) {
 		switch (ch) {
 		case 'c':	/* Read current value */
 			cmd = 'C';
@@ -113,11 +119,11 @@ main(int argc, char *argv[])
 		case 'l':	/* Read last value */
 			cmd = 'L';
 			break;
+		case 'n':
+			retry_connection = false;
+			break;
 		case 'q':
 			quit = 1;
-			break;
-		case 'r':
-			retry_connection = 1;
 			break;
 		case '?':
 		default:
