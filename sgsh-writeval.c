@@ -902,7 +902,17 @@ get_free_client(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n",
+	fprintf(stderr, "Usage: %s [-l len|-t char] [-b n] [-e n] [-u s|m|h|d|r] path\n"
+		"-l len"	"\tProcess fixed-width len-sized records\n"
+		"-t char"	"\tProcess char-terminated records (newline default)\n"
+		"-b n"		"\tStore records beginning in a window n away from the end (default 1)\n"
+		"-e n"		"\tStore records ending in a window n away from the end (default 0)\n"
+		"-u unit"	"\tSpecify the unit of window boundaries\n"
+		""		"\ts: seconds\n"
+		""		"\tm: minutes\n"
+		""		"\th: hours\n"
+		""		"\td: days\n"
+		""		"\tr: records (default)\n",
 		program_name);
 	exit(1);
 }
