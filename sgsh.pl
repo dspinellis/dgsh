@@ -88,16 +88,16 @@ if ($opt_o) {
 }
 
 # Map containing all defined gather file names
-my %defined_gather_file;
+my %defined_stream;
 
 # Map containing all used gather file names
-my %used_gather_file;
+my %used_stream;
 
 # Map containing all defined gather store names
-my %defined_gather_store;
+my %defined_store;
 
 # Map containing all used gather store names
-my %used_gather_store;
+my %used_store;
 
 # Map from /stream/ file names into an array of named pipes
 # For code and the graph structure
@@ -138,7 +138,7 @@ my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |store:name
 my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*(\#.*)?$!;
 # |>/stream/name
-my $GATHER_FILE_OUTPUT = q!\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
+my $GATHER_STREAM_OUTPUT = q!\|\>\s*\/stream\/(\w+)\s*(\#.*)?$!;
 # |.
 my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
 # -||>/stream/name
@@ -304,11 +304,12 @@ parse_scatter_command_sequence
 # The return is a hash with the following elements:
 # input: 		none|scatter
 # body:			Command's text
-# output:		none|scatter|file|store
+# output:		none|scatter|stream|store
 # scatter_commands:	When output = scatter
 # scatter_flags:	When output = scatter
 # store_name:		When output = store
-# file_name:		When output = file
+# file_name:		When output = stream
+# store_flags:		When output = store
 sub
 parse_scatter_command
 {
@@ -350,8 +351,8 @@ parse_scatter_command
 		# Gather store output endpoint: |store:
 		if (s/$GATHER_STORE_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Variable \$$1 already used for output") if (defined($defined_gather_store{$1}));
-			$defined_gather_store{$1} = 1;
+			error("Store store:$1 already used for output") if (defined($defined_store{$1}));
+			$defined_store{$1} = 1;
 			$command{output} = 'store';
 			$command{store_name} = $1;
 			$command{body} .= $_;
@@ -359,13 +360,13 @@ parse_scatter_command
 		}
 
 		# Gather file output endpoint: |>
-		if (s/$GATHER_FILE_OUTPUT//o) {
+		if (s/$GATHER_STREAM_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Output file /stream/$1 already used for output") if (defined($defined_gather_file{$1}));
-			$defined_gather_file{$1} = 1;
+			error("Output stream /stream/$1 already used for output") if (defined($defined_stream{$1}));
+			$defined_stream{$1} = 1;
 			undef @{$parallel_file_map{$1}};
 			undef @{$parallel_graph_file_map{$1}};
-			$command{output} = 'file';
+			$command{output} = 'stream';
 			$command{file_name} = $1;
 			$command{body} .= $_;
 			return \%command;
@@ -437,7 +438,7 @@ scatter_code_and_pipes_map
 		for (my $p = 0; $p < $parallel; $p++) {
 
 			# Pass-through fast exit
-			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
 				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 				next;
 			}
@@ -445,7 +446,7 @@ scatter_code_and_pipes_map
 			# Generate output redirection
 			if ($c->{output} eq 'scatter') {
 				my ($code2, $pipes2) = scatter_code_and_pipes_map($c);
-			} elsif ($c->{output} eq 'file') {
+			} elsif ($c->{output} eq 'stream') {
 				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 			}
 		}
@@ -500,7 +501,7 @@ scatter_code_and_pipes_code
 		for (my $p = 0; $p < $parallel; $p++) {
 
 			# Pass-through fast exit
-			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
@@ -535,11 +536,11 @@ scatter_code_and_pipes_code
 				$code .= $code2;
 				$pipes .= $pipes2;
 				$kvstores .= $kvstores2;
-			} elsif ($c->{output} eq 'file') {
+			} elsif ($c->{output} eq 'stream') {
 				$code .= " >\$SGDIR/npfo-$c->{file_name}.$p &\n";
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
-				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
+				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= " | ${opt_p}sgsh-writeval \$SGDIR/$c->{store_name} &\n";
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
@@ -610,9 +611,9 @@ verify_code
 		chop $body;
 		while ($body =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined gather file name /stream/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
-			error("Gather file name /stream/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
-			$used_gather_file{$file_name} = 1;
+			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
+			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			$used_stream{$file_name} = 1;
 		}
 
 		if ($c->{output} eq 'scatter') {
@@ -624,26 +625,26 @@ verify_code
 		my $tmp_command = $command;
 		while ($tmp_command =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined gather file name /stream/$file_name specified for input\n") unless ($defined_gather_file{$file_name});
-			error("Gather file name /stream/$file_name used for input more than once\n") if ($used_gather_file{$file_name});
-			$used_gather_file{$file_name} = 1;
+			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
+			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			$used_stream{$file_name} = 1;
 		}
 		while ($tmp_command =~ s|store:(\w+)||) {
-			$used_gather_store{$1} = 1;
+			$used_store{$1} = 1;
 		}
 	}
 
 	if ($level == 0) {
-		for my $gf (keys %defined_gather_file) {
-			error("Gather file /stream/$gf is never read\n") unless (defined($used_gather_file{$gf}));
+		for my $gf (keys %defined_stream) {
+			error("Stream /stream/$gf is never read\n") unless (defined($used_stream{$gf}));
 		}
-		for my $gv (keys %defined_gather_store) {
-			warning("Gather store $gv set but not used\n") unless (defined($used_gather_store{$gv}));
+		for my $gv (keys %defined_store) {
+			warning("Store store:$gv set but not used\n") unless (defined($used_store{$gv}));
 		}
 
 		my @cycle;
 		if (defined($graph) && (@cycle = $graph->find_a_cycle())) {
-			print STDERR "The following dependencies across /stream files form a cycle:\n";
+			print STDERR "The following dependencies across streams form a cycle:\n";
 			for my $node (@cycle) {
 				print "$node_label{$node}\n";
 			}
@@ -729,7 +730,7 @@ scatter_graph_io
 		for (my $p = 0; $p < $parallel; $p++) {
 
 			# Pass-through fast exit
-			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file') {
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
@@ -760,11 +761,11 @@ scatter_graph_io
 				}
 				# Connect our command to sgsh-tee
 				print qq{\t$node_name -> $tee_node_name\n} if ($opt_g && $#output_edges > 0 && $show_tee);
-			} elsif ($c->{output} eq 'file') {
+			} elsif ($c->{output} eq 'stream') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'store') {
-				error("Variables not allowed in parallel execution", $c->{line_number}) if ($p > 0);
+				error("Store writes not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				print qq(\t$node_name -> "\$$c->{store_name}";\n) if ($opt_g);
 			} else {
 				die "Tailless command";
@@ -789,7 +790,7 @@ scatter_graph_body
 	my $cmd_n = 0;
 	for my $c (@{$command->{scatter_commands}}) {
 		for (my $p = 0; $p < $parallel; $p++) {
-			next if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'file');
+			next if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream');
 
 			my $node_name = "node_cmd_${scatter_n}_${cmd_n}_$p";
 
