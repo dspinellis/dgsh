@@ -225,13 +225,25 @@ $stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
 $stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
 print $output_fh q{
 export SGDIR=/tmp/sg-$$
+
 rm -rf $SGDIR
-trap '} . $stop_kvstores . q{rm -rf "$SGDIR"' 0
+
+trap '
+# Stop key-value stores
+} . $stop_kvstores . q{
+# Kill processes we have launched in the background
+kill $SGPID 2>/dev/null
+
+# Remove temporary directory
+rm -rf "$SGDIR"' 0
+
 trap 'exit $?' 1 2 3 15
+
 mkdir $SGDIR
 },
 qq{
 mkfifo $pipes
+
 $code
 };
 
@@ -494,7 +506,7 @@ scatter_code_and_pipes_code
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		$code .= "$tee_prog $tee_args &\n";
+		$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"\n};
 	}
 
 	# Process the commands
@@ -539,12 +551,12 @@ scatter_code_and_pipes_code
 				$pipes .= $pipes2;
 				$kvstores .= $kvstores2;
 			} elsif ($c->{output} eq 'stream') {
-				$code .= " >\$SGDIR/npfo-$c->{file_name}.$p &\n";
+				$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				$code .= ' |' unless $c->{body} eq '';
-				$code .= " ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} &\n";
+				$code .= qq{ ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} & SGPID="\$! \$SGPID"\n};
 				$kvstores .= "{\$SGDIR/$c->{store_name}}";
 			} else {
 				die "Tailless command";
