@@ -683,7 +683,7 @@ read_command(struct client *c)
 			exit(0);
 		case 'C':
 			c->state = s_send_current;
-			if (time_window)
+			if (time_window && head)
 				update_current_record();	/* Refresh have_record */
 			break;
 		default:
