@@ -81,3 +81,6 @@ seed-regression:
 
 clean:
 	rm -f *.o *.exe $(EXECUTABLES)
+
+install: $(EXECUTABLES)
+	install $(EXECUTABLES) /usr/local/bin
