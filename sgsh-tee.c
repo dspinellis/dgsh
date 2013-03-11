@@ -427,7 +427,7 @@ usage(const char *name)
 {
 	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
-		"-i"		"\tInput-size buffering\n"
+		"-i"		"\tInput-side buffering\n"
 		"-l"		"\tSplit scattered data on line boundaries\n"
 		"-m"		"\tProvide memory use statistics on termination\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n",
