@@ -829,7 +829,8 @@ buffer_read(void)
 		}
 		if (have_record) {
 			free(b);
-		} else if (!time_window || timercmp(&tail->timestamp, &abs_rend_time, >)) {
+		} else if (!time_window || !tail ||
+		    timercmp(&tail->timestamp, &abs_rend_time, >)) {
 			/* Setup an empty record, if there will never be a record to send */
 			b->size = 0;
 			b->prev = b->next = NULL;
