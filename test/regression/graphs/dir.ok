@@ -2,18 +2,18 @@
 digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee "];
+	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
 	"NFILES" [shape="box"];
 	node_cmd_0_1_0 -> "NFILES";
 	"NDIRS" [shape="box"];
 	node_cmd_0_2_0 -> "NDIRS";
 	"NBYTES" [shape="box"];
 	node_cmd_0_3_0 -> "NBYTES";
-	node_cmd_0_0_0 [label="awk '!/^total/ {print $6, $7, $8, $1, sprintf(\"%8d\", $5), $9}'\l"];
-	node_cmd_0_1_0 [label="wc -l\l"];
-	node_cmd_0_2_0 [label="grep -c '^d'\l"];
-	node_cmd_0_3_0 [label="awk '{s += $5} END {print s}'\l"];
-	gather_node_0 [label="cat \l\l"];
+	node_cmd_0_0_0 [label="awk '!/^total/ {print $6, $7, $8, $1, sprintf(\"%8d\", $5), $9}'\l", shape="ellipse"];
+	node_cmd_0_1_0 [label="wc -l\l", shape="ellipse"];
+	node_cmd_0_2_0 [label="grep -c '^d'\l", shape="ellipse"];
+	node_cmd_0_3_0 [label="awk '{s += $5} END {print s}'\l", shape="ellipse"];
+	gather_node_0 [label="cat\l", shape="ellipse"];
 	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
 	node_cmd_0_0_0 -> gather_node_0; // npfo-files.0
 	node_tee_0 -> node_cmd_0_3_0; // npi-0.3.0

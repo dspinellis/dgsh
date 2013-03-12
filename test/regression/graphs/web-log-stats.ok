@@ -2,7 +2,7 @@
 digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee "];
+	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
 	"page" [shape="box"];
 	node_cmd_0_0_0 -> "page";
 	"total_bytes" [shape="box"];
@@ -14,12 +14,12 @@ digraph D {
 	"bytes_old" [shape="box"];
 	node_cmd_1_3_0 -> "bytes_old";
 	node_cmd_0_1_0 -> node_tee_1
-	node_cmd_0_0_0 [label="awk -Winteractive '{print $7}'\l"];
-	node_cmd_0_1_0 [label="awk -Winteractive '{print $10}'\l"];
-	node_cmd_1_0_0 [label="awk -Winteractive '{ s += $1; print s}'\l"];
-	node_cmd_1_1_0 [label="awk -Winteractive '{print ++n}'\l"];
-	node_cmd_1_2_0 [label="\l"];
-	node_cmd_1_3_0 [label="\l"];
+	node_cmd_0_0_0 [label="awk -Winteractive '{print $7}'\l", shape="ellipse"];
+	node_cmd_0_1_0 [label="awk -Winteractive '{print $10}'\l", shape="ellipse"];
+	node_cmd_1_0_0 [label="awk -Winteractive '{ s += $1; print s}'\l", shape="ellipse"];
+	node_cmd_1_1_0 [label="awk -Winteractive '{print ++n}'\l", shape="ellipse"];
+	node_cmd_1_2_0 [label="\l", shape="ellipse"];
+	node_cmd_1_3_0 [label="\l", shape="ellipse"];
 	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
 	node_tee_1 -> node_cmd_1_2_0; // npi-1.2.0
 	node_tee_1 -> node_cmd_1_0_0; // npi-1.0.0

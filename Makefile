@@ -23,7 +23,7 @@ endif
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
 
 %.png: %.sh
-	./sgsh -g $< | dot -Tpng >$@
+	./sgsh -g pretty $< | dot -Tpng >$@
 
 all: $(EXECUTABLES)
 
@@ -55,7 +55,8 @@ charcount: charcount.sh
 
 png: sgsh
 	for i in example/*.sh ; do \
-		./sgsh -g $$i | dot -Tpng >`basename $$i .sh`.png ; \
+		./sgsh -g pretty $$i | dot -Tpng >`basename $$i .sh`-pretty.png ; \
+		./sgsh -g plain $$i | dot -Tpng >`basename $$i .sh`-plain.png ; \
 	done
 
 # Regression test based on generated output files
@@ -63,7 +64,7 @@ test-regression:
 	# Sort files by size to get the easiest problems first
 	# Generated dot graphs
 	for i in `ls -rS example/*.sh` ; do \
-		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.test ; \
+		perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.test ; \
 		diff -b test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
 	done
 	# Generated code
@@ -76,7 +77,7 @@ test-regression:
 seed-regression:
 	for i in example/*.sh ; do \
 		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
-		perl sgsh.pl -g $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
+		perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
 	done
 
 clean:

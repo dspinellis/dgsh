@@ -45,7 +45,9 @@ main::HELP_MESSAGE
 	my ($fh) = @_;
 	print $fh qq{
 Usage: $0 [-kng] [-s shell] [-t tee] [file]
--g		Generate a GraphViz graph of the specified processing
+-g style	Generate a GraphViz graph of the specified processing
+		Style "plain" gives full details in B&W Courier
+		Style "pretty" reduces details, adds colors, Arial font
 -k		Keep temporary script file
 -n		Do not run the generated script
 -o filename	Write the script in the specified file (- is stdout) and exit
@@ -58,7 +60,7 @@ Usage: $0 [-kng] [-s shell] [-t tee] [file]
 our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'sgsh-tee';
-if (!getopts('gkno:p:s:t:')) {
+if (!getopts('g:kno:p:s:t:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
@@ -68,6 +70,25 @@ $opt_p .= '/' if (defined($opt_p) && $opt_p !~ m|/$|);
 $opt_p = '' unless defined($opt_p);
 # Add path to opt_t unless it has one
 $opt_t = "$opt_p$opt_t" unless ($opt_t =~ m|/|);
+
+# GraphViz attributes: all nodes, stores, processing nodes
+my $gv_node_attr;
+my $gv_store_attr;
+my $gv_proc_attr;
+if ($opt_g) {
+	if ($opt_g eq 'pretty') {
+		$gv_node_attr = '[fontname="Arial", gradientangle="90", style="filled"]';
+		$gv_store_attr = '[shape="box", fillcolor="cyan:white"]';
+		$gv_proc_attr = 'shape="ellipse", fillcolor="yellow:white"';
+	} elsif ($opt_g eq 'plain') {
+		$gv_node_attr = '[fontname="Courier"]';
+		$gv_store_attr = '[shape="box"]';
+		$gv_proc_attr = 'shape="ellipse"';
+	} else {
+		main::HELP_MESSAGE(*STDERR);
+		exit 1;
+	}
+}
 
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
 
@@ -183,11 +204,11 @@ while (get_next_line()) {
 		my @gather_commands = parse_gather_command_sequence();
 
 		# Generate graph
-		print '
+		print qq[
 digraph D {
 	rankdir = LR;
-	node [fontname="Courier"];
-' 			if ($opt_g);
+	node $gv_node_attr;
+] 			if ($opt_g);
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
 		$global_scatter_n = 0;
@@ -735,7 +756,7 @@ scatter_graph_io
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		print qq{\t$tee_node_name [label="$tee_prog $tee_args"];\n} if ($opt_g && $show_tee);
+		print qq{\t$tee_node_name [label="$tee_prog $tee_args", $gv_proc_attr];\n} if ($opt_g && $show_tee);
 	}
 
 	# Process the commands
@@ -782,7 +803,7 @@ scatter_graph_io
 			} elsif ($c->{output} eq 'store') {
 				error("Store writes not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				if ($opt_g) {
-					print qq{\t"$c->{store_name}" [shape="box"];\n};
+					print qq(\t"$c->{store_name}" $gv_store_attr;\n);
 					print qq(\t$node_name -> "$c->{store_name}";\n)
 				}
 			} else {
@@ -821,7 +842,7 @@ scatter_graph_body
 					$edge{"$file_name_p"}->{rhs} = $node_name;
 				}
 			}
-			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{"];\n} if ($opt_g);
+			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($opt_g);
 			$node_label{$node_name} = $body;
 
 			if ($c->{output} eq 'scatter') {
@@ -839,11 +860,33 @@ graphviz_escape
 {
 	my ($name) = @_;
 
-	$name =~ s/\\/\\\\/g;
-	$name =~ s/"/\\"/g;
-	$name =~ s/\n\s*/\\l/g;
 	$name =~ s/\s+$//;
 	$name =~ s/^\s+//;
+	if ($opt_g eq 'pretty') {
+		# Remove single-quoted elements
+		$name =~ s/'[^']*'//g;
+		# Remove double-quoted elements
+		$name =~ s/\\\"/QUOTE/g;
+		$name =~ s/"[^"]*"//g;
+		# Remove comments
+		$name =~ s/\s*\#[^\n]*//g;
+		# Remove empty lines
+		$name =~ s/\n\n+/\n/g;
+		# Escape special characters
+		$name =~ s/\\/\\\\/g;
+		# Remove arguments of first command
+		$name =~ s/^([^ ]*) [^\n\|]*/$1/;
+		# Remove arguments from subsequent commands
+		$name =~ s/\n\s*([^ ]*)[^\n\|]*/\n$1/g;
+		$name =~ s/\|[ \t]*([^ ]*)[^\n\|]*/|$1/g;
+		# Improve presentation of pipes
+		$name =~ s/\|/ | /g;
+	} else {
+		# Escape special characters
+		$name =~ s/\\/\\\\/g;
+		$name =~ s/"/\\"/g;
+	}
+	$name =~ s/\n\s*/\\l/g;
 	$name =~ s/$/\\l/;
 	return $name;
 }
@@ -866,7 +909,7 @@ gather_graph
 			}
 			$is_node = 1;
 		}
-		print qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{"];\n} if ($opt_g && $is_node);
+		print qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($opt_g && $is_node);
 		$n++;
 	}
 }
