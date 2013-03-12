@@ -781,7 +781,10 @@ scatter_graph_io
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'store') {
 				error("Store writes not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				print qq(\t$node_name -> "\$$c->{store_name}";\n) if ($opt_g);
+				if ($opt_g) {
+					print qq{\t"$c->{store_name}" [shape="box"];\n};
+					print qq(\t$node_name -> "$c->{store_name}";\n)
+				}
 			} else {
 				die "Tailless command";
 			}

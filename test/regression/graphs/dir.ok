@@ -3,9 +3,12 @@ digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
 	node_tee_0 [label="sgsh-tee "];
-	node_cmd_0_1_0 -> "$NFILES";
-	node_cmd_0_2_0 -> "$NDIRS";
-	node_cmd_0_3_0 -> "$NBYTES";
+	"NFILES" [shape="box"];
+	node_cmd_0_1_0 -> "NFILES";
+	"NDIRS" [shape="box"];
+	node_cmd_0_2_0 -> "NDIRS";
+	"NBYTES" [shape="box"];
+	node_cmd_0_3_0 -> "NBYTES";
 	node_cmd_0_0_0 [label="awk '!/^total/ {print $6, $7, $8, $1, sprintf(\"%8d\", $5), $9}'\l"];
 	node_cmd_0_1_0 [label="wc -l\l"];
 	node_cmd_0_2_0 [label="grep -c '^d'\l"];
