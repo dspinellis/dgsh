@@ -54,9 +54,11 @@ charcount: charcount.sh
 	install charcount.sh charcount
 
 png: sgsh
+	mkdir -p png
 	for i in example/*.sh ; do \
-		./sgsh -g pretty $$i | dot -Tpng >`basename $$i .sh`-pretty.png ; \
-		./sgsh -g plain $$i | dot -Tpng >`basename $$i .sh`-plain.png ; \
+		./sgsh -g pretty $$i | dot -Tpng >png/`basename $$i .sh`-pretty.png ; \
+		./sgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
+		./sgsh -g plain $$i | dot -Tpng >png/`basename $$i .sh`-plain.png ; \
 	done
 
 # Regression test based on generated output files

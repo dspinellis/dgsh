@@ -45,9 +45,10 @@ main::HELP_MESSAGE
 	my ($fh) = @_;
 	print $fh qq{
 Usage: $0 [-kng] [-s shell] [-t tee] [file]
--g style	Generate a GraphViz graph of the specified processing
-		Style "plain" gives full details in B&W Courier
-		Style "pretty" reduces details, adds colors, Arial font
+-g style	Generate a GraphViz graph of the specified processing:
+		"plain" gives full details in B&W Courier
+		"pretty" reduces details, adds colors, Arial font
+		"pretty-full" adds colors, Arial font
 -k		Keep temporary script file
 -n		Do not run the generated script
 -o filename	Write the script in the specified file (- is stdout) and exit
@@ -76,7 +77,7 @@ my $gv_node_attr;
 my $gv_store_attr;
 my $gv_proc_attr;
 if ($opt_g) {
-	if ($opt_g eq 'pretty') {
+	if ($opt_g eq 'pretty' || $opt_g eq 'pretty-full') {
 		$gv_node_attr = '[fontname="Arial", gradientangle="90", style="filled"]';
 		$gv_store_attr = '[shape="box", fillcolor="cyan:white"]';
 		$gv_proc_attr = 'shape="ellipse", fillcolor="yellow:white"';
@@ -886,6 +887,7 @@ graphviz_escape
 		$name =~ s/\\/\\\\/g;
 		$name =~ s/"/\\"/g;
 	}
+	# Left-aligned line breaks
 	$name =~ s/\n\s*/\\l/g;
 	$name =~ s/$/\\l/;
 	return $name;
