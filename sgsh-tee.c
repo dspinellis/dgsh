@@ -60,6 +60,9 @@ static int buffers_allocated, buffers_freed, max_buffers_allocated;
 /* Set to true when we reach EOF on input */
 static bool reached_eof = false;
 
+/* Record terminator */
+static char rt = '\n';
+
 /* Information regarding the files we write to */
 struct sink_info {
 	char *name;		/* Output file name */
@@ -305,7 +308,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				off_t data_end = pos_assigned + data_to_assign - 1;
 
 				for (;;) {
-					if (*sink_pointer(data_end) == '\n') {
+					if (*sink_pointer(data_end) == rt) {
 						pos_assigned = data_end + 1;
 						break;
 					}
@@ -349,7 +352,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 						}
 					}
 
-					if (*sink_pointer(data_end) == '\n') {
+					if (*sink_pointer(data_end) == rt) {
 						last_nl = data_end;
 						if (data_end - pos_assigned > data_per_sink) {
 							pos_assigned = data_end + 1;
@@ -425,12 +428,13 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s] [file ...]\n"
+	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s] [-t char] [file ...]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
 		"-i"		"\tInput-side buffering\n"
 		"-l"		"\tSplit scattered data on line boundaries\n"
 		"-m"		"\tProvide memory use statistics on termination\n"
-		"-s"		"\tScatter the input across the files, rather than copying it to all\n",
+		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
+		"-t char"	"\tProcess char-terminated records (newline default)\n",
 		name);
 	exit(1);
 }
@@ -507,7 +511,7 @@ main(int argc, char *argv[])
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:silm")) != -1) {
+	while ((ch = getopt(argc, argv, "b:silmt:")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = atoi(optarg);
@@ -523,6 +527,12 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			opt_scatter = true;
+			break;
+		case 't':	/* Record terminator */
+			/* We allow \0 as rt */
+			if (strlen(optarg) > 1)
+				usage(progname);
+			rt = *optarg;
 			break;
 		case '?':
 		default:
