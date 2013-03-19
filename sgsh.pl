@@ -44,7 +44,7 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage: $0 [-kng] [-s shell] [-t tee] [file]
+Usage: $0 [-g style] [-kn] [-o file] [-p path] [-s shell] [-t tee] [file]
 -g style	Generate a GraphViz graph of the specified processing:
 		"plain" gives full details in B&W Courier
 		"pretty" reduces details, adds colors, Arial font
