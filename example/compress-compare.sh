@@ -1,7 +1,7 @@
 #!/usr/local/bin/sgsh
 #
 # Report file type, length, and compression performance for a
-# URL retrieved from the web.  The web file never touched the
+# URL retrieved from the web.  The web file never touches the
 # disk.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
