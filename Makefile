@@ -21,6 +21,7 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
+MANUALS=sgsh.1 sgsh-tee.1
 
 %.png: %.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
@@ -87,3 +88,4 @@ clean:
 
 install: $(EXECUTABLES)
 	install $(EXECUTABLES) /usr/local/bin
+	install -m 644 $(MANUALS) /usr/local/share/man/man1

@@ -1,0 +1,93 @@
+.TH SGSH-TEE 1 "19 March 2013"
+.\"
+.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
+.SH SYNOPSIS
+\fBsgsh-tee\fP
+[\fB\-b\fP \fIsize\fP]
+[\fB\-ilms\fP]
+[\fB\-t\fP \fIcharacter\fP]
+[\fIfile ...\fP]
+.SH DESCRIPTION
+\fIsgsh-tee\fP will read data from its standard input and scatter it to
+the specified sinks as files.
+It resembles in its operation \fItee\fP(1),
+but offers additional capabilities required for the operation of \fIsgsh\fP(1).
+\fIsgsh-tee\fP is normally executed from within \fIsgsh\fP-generated scripts,
+rather than through end-user commands.
+This manual page serves mainly to document its operation,
+to clarify the flags that can be used at the beginning of an \fIsgsh\fP scatter block, and
+to allow the creation of plug-compatible replacements
+implementing different record types.
+.PP
+In contrast to \fItee\fP(1), \fIsgsh-tee\fP will buffer the data it handles,
+so it will never cause deadlock or starvation when one or more sinks
+are unable to read data.
+
+.SH OPTIONS
+.IP "\fB\-b\fP \fIsize\fP"
+Specify the size of the buffer to use.
+This is by default 1MB.
+Buffers are chained together when more space is required,
+so the main utility of this option is to decrease the buffer
+size in memory-constrained environments.
+
+.IP "\fB\-i\fP"
+Implement input-side buffering.
+By default \fIsgsh-tee\fP will buffer only as much input data,
+as is needed to avoid starving one of the specified sinks.
+In doing so it may cause its input source to block
+while having data to write.
+When this option is enabled
+\fIsgsh-tee\fP will always read data if they are available
+on the standard input,
+and will write that data to any (including zero) sinks that
+can read it.
+This can be useful in cases where a command with insufficient input
+buffering,
+like \fIjoin\fP(1), \fIsort\fP(1), or \fIpaste\fP(1),
+is gathering input from commands executing in parallel.
+In such a case adding \fIsgsh-tee\fP with input side buffering
+enabled at the end of each data pipeline,
+will increase the number of processes that can operate concurrently.
+
+.IP "\fB\-l\fP"
+Split scattered data on line boundaries.
+This command has no effect if the data is copied to all sinks,
+rather than scattered among the specified sinks.
+
+.IP "\fB\-m\fP"
+Provide memory use statistics on termination.
+This is mainly used for testing,
+to check against leaks of buffers.
+
+.IP "\fB\-s\fP"
+Scatter the input fairly across the sinks, rather than copying it to all.
+When this option is in effect,
+the input data are divided into chunks and each chunk is written only
+to a single sink.
+This is useful for dividing the work among multiple processes operating
+in parallel.
+
+.IP "\fB\-t\fP \fIchar\fP"
+Use \fIchar\fP as the record separator,
+By default the record separator is a newline,
+An empty (not missing) argument for the record separator
+will make the record separator be the null character.
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>
