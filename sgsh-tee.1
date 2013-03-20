@@ -73,8 +73,8 @@ to check against leaks of buffers.
 .IP "\fB\-s\fP"
 Scatter the input fairly across the sinks, rather than copying it to all.
 When this option is in effect,
-the input data are divided into chunks and each chunk is written only
-to a single sink.
+the input data are divided into chunks of one or more lines,
+and each chunk is written only to a single sink.
 This is useful for dividing the work among multiple processes operating
 in parallel.
 
