@@ -42,23 +42,23 @@ for flags in '' -i
 do
 	# Test line scatter reliable algorithm
 	cat -n /usr/share/dict/words >words
-	./sgsh-tee $flags -sl -b 1000000 <words a b c d
+	./sgsh-tee $flags -s -b 1000000 <words a b c d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable $flags" words words2
 
 	# Test line scatter efficient algorithm
-	./sgsh-tee $flags -sl -b 128 <words a b c d
+	./sgsh-tee $flags -s -b 128 <words a b c d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter efficient $flags" words words2
 
 	# Test with a buffer smaller than line size
-	./sgsh-tee $flags -sl -b 5 <words a b c d
+	./sgsh-tee $flags -s -b 5 <words a b c d
 	cat a b c d | sort -n >words2
 	ensure_same "Small buffer $flags" words words2
 
 	# Test with data less than the buffer size
 	head -50 /usr/share/dict/words | cat -n >words
-	./sgsh-tee $flags -sl -b 1000000 <words a b c d
+	./sgsh-tee $flags -s -b 1000000 <words a b c d
 	cat a b c d | sort -n >words2
 	ensure_same "Large buffer $flags" words words2
 	rm words words2
@@ -82,7 +82,8 @@ do
 	rm a
 
 	# Test buffering
-	for flags2 in '' -l
+	# When -l is supported add, say, -l 16
+	for flags2 in ''
 	do
 		test=tee-fastout$flags$flags2
 		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 >/dev/null 2>test/tee/$test.test

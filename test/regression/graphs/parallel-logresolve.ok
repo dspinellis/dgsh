@@ -2,7 +2,7 @@
 digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee  -s -l", shape="ellipse"];
+	node_tee_0 [label="sgsh-tee  -s", shape="ellipse"];
 	node_cmd_0_0_0 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
 	node_cmd_0_0_1 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
 	node_cmd_0_0_2 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];

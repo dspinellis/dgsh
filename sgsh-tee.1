@@ -19,7 +19,7 @@ sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 .SH SYNOPSIS
 \fBsgsh-tee\fP
 [\fB\-b\fP \fIsize\fP]
-[\fB\-ilms\fP]
+[\fB\-ims\fP]
 [\fB\-t\fP \fIcharacter\fP]
 [\fIfile ...\fP]
 .SH DESCRIPTION
@@ -64,11 +64,6 @@ is gathering input from commands executing in parallel.
 In such a case adding \fIsgsh-tee\fP with input side buffering
 enabled at the end of each data pipeline,
 will increase the number of processes that can operate concurrently.
-
-.IP "\fB\-l\fP"
-Split scattered data on line boundaries.
-This command has no effect if the data is copied to all sinks,
-rather than scattered among the specified sinks.
 
 .IP "\fB\-m\fP"
 Provide memory use statistics on termination.

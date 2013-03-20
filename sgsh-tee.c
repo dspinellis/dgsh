@@ -51,8 +51,12 @@ struct buffer {
 /* Scatter the output across the files, rather than copying it. */
 static bool opt_scatter = false;
 
-/* Split scattered data on line boundaries */
-static bool opt_line = false;
+/*
+ * Split scattered data on blocks of specified size; otherwise on line boundaries
+ * Currently there is no support for this option; a -l option should be added.
+ */
+
+static bool block_len = 0;
 
 /* Allocated bufffer information */
 static int buffers_allocated, buffers_freed, max_buffers_allocated;
@@ -297,7 +301,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 		 * and advance pos_assigned.
 		 */
 		si->pos_written = pos_assigned;		/* Initially nothing has been written. */
-		if (opt_line) {
+		if (block_len == 0) {			/* Write whole lines */
 			if (available_data > buffer_size / 2 && !use_reliable) {
 				/*
 				 * Efficient algorithm:
@@ -431,7 +435,6 @@ usage(const char *name)
 	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s] [-t char] [file ...]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
 		"-i"		"\tInput-side buffering\n"
-		"-l"		"\tSplit scattered data on line boundaries\n"
 		"-m"		"\tProvide memory use statistics on termination\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n",
@@ -511,16 +514,13 @@ main(int argc, char *argv[])
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:silmt:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:simt:")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = atoi(optarg);
 			break;
 		case 'i':
 			state = read_ib;
-			break;
-		case 'l':
-			opt_line = true;
 			break;
 		case 'm':	/* Provide memory use statistics on termination */
 			opt_memory_stats = true;
