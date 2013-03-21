@@ -21,7 +21,7 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
-MANUALS=sgsh.1 sgsh-tee.1
+MANUALS=sgsh.1 sgsh-tee.1 sgsh-writeval.1 sgsh-readval.1
 
 %.png: %.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
