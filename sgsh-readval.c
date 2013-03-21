@@ -42,7 +42,7 @@ static const char *program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-c|l] [-q] [-r] -s path\n"
+	fprintf(stderr, "Usage: %s [-c|l] [-n] [-q] -s path\n"
 		"-c"		"\tRead the current value from the store\n"
 		"-l"		"\tRead the last (before EOF) value from the store (default)\n"
 		"-n"		"\tDo not retry failed connection to write store\n"
