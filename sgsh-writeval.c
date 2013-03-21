@@ -893,7 +893,7 @@ usage(void)
 		"-b n"		"\tStore records beginning in a window n away from the end (default 1)\n"
 		"-e n"		"\tStore records ending in a window n away from the end (default 0)\n"
 		"-l len"	"\tProcess fixed-width len-sized records\n"
-		"-s path"	"\tSpecify the socket to connect to\n"
+		"-s path"	"\tSpecify the socket to create\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n"
 		"-u unit"	"\tSpecify the unit of window boundaries\n"
 		""		"\ts: seconds\n"
