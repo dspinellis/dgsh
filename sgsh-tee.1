@@ -27,12 +27,12 @@ sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 the specified sinks as files.
 It resembles in its operation \fItee\fP(1),
 but offers additional capabilities required for the operation of \fIsgsh\fP(1).
-\fIsgsh-tee\fP is normally executed from within \fIsgsh\fP-generated scripts,
-rather than through end-user commands.
 In contrast to \fItee\fP(1), \fIsgsh-tee\fP will buffer the data it handles,
 so it will never cause deadlock or starvation when one or more sinks
 are unable to read data.
 .PP
+\fIsgsh-tee\fP is normally executed from within \fIsgsh\fP-generated scripts,
+rather than through end-user commands.
 This manual page serves mainly to document its operation,
 to clarify the flags that can be used at the beginning of an \fIsgsh\fP scatter block, and
 to allow the creation of plug-compatible replacements
