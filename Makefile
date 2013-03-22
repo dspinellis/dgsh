@@ -21,10 +21,23 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
-MANUALS=sgsh.1 sgsh-tee.1 sgsh-writeval.1 sgsh-readval.1
 
-%.png: %.sh
+MANSRC=$(wildcard *.1)
+MANPDF=$(patsubst %.1,%.pdf,$(MANSRC))
+MANHTML=$(patsubst %.1,%.html,$(MANSRC))
+
+EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
+WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
+WEBDIST=../../../pubs/web/home/sw/sgsh/
+
+png/%-pretty.png: example/%.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
+
+%.pdf: %.1
+	groff -man -Tps $< | ps2pdf - $@
+
+%.html: %.1
+	groff -man -Thtml $< >$@
 
 all: $(EXECUTABLES)
 
@@ -44,7 +57,7 @@ test-kvstore: test-kvstore.sh
 	$(MAKE) clean
 	$(MAKE) DEBUG=1
 	./test-kvstore.sh
-	# Remove the debug build versions {{{1
+	# Remove the debug build versions
 	$(MAKE) clean
 
 sgsh: sgsh.pl
@@ -54,8 +67,7 @@ sgsh: sgsh.pl
 charcount: charcount.sh
 	install charcount.sh charcount
 
-png: sgsh
-	mkdir -p png
+allpng: sgsh
 	for i in example/*.sh ; do \
 		./sgsh -g pretty $$i | dot -Tpng >png/`basename $$i .sh`-pretty.png ; \
 		./sgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
@@ -84,8 +96,13 @@ seed-regression:
 	done
 
 clean:
-	rm -f *.o *.exe $(EXECUTABLES)
+	rm -f *.o *.exe $(EXECUTABLES) $(MANPDF) $(MANHTML) $(WEBPNG)
 
 install: $(EXECUTABLES)
 	install $(EXECUTABLES) /usr/local/bin
-	install -m 644 $(MANUALS) /usr/local/share/man/man1
+	install -m 644 $(MANSRC) /usr/local/share/man/man1
+
+web: $(MANPDF) $(MANHTML) $(WEBPNG)
+	perl -n -e 'if (/^#!(.*)/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
+	cp $(MANHTML) $(MANPDF) $(WEBDIST)
+	cp $(WEBPNG) $(WEBDIST)

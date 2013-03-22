@@ -119,6 +119,7 @@ Streams are internally implemented through named pipes.
 .SH SYNTAX
 .PP
 .ft C
+.nf
 program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
         ;
 
@@ -133,6 +134,7 @@ sink    : '|>/stream/' filename         // Sink to specified stream
         | '|store:' store_name          // Sink to specified store
         | '|{' command ... '|}'         // Scatter
         ;
+.fi
 .ft P
 .br
 

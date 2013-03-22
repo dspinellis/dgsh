@@ -1,8 +1,11 @@
 #!/usr/local/bin/sgsh
 #
+# SYNOPSIS Compression benchmark
+# DESCRIPTION
 # Report file type, length, and compression performance for a
 # URL retrieved from the web.  The web file never touches the
 # disk.
+# Demonstrates the use of stores.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #

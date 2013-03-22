@@ -2,9 +2,14 @@
 *.test
 *.exe
 *.o
-png
+*.pdf
+png/*.png
 sgsh
 sgsh-tee
 sgsh-readval
 sgsh-writeval
 charcount
+sgsh.html
+sgsh-tee.html
+sgsh-readval.html
+sgsh-writeval.html

@@ -1,7 +1,9 @@
 #!/usr/local/bin/sgsh -s /usr/bin/bash
 #
-# Continuous statistics over web log stream data
-# Demonstrates stream processing
+# SYNOPSIS Web log statistics
+# DESCRIPTION
+# Provides continuous statistics over web log stream data.
+# Demonstrates stream processing.
 # Provide as an argument either the name of a growing web log file
 # or -s and a static web log file, which will be processed at a rate
 # of about 10 lines per second.

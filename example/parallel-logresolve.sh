@@ -1,7 +1,9 @@
 #!/usr/local/bin/sgsh
 #
-# Resolve IP addresses of web logs in parallel
-# Demonstrates parallel execution
+# SYNOPSIS Parallel logresolve
+# DESCRIPTION
+# Resolve IP addresses of web logs in parallel.
+# Demonstrates parallel execution.
 #
 #  Copyright 2013 Diomidis Spinellis
 #

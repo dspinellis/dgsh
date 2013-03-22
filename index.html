@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>sgsh &mdash; scatter-gather shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Bootstrap -->
+<link href="../../a/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+<link href="../../a/prettify/prettify.css" type="text/css" rel="stylesheet" />
+<link href="../../a/dds-bstyle.css" rel="stylesheet" />
+
+</head>
+<body>
+<div class="top">sgsh dds</div>
+<div class="row">
+    <div class="span3 bs-docs-sidebar" id="navparent">
+    <ul class="nav nav-list" data-spy="affix">
+    <li ><a href="#intro">Introduction</a></li>
+	<ul class="nav nav-list">
+	<li ><a href="#ipc">IPC</a></li>
+	<li ><a href="#syntax">Syntax</a></li>
+	</ul>
+    <li ><a href="#download">Download</a></li>
+    <li ><a href="#reference">Reference</a></li>
+    <li><a href="#examples">Examples</a></li>
+	<ul class="nav nav-list">
+#!sh format-eg.sh -c
+	</ul>
+    </ul>
+    </div> <!-- span9 -->
+    <div class="span9">
+
+<!-- About {{{1
+================================================== -->
+<section id="intro">
+  <div class="page-header">
+    <h1>sgsh &mdash; scatter-gather shell</h1>
+  </div>
+<p>
+The scatter gather shell, <em>sgsh</em>,
+allows the expressive expression of
+efficient big data set and streams processing pipelines
+using existing Unix tools as well as custom-built components.
+It is a Unix-style shell allowing the specification of pipelines
+with non-linear scatter-gather operations.
+These form a directed acyclic process graph,
+which is typically executed by multiple processor cores,
+thus increasing the operation's processing throughput.
+</p>
+<p>
+If you want to get a feeling on how <em>sgsh</em> works in practice,
+skip right down to the <a href="#examples">examples</a> section.
+</p>
+
+<section id="ipc">
+<h2>Inter-process communication</h2>
+<p>
+<em>Sgsh</em> provides three inter-process communication mechanisms.
+<dl class="dl-horizontal">
+<dt>Scatter blocks</dt><dd> send the output of one pipeline ending
+with <code>|{</code> into multiple pipelines beginning with <code>-|</code>.
+The scatter block is terminated by <code>|}</code>.
+Scatter interconnections are internally implemented through
+automatically-named pipes, and a helper program,
+<em>sgsh-tee</em>(1),
+that distributes the data to multiple processes.
+The scatter behavior can be modified by adding
+<em>sgsh-tee</em>(1) flags after the <code>|{</code> symbol.
+</dd>
+<dt>Stores</dt><dd> are named as <code>store:</code><em>name</em>.
+These allow the storage of a data stream's
+last record (or of a specified window of records) into a named buffer.
+This record can be later retrieved asynchronously by one or more readers.
+Data can be piped into a store or out of a store, or it can be read
+using the shell's command output substitution syntax.
+Stores are implemented internally through Unix-domain sockets,
+a writer program, <em>sgsh-write</em>(1), and a reader program, <em>sgsh-read</em>(1).
+The behavior of store I/O can be modified by adding
+<em>sgsh-writeval</em>(1) and <em>sgsh-readval</em>(1) flags after the store's name.
+In particular, this feature can be used to operate on windows of stream data,
+rather than a single value written to a store.
+</dd>
+<dt>Streams</dt><dd> are named as <code>/stream/</code><em>name</em>.
+They connect the output of one process
+with the input of another.
+In contrast to scatter blocks,
+which restrict the data flow through a tree of processes,
+streams allow the specification of a directed acyclic process graph.
+Streams require exactly one reader and one writer in order to operate.
+Consequently, they should not be used in sequential synchronous steps
+specified in the gather block, because steps waiting to be executed
+will completely block all upstream processing in the scatter block.
+Streams are internally implemented through named pipes.
+</dd>
+</dl>
+</p>
+</section>
+
+<section id="syntax">
+<h2>Syntax</h2>
+<pre class="prettyprint">
+program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
+        ;
+
+command : source pipeline sink
+        ;
+
+source  : '-|'          // Receive scatter input
+        | '.|'          // Receive no input
+        ;
+
+sink    : '|&gt;/stream/' filename         // Sink to specified stream
+        | '|store:' store_name          // Sink to specified store
+        | '|{' command ... '|}'         // Scatter
+        ;
+</pre>
+</section>
+
+</section> <!-- Introduction -->
+
+<!-- Download {{{1
+================================================== -->
+<section id="download">
+  <div class="page-header">
+    <h1>Download</h1>
+  </div>
+<p>
+You can clone the project's source code through its
+<a href="https://github.com/dspinellis/sgsh">GitHub page</a>.
+Alternatively, you can download the latest version of the source code
+as a zip file through
+<a href="https://github.com/dspinellis/sgsh/archive/master.zip">this link</a>.
+</p>
+</section>
+
+<!-- Reference {{{1
+================================================== -->
+<section id="reference">
+  <div class="page-header">
+    <h1>Reference documentation</h1>
+  </div>
+<p>
+These are the manual pages for <em>sgsh</em> and the helper programs
+in formats suitable for browsing and printing.
+</p>
+<dl >
+<dt> sgsh </dt><dd> scatter gather shell <a href="sgsh.html">HTML</a>, <a href="sgsh.pdf">PDF</a></dd>
+<dt> sgsh-tee </dt><dd> buffer and copy or scatter standard input to one or more sinks <a href="sgsh-tee.html">HTML</a>, <a href="sgsh-tee.pdf">PDF</a></dd>
+<dt> sgsh-writeval </dt><dd> write values to a data store <a href="sgsh-writeval.html">HTML</a>, <a href="sgsh-writeval.pdf">PDF</a></dd>
+<dt> sgsh-readval </dt><dd> data store client <a href="sgsh-readval.html">HTML</a>, <a href="sgsh-readval.pdf">PDF</a></dd>
+</dl>
+</section>
+
+
+
+<!-- Examples {{{1
+================================================== -->
+<section id="examples">
+  <div class="page-header">
+    <h1>Examples</h1>
+  </div>
+
+#!sh format-eg.sh
+
+</section> <!-- Examples -->
+
+</div> <!-- span9 -->
+</div> <!-- row -->
+
+<!-- Bootstrap -->
+<script src="http://code.jquery.com/jquery.js"></script>
+<script src="../../a/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="../../a/prettify/prettify.js"></script>
+
+<script>
+    $(document).ready(function() {
+	$(document.body).scrollspy({
+	    target: "#navparent"
+	});
+	prettyPrint();
+    });
+</script>
+<div class="license">
+<!--Creative Commons License--><a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/gr/deed.en"><img hspace="4" align="left" alt="Creative Commons License" style="border-width:0" src="http://creativecommons.org/images/public/somerights20.png"/></a>
+Unless otherwise expressly stated, all original material on this page
+created by Diomidis Spinellis is licensed under a
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/gr/deed.en">Creative Commons Attribution-Share Alike 3.0 Greece License</a>.
+</div>
+</body>
+</html>

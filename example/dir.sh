@@ -1,9 +1,10 @@
 #!/usr/local/bin/sgsh
 #
-# Windows-like DIR command for the current directory
-# Nothing that couldn't be done with ls -l | awk
-# Demonstrates combined use of variable assignment and file redirection
-# Tests auto-export of assigned variables to subshell
+# SYNOPSIS Directory listing
+# DESCRIPTION
+# Windows-like DIR command for the current directory.
+# Nothing that couldn't be done with <code>ls -l | awk</code>.
+# Demonstrates combined use of stores and streams.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #

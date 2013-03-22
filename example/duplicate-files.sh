@@ -1,7 +1,9 @@
 #!/usr/local/bin/sgsh
 #
-# List the names of duplicate files in the specified directory
-#
+# SYNOPSIS Find duplicate files
+# DESCRIPTION
+# List the names of duplicate files in the specified directory.
+# Demonstrates the combination of streams with a relational join.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #

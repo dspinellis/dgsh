@@ -1,5 +1,7 @@
 #!/usr/local/bin/sgsh
 #
+# SYNOPSIS Word properties
+# DESCRIPTION
 # Obtain a text document from the specified URL and list words
 # containing a two-letter palindrome, words containing
 # four consonants, and words longer than 12 characters.
