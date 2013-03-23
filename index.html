@@ -11,10 +11,10 @@
 <link href="../../a/prettify/prettify.css" type="text/css" rel="stylesheet" />
 <link href="../../a/dds-bstyle.css" rel="stylesheet" />
 </head>
-<body data-spy="scroll" data-target=".sidenav">
+<body data-spy="scroll" data-target="#sidemenu">
 <div class="top">sgsh dds</div>
 <div class="row">
-    <div class="span4" >
+    <div class="span4" id="sidemenu" >
     <ul class="nav nav-list sidenav" data-spy="affix">
     <li ><a href="#intro">Introduction</a></li>
 	<li>
@@ -56,6 +56,7 @@ thus increasing the operation's processing throughput.
 If you want to get a feeling on how <em>sgsh</em> works in practice,
 skip right down to the <a href="#examples">examples</a> section.
 </p>
+</section> <!-- Introduction -->
 
 <section id="ipc">
 <h2>Inter-process communication</h2>
@@ -134,7 +135,6 @@ Names of data stores and streams appearing in the gather
 block are set to match the output of the corresponding gather commands.
 The gather block ends with <code>|}</code> appearing in a single line.
 </p>
-
 <p>
 In the following example the output of <em>ls</em> is scattered to
 three commands:
@@ -187,9 +187,7 @@ sink    : '|&gt;/stream/' filename    // Sink to specified stream
         | '|{' command ... '|}'    // Scatter
         ;
 </pre>
-</section>
-
-</section> <!-- Introduction -->
+</section> <!-- syntax -->
 
 <!-- Downloading and installation {{{1
 ================================================== -->
