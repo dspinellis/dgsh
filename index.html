@@ -23,7 +23,7 @@
 	<li ><a href="#syntax">Syntax</a></li>
 	</ul>
 	</li>
-    <li ><a href="#download">Download</a></li>
+    <li ><a href="#download">Downloading and installation</a></li>
     <li ><a href="#reference">Reference</a></li>
     <li><a href="#examples">Examples</a></li>
 	<li>
@@ -103,6 +103,74 @@ Streams are internally implemented through named pipes.
 
 <section id="syntax">
 <h2>Syntax</h2>
+<p>
+An <em>sgsh</em> script follows the syntax of an <em>sh</em>(1) shell
+script with the addition of <em>scatter/gather</em> blocks.
+A <em>scatter</em> block starts with a line
+containing the sequence <code>scatter |{</code>.
+Data may be piped into the block.
+A scatter block contains one or more <em>sgsh</em> commands,
+which are executed asynchronously (in the background).
+Each command starts with a source (input) specification at
+the beginning of a line:
+<code>-|</code> to receive input that was piped into the
+scatter block, or
+<code>.|</code> to specify that no input will be received.
+Then follows a normal <em>sh</em>(1) pipeline,
+followed by a sink (output) specification at the end of a line.
+This can be a stream (<code>|&gt;/stream/</code><em>name</em>),
+a data store (<code>|store:</code><em>name</em>),
+or a nested scatter block
+(starting with <code>|{</code> and ending with <code>|}</code>).
+</p>
+<p>
+A <em>gather</em> block starts with a line
+containing the sequence <code>|} gather |{</code>,
+which also ends the preceding scatter block,
+and ends with a line containing <code>|}</code>.
+The gather block contains normal <em>sh</em>(1) commands,
+which are executed synchronously with the scatter commands.
+Names of data stores and streams appearing in the gather
+block are set to match the output of the corresponding gather commands.
+The gather block ends with <code>|}</code> appearing in a single line.
+</p>
+
+<p>
+In the following example the output of <em>ls</em> is scattered to
+three commands:
+<em>grep</em>, which counts the number of directories and stores the
+result into the <code>NDIRS</code> store,
+<em>awk</em>, which sums the number of bytes and stores the
+result into the <code>NBYTES</code> store, and
+an empty command,
+which simply sends a copy of its input to the <code>files</code> stream.
+The commands in the <em>gather</em> block retrieve and display the
+data from the stores and the stream.
+</p>
+
+<pre class="prettyprint lang-bash">
+#!/usr/local/bin/sgsh
+
+ls -n |
+scatter |{
+	# Count number of directories
+	-| grep -c '^d' |store:NDIRS
+
+	# Tally number of bytes
+	-| awk '{s += $5} END {print s}' |store:NBYTES
+
+	# Copy of the files
+	-||&gt;/stream/files
+|} gather |{
+	cat /stream/files
+	echo "`store:NDIRS` Dir(s) `store:NBYTES` bytes"
+|}
+</pre>
+
+<p>
+Here the formal description of the <em>sgsh</em> syntax.
+</p>
+
 <pre class="prettyprint">
 program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
         ;
@@ -110,24 +178,24 @@ program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
 command : source pipeline sink
         ;
 
-source  : '-|'          // Receive scatter input
-        | '.|'          // Receive no input
+source  : '-|'                      // Receive scatter input
+        | '.|'                      // Receive no input
         ;
 
-sink    : '|&gt;/stream/' filename         // Sink to specified stream
-        | '|store:' store_name          // Sink to specified store
-        | '|{' command ... '|}'         // Scatter
+sink    : '|&gt;/stream/' filename    // Sink to specified stream
+        | '|store:' store_name     // Sink to specified store
+        | '|{' command ... '|}'    // Scatter
         ;
 </pre>
 </section>
 
 </section> <!-- Introduction -->
 
-<!-- Download {{{1
+<!-- Downloading and installation {{{1
 ================================================== -->
 <section id="download">
   <div class="page-header">
-    <h1>Download</h1>
+    <h1>Downloading and installation</h1>
   </div>
 <p>
 You can clone the project's source code through its
@@ -135,6 +203,32 @@ You can clone the project's source code through its
 Alternatively, you can download the latest version of the source code
 as a zip file through
 <a href="https://github.com/dspinellis/sgsh/archive/master.zip">this link</a>.
+</p>
+<p>
+To compile and run <em>sgsh</em> you will need to have
+a C compiler, GNU make, and <a href="http://www.perl.org/">Perl</a>
+installed in your system.
+The optional Perl module <em>Graph</em> is used to detect cycles that
+can lead to deadlocks.
+An installation of <a href="http://www.graphviz.org/">GraphViz</a>
+will allow you to visualize the <em>sgsh</em> graphs that you specify
+in your programs.
+The <em>sgsh</em> suite has been tested under
+Cygwin, Debian Linux, FreeBSD, and Mac OS X.
+</p>
+<p>
+To install the <em>sgsh</em> suite run <code>make</code>,
+followed by <code>sudo make install</code>.
+By default, the program and its documentation are installed under
+<code>/usr/local</code>.
+You can modify this by setting the <code>INSTPREFIX</code> variable
+during installation,
+e.g. <code>sudo make INSTPREFIX=/usr install</code>.
+Alternatively, you can also run <em>sgsh</em> from its current
+directory, by running <code>make</code> and then using the <code>-p</code>
+flag to specify the location of the helper programs,
+as in
+<code>./sgsh -p . example/compress-compare.sh http://www.google.com</code>.
 </p>
 </section>
 
