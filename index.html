@@ -2,18 +2,20 @@
 <html>
 <head>
 <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-<title>sgsh — scatter-gather shell</title>
+<title>sgsh &mdash; scatter-gather shell</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
 <!-- Bootstrap -->
 <link href="../../a/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+<link href="../../a/bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet" />
 <link href="../../a/prettify/prettify.css" type="text/css" rel="stylesheet" />
 <link href="../../a/dds-bstyle.css" rel="stylesheet" />
 </head>
 <body>
 <div class="top">sgsh dds</div>
 <div class="row">
-    <div class="span3 bs-docs-sidebar" id="navparent">
-    <ul class="nav nav-list" data-spy="affix">
+    <div class="span4" >
+    <ul class="nav nav-list sidenav" data-spy="affix">
     <li ><a href="#intro">Introduction</a></li>
 	<li>
 	<ul class="nav nav-list">
@@ -30,14 +32,14 @@
 	</ul>
 	</li>
     </ul>
-    </div> <!-- span9 -->
-    <div class="span9">
+    </div> <!-- span4 -->
+    <div class="span8">
 
 <!-- About {{{1
 ================================================== -->
 <section id="intro">
   <div class="page-header">
-    <h1>sgsh — scatter-gather shell</h1>
+    <h1>sgsh &mdash; scatter-gather shell</h1>
   </div>
 <p>
 The scatter gather shell, <em>sgsh</em>,
@@ -167,7 +169,7 @@ in formats suitable for browsing and printing.
 
 </section> <!-- Examples -->
 
-</div> <!-- span9 -->
+</div> <!-- span8 -->
 </div> <!-- row -->
 
 <!-- Bootstrap -->
@@ -177,9 +179,6 @@ in formats suitable for browsing and printing.
 
 <script>
     $(document).ready(function() {
-	$(document.body).scrollspy({
-	    target: "#navparent"
-	});
 	prettyPrint();
     });
 </script>
