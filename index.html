@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>sgsh &mdash; scatter-gather shell</title>
+<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+<title>sgsh — scatter-gather shell</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <!-- Bootstrap -->
 <link href="../../a/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
 <link href="../../a/prettify/prettify.css" type="text/css" rel="stylesheet" />
 <link href="../../a/dds-bstyle.css" rel="stylesheet" />
-
 </head>
 <body>
 <div class="top">sgsh dds</div>
@@ -15,16 +15,20 @@
     <div class="span3 bs-docs-sidebar" id="navparent">
     <ul class="nav nav-list" data-spy="affix">
     <li ><a href="#intro">Introduction</a></li>
+	<li>
 	<ul class="nav nav-list">
 	<li ><a href="#ipc">IPC</a></li>
 	<li ><a href="#syntax">Syntax</a></li>
 	</ul>
+	</li>
     <li ><a href="#download">Download</a></li>
     <li ><a href="#reference">Reference</a></li>
     <li><a href="#examples">Examples</a></li>
+	<li>
 	<ul class="nav nav-list">
-#!sh format-eg.sh -c
+<!-- #!sh format-eg.sh -c -->
 	</ul>
+	</li>
     </ul>
     </div> <!-- span9 -->
     <div class="span9">
@@ -33,7 +37,7 @@
 ================================================== -->
 <section id="intro">
   <div class="page-header">
-    <h1>sgsh &mdash; scatter-gather shell</h1>
+    <h1>sgsh — scatter-gather shell</h1>
   </div>
 <p>
 The scatter gather shell, <em>sgsh</em>,
@@ -55,6 +59,7 @@ skip right down to the <a href="#examples">examples</a> section.
 <h2>Inter-process communication</h2>
 <p>
 <em>Sgsh</em> provides three inter-process communication mechanisms.
+</p>
 <dl class="dl-horizontal">
 <dt>Scatter blocks</dt><dd> send the output of one pipeline ending
 with <code>|{</code> into multiple pipelines beginning with <code>-|</code>.
@@ -92,7 +97,6 @@ will completely block all upstream processing in the scatter block.
 Streams are internally implemented through named pipes.
 </dd>
 </dl>
-</p>
 </section>
 
 <section id="syntax">
@@ -159,7 +163,7 @@ in formats suitable for browsing and printing.
     <h1>Examples</h1>
   </div>
 
-#!sh format-eg.sh
+<!-- #!sh format-eg.sh -->
 
 </section> <!-- Examples -->
 
@@ -179,11 +183,14 @@ in formats suitable for browsing and printing.
 	prettyPrint();
     });
 </script>
+
 <div class="license">
-<!--Creative Commons License--><a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/gr/deed.en"><img hspace="4" align="left" alt="Creative Commons License" style="border-width:0" src="http://creativecommons.org/images/public/somerights20.png"/></a>
+<!--Creative Commons License--><a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/gr/deed.en">
+<img alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"/></a>
 Unless otherwise expressly stated, all original material on this page
 created by Diomidis Spinellis is licensed under a
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/gr/deed.en">Creative Commons Attribution-Share Alike 3.0 Greece License</a>.
 </div>
+
 </body>
 </html>

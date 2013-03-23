@@ -103,6 +103,6 @@ install: $(EXECUTABLES)
 	install -m 644 $(MANSRC) /usr/local/share/man/man1
 
 web: $(MANPDF) $(MANHTML) $(WEBPNG)
-	perl -n -e 'if (/^#!(.*)/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
+	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
