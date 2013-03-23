@@ -4,6 +4,7 @@
 #
 
 SECTION='compress-compare
+	commit-stats
 	code-metrics
 	duplicate-files
 	word-properties

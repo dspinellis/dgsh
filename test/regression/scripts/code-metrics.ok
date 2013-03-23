@@ -67,8 +67,11 @@ $SGDIR/npi-7.5.0
 
 #!/usr/local/bin/sgsh
 #
-# C code metrics
-# Demonstrates nesting, commands without input
+# SYNOPSIS C code metrics
+# DESCRIPTION
+# Process a directory containing C source code, and produce a summary
+# of various metrics.
+# Demonstrates nesting, commands without input.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #

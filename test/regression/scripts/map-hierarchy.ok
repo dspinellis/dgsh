@@ -29,12 +29,15 @@ $SGDIR/npfo-mkdir.0
 
 #!/usr/local/bin/sgsh
 #
+# SYNOPSIS Hierarchy map
+# DESCRIPTION
 # Given two directory hierarchies A and B passed as input arguments
-# (where these represent a C project at different parts of its lifetime)
+# (where these represent a project at different parts of its lifetime)
 # copy the files of hierarchy A to a new directory "new" corresponding
-# to the structure of directories in B
-#
-# Demonstrates gathering within the scatter block, ordering with cat
+# to the structure of directories in B.
+# Demonstrates the use of <em>join</em> to gather results from streams
+# in the <em>scatter</em> part,
+# and the use of <em>cat</em> to order asynchronous results in the gather part.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #

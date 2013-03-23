@@ -1,6 +1,6 @@
 #!/bin/sh
 # Automatically generated file
-# Source file example/duplicate-files.sh
+# Source file example/commit-stats.sh
 
 export SGDIR=/tmp/sg-$$
 
@@ -21,15 +21,17 @@ mkdir $SGDIR
 
 mkfifo  \
 $SGDIR/npi-0.0.0 \
-$SGDIR/npfo-dupes.0 \
-$SGDIR/npi-0.1.0
+$SGDIR/npfo-authors.0 \
+$SGDIR/npi-0.1.0 \
+$SGDIR/npfo-days.0
 
 #!/usr/local/bin/sgsh
 #
-# SYNOPSIS Find duplicate files
+# SYNOPSIS Git commit statistics
 # DESCRIPTION
-# List the names of duplicate files in the specified directory.
-# Demonstrates the combination of streams with a relational join.
+# Process the git history, and list the authors and days of the week
+# ordered by the number of their commits.
+# Demonstrates streams and piping through a function.
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #
@@ -46,29 +48,21 @@ $SGDIR/npi-0.1.0
 #  limitations under the License.
 #
 
-# Create list of files
-find "$@" -type f |
+# Order by frequency
+forder()
+{
+	sort |
+	uniq -c |
+	sort -rn
+}
 
-# Produce lines of the form
-# MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
-xargs openssl md5 |
-
-# Convert each line into a "filename md5sum" pair
-sed 's/^MD5(//;s/)= / /' |
-
-# Sort by MD5 sum
-sort -k2 |
-
+git log --format="%an:%aD" |
 sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 awk '{print $2}' | uniq -d >$SGDIR/npfo-dupes.0 & SGPID="$! $SGPID"
-ln -s $SGDIR/npi-0.1.0 $SGDIR/npfo-names.0
+ <$SGDIR/npi-0.0.0 awk -F: '{print $1}' | forder >$SGDIR/npfo-authors.0 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.1.0 awk -F: '{print substr($2, 1, 3)}' | forder >$SGDIR/npfo-days.0 & SGPID="$! $SGPID"
 # Gather the results
-	# Join the repeated MD5 sums with the corresponding file names
-	join -2 2 $SGDIR/npfo-dupes.0 $SGDIR/npfo-names.0 |
-	# Output same files on a single line
-	awk '
-	BEGIN {ORS=""}
-	$1 != prev && prev {print "\n"}
-	END {if (prev) print "\n"}
-	{if (prev) print " "; prev = $1; print $2}'
+	echo "Authors ordered by number of commits"
+	cat $SGDIR/npfo-authors.0
+	echo "Days ordered by number of commits"
+	cat $SGDIR/npfo-days.0
 
