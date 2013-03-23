@@ -14,6 +14,8 @@
 #  limitations under the License.
 #
 
+INSTPREFIX?=/usr/local
+
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
 else
@@ -99,8 +101,8 @@ clean:
 	rm -f *.o *.exe $(EXECUTABLES) $(MANPDF) $(MANHTML) $(WEBPNG)
 
 install: $(EXECUTABLES)
-	install $(EXECUTABLES) /usr/local/bin
-	install -m 644 $(MANSRC) /usr/local/share/man/man1
+	install $(EXECUTABLES) $(INSTPREFIX)/bin
+	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 
 web: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
