@@ -43,7 +43,7 @@ png/%-pretty.png: example/%.sh
 
 all: $(EXECUTABLES)
 
-test-sgsh: sgsh sgsh-writeval sgsh-readval
+test-sgsh: $(EXECUTABLES)
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
 	./sgsh -p . example/duplicate-files.sh test/duplicate-files/ >test/duplicate-files/out.test
