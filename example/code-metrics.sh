@@ -120,7 +120,7 @@ scatter |{
 				-| grep -c '@[ 	]*include' |store:NINCLUDE
 
 				# Number of constants
-				-| grep -w  -o '[0-9][x0-9][0-9a-f]*' | wc -l |store:NCONST
+				-| grep -o -h '[0-9][x0-9][0-9a-f]*' | wc -l |store:NCONST
 
 			|}
 		|}
