@@ -58,7 +58,7 @@ skip right down to the <a href="#examples">examples</a> section.
 </p>
 </section> <!-- Introduction -->
 
-<section id="ipc">
+<section id="ipc"> <!-- {{{2 -->
 <h2>Inter-process communication</h2>
 <p>
 <em>Sgsh</em> provides three inter-process communication mechanisms.
@@ -102,7 +102,7 @@ Streams are internally implemented through named pipes.
 </dl>
 </section>
 
-<section id="syntax">
+<section id="syntax"> <!-- {{{2 -->
 <h2>Syntax</h2>
 <p>
 An <em>sgsh</em> script follows the syntax of an <em>sh</em>(1) shell
@@ -178,13 +178,13 @@ program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
 command : source pipeline sink
         ;
 
-source  : '-|'                      // Receive scatter input
-        | '.|'                      // Receive no input
+source  : '-|'                                  // Receive scatter input
+        | '.|'                                  // Receive no input
         ;
 
-sink    : '|&gt;/stream/' filename    // Sink to specified stream
-        | '|store:' store_name     // Sink to specified store
-        | '|{' command ... '|}'    // Scatter
+sink    : '|&gt;/stream/' filename                 // Sink to specified stream
+        | '|store:' store_name [ store-flags ]  // Sink to specified store
+        | '|{' [ tee-flags ] command ... '|}'   // Scatter
         ;
 </pre>
 </section> <!-- syntax -->
