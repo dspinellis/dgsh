@@ -24,10 +24,12 @@ endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
 
+# Manual pages
 MANSRC=$(wildcard *.1)
 MANPDF=$(patsubst %.1,%.pdf,$(MANSRC))
 MANHTML=$(patsubst %.1,%.html,$(MANSRC))
 
+# Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
 WEBDIST=../../../pubs/web/home/sw/sgsh/
