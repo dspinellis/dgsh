@@ -445,6 +445,11 @@ parse_scatter_arguments
 	my @save_argv = @ARGV;
 	my %scatter_opts;
 	@ARGV = split(/\s+/, $command->{scatter_flags});
+	# d Direct (no buffering in parallel)
+	# l Passed to tee
+	# p Parallel invocations
+	# s Passed to tee
+	# t Specify the tee program
 	getopts('dlp:st', \%scatter_opts);
 	@ARGV = @save_argv;
 
