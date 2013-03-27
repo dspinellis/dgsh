@@ -24,7 +24,7 @@
 awk '{$2 = ++n " " $2; print}' "$*" |
 
 # Two parallel line scatter invocations
-scatter |{ -s -p 20
+scatter |{ -s -p 10
 
 	-| /usr/local/sbin/logresolve |>/stream/resolved
 
