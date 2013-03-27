@@ -445,7 +445,7 @@ parse_scatter_arguments
 	my @save_argv = @ARGV;
 	my %scatter_opts;
 	@ARGV = split(/\s+/, $command->{scatter_flags});
-	getopts('lp:st', \%scatter_opts);
+	getopts('dlp:st', \%scatter_opts);
 	@ARGV = @save_argv;
 
 	# Number of commands to invoke in parallel
@@ -562,6 +562,15 @@ scatter_code_and_pipes_code
 				$body =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
 			}
 			$code .= $body;
+
+			# Buffer output if parallel scatter
+			# Parallel execution probably implies high-latency
+			# upstream commands.  Buffering their output ensures
+			# that the downstream merge won't block waiting for
+			# one of them and thus also block the other upstream
+			# ones.
+			$code .= " | ${opt_p}sgsh-tee -i"
+				if ($parallel > 1 && !$scatter_opts{'d'});
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
