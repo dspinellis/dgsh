@@ -3,65 +3,35 @@ digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
 	node_tee_0 [label="sgsh-tee  -s", shape="ellipse"];
-	node_cmd_0_0_0 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_1 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_2 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_3 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_4 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_5 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_6 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_7 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_8 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_9 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_10 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_11 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_12 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_13 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_14 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_15 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_16 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_17 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_18 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
-	node_cmd_0_0_19 [label="/usr/local/sbin/logresolve | ./teebuff -i\l", shape="ellipse"];
+	node_cmd_0_0_0 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_1 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_2 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_3 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_4 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_5 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_6 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_7 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_8 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_9 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
 	gather_node_1 [label="sort -m -k2n  |\l", shape="ellipse"];
-	node_tee_0 -> node_cmd_0_0_19; // npi-0.0.19
 	node_cmd_0_0_0 -> gather_node_1; // npfo-resolved.0
 	node_tee_0 -> node_cmd_0_0_2; // npi-0.0.2
-	node_tee_0 -> node_cmd_0_0_18; // npi-0.0.18
-	node_cmd_0_0_14 -> gather_node_1; // npfo-resolved.14
 	node_tee_0 -> node_cmd_0_0_7; // npi-0.0.7
 	node_tee_0 -> node_cmd_0_0_3; // npi-0.0.3
-	node_tee_0 -> node_cmd_0_0_13; // npi-0.0.13
-	node_tee_0 -> node_cmd_0_0_12; // npi-0.0.12
+	node_cmd_0_0_7 -> gather_node_1; // npfo-resolved.7
 	node_tee_0 -> node_cmd_0_0_9; // npi-0.0.9
+	node_cmd_0_0_8 -> gather_node_1; // npfo-resolved.8
 	node_cmd_0_0_6 -> gather_node_1; // npfo-resolved.6
 	node_cmd_0_0_2 -> gather_node_1; // npfo-resolved.2
-	node_cmd_0_0_16 -> gather_node_1; // npfo-resolved.16
-	node_tee_0 -> node_cmd_0_0_14; // npi-0.0.14
-	node_tee_0 -> node_cmd_0_0_15; // npi-0.0.15
-	node_cmd_0_0_17 -> gather_node_1; // npfo-resolved.17
-	node_cmd_0_0_3 -> gather_node_1; // npfo-resolved.3
-	node_tee_0 -> node_cmd_0_0_17; // npi-0.0.17
-	node_tee_0 -> node_cmd_0_0_6; // npi-0.0.6
-	node_tee_0 -> node_cmd_0_0_5; // npi-0.0.5
-	node_cmd_0_0_10 -> gather_node_1; // npfo-resolved.10
-	node_cmd_0_0_7 -> gather_node_1; // npfo-resolved.7
-	node_tee_0 -> node_cmd_0_0_16; // npi-0.0.16
-	node_cmd_0_0_8 -> gather_node_1; // npfo-resolved.8
 	node_cmd_0_0_9 -> gather_node_1; // npfo-resolved.9
-	node_cmd_0_0_11 -> gather_node_1; // npfo-resolved.11
-	node_cmd_0_0_12 -> gather_node_1; // npfo-resolved.12
-	node_cmd_0_0_19 -> gather_node_1; // npfo-resolved.19
-	node_tee_0 -> node_cmd_0_0_8; // npi-0.0.8
 	node_tee_0 -> node_cmd_0_0_1; // npi-0.0.1
+	node_tee_0 -> node_cmd_0_0_8; // npi-0.0.8
+	node_cmd_0_0_3 -> gather_node_1; // npfo-resolved.3
 	node_cmd_0_0_4 -> gather_node_1; // npfo-resolved.4
 	node_cmd_0_0_5 -> gather_node_1; // npfo-resolved.5
 	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0
-	node_cmd_0_0_18 -> gather_node_1; // npfo-resolved.18
-	node_tee_0 -> node_cmd_0_0_10; // npi-0.0.10
-	node_cmd_0_0_15 -> gather_node_1; // npfo-resolved.15
+	node_tee_0 -> node_cmd_0_0_6; // npi-0.0.6
+	node_tee_0 -> node_cmd_0_0_5; // npi-0.0.5
 	node_tee_0 -> node_cmd_0_0_4; // npi-0.0.4
 	node_cmd_0_0_1 -> gather_node_1; // npfo-resolved.1
-	node_tee_0 -> node_cmd_0_0_11; // npi-0.0.11
-	node_cmd_0_0_13 -> gather_node_1; // npfo-resolved.13
 }

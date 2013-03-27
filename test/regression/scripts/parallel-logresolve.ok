@@ -39,27 +39,7 @@ $SGDIR/npfo-resolved.7 \
 $SGDIR/npi-0.0.8 \
 $SGDIR/npfo-resolved.8 \
 $SGDIR/npi-0.0.9 \
-$SGDIR/npfo-resolved.9 \
-$SGDIR/npi-0.0.10 \
-$SGDIR/npfo-resolved.10 \
-$SGDIR/npi-0.0.11 \
-$SGDIR/npfo-resolved.11 \
-$SGDIR/npi-0.0.12 \
-$SGDIR/npfo-resolved.12 \
-$SGDIR/npi-0.0.13 \
-$SGDIR/npfo-resolved.13 \
-$SGDIR/npi-0.0.14 \
-$SGDIR/npfo-resolved.14 \
-$SGDIR/npi-0.0.15 \
-$SGDIR/npfo-resolved.15 \
-$SGDIR/npi-0.0.16 \
-$SGDIR/npfo-resolved.16 \
-$SGDIR/npi-0.0.17 \
-$SGDIR/npfo-resolved.17 \
-$SGDIR/npi-0.0.18 \
-$SGDIR/npfo-resolved.18 \
-$SGDIR/npi-0.0.19 \
-$SGDIR/npfo-resolved.19
+$SGDIR/npfo-resolved.9
 
 #!/usr/local/bin/sgsh
 #
@@ -87,30 +67,20 @@ $SGDIR/npfo-resolved.19
 awk '{$2 = ++n " " $2; print}' "$*" |
 
 # Two parallel line scatter invocations
-sgsh-tee  -s $SGDIR/npi-0.0.0 $SGDIR/npi-0.0.1 $SGDIR/npi-0.0.2 $SGDIR/npi-0.0.3 $SGDIR/npi-0.0.4 $SGDIR/npi-0.0.5 $SGDIR/npi-0.0.6 $SGDIR/npi-0.0.7 $SGDIR/npi-0.0.8 $SGDIR/npi-0.0.9 $SGDIR/npi-0.0.10 $SGDIR/npi-0.0.11 $SGDIR/npi-0.0.12 $SGDIR/npi-0.0.13 $SGDIR/npi-0.0.14 $SGDIR/npi-0.0.15 $SGDIR/npi-0.0.16 $SGDIR/npi-0.0.17 $SGDIR/npi-0.0.18 $SGDIR/npi-0.0.19 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.1 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.1 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.2 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.2 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.3 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.3 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.4 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.4 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.5 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.5 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.6 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.6 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.7 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.7 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.8 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.8 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.9 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.9 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.10 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.10 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.11 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.11 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.12 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.12 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.13 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.13 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.14 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.14 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.15 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.15 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.16 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.16 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.17 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.17 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.18 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.18 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.19 /usr/local/sbin/logresolve | ./teebuff -i >$SGDIR/npfo-resolved.19 & SGPID="$! $SGPID"
+sgsh-tee  -s $SGDIR/npi-0.0.0 $SGDIR/npi-0.0.1 $SGDIR/npi-0.0.2 $SGDIR/npi-0.0.3 $SGDIR/npi-0.0.4 $SGDIR/npi-0.0.5 $SGDIR/npi-0.0.6 $SGDIR/npi-0.0.7 $SGDIR/npi-0.0.8 $SGDIR/npi-0.0.9 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.0 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.0 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.1 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.1 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.2 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.2 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.3 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.3 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.4 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.4 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.5 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.5 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.6 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.6 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.7 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.7 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.8 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.8 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.9 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.9 & SGPID="$! $SGPID"
 # Gather the results
 	# Merge the files on the second numerical field
-	sort -m -k2n $SGDIR/npfo-resolved.0 $SGDIR/npfo-resolved.1 $SGDIR/npfo-resolved.2 $SGDIR/npfo-resolved.3 $SGDIR/npfo-resolved.4 $SGDIR/npfo-resolved.5 $SGDIR/npfo-resolved.6 $SGDIR/npfo-resolved.7 $SGDIR/npfo-resolved.8 $SGDIR/npfo-resolved.9 $SGDIR/npfo-resolved.10 $SGDIR/npfo-resolved.11 $SGDIR/npfo-resolved.12 $SGDIR/npfo-resolved.13 $SGDIR/npfo-resolved.14 $SGDIR/npfo-resolved.15 $SGDIR/npfo-resolved.16 $SGDIR/npfo-resolved.17 $SGDIR/npfo-resolved.18 $SGDIR/npfo-resolved.19 |
+	sort -m -k2n $SGDIR/npfo-resolved.0 $SGDIR/npfo-resolved.1 $SGDIR/npfo-resolved.2 $SGDIR/npfo-resolved.3 $SGDIR/npfo-resolved.4 $SGDIR/npfo-resolved.5 $SGDIR/npfo-resolved.6 $SGDIR/npfo-resolved.7 $SGDIR/npfo-resolved.8 $SGDIR/npfo-resolved.9 |
 
 	# Remove second field
 	cut -d ' ' -f 1,3-
