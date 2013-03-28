@@ -3,16 +3,16 @@ digraph D {
 	rankdir = LR;
 	node [fontname="Courier"];
 	node_tee_0 [label="sgsh-tee  -s", shape="ellipse"];
-	node_cmd_0_0_0 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_1 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_2 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_3 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_4 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_5 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_6 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_7 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_8 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
-	node_cmd_0_0_9 [label="/usr/local/sbin/logresolve\l", shape="ellipse"];
+	node_cmd_0_0_0 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_1 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_2 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_3 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_4 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_5 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_6 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_7 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_8 [label="logresolve\l", shape="ellipse"];
+	node_cmd_0_0_9 [label="logresolve\l", shape="ellipse"];
 	gather_node_1 [label="sort -m -k2n  |\l", shape="ellipse"];
 	node_cmd_0_0_0 -> gather_node_1; // npfo-resolved.0
 	node_tee_0 -> node_cmd_0_0_2; // npi-0.0.2

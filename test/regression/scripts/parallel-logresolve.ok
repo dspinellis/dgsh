@@ -68,16 +68,16 @@ awk '{$2 = ++n " " $2; print}' "$*" |
 
 # Two parallel line scatter invocations
 sgsh-tee  -s $SGDIR/npi-0.0.0 $SGDIR/npi-0.0.1 $SGDIR/npi-0.0.2 $SGDIR/npi-0.0.3 $SGDIR/npi-0.0.4 $SGDIR/npi-0.0.5 $SGDIR/npi-0.0.6 $SGDIR/npi-0.0.7 $SGDIR/npi-0.0.8 $SGDIR/npi-0.0.9 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.1 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.1 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.2 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.2 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.3 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.3 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.4 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.4 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.5 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.5 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.6 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.6 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.7 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.7 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.8 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.8 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.9 /usr/local/sbin/logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.9 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.0 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.0 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.1 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.1 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.2 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.2 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.3 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.3 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.4 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.4 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.5 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.5 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.6 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.6 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.7 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.7 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.8 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.8 & SGPID="$! $SGPID"
+ <$SGDIR/npi-0.0.9 logresolve | sgsh-tee -i >$SGDIR/npfo-resolved.9 & SGPID="$! $SGPID"
 # Gather the results
 	# Merge the files on the second numerical field
 	sort -m -k2n $SGDIR/npfo-resolved.0 $SGDIR/npfo-resolved.1 $SGDIR/npfo-resolved.2 $SGDIR/npfo-resolved.3 $SGDIR/npfo-resolved.4 $SGDIR/npfo-resolved.5 $SGDIR/npfo-resolved.6 $SGDIR/npfo-resolved.7 $SGDIR/npfo-resolved.8 $SGDIR/npfo-resolved.9 |

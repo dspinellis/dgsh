@@ -26,7 +26,7 @@ awk '{$2 = ++n " " $2; print}' "$*" |
 # Two parallel line scatter invocations
 scatter |{ -s -p 10
 
-	-| /usr/local/sbin/logresolve |>/stream/resolved
+	-| logresolve |>/stream/resolved
 
 |} gather |{
 	# Merge the files on the second numerical field
