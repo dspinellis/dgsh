@@ -2,14 +2,14 @@
 #
 # SYNOPSIS Word properties
 # DESCRIPTION
-# Obtain a text document from the specified URL and list words
+# Read text from the standard input and list words
 # containing a two-letter palindrome, words containing
 # four consonants, and words longer than 12 characters.
 #
 # Demonstrates the use of paste as a gather function
 #
 # Example:
-# word-properties ftp://sunsite.informatik.rwth-aachen.de/pub/mirror/ibiblio/gutenberg/1/3/139/139.txt
+# curl ftp://sunsite.informatik.rwth-aachen.de/pub/mirror/ibiblio/gutenberg/1/3/139/139.txt | word-properties
 #
 #  Copyright 2013 Diomidis Spinellis
 #
@@ -29,9 +29,7 @@
 # Consitent sorting across machines
 export LC_ALL=C
 
-# Obtain file
-curl -s "$1" |
-# Split into one word per line
+# Split input one word per line
 tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
