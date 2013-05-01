@@ -194,7 +194,11 @@ while (get_next_line()) {
 		# Top-level scatter command
 		my %scatter_command;
 		$scatter_command{line_number} = $line_number;
-		$scatter_command{input} = 'stdin';
+		# The fd3 redirections allow piping into the scatter block
+		# POSIX mandates that background commands (like the tee pipeline starting the scatter block)
+		# have their standard input redirected to /dev/null.
+		# Our use of fd3 allows the tee command to regain access to stdin
+		$scatter_command{input} = 'fd3';
 		$scatter_command{output} = 'scatter';
 		$scatter_command{body} = '';
 		$scatter_command{scatter_flags} = $1;
@@ -228,15 +232,11 @@ digraph D {	// }
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
 		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command);
-		# The fd3 redirections allow piping into the scatter block
-		# POSIX mandates that background commands (like the tee pipeline starting the scatter block)
-		# have their standard input redirected to /dev/null.
-		# Our use of fd3 allows the tee command to regain access to stdin
 		$code .= "(\n" .
 			initialization_code($pipes, $kvstores) .
-			"<&3 3<&- $code2\n" .
+			"$code2\n" .
 			gather_code(\@gather_commands) .
-			"\n) 3<&0\n";
+			"\n) 3<&0\n";		# The fd3 redirections allow piping into the scatter block
 	} else {
 		$code .= $_ ;
 	}
@@ -346,7 +346,7 @@ parse_scatter_command_sequence
 #	 '|{' flags scatter_command_sequence |
 #	 '|.')
 # The return is a hash with the following elements:
-# input: 		none|scatter
+# input: 		none|scatter|fd[0-9]+
 # body:			Command's text
 # output:		none|scatter|stream|store
 # scatter_commands:	When output = scatter
@@ -473,7 +473,8 @@ parse_scatter_arguments
 	return ($parallel, %scatter_opts)
 }
 
-# Set the parallel file map for the specified command
+# Set the parallel file map @parallel_file_map for the specified command
+# This is a map from /stream/ file names into an array of named pipes
 sub
 scatter_code_and_pipes_map
 {
@@ -496,7 +497,7 @@ scatter_code_and_pipes_map
 
 			# Generate output redirection
 			if ($c->{output} eq 'scatter') {
-				my ($code2, $pipes2) = scatter_code_and_pipes_map($c);
+				scatter_code_and_pipes_map($c);
 			} elsif ($c->{output} eq 'stream') {
 				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
 			}
@@ -543,6 +544,9 @@ scatter_code_and_pipes_code
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
+		# The fdn redirection allows piping into the scatter block
+		$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
+
 		$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"\n};
 	}
 
@@ -558,19 +562,13 @@ scatter_code_and_pipes_code
 				next;
 			}
 
-			# Generate input
-			if ($c->{input} eq 'none') {
-				$code .= '</dev/null ';
-			} elsif ($c->{input} eq 'scatter') {
-				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p";
-				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
-			} else {
-				die "Headless command";
-			}
+			# Opening brace to redirect I/O as if the commands were one
+			$code .= ' { ';
 
 			# Generate body sans trailing newline
 			my $body = $c->{body};
 			chop $body;
+
 			# Substitute /stream/... gather points with corresponding named pipe
 			while ($body =~ m|/stream/(\w+)|) {
 				my $file_name = $1;
@@ -586,6 +584,19 @@ scatter_code_and_pipes_code
 			# ones.
 			$code .= " | ${opt_p}sgsh-tee -i"
 				if ($parallel > 1 && !$scatter_opts{'d'});
+
+			# Closing brace to redirect I/O as if the commands were one
+			$code .= ' ; } ';
+
+			# Generate input
+			if ($c->{input} eq 'none') {
+				$code .= '</dev/null ';
+			} elsif ($c->{input} eq 'scatter') {
+				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+			} else {
+				die "Headless command";
+			}
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
@@ -806,6 +817,8 @@ scatter_graph_io
 			} elsif ($c->{input} eq 'scatter') {
 				push(@output_edges, "npi-$scatter_n.$cmd_n.$p");
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{rhs} = $node_name;
+			} elsif ($c->{input} =~ m/fd([0-9]+)/) {
+				;
 			} else {
 				die "Headless command";
 			}
