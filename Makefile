@@ -52,6 +52,8 @@ test-sgsh: $(EXECUTABLES)
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 	./sgsh -p . example/word-properties.sh file://`pwd`/test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
+	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
+	diff -b test/compress-compare/out.ok test/compress-compare/out.test
 
 test-tee: sgsh-tee charcount test-tee.sh
 	./test-tee.sh
