@@ -25,16 +25,15 @@
 scatter |{
 	-| wc -c |store:NBYTES
 	-| file - |store:FILETYPE
-	-| compress -c | wc -c |store:COMPRESS
+	-| xz -c | wc -c |store:XZ
 	-| bzip2 -c | wc -c |store:BZIP2
 	-| gzip -c | wc -c |store:GZIP
 |} gather |{
 	cat <<EOF
-File URL:      $1
-File type:     `store:FILETYPE`
-Original size: `store:NBYTES` bytes
-compress:      `store:COMPRESS` bytes
-gzip:          `store:GZIP` bytes
-bzip2:         `store:BZIP2` bytes
+File type:	`store:FILETYPE`
+Original size:	`store:NBYTES` bytes
+gzip:		`store:GZIP` bytes
+bzip2:		`store:BZIP2` bytes
+xz:		`store:XZ` bytes
 EOF
 |}

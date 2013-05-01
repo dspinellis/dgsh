@@ -36,19 +36,18 @@ trap 'exit $?' 1 2 3 15
 
 mkdir $SGDIR
 
-curl -s "$1" >$SGDIR/npi-0.0.0
+cat >$SGDIR/npi-0.0.0
 NBYTES=` <$SGDIR/npi-0.0.0 wc -c`
 FILETYPE=` <$SGDIR/npi-0.0.0 file - `
-COMPRESS=` <$SGDIR/npi-0.0.0 compress -c | wc -c `
+XZ=` <$SGDIR/npi-0.0.0 xz -c | wc -c `
 BZIP2=` <$SGDIR/npi-0.0.0 bzip2 -c | wc -c `
 GZIP=` <$SGDIR/npi-0.0.0 gzip -c | wc -c `
 
 # Gather the results
 	cat <<EOF
-File URL:      $1
 File type:     $FILETYPE
 Original size: $NBYTES bytes
-compress:      $COMPRESS bytes
 gzip:          $GZIP bytes
 bzip2:         $BZIP2 bytes
+xz:            $XZ bytes
 EOF
