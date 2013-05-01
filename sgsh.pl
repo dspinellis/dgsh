@@ -185,8 +185,6 @@ print $output_fh "#!$opt_s
 ";
 
 my $code = '';
-my $pipes = '';
-my $kvstores = '';
 
 # Parse the file and generate the corresponding code
 while (get_next_line()) {
@@ -206,7 +204,7 @@ while (get_next_line()) {
 
 		# Generate graph
 		print qq[
-digraph D {
+digraph D {	// }
 	rankdir = LR;
 	node $gv_node_attr;
 ] 			if ($opt_g);
@@ -229,45 +227,22 @@ digraph D {
 		$global_scatter_n = 0;
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
-		my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code(\%scatter_command);
-		$code .= $code2;
-		$pipes .= $pipes2;
-		$kvstores .= $kvstores2;
-		$code .= gather_code(\@gather_commands);
+		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command);
+		# The fd3 redirections allow piping into the scatter block
+		# POSIX mandates that background commands (like the tee pipeline starting the scatter block)
+		# have their standard input redirected to /dev/null.
+		# Our use of fd3 allows the tee command to regain access to stdin
+		$code .= "(\n" .
+			initialization_code($pipes, $kvstores) .
+			"<&3 3<&- $code2\n" .
+			gather_code(\@gather_commands) .
+			"\n) 3<&0\n";
 	} else {
 		$code .= $_ ;
 	}
 }
 
-# The traps ensure that the named pipe directory
-# is removed on termination and that the exit code
-# after a signal is that of the shell: 128 + signal number
-my $stop_kvstores = $kvstores;
-$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
-$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
-print $output_fh q{
-export SGDIR=/tmp/sg-$$
-
-rm -rf $SGDIR
-
-trap '
-# Stop key-value stores
-} . $stop_kvstores . q{
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
-
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
-
-trap 'exit $?' 1 2 3 15
-
-mkdir $SGDIR
-},
-qq{
-mkfifo $pipes
-
-$code
-};
+print $output_fh $code;
 
 # Execute the shell on the generated file
 # -a inherits the shell's variables to subshell
@@ -302,6 +277,41 @@ if ($? == -1) {
 } else {
 	# Convert Perl's system exit code into one compatible with sh(1)
 	exit (($? >> 8) | (($? & 127) << 8));
+}
+
+# Return the code to initialize a scatter-gather block
+sub
+initialization_code
+{
+	my ($pipes, $kvstores) = @_;
+
+	# The traps ensure that the named pipe directory
+	# is removed on termination and that the exit code
+	# after a signal is that of the shell: 128 + signal number
+	my $stop_kvstores = $kvstores;
+	$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
+	$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
+	return q{
+	export SGDIR=/tmp/sg-$$
+
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	} . $stop_kvstores . q{
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
+
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
+
+	trap 'exit $?' 1 2 3 15
+
+	mkdir $SGDIR
+	} .
+	qq{
+	mkfifo $pipes
+	};
 }
 
 # Parse and return a sequence of scatter commands until we reach the specified

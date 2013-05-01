@@ -2,8 +2,8 @@
 #
 # SYNOPSIS Compression benchmark
 # DESCRIPTION
-# Report file type, length, and compression performance for a
-# URL retrieved from the web.  The web file never touches the
+# Report file type, length, and compression performance for
+# data received from the standard input.  The data never touches the
 # disk.
 # Demonstrates the use of stores.
 #
@@ -22,7 +22,6 @@
 #  limitations under the License.
 #
 
-curl -s "$1" |
 scatter |{
 	-| wc -c |store:NBYTES
 	-| file - |store:FILETYPE
