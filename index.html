@@ -134,6 +134,9 @@ which are executed synchronously with the scatter commands.
 Names of data stores and streams appearing in the gather
 block are set to match the output of the corresponding gather commands.
 The gather block ends with <code>|}</code> appearing in a single line.
+The <code>|}</code> token terminating the gather block can be followed
+by redirection operators,
+like <code>|</code>, <code>&lt;</code>, and <code>&gt;</code>.
 </p>
 <p>
 In the following example the output of <em>ls</em> is scattered to

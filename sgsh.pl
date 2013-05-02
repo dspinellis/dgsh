@@ -144,6 +144,9 @@ my %edge;
 # User-specified input file name (or STDIN)
 my $input_filename;
 
+# Ordinal of the scatter-gather block being processed
+my $block_ordinal = 0;
+
 # Regular expressions for the input files scatter-gather operators
 # scatter |{
 my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
@@ -151,6 +154,8 @@ my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
 my $SCATTER_BEGIN = q!\|\{\s*(.*)?$!;
 # |} gather |{
 my $GATHER_BLOCK_BEGIN = q!^[^'#"]*\|\}\s*gather\s*\|\{\s*(\#.*)?$!;
+# |} [redirection]
+my $GATHER_BLOCK_END = q!^[^'#"]*\|\}(.*)$!;
 # |}
 my $BLOCK_END = q!^[^'#"]*\|\}\s*(\#.*)?$!;
 # -|
@@ -199,6 +204,8 @@ while (get_next_line()) {
 	# Scatter block begin: scatter |{
 	if (!/$COMMENT_LINE/o && /$SCATTER_BLOCK_BEGIN/o) {
 
+		clear_global_variables();
+
 		# Top-level scatter command
 		my %scatter_command;
 		$scatter_command{line_number} = $line_number;
@@ -212,7 +219,7 @@ while (get_next_line()) {
 		$scatter_command{scatter_flags} = $1;
 		$scatter_command{scatter_commands} = parse_scatter_command_sequence($GATHER_BLOCK_BEGIN);
 
-		my @gather_commands = parse_gather_command_sequence();
+		my ($redirection, @gather_commands) = parse_gather_command_sequence();
 
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
@@ -235,7 +242,7 @@ while (get_next_line()) {
 			initialization_code($pipes, $kvstores) .
 			"$code2\n" .
 			gather_code(\@gather_commands) .
-			"\n) 3<&0\n";		# The fd3 redirections allow piping into the scatter block
+			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
 	} else {
 		$code .= $_ ;
 	}
@@ -284,6 +291,18 @@ if ($? == -1) {
 	exit (($? >> 8) | (($? & 127) << 8));
 }
 
+# Clear the global variables used for processing each scatter-gather blog
+sub
+clear_global_variables
+{
+	undef %defined_stream;
+	undef %used_stream;
+	undef %defined_store;
+	undef %used_store;
+	undef %parallel_file_map;
+	undef %parallel_graph_file_map;
+}
+
 # Return the code to initialize a scatter-gather block
 sub
 initialization_code
@@ -296,8 +315,9 @@ initialization_code
 	my $stop_kvstores = $kvstores;
 	$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
 	$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
+
 	return q{
-	export SGDIR=/tmp/sg-$$
+	export SGDIR=/tmp/sg-$$.} . $block_ordinal++ . q{
 
 	rm -rf $SGDIR
 
@@ -443,8 +463,9 @@ parse_gather_command_sequence
 
 	while (get_next_line()) {
 		# Gather block end: |}
-		if (/$BLOCK_END/o) {
-			return @commands;
+		if (/$GATHER_BLOCK_END/o) {
+			# $1 is the optional block redirection
+			return ($1, @commands);
 		}
 		push(@commands, $_);
 	}
