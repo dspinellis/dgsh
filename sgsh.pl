@@ -179,10 +179,18 @@ if ($#ARGV >= 0) {
 	@lines = <STDIN>;
 }
 
+# Generate code heading
 print $output_fh "#!$opt_s
 # Automatically generated file
 # Source file $input_filename
 ";
+
+# Generate graph heading
+print qq[
+digraph D {
+	rankdir = LR;
+	node $gv_node_attr;
+] if ($opt_g);
 
 my $code = '';
 
@@ -206,12 +214,6 @@ while (get_next_line()) {
 
 		my @gather_commands = parse_gather_command_sequence();
 
-		# Generate graph
-		print qq[
-digraph D {	// }
-	rankdir = LR;
-	node $gv_node_attr;
-] 			if ($opt_g);
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
 		$global_scatter_n = 0;
@@ -222,10 +224,7 @@ digraph D {	// }
 		# Now that we have the edges we can verify the graph
 		verify_code(0, \%scatter_command, \@gather_commands);
 
-		if ($opt_g) {
-			print "}\n";
-			exit 0;
-		}
+		next if ($opt_g);
 
 		# Generate code
 		$global_scatter_n = 0;
@@ -240,6 +239,12 @@ digraph D {	// }
 	} else {
 		$code .= $_ ;
 	}
+}
+
+# We're done
+if ($opt_g) {
+	print "}\n";
+	exit 0;
 }
 
 print $output_fh $code;
