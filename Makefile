@@ -97,8 +97,8 @@ test-regression:
 # Seed the regression test data
 seed-regression:
 	for i in example/*.sh ; do \
-		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
-		perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
+		/usr/bin/perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
+		/usr/bin/perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
 	done
 
 clean:
