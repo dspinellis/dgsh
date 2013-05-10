@@ -21,7 +21,7 @@
 #
 
 # Add record number as the second field
-awk '{$2 = ++n " " $2; print}' "$*" |
+awk '{$2 = ++n " " $2; print}' "$@" |
 
 # Two parallel line scatter invocations
 scatter |{ -s -p 10
