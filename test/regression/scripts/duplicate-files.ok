@@ -1,29 +1,6 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/duplicate-files.sh
-
-export SGDIR=/tmp/sg-$$
-
-rm -rf $SGDIR
-
-trap '
-# Stop key-value stores
-
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
-
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
-
-trap 'exit $?' 1 2 3 15
-
-mkdir $SGDIR
-
-mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npfo-dupes.0 \
-$SGDIR/npi-0.1.0
-
 #!/usr/local/bin/sgsh
 #
 # SYNOPSIS Find duplicate files
@@ -59,9 +36,33 @@ sed 's/^MD5(//;s/)= / /' |
 # Sort by MD5 sum
 sort -k2 |
 
-sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 awk '{print $2}' | uniq -d >$SGDIR/npfo-dupes.0 & SGPID="$! $SGPID"
+(
+
+	export SGDIR=/tmp/sg-$$.0
+
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
+
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
+
+	trap 'exit $?' 1 2 3 15
+
+	mkdir $SGDIR
+	
+	mkfifo  \
+$SGDIR/npi-0.0.0 \
+$SGDIR/npfo-dupes.0 \
+$SGDIR/npi-0.1.0
+	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 <&3 3<&-  & SGPID="$! $SGPID"
+ {  awk '{print $2}' | uniq -d ; }  <$SGDIR/npi-0.0.0 >$SGDIR/npfo-dupes.0 & SGPID="$! $SGPID"
 ln -s $SGDIR/npi-0.1.0 $SGDIR/npfo-names.0
+
 # Gather the results
 	# Join the repeated MD5 sums with the corresponding file names
 	join -2 2 $SGDIR/npfo-dupes.0 $SGDIR/npfo-names.0 |
@@ -72,3 +73,4 @@ ln -s $SGDIR/npi-0.1.0 $SGDIR/npfo-names.0
 	END {if (prev) print "\n"}
 	{if (prev) print " "; prev = $1; print $2}'
 
+) 3<&0 

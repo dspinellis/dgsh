@@ -1,30 +1,6 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/commit-stats.sh
-
-export SGDIR=/tmp/sg-$$
-
-rm -rf $SGDIR
-
-trap '
-# Stop key-value stores
-
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
-
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
-
-trap 'exit $?' 1 2 3 15
-
-mkdir $SGDIR
-
-mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npfo-authors.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npfo-days.0
-
 #!/usr/local/bin/sgsh
 #
 # SYNOPSIS Git commit statistics
@@ -57,12 +33,38 @@ forder()
 }
 
 git log --format="%an:%aD" |
-sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 awk -F: '{print $1}' | forder >$SGDIR/npfo-authors.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.1.0 awk -F: '{print substr($2, 1, 3)}' | forder >$SGDIR/npfo-days.0 & SGPID="$! $SGPID"
+(
+
+	export SGDIR=/tmp/sg-$$.0
+
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
+
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
+
+	trap 'exit $?' 1 2 3 15
+
+	mkdir $SGDIR
+	
+	mkfifo  \
+$SGDIR/npi-0.0.0 \
+$SGDIR/npfo-authors.0 \
+$SGDIR/npi-0.1.0 \
+$SGDIR/npfo-days.0
+	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 <&3 3<&-  & SGPID="$! $SGPID"
+ {  awk -F: '{print $1}' | forder ; }  <$SGDIR/npi-0.0.0 >$SGDIR/npfo-authors.0 & SGPID="$! $SGPID"
+ {  awk -F: '{print substr($2, 1, 3)}' | forder ; }  <$SGDIR/npi-0.1.0 >$SGDIR/npfo-days.0 & SGPID="$! $SGPID"
+
 # Gather the results
 	echo "Authors ordered by number of commits"
 	cat $SGDIR/npfo-authors.0
 	echo "Days ordered by number of commits"
 	cat $SGDIR/npfo-days.0
 
+) 3<&0 

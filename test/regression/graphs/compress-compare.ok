@@ -7,15 +7,15 @@ digraph D {
 	node_cmd_0_0_0 -> "NBYTES";
 	"FILETYPE" [shape="box"];
 	node_cmd_0_1_0 -> "FILETYPE";
-	"COMPRESS" [shape="box"];
-	node_cmd_0_2_0 -> "COMPRESS";
+	"XZ" [shape="box"];
+	node_cmd_0_2_0 -> "XZ";
 	"BZIP2" [shape="box"];
 	node_cmd_0_3_0 -> "BZIP2";
 	"GZIP" [shape="box"];
 	node_cmd_0_4_0 -> "GZIP";
 	node_cmd_0_0_0 [label="wc -c\l", shape="ellipse"];
 	node_cmd_0_1_0 [label="file -\l", shape="ellipse"];
-	node_cmd_0_2_0 [label="compress -c | wc -c\l", shape="ellipse"];
+	node_cmd_0_2_0 [label="xz -c | wc -c\l", shape="ellipse"];
 	node_cmd_0_3_0 [label="bzip2 -c | wc -c\l", shape="ellipse"];
 	node_cmd_0_4_0 [label="gzip -c | wc -c\l", shape="ellipse"];
 	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0

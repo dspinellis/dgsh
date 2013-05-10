@@ -1,42 +1,12 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/compress-compare.sh
-
-export SGDIR=/tmp/sg-$$
-
-rm -rf $SGDIR
-
-trap '
-# Stop key-value stores
-sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/FILETYPE" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/COMPRESS" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/BZIP2" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/GZIP" 2>/dev/null
-
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
-
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
-
-trap 'exit $?' 1 2 3 15
-
-mkdir $SGDIR
-
-mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npi-0.2.0 \
-$SGDIR/npi-0.3.0 \
-$SGDIR/npi-0.4.0
-
 #!/usr/local/bin/sgsh
 #
 # SYNOPSIS Compression benchmark
 # DESCRIPTION
-# Report file type, length, and compression performance for a
-# URL retrieved from the web.  The web file never touches the
+# Report file type, length, and compression performance for
+# data received from the standard input.  The data never touches the
 # disk.
 # Demonstrates the use of stores.
 #
@@ -55,20 +25,50 @@ $SGDIR/npi-0.4.0
 #  limitations under the License.
 #
 
-curl -s "$1" |
-sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 $SGDIR/npi-0.4.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 wc -c | sgsh-writeval  -s $SGDIR/NBYTES & SGPID="$! $SGPID"
- <$SGDIR/npi-0.1.0 file - | sgsh-writeval  -s $SGDIR/FILETYPE & SGPID="$! $SGPID"
- <$SGDIR/npi-0.2.0 compress -c | wc -c | sgsh-writeval  -s $SGDIR/COMPRESS & SGPID="$! $SGPID"
- <$SGDIR/npi-0.3.0 bzip2 -c | wc -c | sgsh-writeval  -s $SGDIR/BZIP2 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.4.0 gzip -c | wc -c | sgsh-writeval  -s $SGDIR/GZIP & SGPID="$! $SGPID"
+(
+
+	export SGDIR=/tmp/sg-$$.0
+
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/FILETYPE" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/XZ" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/BZIP2" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/GZIP" 2>/dev/null
+
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
+
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
+
+	trap 'exit $?' 1 2 3 15
+
+	mkdir $SGDIR
+	
+	mkfifo  \
+$SGDIR/npi-0.0.0 \
+$SGDIR/npi-0.1.0 \
+$SGDIR/npi-0.2.0 \
+$SGDIR/npi-0.3.0 \
+$SGDIR/npi-0.4.0
+	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 $SGDIR/npi-0.4.0 <&3 3<&-  & SGPID="$! $SGPID"
+ {  wc -c ; }  <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/NBYTES & SGPID="$! $SGPID"
+ {  file - ; }  <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/FILETYPE & SGPID="$! $SGPID"
+ {  xz -c | wc -c ; }  <$SGDIR/npi-0.2.0 | sgsh-writeval  -s $SGDIR/XZ & SGPID="$! $SGPID"
+ {  bzip2 -c | wc -c ; }  <$SGDIR/npi-0.3.0 | sgsh-writeval  -s $SGDIR/BZIP2 & SGPID="$! $SGPID"
+ {  gzip -c | wc -c ; }  <$SGDIR/npi-0.4.0 | sgsh-writeval  -s $SGDIR/GZIP & SGPID="$! $SGPID"
+
 # Gather the results
 	cat <<EOF
-File URL:      $1
-File type:     `sgsh-readval -s $SGDIR/FILETYPE`
-Original size: `sgsh-readval -s $SGDIR/NBYTES` bytes
-compress:      `sgsh-readval -s $SGDIR/COMPRESS` bytes
-gzip:          `sgsh-readval -s $SGDIR/GZIP` bytes
-bzip2:         `sgsh-readval -s $SGDIR/BZIP2` bytes
+File type:	`sgsh-readval -s $SGDIR/FILETYPE`
+Original size:	`sgsh-readval -s $SGDIR/NBYTES` bytes
+gzip:		`sgsh-readval -s $SGDIR/GZIP` bytes
+bzip2:		`sgsh-readval -s $SGDIR/BZIP2` bytes
+xz:		`sgsh-readval -s $SGDIR/XZ` bytes
 EOF
 
+) 3<&0 

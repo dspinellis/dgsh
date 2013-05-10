@@ -1,37 +1,6 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/web-log-stats.sh
-
-export SGDIR=/tmp/sg-$$
-
-rm -rf $SGDIR
-
-trap '
-# Stop key-value stores
-sgsh-readval -q -s "$SGDIR/page" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/total_bytes" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/total_pages" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/bytes" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/bytes_old" 2>/dev/null
-
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
-
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
-
-trap 'exit $?' 1 2 3 15
-
-mkdir $SGDIR
-
-mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npi-1.0.0 \
-$SGDIR/npi-1.1.0 \
-$SGDIR/npi-1.2.0 \
-$SGDIR/npi-1.3.0
-
 #!/usr/local/bin/sgsh -s /usr/bin/bash
 #
 # SYNOPSIS Web log statistics
@@ -89,14 +58,46 @@ then
 else
 	tail -f "$1"
 fi |
-sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-0.0.0 awk -Winteractive '{print $7}' | sgsh-writeval -b $WINDOW -u s -s $SGDIR/page & SGPID="$! $SGPID"
- <$SGDIR/npi-0.1.0 awk -Winteractive '{print $10}' |
+(
+
+	export SGDIR=/tmp/sg-$$.0
+
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	sgsh-readval -q -s "$SGDIR/page" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/total_bytes" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/total_pages" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/bytes" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/bytes_old" 2>/dev/null
+
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
+
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
+
+	trap 'exit $?' 1 2 3 15
+
+	mkdir $SGDIR
+	
+	mkfifo  \
+$SGDIR/npi-0.0.0 \
+$SGDIR/npi-0.1.0 \
+$SGDIR/npi-1.0.0 \
+$SGDIR/npi-1.1.0 \
+$SGDIR/npi-1.2.0 \
+$SGDIR/npi-1.3.0
+	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 <&3 3<&-  & SGPID="$! $SGPID"
+ {  awk -Winteractive '{print $7}' ; }  <$SGDIR/npi-0.0.0 | sgsh-writeval -b $WINDOW -u s -s $SGDIR/page & SGPID="$! $SGPID"
+ {  awk -Winteractive '{print $10}' ; }  <$SGDIR/npi-0.1.0 |
 sgsh-tee  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 $SGDIR/npi-1.2.0 $SGDIR/npi-1.3.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-1.0.0 awk -Winteractive '{ s += $1; print s}' | sgsh-writeval  -s $SGDIR/total_bytes & SGPID="$! $SGPID"
- <$SGDIR/npi-1.1.0 awk -Winteractive '{print ++n}' | sgsh-writeval  -s $SGDIR/total_pages & SGPID="$! $SGPID"
- <$SGDIR/npi-1.2.0 sgsh-writeval -b $WINDOW -u s -s $SGDIR/bytes & SGPID="$! $SGPID"
- <$SGDIR/npi-1.3.0 sgsh-writeval -b $WINDOW_OLD -e $WINDOW -u s -s $SGDIR/bytes_old & SGPID="$! $SGPID"
+ {  awk -Winteractive '{ s += $1; print s}' ; }  <$SGDIR/npi-1.0.0 | sgsh-writeval  -s $SGDIR/total_bytes & SGPID="$! $SGPID"
+ {  awk -Winteractive '{print ++n}' ; }  <$SGDIR/npi-1.1.0 | sgsh-writeval  -s $SGDIR/total_pages & SGPID="$! $SGPID"
+ {  ; }  <$SGDIR/npi-1.2.0 sgsh-writeval -b $WINDOW -u s -s $SGDIR/bytes & SGPID="$! $SGPID"
+ {  ; }  <$SGDIR/npi-1.3.0 sgsh-writeval -b $WINDOW_OLD -e $WINDOW -u s -s $SGDIR/bytes_old & SGPID="$! $SGPID"
+
 # Gather the results
 	# Produce periodic reports
 	while :
@@ -127,3 +128,4 @@ EOF
 	sleep $UPDATE
 	done
 
+) 3<&0 

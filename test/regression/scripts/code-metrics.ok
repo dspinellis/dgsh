@@ -1,14 +1,38 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/code-metrics.sh
+#!/usr/local/bin/sgsh
+#
+# SYNOPSIS C code metrics
+# DESCRIPTION
+# Process a directory containing C source code, and produce a summary
+# of various metrics.
+# Demonstrates nesting, commands without input.
+#
+#  Copyright 2012-2013 Diomidis Spinellis
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
 
-export SGDIR=/tmp/sg-$$
+(
 
-rm -rf $SGDIR
+	export SGDIR=/tmp/sg-$$.0
 
-trap '
-# Stop key-value stores
-sgsh-readval -q -s "$SGDIR/FNAMELEN" 2>/dev/null
+	rm -rf $SGDIR
+
+	trap '
+	# Stop key-value stores
+	sgsh-readval -q -s "$SGDIR/FNAMELEN" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/NSTRUCT" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/NTYPEDEF" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/NVOID" 2>/dev/null
@@ -29,17 +53,17 @@ sgsh-readval -q -s "$SGDIR/NINCLUDE" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/NCONST" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/NHFILE" 2>/dev/null
 
-# Kill processes we have launched in the background
-kill $SGPID 2>/dev/null
+	# Kill processes we have launched in the background
+	kill $SGPID 2>/dev/null
 
-# Remove temporary directory
-rm -rf "$SGDIR"' 0
+	# Remove temporary directory
+	rm -rf "$SGDIR"' 0
 
-trap 'exit $?' 1 2 3 15
+	trap 'exit $?' 1 2 3 15
 
-mkdir $SGDIR
-
-mkfifo  \
+	mkdir $SGDIR
+	
+	mkfifo  \
 $SGDIR/npi-1.0.0 \
 $SGDIR/npi-1.1.0 \
 $SGDIR/npi-2.0.0 \
@@ -64,75 +88,52 @@ $SGDIR/npi-7.2.0 \
 $SGDIR/npi-7.3.0 \
 $SGDIR/npi-7.4.0 \
 $SGDIR/npi-7.5.0
-
-#!/usr/local/bin/sgsh
-#
-# SYNOPSIS C code metrics
-# DESCRIPTION
-# Process a directory containing C source code, and produce a summary
-# of various metrics.
-# Demonstrates nesting, commands without input.
-#
-#  Copyright 2012-2013 Diomidis Spinellis
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-
-</dev/null  find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |
+	 {  find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 ; } </dev/null  |
 sgsh-tee  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-1.0.0 tr \\0 \\n |
+ {  tr \\0 \\n |
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
-		awk '{s += length($1); n++} END {print s / n}' | sgsh-writeval  -s $SGDIR/FNAMELEN & SGPID="$! $SGPID"
- <$SGDIR/npi-1.1.0 xargs -0 cat |
+		awk '{s += length($1); n++} END {print s / n}' ; }  <$SGDIR/npi-1.0.0 | sgsh-writeval  -s $SGDIR/FNAMELEN & SGPID="$! $SGPID"
+ {  xargs -0 cat ; }  <$SGDIR/npi-1.1.0 |
 sgsh-tee  $SGDIR/npi-2.0.0 $SGDIR/npi-2.1.0 $SGDIR/npi-2.2.0 $SGDIR/npi-2.3.0 $SGDIR/npi-2.4.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-2.0.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+ {  sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+			cpp -P 2>/dev/null ; }  <$SGDIR/npi-2.0.0 |
 sgsh-tee  $SGDIR/npi-3.0.0 $SGDIR/npi-3.1.0 $SGDIR/npi-3.2.0 $SGDIR/npi-3.3.0 $SGDIR/npi-3.4.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-3.0.0  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' | sgsh-writeval  -s $SGDIR/NSTRUCT & SGPID="$! $SGPID"
- <$SGDIR/npi-3.1.0 grep -cw typedef | sgsh-writeval  -s $SGDIR/NTYPEDEF & SGPID="$! $SGPID"
- <$SGDIR/npi-3.2.0 grep -cw void | sgsh-writeval  -s $SGDIR/NVOID & SGPID="$! $SGPID"
- <$SGDIR/npi-3.3.0 grep -cw gets | sgsh-writeval  -s $SGDIR/NGETS & SGPID="$! $SGPID"
- <$SGDIR/npi-3.4.0 tr -cs 'A-Za-z0-9_' '\n' |
+ {   egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' ; }  <$SGDIR/npi-3.0.0 | sgsh-writeval  -s $SGDIR/NSTRUCT & SGPID="$! $SGPID"
+ {  grep -cw typedef ; }  <$SGDIR/npi-3.1.0 | sgsh-writeval  -s $SGDIR/NTYPEDEF & SGPID="$! $SGPID"
+ {  grep -cw void ; }  <$SGDIR/npi-3.2.0 | sgsh-writeval  -s $SGDIR/NVOID & SGPID="$! $SGPID"
+ {  grep -cw gets ; }  <$SGDIR/npi-3.3.0 | sgsh-writeval  -s $SGDIR/NGETS & SGPID="$! $SGPID"
+ {  tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' | sgsh-writeval  -s $SGDIR/IDLEN & SGPID="$! $SGPID"
- <$SGDIR/npi-2.1.0 wc -lc | awk '{OFS=":"; print $1, $2}' | sgsh-writeval  -s $SGDIR/CHLINESCHAR & SGPID="$! $SGPID"
- <$SGDIR/npi-2.2.0 sed 's/#/@/g' |
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' ; }  <$SGDIR/npi-3.4.0 | sgsh-writeval  -s $SGDIR/IDLEN & SGPID="$! $SGPID"
+ {  wc -lc | awk '{OFS=":"; print $1, $2}' ; }  <$SGDIR/npi-2.1.0 | sgsh-writeval  -s $SGDIR/CHLINESCHAR & SGPID="$! $SGPID"
+ {  sed 's/#/@/g' |
 			cpp -traditional -P 2>/dev/null |
 			wc -c |
-			awk '{OFMT = "%.0f"; print $1/1000}' | sgsh-writeval  -s $SGDIR/NCCHAR & SGPID="$! $SGPID"
- <$SGDIR/npi-2.3.0 egrep -c '/\*|//' | sgsh-writeval  -s $SGDIR/NCOMMENT & SGPID="$! $SGPID"
- <$SGDIR/npi-2.4.0 grep -ci copyright | sgsh-writeval  -s $SGDIR/NCOPYRIGHT & SGPID="$! $SGPID"
-</dev/null  find "$@" -name \*.c -type f -print0 |
+			awk '{OFMT = "%.0f"; print $1/1000}' ; }  <$SGDIR/npi-2.2.0 | sgsh-writeval  -s $SGDIR/NCCHAR & SGPID="$! $SGPID"
+ {  egrep -c '/\*|//' ; }  <$SGDIR/npi-2.3.0 | sgsh-writeval  -s $SGDIR/NCOMMENT & SGPID="$! $SGPID"
+ {  grep -ci copyright ; }  <$SGDIR/npi-2.4.0 | sgsh-writeval  -s $SGDIR/NCOPYRIGHT & SGPID="$! $SGPID"
+ {  find "$@" -name \*.c -type f -print0 ; } </dev/null  |
 sgsh-tee  $SGDIR/npi-4.0.0 $SGDIR/npi-4.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-4.0.0 tr \\0 \\n |
+ {  tr \\0 \\n ; }  <$SGDIR/npi-4.0.0 |
 sgsh-tee  $SGDIR/npi-5.0.0 $SGDIR/npi-5.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-5.0.0 wc -l | sgsh-writeval  -s $SGDIR/NCFILE & SGPID="$! $SGPID"
- <$SGDIR/npi-5.1.0 sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l | sgsh-writeval  -s $SGDIR/NCDIR & SGPID="$! $SGPID"
- <$SGDIR/npi-4.1.0 xargs -0 cat |
+ {  wc -l ; }  <$SGDIR/npi-5.0.0 | sgsh-writeval  -s $SGDIR/NCFILE & SGPID="$! $SGPID"
+ {  sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l ; }  <$SGDIR/npi-5.1.0 | sgsh-writeval  -s $SGDIR/NCDIR & SGPID="$! $SGPID"
+ {  xargs -0 cat ; }  <$SGDIR/npi-4.1.0 |
 sgsh-tee  $SGDIR/npi-6.0.0 $SGDIR/npi-6.1.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-6.0.0 wc -lc | awk '{OFS=":"; print $1, $2}' | sgsh-writeval  -s $SGDIR/CLINESCHAR & SGPID="$! $SGPID"
- <$SGDIR/npi-6.1.0 sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+ {  wc -lc | awk '{OFS=":"; print $1, $2}' ; }  <$SGDIR/npi-6.0.0 | sgsh-writeval  -s $SGDIR/CLINESCHAR & SGPID="$! $SGPID"
+ {  sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+			cpp -P 2>/dev/null ; }  <$SGDIR/npi-6.1.0 |
 sgsh-tee  $SGDIR/npi-7.0.0 $SGDIR/npi-7.1.0 $SGDIR/npi-7.2.0 $SGDIR/npi-7.3.0 $SGDIR/npi-7.4.0 $SGDIR/npi-7.5.0 & SGPID="$! $SGPID"
- <$SGDIR/npi-7.0.0 grep -c '^{' | sgsh-writeval  -s $SGDIR/NFUNCTION & SGPID="$! $SGPID"
- <$SGDIR/npi-7.1.0 grep -cw goto | sgsh-writeval  -s $SGDIR/NGOTO & SGPID="$! $SGPID"
- <$SGDIR/npi-7.2.0 grep -cw register | sgsh-writeval  -s $SGDIR/NREGISTER & SGPID="$! $SGPID"
- <$SGDIR/npi-7.3.0 grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' | sgsh-writeval  -s $SGDIR/NMACRO & SGPID="$! $SGPID"
- <$SGDIR/npi-7.4.0 grep -c '@[ 	]*include' | sgsh-writeval  -s $SGDIR/NINCLUDE & SGPID="$! $SGPID"
- <$SGDIR/npi-7.5.0 grep -o -h '[0-9][x0-9][0-9a-f]*' | wc -l | sgsh-writeval  -s $SGDIR/NCONST & SGPID="$! $SGPID"
-</dev/null  find "$@" -name \*.h -type f | wc -l | sgsh-writeval  -s $SGDIR/NHFILE & SGPID="$! $SGPID"
+ {  grep -c '^{' ; }  <$SGDIR/npi-7.0.0 | sgsh-writeval  -s $SGDIR/NFUNCTION & SGPID="$! $SGPID"
+ {  grep -cw goto ; }  <$SGDIR/npi-7.1.0 | sgsh-writeval  -s $SGDIR/NGOTO & SGPID="$! $SGPID"
+ {  grep -cw register ; }  <$SGDIR/npi-7.2.0 | sgsh-writeval  -s $SGDIR/NREGISTER & SGPID="$! $SGPID"
+ {  grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' ; }  <$SGDIR/npi-7.3.0 | sgsh-writeval  -s $SGDIR/NMACRO & SGPID="$! $SGPID"
+ {  grep -c '@[ 	]*include' ; }  <$SGDIR/npi-7.4.0 | sgsh-writeval  -s $SGDIR/NINCLUDE & SGPID="$! $SGPID"
+ {  grep -o -h '[0-9][x0-9][0-9a-f]*' | wc -l ; }  <$SGDIR/npi-7.5.0 | sgsh-writeval  -s $SGDIR/NCONST & SGPID="$! $SGPID"
+ {  find "$@" -name \*.h -type f | wc -l ; } </dev/null  | sgsh-writeval  -s $SGDIR/NHFILE & SGPID="$! $SGPID"
+
 # Gather the results
 cat <<EOF
 FNAMELEN: `sgsh-readval -s $SGDIR/FNAMELEN`
@@ -157,3 +158,4 @@ NHFILE: `sgsh-readval -s $SGDIR/NHFILE`
 NGETS: `sgsh-readval -s $SGDIR/NGETS`
 EOF
 
+) 3<&0 
