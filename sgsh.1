@@ -19,7 +19,7 @@ sgsh \- scatter gather shell
 .SH SYNOPSIS
 \fBsgsh\fP
 [\fB\-g\fP \fIstyle\fP]
-[\fB\-kn\fP]
+[\fB\-knS\fP]
 [\fB\-o\fP \fIfile name\fP]
 [\fB\-p\fP \fIdirectory\fP]
 [\fB\-s\fP \fIshell\fP]
@@ -71,6 +71,14 @@ Use the specified path to a shell program for executing the generated
 shell script.
 By default \fIsgsh\fP will execute \fIsh\fP(1) using the path
 \fC/bin/sh\fP.
+
+.IP "\fB\-S\fP"
+Run all scatter-gather commands sequentially rather than
+asynchronously, having them communicate
+through temporary files and shell variables, rather than through
+named pipes and stores.
+This flag can be used for debugging and for measuring the
+speedup of asynchronous execution.
 
 .IP "\fB\-t\fP \fItee command\fP"
 Specify the path for the program to use to distribute the output of
@@ -219,3 +227,6 @@ The transformation of the \fIsgsh\fP script into an \fIsh\fP(1) script
 is performed using regular expressions,
 and can therefore be thrown off by edge-cases,
 like HERE documents containing \fIsgsh\fP syntax.
+
+The implementation of the \fB-S\fP flag functionality assumes
+that commands are topologically ordered within the script.

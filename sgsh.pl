@@ -44,7 +44,7 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage: $0 [-g style] [-kn] [-o file] [-p path] [-s shell] [-t tee] [file]
+Usage: $0 [-g style] [-knS] [-o file] [-p path] [-s shell] [-t tee] [file]
 -g style	Generate a GraphViz graph of the specified processing:
 		"plain" gives full details in B&W Courier
 		"pretty" reduces details, adds colors, Arial font
@@ -54,14 +54,15 @@ Usage: $0 [-g style] [-kn] [-o file] [-p path] [-s shell] [-t tee] [file]
 -o filename	Write the script in the specified file (- is stdout) and exit
 -p path		Path where the sgsh helper programs are located
 -s shell	Specify shell to use (/bin/sh is the default)
+-S		Set barriers at the scatter points and use temporary fiels
 -t tee		Path to the sgsh-tee command
 };
 }
 
-our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_t);
+our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_S, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'sgsh-tee';
-if (!getopts('g:kno:p:s:t:')) {
+if (!getopts('g:kno:p:s:St:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
@@ -309,13 +310,18 @@ initialization_code
 {
 	my ($pipes, $kvstores) = @_;
 
+	my $stop_kvstores;
+	if ($opt_S) {
+		$stop_kvstores = '';
+	} else {
+		$stop_kvstores = $kvstores;
+		$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
+		$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
+	}
+
 	# The traps ensure that the named pipe directory
 	# is removed on termination and that the exit code
 	# after a signal is that of the shell: 128 + signal number
-	my $stop_kvstores = $kvstores;
-	$stop_kvstores =~ s|\{|${opt_p}sgsh-readval -q -s "|g;
-	$stop_kvstores =~ s|\}|" 2>/dev/null\n|g;
-
 	return q{
 	export SGDIR=/tmp/sg-$$.} . $block_ordinal++ . q{
 
@@ -334,9 +340,9 @@ initialization_code
 
 	mkdir $SGDIR
 	} .
-	qq{
+	($opt_S ? '' : qq{
 	mkfifo $pipes
-	};
+	});
 }
 
 # Parse and return a sequence of scatter commands until we reach the specified
@@ -570,10 +576,27 @@ scatter_code_and_pipes_code
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		# The fdn redirection allows piping into the scatter block
-		$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
 
-		$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"\n};
+		if ($opt_S) {
+			# Sequential code: send output to first file, and link the others to it
+			error("-S not compatible with -s", $command->{line_number}) if ($scatter_opts{'s'});
+			# The fdn redirection allows piping into the scatter block
+			$code .= "cat <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
+			my @pipes2 = split(/[\s\\]+/, $tee_args);
+			# To keep the code simple, we link the one output file with the rest
+			$code .= " >$pipes2[1]\n";
+			for my $name (@pipes2[2 .. $#pipes2]) {
+	# The traps ensure that the named pipe directory
+	# is removed on termination and that the exit code
+	# after a signal is that of the shell: 128 + signal number
+				$code .= "ln $pipes2[1] $name\n";
+			}
+		} else {
+			# Scatter code: asynchronous tee to named pipes
+			# The fdn redirection allows piping into the scatter block
+			$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
+			$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"\n} unless ($opt_S);
+		}
 	}
 
 	# Process the commands
@@ -587,6 +610,9 @@ scatter_code_and_pipes_code
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
 			}
+
+			# In sequential code set variables rather than output to stores
+			$code .= "$c->{store_name}=\$( " if ($opt_S && $c->{output} eq 'store');
 
 			# Opening brace to redirect I/O as if the commands were one
 			$code .= ' { ';
@@ -628,19 +654,31 @@ scatter_code_and_pipes_code
 			if ($c->{output} eq 'none') {
 				$code .= " >/dev/null\n";
 			} elsif ($c->{output} eq 'scatter') {
-				$code .= " |\n" unless $c->{body} eq '';
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c);
+				if ($c->{body} ne '' && !$opt_S) {
+					$code .= " |\n";
+				}
 				$code .= $code2;
 				$pipes .= $pipes2;
 				$kvstores .= $kvstores2;
 			} elsif ($c->{output} eq 'stream') {
-				$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+				if ($opt_S) {
+					# Sequential code execution
+					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p\n};
+				} else {
+					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+				}
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				$code .= ' |' unless $c->{body} eq '';
-				$code .= qq{ ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} & SGPID="\$! \$SGPID"\n};
-				$kvstores .= "{\$SGDIR/$c->{store_name}}";
+				if ($opt_S) {
+					# Close command redirection
+					$code .= " )\n";
+				} else {
+					$code .= ' |' unless $c->{body} eq '';
+					$code .= qq{ ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} & SGPID="\$! \$SGPID"\n};
+					$kvstores .= "{\$SGDIR/$c->{store_name}}";
+				}
 			} else {
 				die "Tailless command";
 			}
@@ -667,8 +705,14 @@ gather_code
 			$command =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
 		}
 
-		# Substitute store:name points with corresponding invocation of sgsh-reaval
-		$command =~ s|store:(\w+)|${opt_p}sgsh-readval -s \$SGDIR/$1|g;
+		if ($opt_S) {
+			# Sequential code
+			# Substitute store:name points with corresponding variable
+			$command =~ s|store:(\w+)|echo \$\{$1\}|g;
+		} else {
+			# Substitute store:name points with corresponding invocation of sgsh-reaval
+			$command =~ s|store:(\w+)|${opt_p}sgsh-readval -s \$SGDIR/$1|g;
+		}
 
 		$code .= $command;
 	}
