@@ -492,7 +492,7 @@ parse_scatter_arguments
 	# p Parallel invocations
 	# s Passed to tee
 	# t Specify the tee program
-	getopts('dlp:st', \%scatter_opts);
+	getopts('dlp:st:', \%scatter_opts);
 	@ARGV = @save_argv;
 
 	# Number of commands to invoke in parallel
