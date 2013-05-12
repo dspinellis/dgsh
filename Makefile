@@ -106,12 +106,20 @@ test-regression:
 		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
 		diff -b test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
 	done
+	# Error messages
+	for i in test/regression/errors/*.sh ; do \
+		! /usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.test || exit 1; \
+		diff -b test/regression/errors/`basename $$i .sh`.{ok,test} || exit 1 ; \
+	done
 
 # Seed the regression test data
 seed-regression:
 	for i in example/*.sh ; do \
 		/usr/bin/perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
 		/usr/bin/perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
+	done
+	for i in test/regression/errors/*.sh ; do \
+		! /usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.ok ; \
 	done
 
 clean:
