@@ -302,6 +302,7 @@ clear_global_variables
 	undef %used_store;
 	undef %parallel_file_map;
 	undef %parallel_graph_file_map;
+	$graph = Graph->new() if (defined($graph));
 }
 
 # Return the code to initialize a scatter-gather block
