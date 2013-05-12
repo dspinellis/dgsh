@@ -34,6 +34,9 @@ EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
+%.png: %.sh
+	./sgsh -g pretty $< | dot -Tpng >$@
+
 png/%-pretty.png: example/%.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
 
