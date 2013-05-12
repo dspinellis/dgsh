@@ -829,7 +829,7 @@ verify_code
 		if (defined($graph) && (@cycle = $graph->find_a_cycle())) {
 			print STDERR "The following dependencies across streams form a cycle:\n";
 			for my $node (@cycle) {
-				print "$node_label{$node}\n";
+				print STDERR "$node_label{$node}\n";
 			}
 			exit 1;
 		}
