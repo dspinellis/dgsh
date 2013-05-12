@@ -777,8 +777,8 @@ verify_code
 		my $processed_stream = 0;
 		while ($body =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
-			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			error("Undefined stream /stream/$file_name specified for input", $c->{line_number}) unless ($defined_stream{$file_name});
+			error("Stream /stream/$file_name used for input more than once", $c->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
 				warning("Unsafe use of pass-through /stream/$file_name in the scatter section", $c->{line_number});
 				error("Consult the DEADLOCK section of the manual page", $c->{line_number});
@@ -798,15 +798,15 @@ verify_code
 		my $processed_command_stream = 0;
 		while ($tmp_command =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
-			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
-			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			error("Undefined stream /stream/$file_name specified for input", $command->{line_number}) unless ($defined_stream{$file_name});
+			error("Stream /stream/$file_name used for input more than once", $command->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} &&
 			    # Risk: we have already encountered a stream in a previous command in this block
 			    ($processed_block_stream ||
 			    # Risk: we have already encountered a stream in this unsage command (e.g. cat)
 			    ($processed_command_stream && sequential_command($tmp_command)))) {
-				warning("Unsafe use of pass-through /stream/$file_name in the gather section");
-				error("Consult the DEADLOCK section of the manual page");
+				warning("Unsafe use of pass-through /stream/$file_name in the gather section", $command->{line_number});
+				error("Consult the DEADLOCK section of the manual page", $command->{line_number});
 			}
 			$used_stream{$file_name} = 1;
 			$processed_command_stream = 1;
@@ -819,7 +819,7 @@ verify_code
 
 	if ($level == 0) {
 		for my $gf (keys %defined_stream) {
-			error("Stream /stream/$gf is never read\n") unless (defined($used_stream{$gf}));
+			error("Stream /stream/$gf is never read") unless (defined($used_stream{$gf}));
 		}
 		for my $gv (keys %defined_store) {
 			warning("Store store:$gv set but not used\n") unless (defined($used_store{$gv}));

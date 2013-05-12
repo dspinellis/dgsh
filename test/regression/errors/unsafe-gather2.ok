@@ -1,2 +1,2 @@
-test/regression/errors/unsafe-gather2.sh(25): Unsafe use of pass-through /stream/b in the gather section
-test/regression/errors/unsafe-gather2.sh(25): Consult the DEADLOCK section of the manual page
+test/regression/errors/unsafe-gather2.sh(24): Unsafe use of pass-through /stream/b in the gather section
+test/regression/errors/unsafe-gather2.sh(24): Consult the DEADLOCK section of the manual page
