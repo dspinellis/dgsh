@@ -1,4 +1,4 @@
-.TH SGSH 1 "19 March 2013"
+.TH SGSH 1 "12 May 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -145,6 +145,43 @@ sink    : '|>/stream/' filename                 // Sink to specified stream
 .fi
 .ft P
 .br
+
+.SH DEADLOCKS
+When multiple processes that share resources are executed deadlocks
+can occur.
+The syntax and semantics of \fIsgsh\fP promote the generation of an
+directed acyclic dependency graph, which is deadlock-free.
+In addition, \fIsgsh\fP will detect the possibility of a deadlock and issue an
+error or a warning.
+
+Using a stream as part of a process that generates it
+introduces a circular dependency, which can deadlock.
+\fIsgsh\fP will detect and report such cycles in the dependency graph.
+
+A more subtle dependency occurs when a pass-through stream
+(a stream generated without any processing through a scatter operation)
+is used as an argument in a command.
+The scatter operations get blocked until all their outputs are opened
+for reading.
+This is normally not a problem, because their outputs are opened
+by subsequent commands in the \fIscatter\fP section, which are
+executed asynchronously.
+If however the stream is used in a context where another stream must be
+previously be completely processed, before it is opened, then a deadlock
+can occur.
+\fIsgsh\fP will detect and report through a warning two such cases.
+First, the use of a pass-through stream after another stream in
+a command that processes its arguments sequentially.
+Most Unix commands, apart from
+\fIpaste\fP(1),
+\fIcomm\fP(1),
+\fIjoin\fP(1), and
+\fIsort\fP(1) with a \fB-m\fP argument fall in this category.
+Second, the use of pass-through stream after another stream
+in two separate commands occurring within the \fIgather\fP block,
+where commands are executed in a synchronous order.
+In both cases the warning can be cleared by replacing the pass-through
+construct with an invocation of the \fIcat\fP(1) command.
 
 .SH EXAMPLES
 .PP

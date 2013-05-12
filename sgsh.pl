@@ -739,10 +739,23 @@ unget_line
 	die "unget_line past beginning" if ($line_number-- == 0);
 }
 
+# Return true if the specified command processes its arguments one-by-one
+# Only a few commands are an exception to this rule
+sub
+sequential_command
+{
+	my($cmd) = @_;
+
+	return 0 if ($cmd =~ m/\b(paste|comm|join)\b/);
+	return 0 if ($cmd =~ m/\bsort\b.*-m/);
+	return 1;
+}
+
 # Verify the code
 # Ensure that all /stream files are used exactly once
 # Ensure that all stores are used in the gather block
 # Ensure that the scatter code implements a DAG
+# Ensure that pass-through streams do not block other streams
 sub
 verify_code
 {
@@ -752,11 +765,22 @@ verify_code
 	for my $c (@{$commands}) {
 		my $body = $c->{body};
 		chop $body;
+		# Commands are executed asynchronously
+		# According to our heuristic
+		# a deadlock can occur if we use a pass-through stream in the same command as another
+		# E.g. cat /stream/a /stream/b
+		# where b is a pass-through stream
+		my $processed_stream = 0;
 		while ($body =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
 			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
+				warning("Unsafe use of pass-through /stream/$file_name in the scatter section", $c->{line_number});
+				error("Consult the DEADLOCK section of the manual page", $c->{line_number});
+			}
 			$used_stream{$file_name} = 1;
+			$processed_stream = 1;
 		}
 
 		if ($c->{output} eq 'scatter') {
@@ -764,14 +788,26 @@ verify_code
 		}
 	}
 
+	my $processed_block_stream = 0;	# Executed synchronously; one stream can block all the rest
 	for my $command (@{$gather_commands}) {
 		my $tmp_command = $command;
+		my $processed_command_stream = 0;
 		while ($tmp_command =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			error("Undefined stream /stream/$file_name specified for input\n") unless ($defined_stream{$file_name});
 			error("Stream /stream/$file_name used for input more than once\n") if ($used_stream{$file_name});
+			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} &&
+			    # Risk: we have already encountered a stream in a previous command in this block
+			    ($processed_block_stream ||
+			    # Risk: we have already encountered a stream in this unsage command (e.g. cat)
+			    ($processed_command_stream && sequential_command($command)))) {
+				warning("Unsafe use of pass-through /stream/$file_name in the gather section");
+				error("Consult the DEADLOCK section of the manual page");
+			}
 			$used_stream{$file_name} = 1;
+			$processed_command_stream = 1;
 		}
+		$processed_block_stream = 1 if ($processed_command_stream);
 		while ($tmp_command =~ s|store:(\w+)||) {
 			$used_store{$1} = 1;
 		}
@@ -875,6 +911,7 @@ scatter_graph_io
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
+				$edge{"npfo-$c->{file_name}.$p"}->{teearg} = 1;
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 				next;
