@@ -1,0 +1,13 @@
+
+digraph D {
+	rankdir = LR;
+	node [fontname="Courier"];
+	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
+	node_cmd_0_0_0 [label="tr -cs A-Za-z \\\\n |\ltr A-Z a-z |\lsort -u |\lcomm -23 - /usr/share/dict/words\l", shape="ellipse"];
+	node_cmd_0_1_0 [label="cat\l", shape="ellipse"];
+	gather_node_0 [label="fgrep -f  -i --color -w -C 2\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
+	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0
+	node_cmd_0_1_0 -> gather_node_0; // npfo-text.0
+	node_cmd_0_0_0 -> gather_node_0; // npfo-errors.0
+}
