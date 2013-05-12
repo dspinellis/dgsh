@@ -948,7 +948,7 @@ scatter_graph_body
 			while ($body =~ s|/stream/(\w+)||) {
 				my $file_name = $1;
 				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
-					$edge{"$file_name_p"}->{rhs} = $node_name;
+					$edge{$file_name_p}->{rhs} = $node_name;
 				}
 			}
 			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($opt_g);
@@ -1015,7 +1015,7 @@ gather_graph
 		while ($command_tmp =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
-				$edge{"$file_name_p"}->{rhs} = $node_name;
+				$edge{$file_name_p}->{rhs} = $node_name;
 			}
 			$is_node = 1;
 		}
