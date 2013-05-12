@@ -474,7 +474,10 @@ parse_gather_command_sequence
 			# $1 is the optional block redirection
 			return ($1, @commands);
 		}
-		push(@commands, $_);
+		my $command;
+		$command->{body} = $_;
+		$command->{line_number} = $line_number;
+		push(@commands, $command);
 	}
 	error("End of file reached file parsing a gather block");
 }
@@ -699,7 +702,8 @@ gather_code
 
 	$code .= "# Gather the results\n";
 
-	for my $command (@{$commands}) {
+	for my $c (@{$commands}) {
+		my $command = $c->{body};
 		# Substitute /stream/... gather points with corresponding named pipe
 		while ($command =~ m|/stream/(\w+)|) {
 			my $file_name = $1;
@@ -790,7 +794,7 @@ verify_code
 
 	my $processed_block_stream = 0;	# Executed synchronously; one stream can block all the rest
 	for my $command (@{$gather_commands}) {
-		my $tmp_command = $command;
+		my $tmp_command = $command->{body};
 		my $processed_command_stream = 0;
 		while ($tmp_command =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
@@ -800,7 +804,7 @@ verify_code
 			    # Risk: we have already encountered a stream in a previous command in this block
 			    ($processed_block_stream ||
 			    # Risk: we have already encountered a stream in this unsage command (e.g. cat)
-			    ($processed_command_stream && sequential_command($command)))) {
+			    ($processed_command_stream && sequential_command($tmp_command)))) {
 				warning("Unsafe use of pass-through /stream/$file_name in the gather section");
 				error("Consult the DEADLOCK section of the manual page");
 			}
@@ -1048,7 +1052,7 @@ gather_graph
 	for my $command (@{$commands}) {
 		my $is_node = 0;
 		my $node_name = "gather_node_$n";
-		my $command_tmp = $command;
+		my $command_tmp = $command->{body};
 		while ($command_tmp =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
