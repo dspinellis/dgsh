@@ -4,6 +4,9 @@
  * Copyright (c) 1999,2005 by Jef Poskanzer <jef@mail.acme.com>.
  * All rights reserved.
  *
+ * Modified by Diomidis Spinellis to use IP sockets instead of depending
+ * on inetd.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -27,6 +30,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,7 +39,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <time.h>
-#include <sys/stat.h>
+#include <netinet/in.h>
 
 #define SERVER_NAME "micro_httpd"
 #define SERVER_URL "http://www.acme.com/software/micro_httpd/"
@@ -51,7 +56,59 @@ static char *get_mime_type(char *name);
 static void strdecode(char *to, char *from);
 static int hexit(char c);
 static void strencode(char *to, size_t tosize, const char *from);
-static void serve(FILE *in, FILE *out);
+static void http_serve(FILE *in, FILE *out);
+
+#define SERV_TCP_PORT	8187
+
+int
+main(int argc, char *argv[])
+{
+	int sockfd, newsockfd;
+	struct sockaddr_in cli_addr, serv_addr;
+	char buff[1024];
+
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		exit(1);
+	}
+	memset((char *)&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sin_port = htons(SERV_TCP_PORT);
+
+	if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+		perror("bind");
+		exit(1);
+	}
+	listen(sockfd, 5);
+
+	for (;;) {
+		int cli_len = sizeof(cli_addr);
+		FILE *in, *out;
+
+		if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0) {
+			perror("accept");
+			exit(1);
+		}
+
+		if ((in = fdopen(newsockfd, "r")) == NULL) {
+			perror("fdopen for input");
+			exit(1);
+		}
+		setvbuf(in, NULL, _IOLBF, 4096);
+
+		/* Must dup(2) so that fclose will work correctly */
+		if ((out = fdopen(dup(newsockfd), "w")) == NULL) {
+			perror("fdopen for output");
+			exit(1);
+		}
+
+		http_serve(in, out);
+
+		(void)fclose(in);
+		(void)fclose(out);
+	}
+}
 
 /* Serve a single HTTP request */
 static void
@@ -126,9 +183,10 @@ http_serve(FILE *in, FILE *out)
 		    "<html><head><title>Index of %s</title></head>\n<body bgcolor=\"#99cc99\"><h4>Index of %s</h4>\n<pre>\n",
 		    file, file);
 		n = scandir(file, &dl, NULL, alphasort);
-		if (n < 0)
+		if (n < 0) {
 			perror("scandir");
-		else
+			exit(1);
+		} else
 			for (i = 0; i < n; ++i)
 				file_details(out, file, dl[i]->d_name);
 		(void)fprintf(out,
@@ -184,7 +242,6 @@ send_error(FILE *out, int status, char *title, char *extra_header, char *text)
 	    "<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
 	    SERVER_URL, SERVER_NAME);
 	(void)fflush(out);
-	exit(1);
 }
 
 static void
@@ -299,4 +356,5 @@ strencode(char *to, size_t tosize, const char *from)
 		}
 	}
 	*to = '\0';
+
 }
