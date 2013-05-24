@@ -44,12 +44,13 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage: $0 [-g style] [-knS] [-o file] [-p path] [-s shell] [-t tee] [file]
+Usage: $0 [-g style] [-kmnS] [-o file] [-p path] [-s shell] [-t tee] [file]
 -g style	Generate a GraphViz graph of the specified processing:
 		"plain" gives full details in B&W Courier
 		"pretty" reduces details, adds colors, Arial font
 		"pretty-full" adds colors, Arial font
 -k		Keep temporary script file
+-m		Instrument code with monitoring probes
 -n		Do not run the generated script
 -o filename	Write the script in the specified file (- is stdout) and exit
 -p path		Path where the sgsh helper programs are located
@@ -59,10 +60,10 @@ Usage: $0 [-g style] [-knS] [-o file] [-p path] [-s shell] [-t tee] [file]
 };
 }
 
-our($opt_g, $opt_k, $opt_n, $opt_o, $opt_p, $opt_s, $opt_S, $opt_t);
+our($opt_g, $opt_k, $opt_m, $opt_n, $opt_o, $opt_p, $opt_s, $opt_S, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'sgsh-tee';
-if (!getopts('g:kno:p:s:St:')) {
+if (!getopts('g:kmno:p:s:St:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
@@ -615,6 +616,17 @@ scatter_code_and_pipes_code
 			# In sequential code set variables rather than output to stores
 			$code .= "$c->{store_name}=\$( " if ($opt_S && $c->{output} eq 'store');
 
+			my $monitor = '';
+			if ($opt_m && $c->{input} eq 'scatter') {
+				# Split the data into a monitoring and a use path
+				$monitor = '.use';
+				$code .= qq{${opt_p}sgsh-tee \$SGDIR/npi-$scatter_n.$cmd_n.$p.use \$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
+				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.use";
+				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
+				$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
+				$kvstores .= "{\$SGDIR/mon-npi-$scatter_n.$cmd_n.$p}";
+			}
+
 			# Opening brace to redirect I/O as if the commands were one
 			$code .= ' { ';
 
@@ -645,7 +657,7 @@ scatter_code_and_pipes_code
 			if ($c->{input} eq 'none') {
 				$code .= '</dev/null ';
 			} elsif ($c->{input} eq 'scatter') {
-				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p$monitor";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 			} else {
 				die "Headless command";

@@ -19,7 +19,7 @@ sgsh \- scatter gather shell
 .SH SYNOPSIS
 \fBsgsh\fP
 [\fB\-g\fP \fIstyle\fP]
-[\fB\-knS\fP]
+[\fB\-kmnS\fP]
 [\fB\-o\fP \fIfile name\fP]
 [\fB\-p\fP \fIdirectory\fP]
 [\fB\-s\fP \fIshell\fP]
@@ -49,6 +49,10 @@ This option adds to the graph colors, and uses the Arial font.
 .IP "\fB\-k\fP"
 Cause \fIsgsh\fP to keep the generated file in the temporary
 directory, instead of deleting it at the end of its execution.
+
+.IP "\fB\-m\fP"
+Cause \fIsgsh\fP to keep instrument the generated code with a monitor
+at each edge of the generated process graph.
 
 .IP "\fB\-n\fP"
 Disable running the generated script.
@@ -254,7 +258,8 @@ scatter |{
 .SH "SEE ALSO"
 \fIsgsh-tee\fP(1),
 \fIsgsh-writeval\fP(1),
-\fIsgsh-readval\fP(1)
+\fIsgsh-readval\fP(1),
+\fIsgsh-monitor\fP(1)
 
 .SH AUTHOR
 Diomidis Spinellis \(em <http://www.spinellis.gr>
