@@ -590,9 +590,6 @@ scatter_code_and_pipes_code
 			# To keep the code simple, we link the one output file with the rest
 			$code .= " >$pipes2[1]\n";
 			for my $name (@pipes2[2 .. $#pipes2]) {
-	# The traps ensure that the named pipe directory
-	# is removed on termination and that the exit code
-	# after a signal is that of the shell: 128 + signal number
 				$code .= "ln $pipes2[1] $name\n";
 			}
 		} else {
