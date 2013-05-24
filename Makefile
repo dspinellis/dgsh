@@ -22,7 +22,7 @@ else
 CFLAGS=-O -Wall
 endif
 
-EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval
+EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor
 
 # Manual pages
 MANSRC=$(wildcard *.1)

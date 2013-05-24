@@ -10,6 +10,7 @@ sgsh-readval
 sgsh-writeval
 charcount
 sgsh.html
-sgsh-tee.html
+sgsh-monitor.html
 sgsh-readval.html
+sgsh-tee.html
 sgsh-writeval.html
