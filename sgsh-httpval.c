@@ -41,18 +41,20 @@
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
 /* Forwards. */
-static void file_details(char *dir, char *name);
-static void send_error(int status, char *title, char *extra_header,
+static void file_details(FILE *out, char *dir, char *name);
+static void send_error(FILE *out, int status, char *title, char *extra_header,
     char *text);
-static void send_headers(int status, char *title, char *extra_header,
+static void send_headers(FILE *out, int status, char *title, char *extra_header,
     char *mime_type, off_t length, time_t mod);
 static char *get_mime_type(char *name);
 static void strdecode(char *to, char *from);
 static int hexit(char c);
 static void strencode(char *to, size_t tosize, const char *from);
+static void serve(FILE *in, FILE *out);
 
-int
-main(int argc, char **argv)
+/* Serve a single HTTP request */
+static void
+http_serve(FILE *in, FILE *out)
 {
 	char line[10000], method[10000], path[10000], protocol[10000],
 	    idx[20000], location[20000], command[20000];
@@ -64,27 +66,29 @@ main(int argc, char **argv)
 	struct dirent **dl;
 	int i, n;
 
-	if (argc != 2)
-		send_error(500, "Internal Error", (char *) 0,
-		    "Config error - no dir specified.");
-	if (chdir(argv[1]) < 0)
-		send_error(500, "Internal Error", (char *) 0,
-		    "Config error - couldn't chdir().");
-	if (fgets(line, sizeof(line), stdin) == (char *) 0)
-		send_error(400, "Bad Request", (char *) 0,
+	if (fgets(line, sizeof(line), in) == (char *) 0) {
+		send_error(out, 400, "Bad Request", (char *) 0,
 		    "No request found.");
-	if (sscanf(line, "%[^ ] %[^ ] %[^ ]", method, path, protocol) != 3)
-		send_error(400, "Bad Request", (char *) 0,
+		return;
+	}
+	if (sscanf(line, "%[^ ] %[^ ] %[^ ]", method, path, protocol) != 3) {
+		send_error(out, 400, "Bad Request", (char *) 0,
 		    "Can't parse request.");
-	while (fgets(line, sizeof(line), stdin) != (char *) 0) {
+		return;
+	}
+	while (fgets(line, sizeof(line), in) != (char *) 0) {
 		if (strcmp(line, "\n") == 0 || strcmp(line, "\r\n") == 0)
 			break;
 	}
-	if (strcasecmp(method, "get") != 0)
-		send_error(501, "Not Implemented", (char *) 0,
+	if (strcasecmp(method, "get") != 0) {
+		send_error(out, 501, "Not Implemented", (char *) 0,
 		    "That method is not implemented.");
-	if (path[0] != '/')
-		send_error(400, "Bad Request", (char *) 0, "Bad filename.");
+		return;
+	}
+	if (path[0] != '/') {
+		send_error(out, 400, "Bad Request", (char *) 0, "Bad filename.");
+		return;
+	}
 	file = &(path[1]);
 	strdecode(file, file);
 	if (file[0] == '\0')
@@ -93,57 +97,63 @@ main(int argc, char **argv)
 	if (file[0] == '/' || strcmp(file, "..") == 0
 	    || strncmp(file, "../", 3) == 0
 	    || strstr(file, "/../") != (char *) 0
-	    || strcmp(&(file[len - 3]), "/..") == 0)
-		send_error(400, "Bad Request", (char *) 0,
+	    || strcmp(&(file[len - 3]), "/..") == 0) {
+		send_error(out, 400, "Bad Request", (char *) 0,
 		    "Illegal filename.");
-	if (stat(file, &sb) < 0)
-		send_error(404, "Not Found", (char *) 0, "File not found.");
+		return;
+	}
+	if (stat(file, &sb) < 0) {
+		send_error(out, 404, "Not Found", (char *) 0, "File not found.");
+		return;
+	}
 	if (S_ISDIR(sb.st_mode)) {
 		if (file[len - 1] != '/') {
 			(void) snprintf(location, sizeof(location),
 			    "Location: %s/", path);
-			send_error(302, "Found", location,
+			send_error(out, 302, "Found", location,
 			    "Directories must end with a slash.");
+			return;
 		}
 		(void) snprintf(idx, sizeof(idx), "%sindex.html", file);
 		if (stat(idx, &sb) >= 0) {
 			file = idx;
 			goto do_file;
 		}
-		send_headers(200, "Ok", (char *) 0, "text/html", -1,
+		send_headers(out, 200, "Ok", (char *) 0, "text/html", -1,
 		    sb.st_mtime);
 		(void)
-		    printf
-		    ("<html><head><title>Index of %s</title></head>\n<body bgcolor=\"#99cc99\"><h4>Index of %s</h4>\n<pre>\n",
+		    fprintf
+		    (out, "<html><head><title>Index of %s</title></head>\n<body bgcolor=\"#99cc99\"><h4>Index of %s</h4>\n<pre>\n",
 		    file, file);
 		n = scandir(file, &dl, NULL, alphasort);
 		if (n < 0)
 			perror("scandir");
 		else
 			for (i = 0; i < n; ++i)
-				file_details(file, dl[i]->d_name);
+				file_details(out, file, dl[i]->d_name);
 		(void)
-		    printf
-		    ("</pre>\n<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
+		    fprintf
+		    (out, "</pre>\n<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
 		    SERVER_URL, SERVER_NAME);
 	} else {
 	      do_file:
 		fp = fopen(file, "r");
-		if (fp == (FILE *) 0)
-			send_error(403, "Forbidden", (char *) 0,
+		if (fp == (FILE *) 0) {
+			send_error(out, 403, "Forbidden", (char *) 0,
 			    "File is protected.");
-		send_headers(200, "Ok", (char *) 0, get_mime_type(file),
+			return;
+		}
+		send_headers(out, 200, "Ok", (char *) 0, get_mime_type(file),
 		    sb.st_size, sb.st_mtime);
 		while ((ich = getc(fp)) != EOF)
-			putchar(ich);
+			fputc(ich, out);
 	}
 
-	(void) fflush(stdout);
-	exit(0);
+	(void) fflush(out);
 }
 
 static void
-file_details(char *dir, char *name)
+file_details(FILE *out, char *dir, char *name)
 {
 	static char encoded_name[1000];
 	static char path[2000];
@@ -153,59 +163,59 @@ file_details(char *dir, char *name)
 	strencode(encoded_name, sizeof(encoded_name), name);
 	(void) snprintf(path, sizeof(path), "%s/%s", dir, name);
 	if (lstat(path, &sb) < 0)
-		(void) printf("<a href=\"%s\">%-32.32s</a>    ???\n",
+		(void) fprintf(out, "<a href=\"%s\">%-32.32s</a>    ???\n",
 		    encoded_name, name);
 	else {
 		(void) strftime(timestr, sizeof(timestr), "%d%b%Y %H:%M",
 		    localtime(&sb.st_mtime));
-		(void) printf("<a href=\"%s\">%-32.32s</a>    %15s %14lld\n",
+		(void) fprintf(out, "<a href=\"%s\">%-32.32s</a>    %15s %14lld\n",
 		    encoded_name, name, timestr, (int64_t) sb.st_size);
 	}
 }
 
 static void
-send_error(int status, char *title, char *extra_header, char *text)
+send_error(FILE *out, int status, char *title, char *extra_header, char *text)
 {
-	send_headers(status, title, extra_header, "text/html", -1, -1);
+	send_headers(out, status, title, extra_header, "text/html", -1, -1);
 	(void)
-	    printf
-	    ("<html><head><title>%d %s</title></head>\n<body bgcolor=\"#cc9999\"><h4>%d %s</h4>\n",
+	    fprintf
+	    (out, "<html><head><title>%d %s</title></head>\n<body bgcolor=\"#cc9999\"><h4>%d %s</h4>\n",
 	    status, title, status, title);
-	(void) printf("%s\n", text);
+	(void) fprintf(out, "%s\n", text);
 	(void)
-	    printf
-	    ("<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
+	    fprintf
+	    (out, "<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
 	    SERVER_URL, SERVER_NAME);
-	(void) fflush(stdout);
+	(void) fflush(out);
 	exit(1);
 }
 
 static void
-send_headers(int status, char *title, char *extra_header, char *mime_type,
+send_headers(FILE *out, int status, char *title, char *extra_header, char *mime_type,
     off_t length, time_t mod)
 {
 	time_t now;
 	char timebuf[100];
 
-	(void) printf("%s %d %s\015\012", PROTOCOL, status, title);
-	(void) printf("Server: %s\015\012", SERVER_NAME);
+	(void) fprintf(out, "%s %d %s\015\012", PROTOCOL, status, title);
+	(void) fprintf(out, "Server: %s\015\012", SERVER_NAME);
 	now = time((time_t *) 0);
 	(void) strftime(timebuf, sizeof(timebuf), RFC1123FMT, gmtime(&now));
-	(void) printf("Date: %s\015\012", timebuf);
+	(void) fprintf(out, "Date: %s\015\012", timebuf);
 	if (extra_header != (char *) 0)
-		(void) printf("%s\015\012", extra_header);
+		(void) fprintf(out, "%s\015\012", extra_header);
 	if (mime_type != (char *) 0)
-		(void) printf("Content-Type: %s\015\012", mime_type);
+		(void) fprintf(out, "Content-Type: %s\015\012", mime_type);
 	if (length >= 0)
-		(void) printf("Content-Length: %lld\015\012",
+		(void) fprintf(out, "Content-Length: %lld\015\012",
 		    (int64_t) length);
 	if (mod != (time_t) - 1) {
 		(void) strftime(timebuf, sizeof(timebuf), RFC1123FMT,
 		    gmtime(&mod));
-		(void) printf("Last-Modified: %s\015\012", timebuf);
+		(void) fprintf(out, "Last-Modified: %s\015\012", timebuf);
 	}
-	(void) printf("Connection: close\015\012");
-	(void) printf("\015\012");
+	(void) fprintf(out, "Connection: close\015\012");
+	(void) fprintf(out, "\015\012");
 }
 
 static char *
