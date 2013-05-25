@@ -47,12 +47,10 @@
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
 /* Forwards. */
-static void file_details(FILE *out, char *dir, char *name);
 static void send_error(FILE *out, int status, char *title, char *extra_header,
     char *text);
 static void send_headers(FILE *out, int status, char *title, char *extra_header,
     char *mime_type, off_t length, time_t mod);
-static char *get_mime_type(char *name);
 static void strdecode(char *to, char *from);
 static int hexit(char c);
 static void strencode(char *to, size_t tosize, const char *from);
@@ -165,33 +163,9 @@ http_serve(FILE *in, FILE *out)
 		return;
 	}
 	if (S_ISDIR(sb.st_mode)) {
-		if (file[len - 1] != '/') {
-			(void)snprintf(location, sizeof(location),
-			    "Location: %s/", path);
-			send_error(out, 302, "Found", location,
-			    "Directories must end with a slash.");
-			return;
-		}
-		(void)snprintf(idx, sizeof(idx), "%sindex.html", file);
-		if (stat(idx, &sb) >= 0) {
-			file = idx;
-			goto do_file;
-		}
-		send_headers(out, 200, "Ok", (char *) 0, "text/html", -1,
-		    sb.st_mtime);
-		(void)fprintf(out,
-		    "<html><head><title>Index of %s</title></head>\n<body bgcolor=\"#99cc99\"><h4>Index of %s</h4>\n<pre>\n",
-		    file, file);
-		n = scandir(file, &dl, NULL, alphasort);
-		if (n < 0) {
-			perror("scandir");
-			exit(1);
-		} else
-			for (i = 0; i < n; ++i)
-				file_details(out, file, dl[i]->d_name);
-		(void)fprintf(out,
-		    "</pre>\n<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
-		    SERVER_URL, SERVER_NAME);
+		send_error(out, 403, "Forbidden", (char *) 0,
+		    "File is a directory.");
+		return;
 	} else {
 	      do_file:
 		fp = fopen(file, "r");
@@ -200,34 +174,13 @@ http_serve(FILE *in, FILE *out)
 			    "File is protected.");
 			return;
 		}
-		send_headers(out, 200, "Ok", (char *) 0, get_mime_type(file),
+		send_headers(out, 200, "Ok", (char *) 0, "text/plain; charset=iso-8859-1",
 		    sb.st_size, sb.st_mtime);
 		while ((ich = getc(fp)) != EOF)
 			fputc(ich, out);
 	}
 
 	(void)fflush(out);
-}
-
-static void
-file_details(FILE *out, char *dir, char *name)
-{
-	static char encoded_name[1000];
-	static char path[2000];
-	struct stat sb;
-	char timestr[16];
-
-	strencode(encoded_name, sizeof(encoded_name), name);
-	(void)snprintf(path, sizeof(path), "%s/%s", dir, name);
-	if (lstat(path, &sb) < 0)
-		(void)fprintf(out, "<a href=\"%s\">%-32.32s</a>    ???\n",
-		    encoded_name, name);
-	else {
-		(void)strftime(timestr, sizeof(timestr), "%d%b%Y %H:%M",
-		    localtime(&sb.st_mtime));
-		(void)fprintf(out, "<a href=\"%s\">%-32.32s</a>    %15s %14lld\n",
-		    encoded_name, name, timestr, (int64_t) sb.st_size);
-	}
 }
 
 static void
@@ -270,47 +223,6 @@ send_headers(FILE *out, int status, char *title, char *extra_header, char *mime_
 	}
 	(void)fprintf(out, "Connection: close\015\012");
 	(void)fprintf(out, "\015\012");
-}
-
-static char *
-get_mime_type(char *name)
-{
-	char *dot;
-
-	dot = strrchr(name, '.');
-	if (dot == (char *) 0)
-		return "text/plain; charset=iso-8859-1";
-	if (strcmp(dot, ".html") == 0 || strcmp(dot, ".htm") == 0)
-		return "text/html; charset=iso-8859-1";
-	if (strcmp(dot, ".jpg") == 0 || strcmp(dot, ".jpeg") == 0)
-		return "image/jpeg";
-	if (strcmp(dot, ".gif") == 0)
-		return "image/gif";
-	if (strcmp(dot, ".png") == 0)
-		return "image/png";
-	if (strcmp(dot, ".css") == 0)
-		return "text/css";
-	if (strcmp(dot, ".au") == 0)
-		return "audio/basic";
-	if (strcmp(dot, ".wav") == 0)
-		return "audio/wav";
-	if (strcmp(dot, ".avi") == 0)
-		return "video/x-msvideo";
-	if (strcmp(dot, ".mov") == 0 || strcmp(dot, ".qt") == 0)
-		return "video/quicktime";
-	if (strcmp(dot, ".mpeg") == 0 || strcmp(dot, ".mpe") == 0)
-		return "video/mpeg";
-	if (strcmp(dot, ".vrml") == 0 || strcmp(dot, ".wrl") == 0)
-		return "model/vrml";
-	if (strcmp(dot, ".midi") == 0 || strcmp(dot, ".mid") == 0)
-		return "audio/midi";
-	if (strcmp(dot, ".mp3") == 0)
-		return "audio/mpeg";
-	if (strcmp(dot, ".ogg") == 0)
-		return "application/ogg";
-	if (strcmp(dot, ".pac") == 0)
-		return "application/x-ns-proxy-autoconfig";
-	return "text/plain; charset=iso-8859-1";
 }
 
 static void
