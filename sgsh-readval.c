@@ -31,7 +31,7 @@
 #include <unistd.h>
 
 #include "sgsh.h"
-#include "keystore.h"
+#include "kvstore.h"
 
 static const char *program_name;
 

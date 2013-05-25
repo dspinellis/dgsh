@@ -48,7 +48,7 @@ png/%-pretty.png: example/%.sh
 
 all: $(EXECUTABLES)
 
-sgsh-readval: sgsh-readval.c keystore.c
+sgsh-readval: sgsh-readval.c kvstore.c
 
 test-sgsh: $(EXECUTABLES)
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
