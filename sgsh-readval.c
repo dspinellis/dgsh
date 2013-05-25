@@ -91,7 +91,7 @@ main(int argc, char *argv[])
 	if (argc != 0 || socket_path == NULL)
 		usage();
 
-	sgsh_send_command(socket_path, cmd, retry_connection, quit);
+	sgsh_send_command(socket_path, cmd, retry_connection, quit, STDOUT_FILENO);
 
 	return 0;
 }

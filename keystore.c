@@ -72,7 +72,7 @@ again:
 /* Send to the socket path the specified command */
 void
 sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
-    bool quit)
+    bool quit, int outfd)
 {
 	int s, n;
 	char buff[PIPE_BUF];
@@ -101,7 +101,7 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 		}
 		DPRINTF("Content length is %u", content_length);
 		n -= CONTENT_LENGTH_DIGITS;
-		if (write(STDOUT_FILENO, buff, n) == -1)
+		if (write(outfd, buff, n) == -1)
 			err(4, "write");
 		content_length -= n;
 
@@ -110,7 +110,7 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 			if ((n = read(s, buff, sizeof(buff))) == -1)
 				err(5, "read");
 			DPRINTF("Read %d bytes", n);
-			if (write(STDOUT_FILENO, buff, n) == -1)
+			if (write(outfd, buff, n) == -1)
 				err(4, "write");
 			content_length -= n;
 		}
