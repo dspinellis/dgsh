@@ -35,7 +35,6 @@
 
 #include "sgsh.h"
 
-static bool retry_connection = true;
 
 static const char *program_name;
 
@@ -54,7 +53,7 @@ usage(void)
 
 /* Write a command to the specified socket, and return the socket */
 static int
-write_command(const char *name, char cmd)
+write_command(const char *name, char cmd, bool retry_connection)
 {
 	int s;
 	socklen_t len;
@@ -88,58 +87,22 @@ again:
 	return s;
 }
 
-int
-main(int argc, char *argv[])
+/* Send to the socket path the specified command */
+static void
+send_command(const char *socket_path, char cmd, bool retry_connection, bool quit)
 {
-	int s, ch, n;
+	int s, n;
 	char buff[PIPE_BUF];
 	int content_length;
 	char cbuff[CONTENT_LENGTH_DIGITS + 2];
 	struct iovec iov[2];
-	int quit = 0;
-	char cmd = 0;
-	const char *socket_path = NULL;
-
-	program_name = argv[0];
-
-	/* Default if nothing else is specified */
-	if (argc == 3)
-		cmd = 'L';
-
-	while ((ch = getopt(argc, argv, "clnqs:")) != -1) {
-		switch (ch) {
-		case 'c':	/* Read current value */
-			cmd = 'C';
-			break;
-		case 'l':	/* Read last value */
-			cmd = 'L';
-			break;
-		case 'n':
-			retry_connection = false;
-			break;
-		case 'q':
-			quit = 1;
-			break;
-		case 's':
-			socket_path = optarg;
-			break;
-		case '?':
-		default:
-			usage();
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 0 || socket_path == NULL)
-		usage();
 
 	switch (cmd) {
 	case 0:		/* No I/O specified */
 		break;
 	case 'C':	/* Read current value */
 	case 'L':	/* Read last value */
-		s = write_command(socket_path, cmd);
+		s = write_command(socket_path, cmd, retry_connection);
 
 		/* Read content length and some data */
 		iov[0].iov_base = cbuff;
@@ -172,7 +135,53 @@ main(int argc, char *argv[])
 	}
 
 	if (quit)
-		(void)write_command(socket_path, 'Q');
+		(void)write_command(socket_path, 'Q', retry_connection);
+}
+
+int
+main(int argc, char *argv[])
+{
+	int ch;
+	bool quit = false;
+	char cmd = 0;
+	const char *socket_path = NULL;
+	bool retry_connection = true;
+
+	program_name = argv[0];
+
+	/* Default if nothing else is specified */
+	if (argc == 3)
+		cmd = 'L';
+
+	while ((ch = getopt(argc, argv, "clnqs:")) != -1) {
+		switch (ch) {
+		case 'c':	/* Read current value */
+			cmd = 'C';
+			break;
+		case 'l':	/* Read last value */
+			cmd = 'L';
+			break;
+		case 'n':
+			retry_connection = false;
+			break;
+		case 'q':
+			quit = true;
+			break;
+		case 's':
+			socket_path = optarg;
+			break;
+		case '?':
+		default:
+			usage();
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 0 || socket_path == NULL)
+		usage();
+
+	send_command(socket_path, cmd, retry_connection, quit);
 
 	return 0;
 }
