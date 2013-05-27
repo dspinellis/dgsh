@@ -1,11 +1,17 @@
 /*-
- * micro_httpd - really small HTTP server
  *
+ * Provide HTTP access to the sgsh key-value store.
+ *
+ * Based on micro_httpd - really small HTTP server heavily modified by
+ * Diomidis Spinellis to use IP sockets, instead of depending on inetd,
+ * and to serve sgsh key-value store data, instead of files.
+ *
+ * micro_httpd:
  * Copyright (c) 1999,2005 by Jef Poskanzer <jef@mail.acme.com>.
  * All rights reserved.
  *
- * Modified by Diomidis Spinellis to use IP sockets instead of depending
- * on inetd.
+ * Sgsh modifications:
+ * Copyright 2013 Diomidis Spinellis
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,13 +42,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <dirent.h>
 #include <ctype.h>
+#include <err.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
-#define SERVER_NAME "micro_httpd"
-#define SERVER_URL "http://www.acme.com/software/micro_httpd/"
+#include "kvstore.h"
+
+#define SERVER_NAME "sgsh-httpval"
+#define SERVER_URL "http://www.spinellis.gr/sw/sgsh"
+
 #define PROTOCOL "HTTP/1.0"
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
@@ -50,58 +60,103 @@
 static void send_error(FILE *out, int status, char *title, char *extra_header,
     char *text);
 static void send_headers(FILE *out, int status, char *title, char *extra_header,
-    char *mime_type, off_t length, time_t mod);
+    const char *mime_type, off_t length, time_t mod);
 static void strdecode(char *to, char *from);
 static int hexit(char c);
-static void strencode(char *to, size_t tosize, const char *from);
-static void http_serve(FILE *in, FILE *out);
+static void http_serve(FILE *in, FILE *out, const char *mime_type);
 
-#define SERV_TCP_PORT	8187
+#define c_isxdigit(x) isxdigit((unsigned char)(x))
+
+static const char *program_name;
+
+static void
+usage(void)
+{
+	fprintf(stderr, "Usage: %s [-a] [-p port]\n"
+		"-a"		"\tAllow non-localhost access\n"
+		"-m MIME-type"	"\tSpecify the Content-type header value\n"
+		"-p port"	"\tSpecify the port to listen to\n",
+		program_name);
+	exit(1);
+}
+
 
 int
 main(int argc, char *argv[])
 {
 	int sockfd, newsockfd;
 	struct sockaddr_in cli_addr, serv_addr;
-	char buff[1024];
+	int ch, port = 0;
+	bool localhost_access = true;
+	const char *mime_type = "text/plain";
 
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
-		exit(1);
+	program_name = argv[0];
+
+	while ((ch = getopt(argc, argv, "am:p:")) != -1) {
+		switch (ch) {
+		case 'a':
+			localhost_access = false;
+			break;
+		case 'm':
+			mime_type = optarg;
+			break;
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case '?':
+		default:
+			usage();
+		}
 	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 0)
+		usage();
+
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		err(2, "socket");
 	memset((char *)&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(SERV_TCP_PORT);
+	serv_addr.sin_port = htons(port);
 
-	if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-		perror("bind");
-		exit(1);
+	if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+		err(2, "bind");
+
+	if (port == 0) {
+		int len = sizeof(serv_addr);
+
+		serv_addr.sin_port = 0;
+		if (getsockname(sockfd, (struct sockaddr *)&serv_addr, &len) < 0)
+			err(2, "getsockname");
+		printf("%d\n", ntohs(serv_addr.sin_port));
+		fflush(stdout);
 	}
+
 	listen(sockfd, 5);
 
 	for (;;) {
 		int cli_len = sizeof(cli_addr);
 		FILE *in, *out;
 
-		if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0) {
-			perror("accept");
-			exit(1);
+		if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0)
+			err(2, "accept");
+
+		if (localhost_access && strcmp(inet_ntoa(cli_addr.sin_addr), "127.0.0.1")) {
+			close(newsockfd);
+			continue;
 		}
 
-		if ((in = fdopen(newsockfd, "r")) == NULL) {
-			perror("fdopen for input");
-			exit(1);
-		}
+		if ((in = fdopen(newsockfd, "r")) == NULL)
+			err(2, "fdopen for input");
 		setvbuf(in, NULL, _IOLBF, 4096);
 
 		/* Must dup(2) so that fclose will work correctly */
-		if ((out = fdopen(dup(newsockfd), "w")) == NULL) {
-			perror("fdopen for output");
-			exit(1);
-		}
+		if ((out = fdopen(dup(newsockfd), "w")) == NULL)
+			err(2, "fdopen for output");
 
-		http_serve(in, out);
+		http_serve(in, out, mime_type);
 
 		(void)fclose(in);
 		(void)fclose(out);
@@ -110,17 +165,12 @@ main(int argc, char *argv[])
 
 /* Serve a single HTTP request */
 static void
-http_serve(FILE *in, FILE *out)
+http_serve(FILE *in, FILE *out, const char *mime_type)
 {
-	char line[10000], method[10000], path[10000], protocol[10000],
-	    idx[20000], location[20000], command[20000];
+	char line[10000], method[10000], path[10000], protocol[10000];
 	char *file;
 	size_t len;
-	int ich;
 	struct stat sb;
-	FILE *fp;
-	struct dirent **dl;
-	int i, n;
 
 	if (fgets(line, sizeof(line), in) == (char *) 0) {
 		send_error(out, 400, "Bad Request", (char *) 0,
@@ -147,8 +197,13 @@ http_serve(FILE *in, FILE *out)
 	}
 	file = &(path[1]);
 	strdecode(file, file);
-	if (file[0] == '\0')
-		file = "./";
+
+	if (strcmp(file, ".server?quit") == 0) {
+		send_error(out, 200, "OK", (char *) 0,
+		    "Quitting.");
+		exit(0);
+	}
+
 	len = strlen(file);
 	if (file[0] == '/' || strcmp(file, "..") == 0
 	    || strncmp(file, "../", 3) == 0
@@ -162,44 +217,34 @@ http_serve(FILE *in, FILE *out)
 		send_error(out, 404, "Not Found", (char *) 0, "File not found.");
 		return;
 	}
-	if (S_ISDIR(sb.st_mode)) {
+	if (!S_ISSOCK(sb.st_mode)) {
 		send_error(out, 403, "Forbidden", (char *) 0,
-		    "File is a directory.");
+		    "File is not a Unix domain socket.");
 		return;
-	} else {
-	      do_file:
-		fp = fopen(file, "r");
-		if (fp == (FILE *) 0) {
-			send_error(out, 403, "Forbidden", (char *) 0,
-			    "File is protected.");
-			return;
-		}
-		send_headers(out, 200, "Ok", (char *) 0, "text/plain; charset=iso-8859-1",
-		    sb.st_size, sb.st_mtime);
-		while ((ich = getc(fp)) != EOF)
-			fputc(ich, out);
 	}
-
+	send_headers(out, 200, "Ok", (char *) 0, mime_type,
+	    -1, (time_t)-1);
 	(void)fflush(out);
+	sgsh_send_command(file, 'C', true, false, fileno(out));
 }
 
 static void
 send_error(FILE *out, int status, char *title, char *extra_header, char *text)
 {
 	send_headers(out, status, title, extra_header, "text/html", -1, -1);
-	(void)fprintf (out,
-	    "<html><head><title>%d %s</title></head>\n<body bgcolor=\"#cc9999\"><h4>%d %s</h4>\n",
+	(void)fprintf(out,
+	    "<html><head><title>%d %s</title></head>\n<body><h4>%d %s</h4>\n",
 	    status, title, status, title);
 	(void)fprintf(out, "%s\n", text);
 	(void)fprintf(out,
-	    "<hr>\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
+	    "<hr />\n<address><a href=\"%s\">%s</a></address>\n</body></html>\n",
 	    SERVER_URL, SERVER_NAME);
 	(void)fflush(out);
 }
 
 static void
-send_headers(FILE *out, int status, char *title, char *extra_header, char *mime_type,
-    off_t length, time_t mod)
+send_headers(FILE *out, int status, char *title, char *extra_header,
+    const char *mime_type, off_t length, time_t mod)
 {
 	time_t now;
 	char timebuf[100];
@@ -229,7 +274,7 @@ static void
 strdecode(char *to, char *from)
 {
 	for (; *from != '\0'; ++to, ++from) {
-		if (from[0] == '%' && isxdigit(from[1]) && isxdigit(from[2])) {
+		if (from[0] == '%' && c_isxdigit(from[1]) && c_isxdigit(from[2])) {
 			*to = hexit(from[1]) * 16 + hexit(from[2]);
 			from += 2;
 		} else
@@ -249,24 +294,4 @@ hexit(char c)
 		return c - 'A' + 10;
 	/* Shouldn't happen, we're guarded by isxdigit() */
 	return 0;
-}
-
-static void
-strencode(char *to, size_t tosize, const char *from)
-{
-	int tolen;
-
-	for (tolen = 0; *from != '\0' && tolen + 4 < tosize; ++from) {
-		if (isalnum(*from) || strchr("/_.-~", *from) != (char *) 0) {
-			*to = *from;
-			++to;
-			++tolen;
-		} else {
-			(void)sprintf(to, "%%%02x", (int) *from & 0xff);
-			to += 3;
-			tolen += 3;
-		}
-	}
-	*to = '\0';
-
 }

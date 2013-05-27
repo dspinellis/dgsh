@@ -22,7 +22,7 @@ else
 CFLAGS=-O -Wall
 endif
 
-EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor
+EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -49,6 +49,8 @@ png/%-pretty.png: example/%.sh
 all: $(EXECUTABLES)
 
 sgsh-readval: sgsh-readval.c kvstore.c
+
+sgsh-httpval: sgsh-httpval.c kvstore.c
 
 test-sgsh: $(EXECUTABLES)
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
