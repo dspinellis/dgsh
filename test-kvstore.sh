@@ -69,6 +69,59 @@ TRY="`./sgsh-readval -l -s testsocket 2>/dev/null `"
 EXPECT='record1:'
 check
 
+testcase "HTTP interface - text data" # {{{3
+PORT=53843
+echo single record | ./sgsh-writeval -s testsocket 2>/dev/null &
+./sgsh-httpval -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+TRY="`curl -s40 http://localhost:$PORT/testsocket`"
+EXPECT='single record'
+check
+curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+
+testcase "HTTP interface - binary data" # {{{3
+PORT=53843
+perl -e 'BEGIN { binmode STDOUT; }
+for ($i = 0; $i < 256; $i++) { print chr($i); }' |
+./sgsh-writeval -l 256 -s testsocket 2>/dev/null &
+./sgsh-httpval -m application/octet-stream -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+curl -s40 http://localhost:$PORT/testsocket |
+perl -e 'BEGIN { binmode STDIN; }
+for ($i = 0; $i < 256; $i++) { $expect .= chr($i); }
+read STDIN, $try, 256;
+if ($try ne $expect) {
+	print "FAIL\n";
+	print "Expected [$expect] got [$try]\n";
+} else {
+	print "OK\n";
+}
+exit ($try ne $expect);
+'
+EXITCODE=$?
+curl -s40 http://localhost:$PORT/.server?quit >/dev/null
+./sgsh-readval -q -s testsocket 2>/dev/null 1>/dev/null
+test $EXITCODE = 0 || exit 1
+
+testcase "HTTP interface - large data" # {{{3
+PORT=53843
+dd if=/dev/zero bs=1M count=1 2>/dev/null |
+./sgsh-writeval -l 1000000 -s testsocket 2>/dev/null &
+./sgsh-httpval -m application/octet-stream -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+BYTES=`curl -s40 http://localhost:$PORT/testsocket |
+wc -c`
+curl -s40 http://localhost:$PORT/.server?quit >/dev/null
+./sgsh-readval -q -s testsocket 2>/dev/null 1>/dev/null
+if [ "$BYTES" != 1000000 ]
+then
+	echo FAIL
+	echo "Expected [1000000 bytes] got [$BYTES bytes]"
+	exit 1
+else
+	echo "OK"
+fi
+
 # Last record tests {{{1
 section 'Reading of fixed-length records in stream' # {{{2
 (echo -n A12345A7AB; sleep 1; echo -n 12345B7BC; sleep 3; echo -n 12345C7CD) | ./sgsh-writeval -l 9 -s testsocket 2>/dev/null &
