@@ -72,6 +72,11 @@ to be made available to other processes.
 .SH BUGS
 The server is single-threaded and will block if a value is not available
 on a specified store.
+.PP
+The server only supports IPv4 and the HTTP 1.0 protocols.
+Some clients may require special configuration to connect to it.
+For instance, \fIcurl\fP(1) requires the specification of the \fC--ipv4\fP
+and \fC--http1.0\fP flags.
 
 .SH AUTHOR
 Diomidis Spinellis \(em <http://www.spinellis.gr>.
