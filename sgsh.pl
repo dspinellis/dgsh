@@ -22,7 +22,9 @@
 use strict;
 use warnings;
 use File::Temp qw/ tempfile /;
+use File::Copy;
 use Getopt::Std;
+use IO::Handle;
 
 # Optionally build a graph to detect cycles
 my $graph;
@@ -44,7 +46,8 @@ main::HELP_MESSAGE
 {
 	my ($fh) = @_;
 	print $fh qq{
-Usage: $0 [-g style] [-kmnS] [-o file] [-p path] [-s shell] [-t tee] [file]
+Usage: $0 [-g style] [-dkmnS] [-o file] [-p path] [-s shell] [-t tee] [file]
+-d		Generate and launch debug and monitoring interface
 -g style	Generate a GraphViz graph of the specified processing:
 		"plain" gives full details in B&W Courier
 		"pretty" reduces details, adds colors, Arial font
@@ -60,40 +63,27 @@ Usage: $0 [-g style] [-kmnS] [-o file] [-p path] [-s shell] [-t tee] [file]
 };
 }
 
-our($opt_g, $opt_k, $opt_m, $opt_n, $opt_o, $opt_p, $opt_s, $opt_S, $opt_t);
+our($opt_d, $opt_g, $opt_k, $opt_m, $opt_n, $opt_o, $opt_p, $opt_s, $opt_S, $opt_t);
 $opt_s = '/bin/sh';
 $opt_t = 'sgsh-tee';
-if (!getopts('g:kmno:p:s:St:')) {
+if (!getopts('dg:kmno:p:s:St:')) {
 	main::HELP_MESSAGE(*STDERR);
 	exit 1;
 }
 
+# Make path absolute
+if (defined($opt_p) && $opt_p !~ m|^/|) {
+	$opt_p = `readlink -f "${opt_p}"`;
+	$opt_p =~ s/\n//;
+}
 # Ensure defined path ends with a /
 $opt_p .= '/' if (defined($opt_p) && $opt_p !~ m|/$|);
 $opt_p = '' unless defined($opt_p);
 # Add path to opt_t unless it has one
 $opt_t = "$opt_p$opt_t" unless ($opt_t =~ m|/|);
 
-# GraphViz attributes: all nodes, stores, processing nodes
-my $gv_node_attr;
-my $gv_store_attr;
-my $gv_proc_attr;
-if ($opt_g) {
-	if ($opt_g eq 'pretty' || $opt_g eq 'pretty-full') {
-		$gv_node_attr = '[fontname="Arial", gradientangle="90", style="filled"]';
-		$gv_store_attr = '[shape="box", fillcolor="cyan:white"]';
-		$gv_proc_attr = 'shape="ellipse", fillcolor="yellow:white"';
-	} elsif ($opt_g eq 'plain') {
-		$gv_node_attr = '[fontname="Courier"]';
-		$gv_store_attr = '[shape="box"]';
-		$gv_proc_attr = 'shape="ellipse"';
-	} else {
-		main::HELP_MESSAGE(*STDERR);
-		exit 1;
-	}
-}
-
 $File::Temp::KEEP_ALL = 1 if ($opt_k);
+my $temp_name = '/tmp/sg-XXXXXXX';
 
 # Output file
 my ($output_fh, $output_filename);
@@ -108,8 +98,49 @@ if ($opt_o) {
 	}
 } else {
 	# Output to temporary file
-	($output_fh, $output_filename) = tempfile(UNLINK => 1);
+	($output_fh, $output_filename) = tempfile($temp_name, UNLINK => 1);
 }
+
+# GraphViz attributes: all nodes, stores, processing nodes
+my $gv_node_attr;
+my $gv_edge_attr;
+my $gv_store_attr;
+my $gv_proc_attr;
+
+# GraphViz graph output file
+my $graph_out;
+# One of pretty, pretty-full, plain
+my $graph_style;
+
+if ($opt_g) {
+	$graph_out = \*STDOUT;
+	$graph_style = $opt_g;
+}
+
+my $graph_filename;
+if ($opt_d) {
+	($graph_out, $graph_filename) = tempfile($temp_name, UNLINK => 1);
+	$graph_style = 'pretty';
+	$gv_edge_attr = ' [penwidth="3pt", color="grey"]';
+	# Create monitoring ports
+	$opt_m = 1;
+}
+
+if ($graph_out) {
+	if ($graph_style eq 'pretty' || $graph_style eq 'pretty-full') {
+		$gv_node_attr = '[fontname="Arial", gradientangle="90", style="filled"]';
+		$gv_store_attr = 'shape="box", fillcolor="cyan:white"';
+		$gv_proc_attr = 'shape="ellipse", fillcolor="yellow:white"';
+	} elsif ($graph_style eq 'plain') {
+		$gv_node_attr = '[fontname="Courier"]';
+		$gv_store_attr = 'shape="box"';
+		$gv_proc_attr = 'shape="ellipse"';
+	} else {
+		main::HELP_MESSAGE(*STDERR);
+		exit 1;
+	}
+}
+
 
 # Map containing all defined gather file names
 my %defined_stream;
@@ -145,6 +176,12 @@ my %edge;
 
 # User-specified input file name (or STDIN)
 my $input_filename;
+
+# Outputs for HTML file used for debugging
+my ($html_out, $html_filename);
+
+# Location where sgsh files reside (call set_library_path to set)
+my $library_path;
 
 # Ordinal of the scatter-gather block being processed
 my $block_ordinal = 0;
@@ -193,11 +230,12 @@ print $output_fh "#!$opt_s
 ";
 
 # Generate graph heading
-print qq[
-digraph D {
+print $graph_out qq[
+digraph \"\" {
 	rankdir = LR;
 	node $gv_node_attr;
-] if ($opt_g);
+	edge $gv_edge_attr;
+] if ($graph_out);
 
 my $code = '';
 
@@ -243,18 +281,18 @@ while (get_next_line()) {
 		$code .= "(\n" .
 			initialization_code($pipes, $kvstores) .
 			"$code2\n" .
+			debug_code() .
 			gather_code(\@gather_commands) .
 			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
+		print $graph_out "}\n" if ($graph_out);
+		debug_create_html();
 	} else {
 		$code .= $_ ;
 	}
 }
 
-# We're done
-if ($opt_g) {
-	print "}\n";
-	exit 0;
-}
+# Graph
+exit 0 if ($opt_g);
 
 print $output_fh $code;
 
@@ -312,6 +350,12 @@ initialization_code
 {
 	my ($pipes, $kvstores) = @_;
 
+	my $stop_httpd = '';
+	if ($opt_d) {
+		$kvstores .= "{\$SGDIR/.SG_HTTP_PORT}";
+		$stop_httpd = "curl -s40 http://localhost:\$SG_HTTP_PORT/.server?quit 2>&1 >/dev/null\n";
+	}
+
 	my $stop_kvstores;
 	if ($opt_S) {
 		$stop_kvstores = '';
@@ -331,7 +375,7 @@ initialization_code
 
 	trap '
 	# Stop key-value stores
-	} . $stop_kvstores . q{
+	} . $stop_kvstores . $stop_httpd . q{
 	# Kill processes we have launched in the background
 	kill $SGPID 2>/dev/null
 
@@ -344,7 +388,8 @@ initialization_code
 	} .
 	($opt_S ? '' : qq{
 	mkfifo $pipes
-	});
+	}) .
+	debug_initialize();
 }
 
 # Parse and return a sequence of scatter commands until we reach the specified
@@ -908,11 +953,15 @@ scatter_graph_io
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs} = $tee_node_name;
 			}
 		}
-		# Obtain tee program
-		my $tee_prog = $opt_t;
-		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 
-		print qq{\t$tee_node_name [label="$tee_prog $tee_args", $gv_proc_attr];\n} if ($opt_g && $show_tee);
+		if ($graph_out && $show_tee) {
+			# Obtain tee program
+			my $tee_prog = $opt_t;
+			$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
+			$tee_prog =~ s|.*/||;
+
+			print $graph_out qq{\t$tee_node_name [label="$tee_prog $tee_args", $gv_proc_attr];\n};
+		}
 	}
 
 	# Process the commands
@@ -955,15 +1004,15 @@ scatter_graph_io
 						 ($#output_edges > 0 && $show_tee) ? $tee_node_name : $node_name;
 				}
 				# Connect our command to sgsh-tee
-				print qq{\t$node_name -> $tee_node_name\n} if ($opt_g && $#output_edges > 0 && $show_tee);
+				print $graph_out qq{\t$node_name -> $tee_node_name\n} if ($graph_out && $#output_edges > 0 && $show_tee);
 			} elsif ($c->{output} eq 'stream') {
 				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $node_name;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			} elsif ($c->{output} eq 'store') {
 				error("Store writes not allowed in parallel execution", $c->{line_number}) if ($p > 0);
-				if ($opt_g) {
-					print qq(\t"$c->{store_name}" $gv_store_attr;\n);
-					print qq(\t$node_name -> "$c->{store_name}";\n)
+				if ($graph_out) {
+					print $graph_out qq(\t"$c->{store_name}" [id="store:$c->{store_name}", $gv_store_attr];\n);
+					print $graph_out qq(\t$node_name -> "$c->{store_name}";\n)
 				}
 			} else {
 				die "Tailless command";
@@ -1001,7 +1050,7 @@ scatter_graph_body
 					$edge{$file_name_p}->{rhs} = $node_name;
 				}
 			}
-			print qq{\t$node_name [label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($opt_g);
+			print $graph_out qq{\t$node_name [label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($graph_out);
 			$node_label{$node_name} = $body;
 
 			if ($c->{output} eq 'scatter') {
@@ -1021,7 +1070,7 @@ graphviz_escape
 
 	$name =~ s/\s+$//;
 	$name =~ s/^\s+//;
-	if ($opt_g eq 'pretty') {
+	if ($graph_style eq 'pretty') {
 		# Remove single-quoted elements
 		$name =~ s/'[^']*'//g;
 		# Remove double-quoted elements
@@ -1069,7 +1118,7 @@ gather_graph
 			}
 			$is_node = 1;
 		}
-		print qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($opt_g && $is_node);
+		print $graph_out qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($graph_out && $is_node);
 		$n++;
 	}
 }
@@ -1083,16 +1132,155 @@ graph_edges
 	for my $e (keys %edge) {
 		next if ($edge{$e}->{passthru});
 		if (!defined($edge{$e}->{lhs})) {
-			print qq{\tunknown_node_$u [label="???"]; // $e\n} if ($opt_g);
+			print $graph_out qq{\tunknown_node_$u [label="???"]; // $e\n} if ($graph_out);
 			$edge{$e}->{lhs} = "unknown_node_$u";
 			$u++;
 		}
 		if (!defined($edge{$e}->{rhs})) {
-			print qq{\tunknown_node_$u [label="???"]; // $e\n} if ($opt_g);
+			print $graph_out qq{\tunknown_node_$u [label="???"]; // $e\n} if ($graph_out);
 			$edge{$e}->{rhs} = "unknown_node_$u";
 			$u++;
 		}
 		$graph->add_edge($edge{$e}->{lhs}, $edge{$e}->{rhs}) if (defined($graph));
-		print "\t$edge{$e}->{lhs} -> $edge{$e}->{rhs}; // $e\n" if ($opt_g);
+		print $graph_out qq|\t$edge{$e}->{lhs} -> $edge{$e}->{rhs} [id="$e"];\n| if ($graph_out);
 	}
+}
+
+# Set the library path where the sgsh files reside
+sub
+set_library_path
+{
+	for my $p (('/usr/lib/sgsh', '/usr/local/lib/sgsh', $opt_p)) {
+		if (-r "$p/graph-monitor.js") {
+			$library_path = $p;
+			last;
+		}
+	}
+
+	if (!defined($library_path)) {
+		print STDERR "Unable to locate Javascript resources.\n",
+			     "Re-install sgsh or use -p flag\n";
+		exit 1;
+	}
+}
+
+# Write into the script commands to setup the debugging environment
+# Called when setting up a scatter gather block
+sub
+debug_initialize
+{
+	return '' unless ($opt_d);
+
+	set_library_path();
+
+	# Copy HTML and Javascript files into current directory to
+	# satisfy the browser's same-origin constraint for AJAX
+	# requests
+	($html_out, $html_filename)  = tempfile($temp_name, UNLINK => 1, SUFFIX => '.html');
+	return qq{
+cp "$library_path/jquery.js" \$SGDIR/
+cp "$html_filename" \$SGDIR/index.html
+};
+}
+
+# Create the HTML file to monitor the script's behavior
+sub
+debug_create_html
+{
+	return unless ($opt_d);
+
+	print $html_out q[<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Processes and data flows - sgsh</title>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <style type="text/css">
+      .tooltip {
+          position:absolute;
+          background:#666;
+          color:#fff;
+          visibility:hidden;
+          padding:5px;
+      }
+    </style>
+];
+
+	print $html_out qq[
+    <script src="jquery.js"></script>
+    <script src="graph-monitor.js"></script>
+];
+
+	print $html_out q[
+  </head>
+  <body id="body" >
+
+    <p>
+      <object height='900' type='image/svg+xml' width='500' id='thesvg'>
+];
+	# Append SVG
+	close($graph_out);
+	my ($svg_out, $svg_filename)  = tempfile($temp_name, UNLINK => 1, SUFFIX => '.svg');
+	close($svg_out);
+	system qq[dot -Tsvg <"$graph_filename" >>"$svg_filename"];
+	if ($? == -1) {
+		print STDERR "Unable to execute dot: $!\n";
+		exit 1;
+	} elsif (($? >> 8) != 0) {
+		$File::Temp::KEEP_ALL = 1;
+		print STDERR "Error in generated dot file $graph_filename\n";
+		exit 1;
+	}
+
+	# Copy generated SVG to HTML
+	my %title;
+	open(my $svg_in, '<', $svg_filename) || die "Unable to open $svg_filename: $!\n";
+	while (<$svg_in>) {
+		print $html_out $_;
+	}
+
+	# Finish-off HTML file
+	print $html_out q[
+</object>
+    </p>
+<!--Edge hover-->
+<div class="tooltip" id="edge">
+<table>
+<tr><th align='left'>Bytes</th><td align='right'><span id="bytes"></span></td></tr>
+<tr><th align='left'>Lines</th><td align='right'><span id="lines"></span></td></tr>
+<tr><th align='left'>Bytes/s</th><td align='right'><span id="bps"></span></td></tr>
+<tr><th align='left'>Lines/s</th><td align='right'><span id="lps"></span></td></tr>
+<tr><th align='left'>Last record</th><td><span id="record"></span></td></tr>
+</table>
+</div>
+
+<!--Store hover-->
+<div class="tooltip" id="store">
+Last record: <span id="record"></span>
+</div>
+  </body>
+</html>
+];
+}
+
+# Return code to start a debug monitoring session
+sub
+debug_code
+{
+	return '' unless ($opt_d);
+
+	return qq@
+		# Start the web server in the directory with the stores
+		( cd \$SGDIR ; ${opt_p}sgsh-httpval | ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
+		# Obtain the server's port
+		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
+		# Patch the Javascript with the correct port
+		sed "s/HTTP_PORT/\$SG_HTTP_PORT/g" "$library_path/graph-monitor.js" >\$SGDIR/graph-monitor.js
+		# Open the corresponding web page for the user
+		for cmd in open cygstart gnome-open kde-open 'echo "Point browser to "'
+		do
+			if \$cmd http://localhost:\$SG_HTTP_PORT/index.html 2>/dev/null
+			then
+				break
+			fi
+		done
+@
 }
