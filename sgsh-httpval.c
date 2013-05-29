@@ -61,6 +61,7 @@ static void send_error(FILE *out, int status, char *title, char *extra_header,
     char *text);
 static void send_headers(FILE *out, int status, char *title, char *extra_header,
     const char *mime_type, off_t length, time_t mod);
+static char * get_mime_type(char *name);
 static void strdecode(char *to, char *from);
 static int hexit(char c);
 static void http_serve(FILE *in, FILE *out, const char *mime_type);
@@ -214,18 +215,33 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 		return;
 	}
 	if (stat(file, &sb) < 0) {
-		send_error(out, 404, "Not Found", (char *) 0, "File not found.");
+		send_error(out, 404, "Not Found", NULL, "File not found.");
 		return;
 	}
-	if (!S_ISSOCK(sb.st_mode)) {
+	if (S_ISSOCK(sb.st_mode)) {
+		/* Value store */
+		send_headers(out, 200, "Ok", NULL, mime_type,
+		    -1, (time_t)-1);
+		(void)fflush(out);
+		sgsh_send_command(file, 'C', true, false, fileno(out));
+	} else if (S_ISREG(sb.st_mode)) {
+		/* Regular file */
+		int ich;
+		FILE *fp;
+
+		fp = fopen(file, "r");
+		if (fp == NULL) {
+			send_error(out, 403, "Forbidden", NULL, "File is protected.");
+			return;
+		}
+		send_headers(out, 200, "Ok", NULL, get_mime_type(file),
+			sb.st_size, sb.st_mtime);
+		while ((ich = getc(fp)) != EOF)
+			putc(ich, out);
+	} else {
 		send_error(out, 403, "Forbidden", (char *) 0,
-		    "File is not a Unix domain socket.");
-		return;
+		    "File is not a regular file or a Unix domain socket.");
 	}
-	send_headers(out, 200, "Ok", (char *) 0, mime_type,
-	    -1, (time_t)-1);
-	(void)fflush(out);
-	sgsh_send_command(file, 'C', true, false, fileno(out));
 }
 
 static void
@@ -268,6 +284,25 @@ send_headers(FILE *out, int status, char *title, char *extra_header,
 	}
 	(void)fprintf(out, "Connection: close\015\012");
 	(void)fprintf(out, "\015\012");
+}
+
+static char *
+get_mime_type(char *name)
+{
+	char *dot;
+
+	dot = strrchr(name, '.');
+	if (dot == NULL)
+		return "text/plain";
+	if (strcmp(dot, ".html") == 0)
+		return "text/html";
+	if (strcmp(dot, ".js") == 0)
+		return "text/javascript";
+	if (strcmp(dot, ".png") == 0)
+		return "image/png";
+	if (strcmp(dot, ".css") == 0)
+		return "text/css";
+	return "text/plain; charset=iso-8859-1";
 }
 
 static void

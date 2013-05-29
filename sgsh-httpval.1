@@ -34,6 +34,14 @@ send a command to read the store's value,
 obtain the value,
 and respond with it as the document sent with the HTTP response.
 .PP
+Requests for files located in the directory where \fIsgsh-httpval\fP
+was launched will also be satisfied.
+The correct MIME type will be sent for files with a suffix of
+\fChtml\fP,
+\fCjs\fP,
+\fCpng\fP, and
+\fCcss\fP.
+.PP
 A request for the resource \fC.server?quit\fP, will cause the server
 to terminate processing and exit.
 .PP
