@@ -54,7 +54,7 @@ write_command(const char *name, char cmd, bool retry_connection)
 	len = strlen(remote.sun_path) + 1 + sizeof(remote.sun_family);
 again:
 	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
-		if (retry_connection && errno == ENOENT) {
+		if (retry_connection && (errno == ENOENT || errno == ECONNREFUSED)) {
 			DPRINTF("Retrying connection setup");
 			sleep(1);
 			goto again;
