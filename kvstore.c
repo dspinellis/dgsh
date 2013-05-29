@@ -33,6 +33,8 @@
 
 #include "sgsh.h"
 
+#define RETRY_LIMIT 10
+
 /* Write a command to the specified socket, and return the socket */
 static int
 write_command(const char *name, char cmd, bool retry_connection)
@@ -40,6 +42,7 @@ write_command(const char *name, char cmd, bool retry_connection)
 	int s;
 	socklen_t len;
 	struct sockaddr_un remote;
+	int counter = 0;
 
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		err(1, "socket");
@@ -54,7 +57,9 @@ write_command(const char *name, char cmd, bool retry_connection)
 	len = strlen(remote.sun_path) + 1 + sizeof(remote.sun_family);
 again:
 	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
-		if (retry_connection && (errno == ENOENT || errno == ECONNREFUSED)) {
+		if (retry_connection &&
+		    (errno == ENOENT || errno == ECONNREFUSED) &&
+		    counter++ < RETRY_LIMIT) {
 			DPRINTF("Retrying connection setup");
 			sleep(1);
 			goto again;
