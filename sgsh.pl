@@ -103,7 +103,7 @@ if ($opt_o) {
 
 # GraphViz attributes: all nodes, stores, processing nodes
 my $gv_node_attr;
-my $gv_edge_attr;
+my $gv_edge_attr = '[]';
 my $gv_store_attr;
 my $gv_proc_attr;
 
@@ -271,6 +271,7 @@ while (get_next_line()) {
 		# Now that we have the edges we can verify the graph
 		verify_code(0, \%scatter_command, \@gather_commands);
 
+		print $graph_out "}\n" if ($graph_out);
 		next if ($opt_g);
 
 		# Generate code
@@ -284,7 +285,6 @@ while (get_next_line()) {
 			debug_code() .
 			gather_code(\@gather_commands) .
 			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
-		print $graph_out "}\n" if ($graph_out);
 		debug_create_html();
 	} else {
 		$code .= $_ ;
