@@ -56,12 +56,15 @@ Allow any Internet host to obtain a value from the server.
 By default the server will only respond to requests arriving from the local
 host's loop-back IP address (127.0.0.1).
 
-.IP "\fB\-p\fP \fIMIME-type\fP"
+.IP "\fB\-m\fP \fIMIME-type\fP"
 Specify the MIME-type that the server will provide on the \fCContent-type\fP
-HTTP header.
+HTTP header for data coming from data stores.
 By default this value is \fCtext/plain\fP.
-Other reasonable types are \fCtext/xml\fP,
-\fCtext/CSV\fP, or \fCapplication/octet-stream\fP.
+Other reasonable types are
+\fCapplication/json\fP,
+\fCtext/CSV\fP,
+\fCtext/xml\fP, or
+\fCapplication/octet-stream\fP.
 
 .IP "\fB\-p\fP \fIport\fP"
 Specify the TCP port on which the server will listen for incoming HTTP

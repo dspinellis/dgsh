@@ -74,8 +74,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "Usage: %s [-a] [-p port]\n"
-		"-a"		"\tAllow non-localhost access\n"
-		"-m MIME-type"	"\tSpecify the Content-type header value\n"
+		"-a\t"		"\tAllow non-localhost access\n"
+		"-m MIME-type"	"\tSpecify the store Content-type header value\n"
 		"-p port"	"\tSpecify the port to listen to\n",
 		program_name);
 	exit(1);
