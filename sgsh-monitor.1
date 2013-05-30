@@ -1,4 +1,4 @@
-.TH SGSH-MONITOR 1 "24 May 2013"
+.TH SGSH-MONITOR 1 "30 May 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -20,12 +20,18 @@ sgsh-monitor \- monitor data on a pipe
 \fBsgsh-monitor\fP
 .SH DESCRIPTION
 \fIsgsh-monitor\fP is a filter that reads lines from its standard input
-and prepends each one with a timestamp, the number of lines read, and
-the number of bytes read.
+and for each line writes a JSON record containing
+the absolute timestamp (\fCatime\fP),
+the relative timestamp (\fCrtime\fP),
+the number of lines read (\fCnlines\fP),
+the number of bytes read (\fCnbytes\fP),
+and the actual data (\fCdata\fP).
 The values printed are those that were in effect before the line's
 first character was read (i.e. the number of bytes and lines starts at 0).
-The timestamp is printed as a decimal number of seconds since epoch
-(January 1 1970) with microsecond precision.
+The timestamps are printed as a decimal number of seconds
+(since epoch, January 1 1970, for the absolute one)
+with microsecond precision.
+.PP
 The command is used internally by \fIsgsh\fP for providing monitoring ports.
 
 .SH "SEE ALSO"

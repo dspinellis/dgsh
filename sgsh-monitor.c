@@ -40,13 +40,35 @@ usage(void)
 	exit(1);
 }
 
+/* Print c with JSON escaping */
+static void
+escape(int c)
+{
+	switch (c) {
+	case '\\': fputs("\\\\", stdout); break;
+	case '"': fputs("\\\"", stdout); break;
+	case '/': fputs("\\/", stdout); break;
+	case '\b': fputs("\\b", stdout); break;
+	case '\f': fputs("\\f", stdout); break;
+	case '\n': fputs("\\n", stdout); break;
+	case '\r': fputs("\\r", stdout); break;
+	case '\t': fputs("\\t", stdout); break;
+	default:
+		if (c < 0x1f)
+			printf("\\u%04x", c);
+		else
+			putchar(c);
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
 	int c;
 	unsigned long nlines, nbytes;
-	struct timeval t;
+	struct timeval start, t;
 	bool write_header = true;
+	bool wrote_header = false;
 
 	program_name = argv[0];
 
@@ -55,24 +77,38 @@ main(int argc, char *argv[])
 		usage();
 
 	nbytes = nlines = 0;
+	gettimeofday(&start, NULL);
 
 	while ((c = getchar()) != EOF) {
 		if (write_header) {
 			gettimeofday(&t, NULL);
-			printf("%lld.%06d %lu %lu ",
+			if (wrote_header)
+				printf("\" }\n");
+			printf("{ "
+				"\"atime\": %lld.%06d, "
+				"\"rtime\": %.06lf, "
+				"\"nlines\": %lu, "
+				"\"nbytes\": %lu, "
+				"\"data\": \"",
 				(long long)t.tv_sec,
 				(int)t.tv_usec,
+				(t.tv_sec - start.tv_sec) +
+				(t.tv_usec - start.tv_usec) / 1e6,
 				nlines,
 				nbytes);
+			wrote_header = true;
 			write_header = false;
 		}
-		putchar(c);
+		escape(c);
 		nbytes++;
 		if (c == '\n') {
 			nlines++;
 			write_header = true;
 		}
 	}
+
+	if (wrote_header)
+		printf("\" }\n");
 
 	return 0;
 }
