@@ -1193,23 +1193,11 @@ debug_create_html
   <head>
     <title>Processes and data flows - sgsh</title>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-    <style type="text/css">
-      .popupinfo {
-          position:absolute;
-          background:#666;
-          color:#fff;
-          visibility:hidden;
-          padding:5px;
-      }
-    </style>
-];
 
-	print $html_out qq[
+    <link rel="stylesheet" type="text/css" href="graph-monitor.css" />
+
     <script src="jquery.js"></script>
     <script src="graph-monitor.js"></script>
-];
-
-	print $html_out q[
   </head>
   <body id="body" >
 
@@ -1274,6 +1262,7 @@ debug_code
 		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
 		# Patch the Javascript with the correct port
 		sed "s/HTTP_PORT/\$SG_HTTP_PORT/g" "$library_path/graph-monitor.js" >\$SGDIR/graph-monitor.js
+		cp "$library_path/graph-monitor.css" \$SGDIR/graph-monitor.css
 		# Open the corresponding web page for the user
 		for cmd in open cygstart gnome-open kde-open 'echo "Point browser to "'
 		do
