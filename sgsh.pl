@@ -1194,7 +1194,7 @@ debug_create_html
     <title>Processes and data flows - sgsh</title>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <style type="text/css">
-      .tooltip {
+      .popupinfo {
           position:absolute;
           background:#666;
           color:#fff;
@@ -1242,7 +1242,7 @@ debug_create_html
 </object>
     </p>
 <!--Edge hover-->
-<div class="tooltip" id="edge">
+<div class="popupinfo" id="edge">
 <table>
 <tr><th align='left'>Bytes</th><td align='right'><span id="bytes"></span></td></tr>
 <tr><th align='left'>Lines</th><td align='right'><span id="lines"></span></td></tr>
@@ -1253,7 +1253,7 @@ debug_create_html
 </div>
 
 <!--Store hover-->
-<div class="tooltip" id="store">
+<div class="popupinfo" id="store">
 Last record: <span id="record"></span>
 </div>
   </body>

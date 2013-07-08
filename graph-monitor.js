@@ -1,6 +1,6 @@
 var htmlDocument = document;
 
-function get_tooltip_div(id) {
+function get_popup_info_div(id) {
 	return document.getElementById(id);
 }
 
@@ -33,7 +33,7 @@ over_edge_handler = function(e) {
 			$('#lps').text((json.nlines / json.rtime).toFixed(0));
 			$('#record').text(json.data);
 
-			var label = get_tooltip_div("edge");
+			var label = get_popup_info_div("edge");
 			label.style.visibility='visible';
 			label.style.top=e.pageY + 'px';
 			label.style.left=(e.pageX+30) + 'px';
@@ -45,7 +45,7 @@ over_edge_handler = function(e) {
 }
 
 out_edge_handler = function() {
-	var label = get_tooltip_div("edge");
+	var label = get_popup_info_div("edge");
 	label.style.visibility='hidden';
 
 	set_child_color(this, "path", null);
@@ -53,7 +53,7 @@ out_edge_handler = function() {
 }
 
 over_node_handler = function(e) {
-	var label = get_tooltip_div("store");
+	var label = get_popup_info_div("store");
 	console.log(label);
 	label.style.visibility='hidden';
 
@@ -71,7 +71,7 @@ over_node_handler = function(e) {
 }
 
 out_node_handler = function(e) {
-	var label = get_tooltip_div("store");
+	var label = get_popup_info_div("store");
 	label.style.visibility='hidden';
 
 	if (label) {
