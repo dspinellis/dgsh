@@ -1179,6 +1179,7 @@ debug_initialize
 	($html_out, $html_filename)  = tempfile($temp_name, UNLINK => 1, SUFFIX => '.html');
 	return qq{
 cp "$library_path/jquery.js" \$SGDIR/
+cp "$library_path/graph-monitor.css" \$SGDIR/
 cp "$html_filename" \$SGDIR/index.html
 };
 }
@@ -1262,7 +1263,6 @@ debug_code
 		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
 		# Patch the Javascript with the correct port
 		sed "s/HTTP_PORT/\$SG_HTTP_PORT/g" "$library_path/graph-monitor.js" >\$SGDIR/graph-monitor.js
-		cp "$library_path/graph-monitor.css" \$SGDIR/graph-monitor.css
 		# Open the corresponding web page for the user
 		for cmd in open cygstart gnome-open kde-open 'echo "Point browser to "'
 		do
