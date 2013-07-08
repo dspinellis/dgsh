@@ -20,6 +20,12 @@ function set_child_color(node, child_kind, color) {
 	}
 }
 
+function clear_child_title(node, child_kind) {
+	var child = node.getElementsByTagName(child_kind)[0];
+
+	child.setAttribute('title', "");
+}
+
 over_edge_handler = function(e) {
 	var url = 'http://localhost:HTTP_PORT/mon-' + this.id;
 
@@ -42,6 +48,8 @@ over_edge_handler = function(e) {
 
 	set_child_color(this, "path", "blue");
 	set_child_color(this, "polygon", "blue");
+	clear_child_title(this, "path");
+	clear_child_title(this, "polygon");
 }
 
 out_edge_handler = function() {
