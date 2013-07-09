@@ -1249,8 +1249,9 @@ debug_create_html
 	print $html_out q[
 </object>
     </p>
-<!--Edge hover-->
-<div class="popupinfo" id="edge">
+
+<!-- Hover popup for edges and store nodes -->
+<div class="popupinfo" id="popup">
 <table>
 <tr><th align='left'>Bytes</th><td align='right'><span id="bytes"></span></td></tr>
 <tr><th align='left'>Lines</th><td align='right'><span id="lines"></span></td></tr>
@@ -1260,10 +1261,6 @@ debug_create_html
 </table>
 </div>
 
-<!--Store hover-->
-<div class="popupinfo" id="store">
-Last record: <span id="record"></span>
-</div>
   </body>
 </html>
 ];

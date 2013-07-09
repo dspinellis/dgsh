@@ -38,7 +38,7 @@ update_content = function(url, e) {
 			$('#lps').text((json.nlines / json.rtime).toFixed(0));
 			$('#record').text(json.data);
 
-			var label = get_popup_info_div("edge");
+			var label = get_popup_info_div("popup");
 			label.style.visibility='visible';
 			label.style.top=e.pageY + 'px';
 			label.style.left=(e.pageX+30) + 'px';
@@ -58,7 +58,7 @@ over_edge_handler = function(e) {
 }
 
 out_edge_handler = function() {
-	var label = get_popup_info_div("edge");
+	var label = get_popup_info_div("popup");
 	label.style.visibility='hidden';
 
 	set_child_color(this, "path", null);
@@ -82,7 +82,7 @@ over_node_handler = function(e) {
 }
 
 out_node_handler = function(e) {
-	var label = get_popup_info_div("edge");
+	var label = get_popup_info_div("popup");
 	label.style.visibility='hidden';
 
 	if (label) {
