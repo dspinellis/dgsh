@@ -61,25 +61,38 @@ out_edge_handler = function() {
 }
 
 over_node_handler = function(e) {
-	var label = get_popup_info_div("store");
-	console.log(label);
-	label.style.visibility='hidden';
+	// Remove leading "store:" prefix
+	var url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
 
-	if (label) {
-		label.style.visibility='visible';
-		label.style.top=e.pageY + 'px';
-		label.style.left=(e.pageX+30) + 'px';
-	}
+	console.log(url);
+	$.getJSON(
+                url,
+		{},
+                function(json) {
+			$('#bytes').text(json.nbytes);
+			$('#lines').text(json.nlines);
+			$('#bps').text((json.nbytes / json.rtime).toFixed(0));
+			$('#lps').text((json.nlines / json.rtime).toFixed(0));
+			$('#record').text(json.data);
+
+			var label = get_popup_info_div("edge");
+			label.style.visibility='visible';
+			label.style.top=e.pageY + 'px';
+			label.style.left=(e.pageX+30) + 'px';
+                }
+	);
 
 	if (this.getElementsByTagName("ellipse")[0] != null) {
 		set_child_color(this, "ellipse", "blue");
+		clear_child_title(this, "ellipse");
 	} else {
 		set_child_color(this, "polygon", "blue");
+		clear_child_title(this, "polygon");
 	}
 }
 
 out_node_handler = function(e) {
-	var label = get_popup_info_div("store");
+	var label = get_popup_info_div("edge");
 	label.style.visibility='hidden';
 
 	if (label) {

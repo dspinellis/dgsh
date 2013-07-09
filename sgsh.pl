@@ -652,7 +652,7 @@ scatter_code_and_pipes_code
 		for (my $p = 0; $p < $parallel; $p++) {
 
 			# Pass-through fast exit
-			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
+			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream' && !$opt_m) {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
@@ -660,6 +660,10 @@ scatter_code_and_pipes_code
 
 			# In sequential code set variables rather than output to stores
 			$code .= "$c->{store_name}=\$( " if ($opt_S && $c->{output} eq 'store');
+
+			# Body sans trailing newline
+			my $body = $c->{body};
+			chop $body;
 
 			my $monitor = '';
 			if ($opt_m && $c->{input} eq 'scatter') {
@@ -670,14 +674,12 @@ scatter_code_and_pipes_code
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
 				$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
 				$kvstores .= "{\$SGDIR/mon-npi-$scatter_n.$cmd_n.$p}";
+				$body = 'cat' if ($body eq '');
 			}
 
 			# Opening brace to redirect I/O as if the commands were one
 			$code .= ' { ';
 
-			# Generate body sans trailing newline
-			my $body = $c->{body};
-			chop $body;
 
 			# Substitute /stream/... gather points with corresponding named pipe
 			while ($body =~ m|/stream/(\w+)|) {
@@ -724,7 +726,14 @@ scatter_code_and_pipes_code
 					# Sequential code execution
 					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p\n};
 				} else {
-					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+					if ($opt_m) {
+						$code .= qq{ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor & SGPID="\$! \$SGPID"\n};
+						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
+						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
+					} else {
+						$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+					}
 				}
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 			} elsif ($c->{output} eq 'store') {
@@ -734,7 +743,17 @@ scatter_code_and_pipes_code
 					$code .= " )\n";
 				} else {
 					$code .= ' |' unless $c->{body} eq '';
-					$code .= qq{ ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} & SGPID="\$! \$SGPID"\n};
+					if ($opt_m) {
+						$code .= qq{${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor & SGPID="\$! \$SGPID"\n};
+						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
+						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
+						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n};
+						$kvstores .= "{\$SGDIR/mon-nps-$c->{store_name}}";
+						$monitor = "<\$SGDIR/nps-$c->{store_name}.use";
+					} else {
+						$monitor = '';
+					}
+					$code .= qq{ ${opt_p}sgsh-writeval $c->{store_flags} -s \$SGDIR/$c->{store_name} $monitor & SGPID="\$! \$SGPID"\n};
 					$kvstores .= "{\$SGDIR/$c->{store_name}}";
 				}
 			} else {
@@ -1012,7 +1031,7 @@ scatter_graph_io
 				error("Store writes not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				if ($graph_out) {
 					print $graph_out qq(\t"$c->{store_name}" [id="store:$c->{store_name}", $gv_store_attr];\n);
-					print $graph_out qq(\t$node_name -> "$c->{store_name}";\n)
+					print $graph_out qq(\t$node_name -> "$c->{store_name}" [id="nps-$c->{store_name}"];\n)
 				}
 			} else {
 				die "Tailless command";
