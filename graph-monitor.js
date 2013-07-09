@@ -26,9 +26,8 @@ function clear_child_title(node, child_kind) {
 	child.setAttribute('title', "");
 }
 
-over_edge_handler = function(e) {
-	var url = 'http://localhost:HTTP_PORT/mon-' + this.id;
-
+/* Update the popup e with the JSON result of the URL */
+update_content = function(url, e) {
 	$.getJSON(
                 url,
                 {},
@@ -45,6 +44,12 @@ over_edge_handler = function(e) {
 			label.style.left=(e.pageX+30) + 'px';
                 }
 	);
+}
+
+over_edge_handler = function(e) {
+	var url = 'http://localhost:HTTP_PORT/mon-' + this.id;
+
+	update_content(url, e);
 
 	set_child_color(this, "path", "blue");
 	set_child_color(this, "polygon", "blue");
@@ -64,23 +69,8 @@ over_node_handler = function(e) {
 	// Remove leading "store:" prefix
 	var url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
 
-	console.log(url);
-	$.getJSON(
-                url,
-		{},
-                function(json) {
-			$('#bytes').text(json.nbytes);
-			$('#lines').text(json.nlines);
-			$('#bps').text((json.nbytes / json.rtime).toFixed(0));
-			$('#lps').text((json.nlines / json.rtime).toFixed(0));
-			$('#record').text(json.data);
-
-			var label = get_popup_info_div("edge");
-			label.style.visibility='visible';
-			label.style.top=e.pageY + 'px';
-			label.style.left=(e.pageX+30) + 'px';
-                }
-	);
+	//console.log(url);
+	update_content(url, e);
 
 	if (this.getElementsByTagName("ellipse")[0] != null) {
 		set_child_color(this, "ellipse", "blue");
