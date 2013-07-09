@@ -20,12 +20,6 @@ function set_child_color(node, child_kind, color) {
 	}
 }
 
-function clear_child_title(node, child_kind) {
-	var child = node.getElementsByTagName(child_kind)[0];
-
-	child.setAttribute('title', "");
-}
-
 /* Update the popup e with the JSON result of the URL */
 update_content = function(url, e) {
 	$.getJSON(
@@ -53,8 +47,6 @@ over_edge_handler = function(e) {
 
 	set_child_color(this, "path", "blue");
 	set_child_color(this, "polygon", "blue");
-	clear_child_title(this, "path");
-	clear_child_title(this, "polygon");
 }
 
 out_edge_handler = function() {
@@ -69,15 +61,14 @@ over_node_handler = function(e) {
 	// Remove leading "store:" prefix
 	var url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
 
-	//console.log(url);
+	console.log(this);
+	console.log(this.tagName);
 	update_content(url, e);
 
 	if (this.getElementsByTagName("ellipse")[0] != null) {
 		set_child_color(this, "ellipse", "blue");
-		clear_child_title(this, "ellipse");
 	} else {
 		set_child_color(this, "polygon", "blue");
-		clear_child_title(this, "polygon");
 	}
 }
 
@@ -113,5 +104,9 @@ $(document).ready(function() {
 			element.onmouseover = over_node_handler;
 			element.onmouseout = out_node_handler;
 		}
+
+		/* Clear the title, which appears as a useless tooltip */
+		var title = element.getElementsByTagName('title')[0];
+		title.innerHTML = '';
 	}
 });
