@@ -1252,12 +1252,13 @@ debug_create_html
 
 <!-- Hover popup for edges and store nodes -->
 <div class="popupinfo" id="popup">
-<table>
+<table style="width:100%">
 <tr><th align='left'>Bytes</th><td align='right'><span id="bytes"></span></td></tr>
 <tr><th align='left'>Lines</th><td align='right'><span id="lines"></span></td></tr>
 <tr><th align='left'>Bytes/s</th><td align='right'><span id="bps"></span></td></tr>
 <tr><th align='left'>Lines/s</th><td align='right'><span id="lps"></span></td></tr>
-<tr><th align='left'>Last record</th><td><span id="record"></span></td></tr>
+<tr><th align='center' colspan=2>Last record</th></tr>
+<tr><td colspan=2><span id="record"></span></td></tr>
 </table>
 </div>
 

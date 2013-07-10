@@ -64,6 +64,8 @@ update_content = function() {
 			$('#lines').text(ts(json.nlines));
 			$('#bps').text(ts((json.nbytes / json.rtime).toFixed(0)));
 			$('#lps').text(ts((json.nlines / json.rtime).toFixed(0)));
+			if (json.data.length > 500)
+				json.data = json.data.substr(500) + "[...]";
 			$('#record').text(json.data);
 
 			var label = get_popup_info_div("popup");
