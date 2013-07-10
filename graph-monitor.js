@@ -1,5 +1,14 @@
 var htmlDocument = document;
 
+/* The URL used to periodically update the displayed popup */
+var url;
+
+/* The event that caused the popup to be displayed */
+var popup_event = null;
+
+/* The interval update used to update the popup */
+var popup_update;
+
 function get_popup_info_div(id) {
 	return document.getElementById(id);
 }
@@ -20,8 +29,8 @@ function set_child_color(node, child_kind, color) {
 	}
 }
 
-/* Update the popup e with the JSON result of the URL */
-update_content = function(url, e) {
+/* Update the popup box with the JSON result of the active URL */
+update_content = function() {
 	$.getJSON(
                 url,
                 {},
@@ -34,16 +43,17 @@ update_content = function(url, e) {
 
 			var label = get_popup_info_div("popup");
 			label.style.visibility='visible';
-			label.style.top=e.pageY + 'px';
-			label.style.left=(e.pageX+30) + 'px';
+			label.style.top=popup_event.pageY + 'px';
+			label.style.left=(popup_event.pageX+30) + 'px';
                 }
 	);
 }
 
 over_edge_handler = function(e) {
-	var url = 'http://localhost:HTTP_PORT/mon-' + this.id;
-
-	update_content(url, e);
+	url = 'http://localhost:HTTP_PORT/mon-' + this.id;
+	popup_event = e;
+	update_content();
+	popup_update = setInterval(update_content, 500);
 
 	set_child_color(this, "path", "blue");
 	set_child_color(this, "polygon", "blue");
@@ -52,6 +62,7 @@ over_edge_handler = function(e) {
 out_edge_handler = function() {
 	var label = get_popup_info_div("popup");
 	label.style.visibility='hidden';
+	clearInterval(popup_update);
 
 	set_child_color(this, "path", null);
 	set_child_color(this, "polygon", null);
@@ -59,11 +70,13 @@ out_edge_handler = function() {
 
 over_node_handler = function(e) {
 	// Remove leading "store:" prefix
-	var url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
+	url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
+	popup_event = e;
+	update_content();
+	popup_update = setInterval(update_content, 500);
 
 	console.log(this);
 	console.log(this.tagName);
-	update_content(url, e);
 
 	if (this.getElementsByTagName("ellipse")[0] != null) {
 		set_child_color(this, "ellipse", "blue");
@@ -75,6 +88,7 @@ over_node_handler = function(e) {
 out_node_handler = function(e) {
 	var label = get_popup_info_div("popup");
 	label.style.visibility='hidden';
+	clearInterval(popup_update);
 
 	if (label) {
 		label.style.visibility='hidden';
