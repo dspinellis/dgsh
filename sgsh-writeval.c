@@ -797,6 +797,7 @@ set_buffer_counters(struct buffer *b)
 	}
 }
 
+
 /* Read data from STDIN into a new buffer */
 static void
 buffer_read(void)
@@ -828,8 +829,11 @@ buffer_read(void)
 		}
 		if (have_record) {
 			free(b);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 		} else if (!time_window || !tail ||
 		    timercmp(&tail->timestamp, &abs_rend_time, >)) {
+#pragma GCC diagnostic pop
 			/* Setup an empty record, if there will never be a record to send */
 			b->size = 0;
 			b->prev = b->next = NULL;
