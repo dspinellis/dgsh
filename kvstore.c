@@ -119,6 +119,7 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 				err(4, "write");
 			content_length -= n;
 		}
+		close(s);
 		break;
 	}
 
