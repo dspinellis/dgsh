@@ -1,4 +1,4 @@
-.TH SGSH 1 "12 May 2013"
+.TH SGSH 1 "11 July 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -255,11 +255,76 @@ scatter |{
 .ft P
 .fi
 
+.SH FILES
+When run,
+.I sgsh
+creates a temporary directory in
+.BR /tmp
+with entries following these naming conventions.
+.TP
+.B \fIname\fP
+The communications endpoint for a named store,
+implemented as a Unix domain socket.
+This socket is written by \fIsgsh-writeval\fP(1) and read by
+\fIsgsh-readval\fP(1) or \fIsgsh-httpval\fP(1).
+.TP
+.B npfo-\fIname\fP.#
+A named pipe used to implement a stream with the corresponding name.
+.TP
+.B npi-#.#.#
+A named pipe used as input to a process.
+The pipe is fed by \fIsgsh-tee\fP(1).
+.PP
+In addition, when a script is being debugged with the
+.B -d
+option, the following entries are also created.
+.TP
+.B .SH_HTTP_PORT
+The TCP port used by the HTTP server presenting the debugging interface.
+.TP
+.B npi-#.#.#.monitor
+A named pipe used to monitor the output sent to the corresponding
+normal pipe.
+The values to this pipe are written by \fIsgsh-monitor\fP(1).
+.TP
+.B npi-#.#.#.use
+A named pipe used for the actual data passing through a monitored pipe.
+.TP
+.B nps-\fIname\fP.monitor
+A named pipe used to monitor the output sent to the corresponding store.
+The values to this pipe are written by \fIsgsh-monitor\fP(1).
+.TP
+.B nps-\fIname\fP.use
+A named pipe used for the actual data being sent to a store.
+.TP
+.B mon-npi-#.#.#
+A Unix domain socket implementing the store for
+the \fIsgsh-monitor\fP(1) data regarding the last
+record that passed through the corresponding named pipe.
+.TP
+.B mon-nps-\fIname\fP
+A Unix domain socket implementing the store for
+the \fIsgsh-monitor\fP(1) data regarding the last
+record that passed to the corresponding store.
+.TP
+.B index.html
+The debugging interface web page.
+.TP
+.B graph-monitor.js
+Debugging functionality implemented in JavaScript.
+.TP
+.B graph-monitor.css
+Web page styling.
+.TP
+.B jquery.js
+Minified version of the jQuery library.
+
 .SH "SEE ALSO"
 \fIsgsh-tee\fP(1),
 \fIsgsh-writeval\fP(1),
 \fIsgsh-readval\fP(1),
 \fIsgsh-monitor\fP(1)
+\fIsgsh-httpval\fP(1)
 
 .SH AUTHOR
 Diomidis Spinellis \(em <http://www.spinellis.gr>
