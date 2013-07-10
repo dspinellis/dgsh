@@ -137,11 +137,9 @@ $(document).ready(function() {
 		/* Set event handlers for edges and store nodes */
 		className = element.className.baseVal;
 		if (className.match(/edge.*/)) {
-			element.onmouseover = over_edge_handler;
-			element.onmouseout = out_edge_handler;
+			$(element).hover(over_edge_handler, out_edge_handler);
 		} else if (className.match(/node.*/) && element.id.match(/store:/)) {
-			element.onmouseover = over_node_handler;
-			element.onmouseout = out_node_handler;
+			$(element).hover(over_node_handler, out_node_handler);
 		}
 
 		/* Clear the title, which appears as a useless tooltip */
