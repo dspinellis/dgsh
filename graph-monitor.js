@@ -45,16 +45,25 @@ function set_child_color(node, child_kind, color) {
 	}
 }
 
+
+/*
+ * Format number with a comma as a thousand separator
+ * See http://stackoverflow.com/a/2901298/20520
+ */
+function ts(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 /* Update the popup box with the JSON result of the active URL */
 update_content = function() {
 	$.getJSON(
                 url,
                 {},
                 function(json) {
-			$('#bytes').text(json.nbytes);
-			$('#lines').text(json.nlines);
-			$('#bps').text((json.nbytes / json.rtime).toFixed(0));
-			$('#lps').text((json.nlines / json.rtime).toFixed(0));
+			$('#bytes').text(ts(json.nbytes));
+			$('#lines').text(ts(json.nlines));
+			$('#bps').text(ts((json.nbytes / json.rtime).toFixed(0)));
+			$('#lps').text(ts((json.nlines / json.rtime).toFixed(0)));
 			$('#record').text(json.data);
 
 			var label = get_popup_info_div("popup");
