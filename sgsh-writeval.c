@@ -1,9 +1,9 @@
 /*
  * Copyright 2013 Diomidis Spinellis
  *
- * Read values from its standard input and make them available to other processes
- * for reading through the specified Unix domain socket.
- * Thus this process acts in effect as a data store: it reads a series of
+ * Read values from its standard input and make them available to other
+ * processes for reading through the specified Unix domain socket.
+ * Thus, this process acts in effect as a data store: it reads a series of
  * values (think of them as assignements) and provides a way to read the
  * store's current value (from the socket).
  *
