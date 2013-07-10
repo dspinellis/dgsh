@@ -1,4 +1,21 @@
-var htmlDocument = document;
+/*
+ * Copyright 2013 Diomidis Spinellis
+ *
+ * Allow interactive monitoring of the process graph
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 /* The URL used to periodically update the displayed popup */
 var url;
@@ -23,9 +40,8 @@ function set_child_color(node, child_kind, color) {
 		child.oldStroke = child.getAttribute('stroke')
 		child.oldFill = child.getAttribute('fill')
 		child.setAttribute('stroke', color);
-		if (child_kind != "path") {
+		if (child_kind != "path")
 			child.setAttribute('fill', color);
-		}
 	}
 }
 
@@ -42,9 +58,9 @@ update_content = function() {
 			$('#record').text(json.data);
 
 			var label = get_popup_info_div("popup");
-			label.style.visibility='visible';
-			label.style.top=popup_event.pageY + 'px';
-			label.style.left=(popup_event.pageX+30) + 'px';
+			label.style.visibility = 'visible';
+			label.style.top = popup_event.pageY + 'px';
+			label.style.left = (popup_event.pageX + 30) + 'px';
                 }
 	);
 }
@@ -61,7 +77,7 @@ over_edge_handler = function(e) {
 
 out_edge_handler = function() {
 	var label = get_popup_info_div("popup");
-	label.style.visibility='hidden';
+	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
 	set_child_color(this, "path", null);
@@ -78,38 +94,36 @@ over_node_handler = function(e) {
 	console.log(this);
 	console.log(this.tagName);
 
-	if (this.getElementsByTagName("ellipse")[0] != null) {
+	if (this.getElementsByTagName("ellipse")[0] != null)
 		set_child_color(this, "ellipse", "blue");
-	} else {
+	else
 		set_child_color(this, "polygon", "blue");
-	}
 }
 
 out_node_handler = function(e) {
 	var label = get_popup_info_div("popup");
-	label.style.visibility='hidden';
+	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
-	if (label) {
-		label.style.visibility='hidden';
-	}
+	if (label)
+		label.style.visibility = 'hidden';
 
-	if (this.getElementsByTagName("ellipse")[0] != null) {
+	if (this.getElementsByTagName("ellipse")[0] != null)
 		set_child_color(this, "ellipse", null);
-	} else {
+	else
 		set_child_color(this, "polygon", null);
-	}
 }
 
 $(document).ready(function() {
 	var svg = document.getElementById('thesvg').getSVGDocument();
-	if (!svg) {
+	if (!svg)
 		svg = document.getElementById('thesvg');
-	}
 	var all = svg.getElementsByTagName("g");
 
 	for (var i=0, max=all.length; i < max; i++) {
 		var element = all[i];
+
+		/* Set event handlers for edges and store nodes */
 		className = element.className.baseVal;
 		if (className.match(/edge.*/)) {
 			element.onmouseover = over_edge_handler;
