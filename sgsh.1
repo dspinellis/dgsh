@@ -270,10 +270,22 @@ This socket is written by \fIsgsh-writeval\fP(1) and read by
 .TP
 .B npfo-\fIname\fP.#
 A named pipe used to implement a stream with the corresponding name.
+The number within the entry's name (#) corresponds to the ordinal number
+of the stream, when multiple instances of a command are invoked in parallel
+through the scatter
+.B -p
+option.
 .TP
 .B npi-#.#.#
 A named pipe used as input to a process.
 The pipe is fed by \fIsgsh-tee\fP(1).
+The three numbers within the entry's name (#) correspond
+to the ordinal numbers of:
+the scatter-gather block,
+the command within the block, and
+the command's instance, when multiple instances of a command
+are invoked in parallel.
+The numbers are used in the same way in all similarly constructed names.
 .PP
 In addition, when a script is being debugged with the
 .B -d
