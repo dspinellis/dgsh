@@ -712,7 +712,7 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				$code .= " >/dev/null\n";
+				$code .= qq{ >/dev/null & SGPID="\$! \$SGPID"\n};
 			} elsif ($c->{output} eq 'scatter') {
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c);
 				if ($c->{body} ne '' && !$opt_S) {
