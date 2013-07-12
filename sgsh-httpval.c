@@ -294,6 +294,8 @@ get_mime_type(char *name)
 	dot = strrchr(name, '.');
 	if (dot == NULL)
 		return "text/plain";
+	if (strcmp(dot, ".json") == 0)
+		return "application/json";
 	if (strcmp(dot, ".html") == 0)
 		return "text/html";
 	if (strcmp(dot, ".js") == 0)
