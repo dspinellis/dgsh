@@ -278,7 +278,7 @@ while (get_next_line()) {
 		$global_scatter_n = 0;
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
-		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command);
+		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
 		$code .= "(\n" .
 			initialization_code($pipes, $kvstores) .
 			"$code2\n" .
@@ -369,23 +369,43 @@ initialization_code
 	# is removed on termination and that the exit code
 	# after a signal is that of the shell: 128 + signal number
 	return q{
-	export SGDIR=/tmp/sg-$$.} . $block_ordinal++ . q{
+	export SGDIR=/tmp/sg-$$.} . $block_ordinal++ . q@
 
 	rm -rf $SGDIR
 
-	trap '
-	# Stop key-value stores
-	} . $stop_kvstores . $stop_httpd . q{
-	# Kill processes we have launched in the background
-	kill $SGPID 2>/dev/null
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
 
-	# Remove temporary directory
-	rm -rf "$SGDIR"' 0
+		# Stop key-value stores
+		@ . $stop_kvstores . $stop_httpd . q(
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
 
-	trap 'exit $?' 1 2 3 15
+		# Remove temporary directory
+		rm -rf "$SGDIR"
+
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
 
 	mkdir $SGDIR
-	} .
+	) .
 	($opt_S ? '' : qq{
 	mkfifo $pipes
 	}) .
@@ -594,7 +614,7 @@ scatter_code_and_pipes_map
 sub
 scatter_code_and_pipes_code
 {
-	my($command) = @_;
+	my($command, $monitor_scatter_pid) = @_;
 	my $code = '';
 	my $pipes = '';
 	my $kvstores = '';
@@ -642,7 +662,7 @@ scatter_code_and_pipes_code
 			# Scatter code: asynchronous tee to named pipes
 			# The fdn redirection allows piping into the scatter block
 			$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
-			$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"\n} unless ($opt_S);
+			$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"$monitor_scatter_pid\n} unless ($opt_S);
 		}
 	}
 
@@ -677,9 +697,16 @@ scatter_code_and_pipes_code
 				$body = 'cat' if ($body eq '');
 			}
 
-			# Opening brace to redirect I/O as if the commands were one
-			$code .= ' { ';
-
+			my $monitor_pid = '';
+			if ($opt_m) {
+				# Code to store a command's pid into a file when monitoring
+				$monitor_pid = " ; echo \$! >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p";
+				# Opening bracket to redirect I/O as if the commands were one and obtain subshell pid
+				$code .= ' ( ';
+			} else {
+				# Opening brace to redirect I/O as if the commands were one
+				$code .= ' { ';
+			}
 
 			# Substitute /stream/... gather points with corresponding named pipe
 			while ($body =~ m|/stream/(\w+)|) {
@@ -697,8 +724,8 @@ scatter_code_and_pipes_code
 			$code .= " | ${opt_p}sgsh-tee -i"
 				if ($parallel > 1 && !$scatter_opts{'d'});
 
-			# Closing brace to redirect I/O as if the commands were one
-			$code .= ' ; } ';
+			# Closing brace/bracket to redirect I/O as if the commands were one
+			$code .= $opt_m ? ' ) ' : ' ; } ';
 
 			# Generate input
 			if ($c->{input} eq 'none') {
@@ -712,9 +739,9 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				$code .= qq{ >/dev/null & SGPID="\$! \$SGPID"\n};
+				$code .= qq{ >/dev/null & SGPID="\$! \$SGPID"$monitor_pid"\n};
 			} elsif ($c->{output} eq 'scatter') {
-				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c);
+				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
 				if ($c->{body} ne '' && !$opt_S) {
 					$code .= " |\n";
 				}
@@ -727,7 +754,7 @@ scatter_code_and_pipes_code
 					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p\n};
 				} else {
 					if ($opt_m) {
-						$code .= qq{ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor & SGPID="\$! \$SGPID"\n};
+						$code .= qq{ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor & SGPID="\$! \$SGPID"$monitor_pid\n};
 						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
 						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
@@ -744,7 +771,7 @@ scatter_code_and_pipes_code
 				} else {
 					$code .= ' |' unless $c->{body} eq '';
 					if ($opt_m) {
-						$code .= qq{${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor & SGPID="\$! \$SGPID"\n};
+						$code .= qq{${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor & SGPID="\$! \$SGPID"$monitor_pid\n};
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
 						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n};
