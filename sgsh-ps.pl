@@ -25,7 +25,7 @@ use warnings;
 use JSON;
 
 # Set to 1 to enable debug print messages
-my $debug = 1;
+my $debug = 0;
 
 if ($#ARGV != 0 || $ARGV[0] !~ m/^\d+$/) {
 	print STDERR "Usage: sgsh-ps process-id\n";
@@ -52,6 +52,10 @@ if ($uname =~ m/cygwin/i) {
 	my $q = proclist_unix();
 	print "query=$q\n" if ($debug);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,usertime,systime,%mem,rss,vsz,state,majflt,minflt,args'});
+} elsif ($uname eq 'Darwin') {		# Mac OS X
+	my $q = proclist_unix();
+	print "query=$q\n" if ($debug);
+	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,%mem,rss,vsz,state,command'});
 } else {
 	print STDERR "Unsupported OS [$uname] for debugging info.\n";
 	print STDERR "Please submit a patch with the appropriate ps arguments.\n";
@@ -59,7 +63,7 @@ if ($uname =~ m/cygwin/i) {
 }
 
 
-print encode_json($perf);
+print encode_json($perf), "\n";
 
 # Create the list of child processes to examine
 # in a form suitable for passing to WMIC PROCESS WHERE (...) GET.
