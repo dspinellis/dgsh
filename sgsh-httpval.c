@@ -75,12 +75,19 @@ usage(void)
 {
 	fprintf(stderr, "Usage: %s [-a] [-p port]\n"
 		"-a\t"		"\tAllow non-localhost access\n"
+		"-b query:cmd"	"\tSpecify a command for a given HTTP query\n"
 		"-m MIME-type"	"\tSpecify the store Content-type header value\n"
 		"-p port"	"\tSpecify the port to listen to\n",
 		program_name);
 	exit(1);
 }
 
+static struct query {
+	const char *query;
+	const char *cmd;
+	int narg;
+	struct query *next;
+} *query_list;
 
 int
 main(int argc, char *argv[])
@@ -93,10 +100,41 @@ main(int argc, char *argv[])
 
 	program_name = argv[0];
 
-	while ((ch = getopt(argc, argv, "am:p:")) != -1) {
+	while ((ch = getopt(argc, argv, "am:p:b:")) != -1) {
+		char *p;
+		struct query *q;
+
 		switch (ch) {
 		case 'a':
 			localhost_access = false;
+			break;
+		case 'b':
+			if ((p = strchr(optarg, ':')) == NULL)
+				usage();
+			/* Save query */
+			*p = 0;
+			q = malloc(sizeof(struct query));
+			q->query = strdup(optarg);
+			q->cmd = strdup(p + 1);
+			/* Count number of query arguments */
+			q->narg = 0;
+			for (p = optarg; *p; p++)
+				if (*p == '%') {
+					if (p[1] == '%') {
+						p++;
+						continue;
+					}
+					q->narg++;
+				}
+
+			if (q->narg > 10) {
+				fprintf(stderr, "%s: More than ten query arguments specified.\n", program_name);
+				exit(1);
+			}
+
+			/* Insert query into the linked list */
+			q->next = query_list;
+			query_list = q;
 			break;
 		case 'm':
 			mime_type = optarg;
@@ -172,6 +210,7 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 	char *file;
 	size_t len;
 	struct stat sb;
+	struct query *q;
 
 	if (fgets(line, sizeof(line), in) == (char *) 0) {
 		send_error(out, 400, "Bad Request", (char *) 0,
@@ -206,6 +245,8 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 	}
 
 	len = strlen(file);
+
+	/* Guard against attempts to move outside our directory */
 	if (file[0] == '/' || strcmp(file, "..") == 0
 	    || strncmp(file, "../", 3) == 0
 	    || strstr(file, "/../") != (char *) 0
@@ -214,6 +255,36 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 		    "Illegal filename.");
 		return;
 	}
+
+	/* User-specified query name space */
+	for (q = query_list; q; q = q->next) {
+		int v0, v1, v2, v3, v4, v5, v6, v7, v8, v9;
+		char cmd[11000];
+
+		*cmd = 0;
+		if (q->narg == 0 && strcmp(file, q->query) == 0)
+			strncpy(cmd, q->cmd, sizeof(cmd));
+		else if (q->narg && sscanf(file, q->query, &v0, &v1, &v2, &v3, &v4, &v5, &v6, &v7, &v8, &v9) == q->narg)
+			snprintf(cmd, sizeof(cmd), q->cmd, v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		if (*cmd) {
+			int ich;
+			FILE *fp;
+
+			fp = popen(cmd, "r");
+			if (fp == NULL) {
+				send_error(out, 502, "Bad Gateway", NULL, "Error in executing command.");
+				return;
+			}
+			send_headers(out, 200, "Ok", NULL, mime_type, -1,
+				time(NULL));
+			while ((ich = getc(fp)) != EOF)
+				putc(ich, out);
+			fclose(fp);
+			return;
+		}
+	}
+
+	/* File system name space */
 	if (stat(file, &sb) < 0) {
 		send_error(out, 404, "Not Found", NULL, "File not found.");
 		return;
@@ -238,6 +309,7 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 			sb.st_size, sb.st_mtime);
 		while ((ich = getc(fp)) != EOF)
 			putc(ich, out);
+		fclose(fp);
 	} else {
 		send_error(out, 403, "Forbidden", (char *) 0,
 		    "File is not a regular file or a Unix domain socket.");
