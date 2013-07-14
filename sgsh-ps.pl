@@ -45,7 +45,13 @@ if ($uname =~ m/cygwin/i) {
 	print "query=$q\n" if ($debug);
 	$perf = procperf_win($q);
 } elsif ($uname eq 'Linux') {
+	my $q = proclist_unix();
+	print "query=$q\n" if ($debug);
 	$perf = procperf_unix(qq{--ppid $qpid -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
+} elsif ($uname eq 'FreeBSD') {
+	my $q = proclist_unix();
+	print "query=$q\n" if ($debug);
+	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,usertime,systime,%mem,rss,vsz,state,majflt,minflt,args'});
 } else {
 	print STDERR "Unsupported OS [$uname] for debugging info.\n";
 	print STDERR "Please submit a patch with the appropriate ps arguments.\n";
@@ -57,7 +63,7 @@ print encode_json($perf);
 
 # Create the list of child processes to examine
 # in a form suitable for passing to WMIC PROCESS WHERE (...) GET.
-# We need this because Cygwin doesn't offer a --ppid=... option.
+# We need this because Cygwin doesn't offer a --ppid ... option.
 sub
 proclist_win
 {
@@ -74,6 +80,24 @@ proclist_win
 	return $children{$qpid};
 }
 
+# Create the list of child processes to examine
+# in a form suitable for passing to ps -p
+# We need this because BSD ps doesn't offer a --ppid ... option.
+sub
+proclist_unix
+{
+	open(my $ps, '-|', 'ps -o pid,ppid') || die "Unable to run ps: $!\n";
+	my $list = '';
+	my $sep = '';
+	my $header = <$ps>;
+	my %children;
+	while (<$ps>) {
+		my ($pid, $ppid) = split;
+		$children{$ppid} .= ($children{$ppid} ? ',' : '') . "$pid";
+	}
+	close $ps;
+	return $children{$qpid};
+}
 
 # Return a human-reable version of a memory figure expressed in bytes
 sub
@@ -239,8 +263,10 @@ procperf_unix
 		# Format values
 		$perf{'RSS'} = human_memory($perf{'RSS'} * 1024);
 		$perf{'VSZ'} = human_memory($perf{'VSZ'} * 1024);
-		$perf{'MAJFL'} = human_integer($perf{'MAJFL'});
-		$perf{'MINFL'} = human_integer($perf{'MINFL'});
+		$perf{'MAJFL'} = human_integer($perf{'MAJFL'}) if (defined($perf{'MAJFL'}));
+		$perf{'MINFL'} = human_integer($perf{'MINFL'}) if (defined($perf{'MINFL'}));
+		$perf{'MAJFLT'} = human_integer($perf{'MAJFLT'}) if (defined($perf{'MAJFLT'}));
+		$perf{'MINFLT'} = human_integer($perf{'MINFLT'}) if (defined($perf{'MINFLT'}));
 
 		push(@result, \%perf);
 	}
