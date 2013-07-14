@@ -25,7 +25,7 @@ use warnings;
 use JSON;
 
 # Set to 1 to enable debug print messages
-my $debug = 0;
+my $debug = 1;
 
 if ($#ARGV != 0 || $ARGV[0] !~ m/^\d+$/) {
 	print STDERR "Usage: sgsh-ps process-id\n";
@@ -36,6 +36,7 @@ my $qpid = $ARGV[0];
 
 # Operating system name
 my $uname = `uname`;
+chop $uname;
 
 my $perf;
 
@@ -43,7 +44,14 @@ if ($uname =~ m/cygwin/i) {
 	my $q = proclist_win();
 	print "query=$q\n" if ($debug);
 	$perf = procperf_win($q);
+} elsif ($uname eq 'Linux') {
+	$perf = procperf_unix(qq{--ppid $qpid -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
+} else {
+	print STDERR "Unsupported OS [$uname] for debugging info.\n";
+	print STDERR "Please submit a patch with the appropriate ps arguments.\n";
+	exit 1;
 }
+
 
 print encode_json($perf);
 
@@ -119,6 +127,7 @@ human_integer
 
 # Given a query for processes to list, return an array of references
 # to hashes containing key-value pairs of performance figures
+# Windows (Cygwin) version
 sub
 procperf_win
 {
@@ -191,5 +200,50 @@ procperf_win
 		push(@result, \%perf);
 	}
 	close $wmic;
+	return \@result;
+}
+
+# Given a query for processes to list, return an array of references
+# to hashes containing key-value pairs of performance figures
+# Unix version
+# Argument is the argument passed to ps
+# The last column is reserved for the command and can contain spaces
+sub
+procperf_unix
+{
+	my ($q) = @_;
+
+	open(my $ps, '-|', "ps $q") || die "Unable to run ps: $!\n";
+
+	# The output is fixed column width; obtain column indices and names
+	my $header = <$ps>;
+	my @fields = split(/\s+/, $header);
+
+	# Get output and form result
+	my @result;
+	while(<$ps>) {
+		my @values = split;
+		print "read: [$_]\n" if ($debug);
+		my %perf;
+		for (my $i = 0; $i <= $#fields; $i++) {
+			my $value;
+			if ($i == $#fields) {
+				$value = join(' ', @values[$i..$#values]);
+			} else {
+				$value = $values[$i];
+			}
+			$perf{$fields[$i]} = $value;
+			print "$fields[$i] = [$value]\n" if ($debug);
+		}
+
+		# Format values
+		$perf{'RSS'} = human_memory($perf{'RSS'} * 1024);
+		$perf{'VSZ'} = human_memory($perf{'VSZ'} * 1024);
+		$perf{'MAJFL'} = human_integer($perf{'MAJFL'});
+		$perf{'MINFL'} = human_integer($perf{'MINFL'});
+
+		push(@result, \%perf);
+	}
+	close $ps;
 	return \@result;
 }
