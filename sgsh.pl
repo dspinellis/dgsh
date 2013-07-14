@@ -212,7 +212,6 @@ my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/stream\/(\w+)\s*(\#.*)?$
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
 my $COMMENT_LINE = '^\s*(\#.*)?$';
 
-
 # Read input file
 if ($#ARGV >= 0) {
 	$input_filename = shift;
@@ -700,7 +699,7 @@ scatter_code_and_pipes_code
 			my $monitor_pid = '';
 			if ($opt_m) {
 				# Code to store a command's pid into a file when monitoring
-				$monitor_pid = " ; echo \$! >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p";
+				$monitor_pid .= qq[ ; echo '{ "pid" : "\$!" }' >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p.json];
 				# Opening bracket to redirect I/O as if the commands were one and obtain subshell pid
 				$code .= ' ( ';
 			} else {
@@ -1302,7 +1301,7 @@ debug_code
 
 	return qq@
 		# Start the web server in the directory with the stores
-		( cd \$SGDIR ; ${opt_p}sgsh-httpval -m application/json | ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
+		( cd \$SGDIR ; ${opt_p}sgsh-httpval -m application/json -b 'bin/rusage?pid=%d:${opt_p}sgsh-ps %d' ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
 		# Obtain the server's port
 		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
 		# Patch the Javascript with the correct port

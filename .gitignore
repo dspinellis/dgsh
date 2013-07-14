@@ -5,6 +5,7 @@
 *.pdf
 png/*.png
 sgsh
+sgsh-ps
 sgsh-tee
 sgsh-readval
 sgsh-writeval
@@ -13,6 +14,7 @@ sgsh.html
 sgsh-httpval.html
 sgsh-monitor.html
 sgsh-readval.html
+sgsh-ps.html
 sgsh-tee.html
 sgsh-writeval.html
 tags

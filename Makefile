@@ -22,7 +22,8 @@ else
 CFLAGS=-O -Wall
 endif
 
-EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval
+EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
+	sgsh-ps
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -86,6 +87,10 @@ test-kvstore: test-kvstore.sh
 sgsh: sgsh.pl
 	perl -c sgsh.pl
 	install sgsh.pl sgsh
+
+sgsh-ps: sgsh-ps.pl
+	perl -c sgsh-ps.pl
+	install sgsh-ps.pl sgsh-ps
 
 charcount: charcount.sh
 	install charcount.sh charcount

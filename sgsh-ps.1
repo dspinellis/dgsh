@@ -1,0 +1,40 @@
+.TH SGSH-PS 1 "14 July 2013"
+.\"
+.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+sgsh-ps \- report process status in JSON format
+.SH SYNOPSIS
+\fBsgsh-ps\fP \fIprocess-id\fP
+.SH DESCRIPTION
+\fIsgsh-ps\fP will report the status of each child of
+the process specified by \fIprocess-id\fP in JSON format.
+The results are printed on the standard output as an array
+containing an entry for each process.
+Each entry is a collection of key-value pairs.
+The key is a metric (e.g. user time) and the value is a human-readable
+rendering of the corresponding measurement (e.g. 452KiB).
+The precise number, wording, and format of the supported values depends on the
+underlying operating system.
+All systems will provide at least one entry, named \fICOMMAND\fP,
+which contains the command name and arguments associated with a given process.
+.PP
+The command is used internally by \fIsgsh\fP for the debugging user interface.
+
+.SH "SEE ALSO"
+\fIsgsh\fP(1)
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>
