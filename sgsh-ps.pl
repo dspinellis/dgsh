@@ -224,6 +224,9 @@ procperf_win
 		# Remove path from command line
 		$perf{'CommandLine'} =~ s/^[^"][^ ]*\\//;
 		$perf{'CommandLine'} =~ s/^\"[^"]*\\([^"]+)\"/$1/;
+		# Rename entry to make it consistent with the rest
+		$perf{'COMMAND'} = $perf{'CommandLine'};
+		delete $perf{'CommandLine'};
 
 		push(@result, \%perf);
 	}
