@@ -49,27 +49,21 @@ chop $uname;
 my $perf;
 
 if ($uname =~ m/cygwin/i) {
-	# Get query for all our children
 	my $q = proclist_win();
 	print STDERR "query=$q\n" if ($debug);
 
-	# Run query
 	$perf = procperf_win($q);
-
-	# Obtain the top-two entries
-	$perf = [(sort compare @$perf)[0..($max_entries - 1)]];
-
 } elsif ($uname eq 'Linux') {
 	my $q = proclist_unix();
-	print STDERR "query=$q\n" if ($debug);
-	$perf = procperf_unix(qq{--ppid $qpid -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
+
+	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
 } elsif ($uname eq 'FreeBSD') {
 	my $q = proclist_unix();
-	print STDERR "query=$q\n" if ($debug);
+
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,usertime,systime,%mem,rss,vsz,state,majflt,minflt,args'});
 } elsif ($uname eq 'Darwin') {		# Mac OS X
 	my $q = proclist_unix();
-	print STDERR "query=$q\n" if ($debug);
+
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,%mem,rss,vsz,state,command'});
 } else {
 	print STDERR "Unsupported OS [$uname] for debugging info.\n";
@@ -77,6 +71,8 @@ if ($uname =~ m/cygwin/i) {
 	exit 1;
 }
 
+# Obtain the top-two entries
+$perf = [(sort compare @$perf)[0..($max_entries - 1)]];
 
 print encode_json($perf), "\n";
 
@@ -136,6 +132,18 @@ combinelist_win
 	return $result;
 }
 
+# Combine a list of process ids into a form suitable for passing to ps(1)
+sub
+combinelist_unix
+{
+	my $result = '';
+
+	for my $p (@_) {
+		$result .= ($result ? ',' : '') . $p;
+	}
+	return $result;
+}
+
 # Create the list of child processes to examine
 # in a form suitable for passing to ps -p
 # We need this in order to calculate a transitive closure of the parent-child relationship
@@ -149,10 +157,12 @@ proclist_unix
 	my %children;
 	while (<$ps>) {
 		my ($pid, $ppid) = split;
-		$children{$ppid} .= ($children{$ppid} ? ',' : '') . "$pid";
+		push(@{$children{$ppid}}, $pid);
 	}
 	close $ps;
-	return $children{$qpid};
+	my @closure = transitive_closure($qpid, \%children);
+	print STDERR "Closure: ", join(',', @closure), "\n" if ($debug);
+	return combinelist_unix(@closure);
 }
 
 # Return a human-reable version of a memory figure expressed in bytes
@@ -270,8 +280,9 @@ procperf_win
 			'command' => $perf{'CommandLine'},
 			'kv' => [
 				{ 'k' => 'CPU %',	'v' => sprintf('%.2f', ($perf{'KernelModeTime'} + $perf{'UserModeTime'}) / $elapsed * 100) },
-				{ 'k' => 'System time',	'v' => human_time($perf{'KernelModeTime'}) },
+				{ 'k' => 'Elapsed time','v' => human_time($elapsed) },
 				{ 'k' => 'User time',	'v' => human_time($perf{'UserModeTime'}) },
+				{ 'k' => 'System time',	'v' => human_time($perf{'KernelModeTime'}) },
 				{ 'k' => 'RSS',		'v' => human_memory($perf{'WorkingSetSize'}) },
 				{ 'k' => 'VSZ',		'v' => human_memory($perf{'VirtualSize'}) },
 				{ 'k' => 'Major faults','v' => human_integer($perf{'PageFaults'}) },
@@ -301,6 +312,7 @@ procperf_unix
 {
 	my ($q) = @_;
 
+	print STDERR "query=$q\n" if ($debug);
 	open(my $ps, '-|', "ps $q") || die "Unable to run ps: $!\n";
 
 	# The output is fixed column width; obtain column indices and names
@@ -324,15 +336,62 @@ procperf_unix
 			print STDERR "$fields[$i] = [$value]\n" if ($debug);
 		}
 
-		# Format values
-		$perf{'RSS'} = human_memory($perf{'RSS'} * 1024);
-		$perf{'VSZ'} = human_memory($perf{'VSZ'} * 1024);
-		$perf{'MAJFL'} = human_integer($perf{'MAJFL'}) if (defined($perf{'MAJFL'}));
-		$perf{'MINFL'} = human_integer($perf{'MINFL'}) if (defined($perf{'MINFL'}));
-		$perf{'MAJFLT'} = human_integer($perf{'MAJFLT'}) if (defined($perf{'MAJFLT'}));
-		$perf{'MINFLT'} = human_integer($perf{'MINFLT'}) if (defined($perf{'MINFLT'}));
+		# Store the results in the order required for presentation
+		# These are the fields of each OS.
+		# Darwin: %CPU ELAPSED %MEM    RSS      VSZ STAT COMMAND
+		# FreeBSD: %CPU      ELAPSED  USERTIME   SYSTIME %MEM   RSS   VSZ STAT MAJFLT MINFLT COMMAND
+		# Linux: %CPU     ELAPSED     TIME PSR %MEM   RSS    VSZ S  MAJFL  MINFL COMMAND
 
-		push(@result, \%perf);
+		# Common entries
+		my $entry = {
+			'sortKey' => $perf{'%CPU'},
+			'command' => $perf{'COMMAND'},
+			'kv' => [
+				# Initial common entries
+				{ 'k' => 'CPU %',	'v' => $perf{'%CPU'} },
+				{ 'k' => 'Elapsed time','v' => $perf{'ELAPSED'} },
+			]
+		};
+
+		# Additional entries, where available
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'CPU time',	'v' => $perf{'TIME'} })
+				if defined($perf{'TIME'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'User time',	'v' => $perf{'USERTIME'} })
+				if defined($perf{'USERTIME'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'System time',	'v' => $perf{'SYSTIME'} })
+				if defined($perf{'SYSTIME'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Processor #',	'v' => $perf{'PSR'} })
+				if defined($perf{'PSR'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Memory %',	'v' => $perf{'%MEM'} });
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'RSS',	'v' => human_memory($perf{'RSS'} * 1024) });
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'VSZ',	'v' => human_memory($perf{'VSZ'} * 1024) });
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'State',	'v' => $perf{'S'} })
+				if defined($perf{'S'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'State',	'v' => $perf{'STAT'} })
+				if defined($perf{'STAT'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Major faults','v' => human_integer($perf{'MAJFLT'}) })
+				if defined($perf{'MAJFLT'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Major faults','v' => human_integer($perf{'MAJFL'}) })
+				if defined($perf{'MAJFL'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Minor faults','v' => human_integer($perf{'MINFLT'}) })
+				if defined($perf{'MINFLT'});
+		push(@{$entry->{'kv'}},
+			{ 'k' => 'Minor faults','v' => human_integer($perf{'MINFL'}) })
+				if defined($perf{'MINFL'});
+
+		push(@result, $entry);
 	}
 	close $ps;
 	return \@result;
