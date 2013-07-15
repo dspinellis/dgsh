@@ -73,7 +73,7 @@ static const char *program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-a] [-p port]\n"
+	fprintf(stderr, "Usage: %s [-a] [-b query:cmd] [-p port]\n"
 		"-a\t"		"\tAllow non-localhost access\n"
 		"-b query:cmd"	"\tSpecify a command for a given HTTP query\n"
 		"-m MIME-type"	"\tSpecify the store Content-type header value\n"
