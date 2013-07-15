@@ -369,9 +369,9 @@ procperf_unix
 		push(@{$entry->{'kv'}},
 			{ 'k' => 'Memory %',	'v' => $perf{'%MEM'} });
 		push(@{$entry->{'kv'}},
-			{ 'k' => 'RSS',	'v' => human_memory($perf{'RSS'} * 1024) });
+			{ 'k' => 'RSS',		'v' => human_memory($perf{'RSS'} * 1024) });
 		push(@{$entry->{'kv'}},
-			{ 'k' => 'VSZ',	'v' => human_memory($perf{'VSZ'} * 1024) });
+			{ 'k' => 'VSZ',		'v' => human_memory($perf{'VSZ'} * 1024) });
 		push(@{$entry->{'kv'}},
 			{ 'k' => 'State',	'v' => $perf{'S'} })
 				if defined($perf{'S'});
