@@ -30,3 +30,12 @@
 	  font-family: Arial;
 	  width:20em;
 }
+
+.colHead {
+	font-weight: bold;
+	text-align: left;
+}
+
+.colValue {
+	text-align: right;
+}

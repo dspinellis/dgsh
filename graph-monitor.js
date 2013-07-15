@@ -96,8 +96,10 @@ process_fill = function(data) {
 		for (var j = 0; j < kv.length; j++) {
 			var row = table.insertRow(-1);
 			var cell = row.insertCell(0);
+			cell.className = 'colHead';
 			cell.innerHTML = kv[j]['k'];
 			var cell = row.insertCell(-1);
+			cell.className = 'colValue';
 			cell.innerHTML = kv[j]['v'];
 		}
 		if (i + 1 < data.length) {
