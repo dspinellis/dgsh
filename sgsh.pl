@@ -1230,6 +1230,7 @@ debug_initialize
 	return qq{
 cp "$library_path/jquery.js" \$SGDIR/
 cp "$library_path/graph-monitor.css" \$SGDIR/
+cp "$library_path/ajax-loader.gif" \$SGDIR/
 cp "$html_filename" \$SGDIR/index.html
 };
 }
@@ -1252,7 +1253,7 @@ debug_create_html
   </head>
   <body id="body" >
 
-    <p>
+    <p id="graph">
       <object height='900' type='image/svg+xml' width='500' id='thesvg'>
 ];
 	# Append SVG
@@ -1298,6 +1299,9 @@ debug_create_html
 <table id="processData" style="width:100%">
 </table>
 </div>
+
+<!-- Loading indicator -->
+<img id="ajaxBusy" src="ajax-loader.gif">
 
   </body>
 </html>

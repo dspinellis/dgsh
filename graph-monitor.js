@@ -203,6 +203,14 @@ $(document).ready(function() {
 	for (var i=0, max=all.length; i < max; i++) {
 		var element = all[i];
 
+
+		// Ajax activity indicator bound to ajax start/stop document events
+		$(document).ajaxStart(function(){
+			$('#ajaxBusy').show();
+		}).ajaxStop(function(){
+			$('#ajaxBusy').hide();
+		});
+
 		/* Set event handlers for edges and store nodes */
 		className = element.className.baseVal;
 		if (className.match(/edge.*/)) {
