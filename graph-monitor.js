@@ -23,12 +23,17 @@ var url;
 /* The event that caused the popup to be displayed */
 var popup_event = null;
 
+/*
+ * This is set by the hover handlers and used by the
+ * asynchrounous JSON handlers to avoid a race condition.
+ */
+var popup_visibility;
+
 /* The interval update used to update the popup */
 var popup_update;
 
-function get_popup_info_div(id) {
-	return document.getElementById(id);
-}
+/* Process ids for each process node */
+var node_pid = new Array();
 
 function set_child_color(node, child_kind, color) {
 	var child = node.getElementsByTagName(child_kind)[0];
@@ -54,8 +59,8 @@ function ts(x) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/* Update the popup box with the JSON result of the active URL */
-update_content = function() {
+/* Update the pipe popup box with the JSON result of the active URL */
+update_pipe_content = function() {
 	$.getJSON(
                 url,
                 {},
@@ -68,8 +73,52 @@ update_content = function() {
 				json.data = json.data.substr(500) + "[...]";
 			$('#record').text(json.data);
 
-			var label = get_popup_info_div("popup");
-			label.style.visibility = 'visible';
+			var label = document.getElementById("pipePopup");
+			label.style.visibility = popup_visibility;
+			label.style.top = popup_event.pageY + 'px';
+			label.style.left = (popup_event.pageX + 30) + 'px';
+                }
+	);
+}
+
+/* Fill the process info box with the process data */
+process_fill = function(data) {
+	var table = document.getElementById("processData");
+	$("#processData tr").remove();
+	for (var i = 0; i < data.length; i++) {
+		var process = data[i];
+		if (process == null)
+			break;
+		var row = table.insertRow(-1);
+		var cell = row.insertCell(0);
+		cell.innerHTML = process["command"];
+		var kv = process["kv"];
+		for (var j = 0; j < kv.length; j++) {
+			var row = table.insertRow(-1);
+			var cell = row.insertCell(0);
+			cell.innerHTML = kv[j]['k'];
+			var cell = row.insertCell(-1);
+			cell.innerHTML = kv[j]['v'];
+		}
+		if (i + 1 < data.length) {
+			var row = table.insertRow(-1);
+			var cell = row.insertCell(0);
+			cell.innerHTML = '<hr />';
+			cell.colSpan = 2;
+		}
+	}
+}
+
+/* Update the process popup box with the JSON result of the active URL */
+update_process_content = function() {
+	$.getJSON(
+                url,
+                {},
+                function(json) {
+			var label = document.getElementById("processPopup");
+			process_fill(json);
+
+			label.style.visibility = popup_visibility;
 			label.style.top = popup_event.pageY + 'px';
 			label.style.left = (popup_event.pageX + 30) + 'px';
                 }
@@ -79,15 +128,17 @@ update_content = function() {
 over_edge_handler = function(e) {
 	url = 'http://localhost:HTTP_PORT/mon-' + this.id;
 	popup_event = e;
-	update_content();
-	popup_update = setInterval(update_content, 500);
+	popup_visibility = 'visible';
+	update_pipe_content();
+	popup_update = setInterval(update_pipe_content, 500);
 
 	set_child_color(this, "path", "blue");
 	set_child_color(this, "polygon", "blue");
 }
 
 out_edge_handler = function() {
-	var label = get_popup_info_div("popup");
+	popup_visibility = 'hidden';
+	var label = document.getElementById("pipePopup");
 	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
@@ -95,15 +146,13 @@ out_edge_handler = function() {
 	set_child_color(this, "polygon", null);
 }
 
-over_node_handler = function(e) {
+over_store_handler = function(e) {
 	// Remove leading "store:" prefix
 	url = 'http://localhost:HTTP_PORT/mon-nps-' + this.id.substring(6);
 	popup_event = e;
-	update_content();
-	popup_update = setInterval(update_content, 500);
-
-	console.log(this);
-	console.log(this.tagName);
+	popup_visibility = 'visible';
+	update_pipe_content();
+	popup_update = setInterval(update_pipe_content, 500);
 
 	if (this.getElementsByTagName("ellipse")[0] != null)
 		set_child_color(this, "ellipse", "blue");
@@ -111,13 +160,31 @@ over_node_handler = function(e) {
 		set_child_color(this, "polygon", "blue");
 }
 
-out_node_handler = function(e) {
-	var label = get_popup_info_div("popup");
+out_store_handler = function(e) {
+	popup_visibility = 'hidden';
+	var label = document.getElementById("pipePopup");
 	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
-	if (label)
-		label.style.visibility = 'hidden';
+	set_child_color(this, "ellipse", null);
+}
+
+over_process_handler = function(e) {
+	// Construct dynamic query
+	url = 'http://localhost:HTTP_PORT/server-bin/rusage?pid=' + node_pid[this.id];
+	popup_event = e;
+	popup_visibility = 'visible';
+	update_process_content();
+	popup_update = setInterval(update_process_content, 3000);
+
+	set_child_color(this, "ellipse", "blue");
+}
+
+out_process_handler = function(e) {
+	popup_visibility = 'hidden';
+	var label = document.getElementById("processPopup");
+	label.style.visibility = 'hidden';
+	clearInterval(popup_update);
 
 	if (this.getElementsByTagName("ellipse")[0] != null)
 		set_child_color(this, "ellipse", null);
@@ -138,8 +205,23 @@ $(document).ready(function() {
 		className = element.className.baseVal;
 		if (className.match(/edge.*/)) {
 			$(element).hover(over_edge_handler, out_edge_handler);
-		} else if (className.match(/node.*/) && element.id.match(/store:/)) {
-			$(element).hover(over_node_handler, out_node_handler);
+		} else if (className.match(/node.*/)) {
+			if (element.id.match(/store:/))
+				$(element).hover(over_store_handler, out_store_handler);
+			else {
+				console.log("Get pid for " + element.id);
+
+				/* Obtain node's pid and store it in node_pid */
+				$.getJSON("pid-" + element.id + ".json", {},
+					(function(nodeid) {
+						return function(json) {
+							node_pid[nodeid] = json.pid;
+							console.log("pid of " + nodeid + " is " + json.pid);
+						};
+					}(element.id))
+				);
+				$(element).hover(over_process_handler, out_process_handler);
+			}
 		}
 
 		/* Clear the title, which appears as a useless tooltip */

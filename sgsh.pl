@@ -617,6 +617,7 @@ scatter_code_and_pipes_code
 	my $code = '';
 	my $pipes = '';
 	my $kvstores = '';
+	my $monitor_close_bracket = $opt_m ? ' ) ' : '';
 
 	my $scatter_n = $global_scatter_n++;
 
@@ -661,7 +662,7 @@ scatter_code_and_pipes_code
 			# Scatter code: asynchronous tee to named pipes
 			# The fdn redirection allows piping into the scatter block
 			$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
-			$code .= qq{$tee_prog $tee_args & SGPID="\$! \$SGPID"$monitor_scatter_pid\n} unless ($opt_S);
+			$code .= qq[$tee_prog $tee_args & SGPID="\$! \$SGPID"$monitor_scatter_pid\n] unless ($opt_S);
 		}
 	}
 
@@ -691,17 +692,19 @@ scatter_code_and_pipes_code
 				$code .= qq{${opt_p}sgsh-tee \$SGDIR/npi-$scatter_n.$cmd_n.$p.use \$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.use";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
-				$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
+				$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n];
 				$kvstores .= "{\$SGDIR/mon-npi-$scatter_n.$cmd_n.$p}";
 				$body = 'cat' if ($body eq '');
 			}
 
 			my $monitor_pid = '';
+			my $monitor_close_bracket = '';
 			if ($opt_m) {
 				# Code to store a command's pid into a file when monitoring
-				$monitor_pid .= qq[ ; echo '{ "pid" : "\$!" }' >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p.json];
-				# Opening bracket to redirect I/O as if the commands were one and obtain subshell pid
-				$code .= ' ( ';
+				$monitor_pid .= qq[ ; echo '{ "pid" : "'\$!'" }' >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p.json];
+				my $monitor_close_bracket = ')';
+				# Opening bracket to obtain subshell pid and brace to redirect I/O as if the commands were one
+				$code .= ' ( { ';
 			} else {
 				# Opening brace to redirect I/O as if the commands were one
 				$code .= ' { ';
@@ -723,8 +726,8 @@ scatter_code_and_pipes_code
 			$code .= " | ${opt_p}sgsh-tee -i"
 				if ($parallel > 1 && !$scatter_opts{'d'});
 
-			# Closing brace/bracket to redirect I/O as if the commands were one
-			$code .= $opt_m ? ' ) ' : ' ; } ';
+			# Closing brace to redirect I/O as if the commands were one
+			$code .= ' ; } ';
 
 			# Generate input
 			if ($c->{input} eq 'none') {
@@ -738,7 +741,7 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				$code .= qq{ >/dev/null & SGPID="\$! \$SGPID"$monitor_pid"\n};
+				$code .= qq{ >/dev/null $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid"\n};
 			} elsif ($c->{output} eq 'scatter') {
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
 				if ($c->{body} ne '' && !$opt_S) {
@@ -753,12 +756,13 @@ scatter_code_and_pipes_code
 					$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p\n};
 				} else {
 					if ($opt_m) {
-						$code .= qq{ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor & SGPID="\$! \$SGPID"$monitor_pid\n};
+						# Pipe to monitor process and close subshell bracket
+						$code .= qq[ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
-						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
 					} else {
-						$code .= qq{ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n};
+						$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 					}
 				}
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
@@ -770,10 +774,11 @@ scatter_code_and_pipes_code
 				} else {
 					$code .= ' |' unless $c->{body} eq '';
 					if ($opt_m) {
-						$code .= qq{${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor & SGPID="\$! \$SGPID"$monitor_pid\n};
+						# Pipe to monitor process and close subshell bracket
+						$code .= qq[${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
-						$code .= qq{${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n};
+						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n];
 						$kvstores .= "{\$SGDIR/mon-nps-$c->{store_name}}";
 						$monitor = "<\$SGDIR/nps-$c->{store_name}.use";
 					} else {
@@ -1005,7 +1010,7 @@ scatter_graph_io
 			$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
 			$tee_prog =~ s|.*/||;
 
-			print $graph_out qq{\t$tee_node_name [label="$tee_prog $tee_args", $gv_proc_attr];\n};
+			print $graph_out qq{\t$tee_node_name [id="$tee_node_name", label="$tee_prog $tee_args", $gv_proc_attr];\n};
 		}
 	}
 
@@ -1095,7 +1100,7 @@ scatter_graph_body
 					$edge{$file_name_p}->{rhs} = $node_name;
 				}
 			}
-			print $graph_out qq{\t$node_name [label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($graph_out);
+			print $graph_out qq{\t$node_name [id="$node_name", label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($graph_out);
 			$node_label{$node_name} = $body;
 
 			if ($c->{output} eq 'scatter') {
@@ -1163,7 +1168,7 @@ gather_graph
 			}
 			$is_node = 1;
 		}
-		print $graph_out qq{\t$node_name [label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($graph_out && $is_node);
+		print $graph_out qq{\t$node_name [id="$node_name", label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($graph_out && $is_node);
 		$n++;
 	}
 }
@@ -1277,7 +1282,7 @@ debug_create_html
     </p>
 
 <!-- Hover popup for edges and store nodes -->
-<div class="popupinfo" id="popup">
+<div class="popup" id="pipePopup">
 <table style="width:100%">
 <tr><th align='left'>Bytes</th><td align='right'><span id="bytes"></span></td></tr>
 <tr><th align='left'>Lines</th><td align='right'><span id="lines"></span></td></tr>
@@ -1285,6 +1290,12 @@ debug_create_html
 <tr><th align='left'>Lines/s</th><td align='right'><span id="lps"></span></td></tr>
 <tr><th align='center' colspan=2>Last record</th></tr>
 <tr><td colspan=2><span id="record"></span></td></tr>
+</table>
+</div>
+
+<!-- Hover popup for processing nodes -->
+<div class="popup" id="processPopup">
+<table id="processData" style="width:100%">
 </table>
 </div>
 
@@ -1301,7 +1312,7 @@ debug_code
 
 	return qq@
 		# Start the web server in the directory with the stores
-		( cd \$SGDIR ; ${opt_p}sgsh-httpval -m application/json -b 'bin/rusage?pid=%d:${opt_p}sgsh-ps %d' ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
+		( cd \$SGDIR ; ${opt_p}sgsh-httpval -m application/json -b 'server-bin/rusage?pid=%d:${opt_p}sgsh-ps %d' | ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
 		# Obtain the server's port
 		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
 		# Patch the Javascript with the correct port
