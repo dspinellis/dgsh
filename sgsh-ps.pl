@@ -258,7 +258,7 @@ procperf_win
 		$mon--;
 		my $creation_time = timelocal($sec, $min, $hour, $mday, $mon, $year);
 		my ($now_sec, $now_usec) = gettimeofday();
-		$elapsed = ($now_sec - $creation_time) + ($now_usec / 1e6 - "0.$creation_fraction");
+		my $elapsed = ($now_sec - $creation_time) + ($now_usec / 1e6 - "0.$creation_fraction");
 
 		# Remove path from command line
 		$perf{'CommandLine'} =~ s/^[^"][^ ]*\\//;
