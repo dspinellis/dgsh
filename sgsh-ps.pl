@@ -24,7 +24,7 @@ use strict;
 use warnings;
 use JSON;
 
-# Set to 1 to enable debug print messages
+# Set to >0 to enable debug print messages
 my $debug = 0;
 
 if ($#ARGV != 0 || $ARGV[0] !~ m/^\d+$/) {
@@ -34,6 +34,8 @@ if ($#ARGV != 0 || $ARGV[0] !~ m/^\d+$/) {
 
 my $qpid = $ARGV[0];
 
+print STDERR "qpid=$qpid\n" if ($debug);
+
 # Operating system name
 my $uname = `uname`;
 chop $uname;
@@ -42,19 +44,19 @@ my $perf;
 
 if ($uname =~ m/cygwin/i) {
 	my $q = proclist_win();
-	print "query=$q\n" if ($debug);
+	print STDERR "query=$q\n" if ($debug);
 	$perf = procperf_win($q);
 } elsif ($uname eq 'Linux') {
 	my $q = proclist_unix();
-	print "query=$q\n" if ($debug);
+	print STDERR "query=$q\n" if ($debug);
 	$perf = procperf_unix(qq{--ppid $qpid -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
 } elsif ($uname eq 'FreeBSD') {
 	my $q = proclist_unix();
-	print "query=$q\n" if ($debug);
+	print STDERR "query=$q\n" if ($debug);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,usertime,systime,%mem,rss,vsz,state,majflt,minflt,args'});
 } elsif ($uname eq 'Darwin') {		# Mac OS X
 	my $q = proclist_unix();
-	print "query=$q\n" if ($debug);
+	print STDERR "query=$q\n" if ($debug);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,%mem,rss,vsz,state,command'});
 } else {
 	print STDERR "Unsupported OS [$uname] for debugging info.\n";
@@ -77,6 +79,7 @@ proclist_win
 	my $header = <$ps>;
 	my %children;
 	while (<$ps>) {
+		print STDERR "ps $_" if ($debug > 1);
 		my ($pid, $ppid, $pgid, $winpid) = split;
 		$children{$ppid} .= ($children{$ppid} ? ' OR ' : '') . "ProcessId=$winpid";
 	}
@@ -164,7 +167,7 @@ procperf_win
 	my ($q) = @_;
 
 	# For all the allowed fields run Google Win32_Process class
-	open(my $wmic, '-|', "WMIC PROCESS WHERE ($q) GET WorkingSetSize,VirtualSize,PageFaults,CreationDate,KernelModeTime,UserModeTime,CommandLine") || die "Unable to run wmic: $!\n";
+	open(my $wmic, '-|', "WMIC PROCESS WHERE '($q)' GET WorkingSetSize,VirtualSize,PageFaults,CreationDate,KernelModeTime,UserModeTime,CommandLine") || die "Unable to run wmic: $!\n";
 
 	# The output is fixed column width; obtain column indices and names
 	my $header = <$wmic>;
@@ -181,20 +184,20 @@ procperf_win
 	$header =~ s/\s*$//;
 	push(@colname, $header);
 
-	print "Column positions=", join(',', @colpos), "\n" if ($debug);
+	print STDERR "Column positions=", join(',', @colpos), "\n" if ($debug);
 
 	# Get output and form result
 	my @result;
 	while(<$wmic>) {
 		my @procperf;
 		last if (/^\s*$/);
-		print "read: [$_]\n" if ($debug);
+		print STDERR "read: [$_]\n" if ($debug);
 		my %perf;
 		for (my $i = 0; $i < $#colpos - 1; $i++) {
 			my $value = substr($_, $colpos[$i], $colpos[$i + 1] - $colpos[$i]);
 			$value =~ s/\s*$//;
 			$perf{$colname[$i]} = $value;
-			print "$colname[$i] = [$value]\n" if ($debug);
+			print STDERR "$colname[$i] = [$value]\n" if ($debug);
 		}
 
 		# Convert times to seconds
@@ -254,7 +257,7 @@ procperf_unix
 	my @result;
 	while(<$ps>) {
 		my @values = split;
-		print "read: [$_]\n" if ($debug);
+		print STDERR "read: [$_]\n" if ($debug);
 		my %perf;
 		for (my $i = 0; $i <= $#fields; $i++) {
 			my $value;
@@ -264,7 +267,7 @@ procperf_unix
 				$value = $values[$i];
 			}
 			$perf{$fields[$i]} = $value;
-			print "$fields[$i] = [$value]\n" if ($debug);
+			print STDERR "$fields[$i] = [$value]\n" if ($debug);
 		}
 
 		# Format values
