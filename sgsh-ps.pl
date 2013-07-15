@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # Given as an argument a process id, print on the standard output
-# performance details of the process's children.
+# performance details of the process's descendants.
 # Handles formatting and variations between POSIX-like operating environments,
 # including Cygwin.
 #
@@ -27,6 +27,12 @@ use JSON;
 # Set to >0 to enable debug print messages
 my $debug = 0;
 
+# Map from Cygwin to Windows process ids
+my %winpid;
+
+# Number of process entries to return
+my $max_entries = 2;
+
 if ($#ARGV != 0 || $ARGV[0] !~ m/^\d+$/) {
 	print STDERR "Usage: sgsh-ps process-id\n";
 	exit 1;
@@ -43,9 +49,16 @@ chop $uname;
 my $perf;
 
 if ($uname =~ m/cygwin/i) {
+	# Get query for all our children
 	my $q = proclist_win();
 	print STDERR "query=$q\n" if ($debug);
+
+	# Run query
 	$perf = procperf_win($q);
+
+	# Obtain the top-two entries
+	$perf = [(sort compare @$perf)[0..($max_entries - 1)]];
+
 } elsif ($uname eq 'Linux') {
 	my $q = proclist_unix();
 	print STDERR "query=$q\n" if ($debug);
@@ -67,9 +80,10 @@ if ($uname =~ m/cygwin/i) {
 
 print encode_json($perf), "\n";
 
-# Create the list of child processes to examine
-# in a form suitable for passing to WMIC PROCESS WHERE (...) GET.
-# We need this because Cygwin doesn't offer a --ppid ... option.
+# Create the list of child processes to examine in a form suitable for passing to
+# WMIC PROCESS WHERE (...) GET.
+# We need this in order to calculate a transitive closure of the parent-child relationship
+# As a side effect set %winpid with a map from Cygwin to Windows process ids
 sub
 proclist_win
 {
@@ -81,15 +95,50 @@ proclist_win
 	while (<$ps>) {
 		print STDERR "ps $_" if ($debug > 1);
 		my ($pid, $ppid, $pgid, $winpid) = split;
-		$children{$ppid} .= ($children{$ppid} ? ' OR ' : '') . "ProcessId=$winpid";
+		push(@{$children{$ppid}}, $pid);
+		$winpid{$pid} = $winpid;
 	}
 	close $ps;
-	return $children{$qpid};
+	my @closure = transitive_closure($qpid, \%children);
+	print STDERR "Closure: ", join(',', @closure), "\n" if ($debug);
+	return combinelist_win(@closure);
+}
+
+# Given a reference to a map from parent process id to an array of children process ids
+# return the transitive closure starting from process p
+sub
+transitive_closure
+{
+	my($start, $tree) = @_;
+	my @result;
+
+	print STDERR "Transitive closure starting from $start\n" if ($debug > 0);
+	#for keys ", keys(%$tree), " values ", values(%$tree), "\n" if ($debug > 3);
+	return () unless defined($tree->{$start});
+	for my $p (@{$tree->{$start}}) {
+		push(@result, $p);
+		push(@result, transitive_closure($p, $tree));
+	}
+	print STDERR "Returning for $start ", join(',', @result), "\n" if ($debug > 0);
+	return @result;
+}
+
+# Combine a list of process ids into a form suitable for passing to
+# WMIC PROCESS WHERE (...) GET.
+sub
+combinelist_win
+{
+	my $result = '';
+
+	for my $p (@_) {
+		$result .= ($result ? ' OR ' : '') . "ProcessId=$winpid{$p}";
+	}
+	return $result;
 }
 
 # Create the list of child processes to examine
 # in a form suitable for passing to ps -p
-# We need this because BSD ps doesn't offer a --ppid ... option.
+# We need this in order to calculate a transitive closure of the parent-child relationship
 sub
 proclist_unix
 {
@@ -204,37 +253,42 @@ procperf_win
 		$perf{'KernelModeTime'} /= 1e7;
 		$perf{'UserModeTime'} /= 1e7;
 
-		# Calculate elapsed time and CPU %
+		# Calculate elapsed time used for CPU %
 		my ($year, $mon, $mday, $hour, $min, $sec, $creation_fraction) = ($perf{'CreationDate'} =~ m/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)\.(\d+)/);
 		$mon--;
 		my $creation_time = timelocal($sec, $min, $hour, $mday, $mon, $year);
-		;
 		my ($now_sec, $now_usec) = gettimeofday();
-		$perf{'ElapsedTime'} = ($now_sec - $creation_time) + ($now_usec / 1e6 - "0.$creation_fraction");
-		$perf{'CPU %'} = sprintf('%.2f', ($perf{'KernelModeTime'} + $perf{'UserModeTime'}) / $perf{'ElapsedTime'} * 100);
-		delete $perf{'CreationDate'};
-
-		# Format times
-		$perf{'KernelModeTime'} = human_time($perf{'KernelModeTime'});
-		$perf{'UserModeTime'} = human_time($perf{'UserModeTime'});
-		$perf{'ElapsedTime'} = human_time($perf{'ElapsedTime'});
-
-		# Format memory values
-		$perf{'WorkingSetSize'} = human_memory($perf{'WorkingSetSize'});
-		$perf{'VirtualSize'} = human_memory($perf{'VirtualSize'});
-		$perf{'PageFaults'} = human_integer($perf{'PageFaults'});
+		$elapsed = ($now_sec - $creation_time) + ($now_usec / 1e6 - "0.$creation_fraction");
 
 		# Remove path from command line
 		$perf{'CommandLine'} =~ s/^[^"][^ ]*\\//;
 		$perf{'CommandLine'} =~ s/^\"[^"]*\\([^"]+)\"/$1/;
-		# Rename entry to make it consistent with the rest
-		$perf{'COMMAND'} = $perf{'CommandLine'};
-		delete $perf{'CommandLine'};
 
-		push(@result, \%perf);
+		# Store the results in the order required for presentation
+		my $entry = {
+			'sortKey' => $perf{KernelModeTime} + $perf{UserModeTime},
+			'command' => $perf{'CommandLine'},
+			'kv' => [
+				{ 'k' => 'CPU %',	'v' => sprintf('%.2f', ($perf{'KernelModeTime'} + $perf{'UserModeTime'}) / $elapsed * 100) },
+				{ 'k' => 'System time',	'v' => human_time($perf{'KernelModeTime'}) },
+				{ 'k' => 'User time',	'v' => human_time($perf{'UserModeTime'}) },
+				{ 'k' => 'RSS',		'v' => human_memory($perf{'WorkingSetSize'}) },
+				{ 'k' => 'VSZ',		'v' => human_memory($perf{'VirtualSize'}) },
+				{ 'k' => 'Major faults','v' => human_integer($perf{'PageFaults'}) },
+			]
+		};
+		push(@result, $entry);
 	}
 	close $wmic;
 	return \@result;
+}
+
+# Given two to hashes containing key-value pairs of Windows performance figures
+# compare the by the sum of the KernelModeTime and UserModeTime
+sub
+compare
+{
+	return  $b->{sortKey} <=> $a->{sortKey};
 }
 
 # Given a query for processes to list, return an array of references
