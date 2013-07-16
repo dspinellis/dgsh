@@ -61,10 +61,9 @@ function ts(x) {
 
 /* Update the pipe popup box with the JSON result of the active URL */
 update_pipe_content = function() {
-	$.getJSON(
-                url,
-                {},
-                function(json) {
+	$.ajax({
+                url: url,
+                success: function(json) {
 			$('#bytes').text(ts(json.nbytes));
 			$('#lines').text(ts(json.nlines));
 			$('#bps').text(ts((json.nbytes / json.rtime).toFixed(0)));
@@ -77,8 +76,10 @@ update_pipe_content = function() {
 			label.style.visibility = popup_visibility;
 			label.style.top = popup_event.pageY + 'px';
 			label.style.left = (popup_event.pageX + 30) + 'px';
-                }
-	);
+                },
+		dataType: 'json',
+		global: false
+	});
 }
 
 /* Fill the process info box with the process data */
@@ -194,22 +195,26 @@ out_process_handler = function(e) {
 		set_child_color(this, "polygon", null);
 }
 
+
+/* Show a busy indicator during AJAX calls */
+set_ajax_busy = function(e) {
+	// Ajax activity indicator bound to ajax start/stop document events
+	$(document).ajaxStart(function(){
+		$('#ajaxBusy').show();
+	}).ajaxStop(function(){
+		$('#ajaxBusy').hide();
+	});
+}
+
 $(document).ready(function() {
 	var svg = document.getElementById('thesvg').getSVGDocument();
 	if (!svg)
 		svg = document.getElementById('thesvg');
 	var all = svg.getElementsByTagName("g");
 
+	set_ajax_busy();
 	for (var i=0, max=all.length; i < max; i++) {
 		var element = all[i];
-
-
-		// Ajax activity indicator bound to ajax start/stop document events
-		$(document).ajaxStart(function(){
-			$('#ajaxBusy').show();
-		}).ajaxStop(function(){
-			$('#ajaxBusy').hide();
-		});
 
 		/* Set event handlers for edges and store nodes */
 		className = element.className.baseVal;
