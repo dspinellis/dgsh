@@ -17,6 +17,7 @@
  *
  */
 
+/* The popup box with data regarding pipes and processes */
 .popup {
 	  border-style: solid;
 	  border-radius: 15px;
@@ -31,15 +32,18 @@
 	  width:20em;
 }
 
+/* The popup box heading column */
 .colHead {
 	font-weight: bold;
 	text-align: left;
 }
 
+/* The popup box value column */
 .colValue {
 	text-align: right;
 }
 
+/* Display a busy image at the center of the page */
 img#ajaxBusy {
     position: absolute;
     top:0;
