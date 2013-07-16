@@ -4,8 +4,8 @@
 # DESCRIPTION
 # Given two directory hierarchies A and B passed as input arguments
 # (where these represent a project at different parts of its lifetime)
-# copy the files of hierarchy A to a new directory "new" corresponding
-# to the structure of directories in B.
+# copy the files of hierarchy A to a new directory, passed as a third
+# argument, corresponding to the structure of directories in B.
 # Demonstrates the use of <em>join</em> to gather results from streams
 # in the <em>scatter</em> part,
 # and the use of <em>cat</em> to order asynchronous results in the gather part.
@@ -25,6 +25,14 @@
 #  limitations under the License.
 #
 
+if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
+then
+	echo "Usage: $0 dir-1 dir-2 new-dir-name" 1>&2
+	exit 1
+fi
+
+NEWDIR="$3"
+
 export LC_ALL=C
 
 line_signatures()
@@ -37,9 +45,9 @@ line_signatures()
 		# Print "directory filename content" of lines with
 		# at least one alphabetic character
 		# The fields are separated by ^A and ^B
-		sed -n "/[a-z]/s|^|$dir:$file;|p" "$dir/$file"
+		sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
 	done |
-	sort -t: -k 2
+	sort -t -k 2
 }
 
 scatter |{
@@ -48,15 +56,15 @@ scatter |{
 	.| line_signatures $2 |>/stream/b
 
 	# Join signatures on file name and content
-	.| join -t: -1 2 -2 2 /stream/a /stream/b |
+	.| join -t -1 2 -2 2 /stream/a /stream/b |
 	# Print filename dir1 dir2
-	sed 's/;/:/g' |
-	awk -F: 'BEGIN{OFS=" "}{print $1, $3, $4}' |
+	sed 's///g' |
+	awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 	# Unique occurrences
 	sort -u |{
 		# Commands to copy
-		-| awk '{print "cp " $2 "/" $1 " new/" $3 "/" $1}' |>/stream/cp
-		-| awk '{print "mkdir -p new/" $3}' | sort -u |>/stream/mkdir
+		-| awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' |>/stream/cp
+		-| awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u |>/stream/mkdir
 	|}
 |} gather |{
 	# Order: first make directories, then copy files
