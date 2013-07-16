@@ -617,6 +617,8 @@ scatter_code_and_pipes_code
 	my $code = '';
 	my $pipes = '';
 	my $kvstores = '';
+	# Open the bracket unless opened by a preceding command (recursive call)
+	my $monitor_open_bracket = ($opt_m && !$monitor_scatter_pid) ? ' ( ' : '';
 	my $monitor_close_bracket = $opt_m ? ' ) ' : '';
 
 	my $scatter_n = $global_scatter_n++;
@@ -662,7 +664,7 @@ scatter_code_and_pipes_code
 			# Scatter code: asynchronous tee to named pipes
 			# The fdn redirection allows piping into the scatter block
 			$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
-			$code .= qq[$tee_prog $tee_args & SGPID="\$! \$SGPID"$monitor_scatter_pid\n] unless ($opt_S);
+			$code .= qq[$monitor_open_bracket$tee_prog $tee_args $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_scatter_pid\n] unless ($opt_S);
 		}
 	}
 
