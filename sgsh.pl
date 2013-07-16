@@ -278,11 +278,20 @@ while (get_next_line()) {
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
 		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
+		# Prompt to exit debugging if debugging from an interactive session
+		my $debug_wait = $opt_d ? qq{
+		if [ -t 0 ]
+		then
+			echo -n 'Press enter to terminate the debugging session'
+			read sgsh_return
+		fi
+		} : '' ;
 		$code .= "(\n" .
 			initialization_code($pipes, $kvstores) .
 			"$code2\n" .
 			debug_code() .
 			gather_code(\@gather_commands) .
+			$debug_wait .
 			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
 		debug_create_html();
 	} else {
