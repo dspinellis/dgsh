@@ -1301,7 +1301,7 @@ debug_create_html
 </div>
 
 <!-- Loading indicator -->
-<img id="ajaxBusy" src="ajax-loader.gif">
+<img id="ajaxBusy" src="ajax-loader.gif" />
 
   </body>
 </html>
