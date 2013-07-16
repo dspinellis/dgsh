@@ -62,6 +62,14 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
+	./sgsh -d -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
+	diff -b test/code-metrics/out.ok test/code-metrics/out.test
+	./sgsh -d -p . example/duplicate-files.sh test/duplicate-files >test/duplicate-files/out.test
+	diff test/duplicate-files/out.ok test/duplicate-files/out.test
+	./sgsh -d -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
+	diff -b test/word-properties/out.ok test/word-properties/out.test
+	./sgsh -d -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
+	diff -b test/compress-compare/out.ok test/compress-compare/out.test
 
 test-serial: $(EXECUTABLES)
 	./sgsh -S -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
