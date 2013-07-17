@@ -700,7 +700,7 @@ read_command(struct client *c)
  * length.
  */
 static void
-write_record(struct client *c, int write_length)
+write_record(struct client *c, bool write_length)
 {
 	int n;
 	int towrite;
@@ -1160,12 +1160,12 @@ handle_events(int sock)
 				clients[i].state = s_sending_response;
 				oldest_buffer_being_written =
 					oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
-				write_record(&clients[i], 1);
+				write_record(&clients[i], true);
 			}
 			break;
 		case s_sending_response:	/* A response is being written */
 			if (FD_ISSET(clients[i].fd, &sink_fds))
-				write_record(&clients[i], 0);
+				write_record(&clients[i], false);
 			break;
 		}
 
