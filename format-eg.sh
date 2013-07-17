@@ -7,8 +7,10 @@ SECTION='compress-compare
 	commit-stats
 	code-metrics
 	duplicate-files
+	spell-highlight
 	word-properties
 	parallel-logresolve
+	web-log-report
 	web-log-stats
 	map-hierarchy
 	dir'
