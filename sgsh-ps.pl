@@ -52,18 +52,22 @@ if ($uname =~ m/cygwin/i) {
 	my $q = proclist_win();
 	print STDERR "query=$q\n" if ($debug);
 
+	exit_if_empty($q);
 	$perf = procperf_win($q);
 } elsif ($uname eq 'Linux') {
 	my $q = proclist_unix();
 
+	exit_if_empty($q);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,cputime,psr,%mem,rss,vsz,state,maj_flt,min_flt,args'});
 } elsif ($uname eq 'FreeBSD') {
 	my $q = proclist_unix();
 
+	exit_if_empty($q);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,usertime,systime,%mem,rss,vsz,state,majflt,minflt,args'});
 } elsif ($uname eq 'Darwin') {		# Mac OS X
 	my $q = proclist_unix();
 
+	exit_if_empty($q);
 	$perf = procperf_unix(qq{-p $q -ww -o '%cpu,etime,%mem,rss,vsz,state,command'});
 } else {
 	print STDERR "Unsupported OS [$uname] for debugging info.\n";
@@ -395,4 +399,17 @@ procperf_unix
 	}
 	close $ps;
 	return \@result;
+}
+
+# Exit with an empty JSON array if the query is empty
+# to avoid running ps/WMIC with an invalid argument.
+sub
+exit_if_empty
+{
+	my ($q) = @_;
+
+	if ($q eq '') {
+		print encode_json([]), "\n";
+		exit 0;
+	}
 }
