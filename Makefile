@@ -64,15 +64,15 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
-	./sgsh -d -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test </dev/null
+	./sgsh -m -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test
 	diff -b test/commit-stats/out.ok test/commit-stats/out.test
-	./sgsh -d -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test </dev/null
+	./sgsh -m -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
-	./sgsh -d -p . example/duplicate-files.sh test/duplicate-files >test/duplicate-files/out.test </dev/null
+	./sgsh -m -p . example/duplicate-files.sh test/duplicate-files >test/duplicate-files/out.test
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
-	./sgsh -d -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test </dev/null
+	./sgsh -m -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
-	./sgsh -d -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
+	./sgsh -m -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
 
 test-serial: $(EXECUTABLES)
