@@ -73,7 +73,8 @@ if (!getopts('dg:kmno:p:s:St:')) {
 
 # Make path absolute
 if (defined($opt_p) && $opt_p !~ m|^/|) {
-	$opt_p = `readlink -f "${opt_p}"`;
+	# Readlink -f is Linux/Cygwin; realpath is FreeBSD
+	$opt_p = `readlink -f "${opt_p}" 2>/dev/null || realpath "${opt_p}"`;
 	$opt_p =~ s/\n//;
 }
 # Ensure defined path ends with a /
