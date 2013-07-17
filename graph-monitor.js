@@ -38,6 +38,11 @@ var node_pid = new Array();
 function set_child_color(node, child_kind, color) {
 	var child = node.getElementsByTagName(child_kind)[0];
 
+	if (!child) {
+		console.log("Node not found: " + node);
+		return;
+	}
+
 	if (color == null) {
 		child.setAttribute('stroke', child.oldStroke);
 		child.setAttribute('fill', child.oldFill);
