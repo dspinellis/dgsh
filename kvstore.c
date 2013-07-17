@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/un.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,6 +90,7 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 	case 0:		/* No I/O specified */
 		break;
 	case 'C':	/* Read current value */
+	case 'c':	/* Read current value, non-blocking */
 	case 'L':	/* Read last value */
 		s = write_command(socket_path, cmd, retry_connection);
 
@@ -120,6 +122,9 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 			content_length -= n;
 		}
 		close(s);
+		break;
+	default:
+		assert(0);
 		break;
 	}
 

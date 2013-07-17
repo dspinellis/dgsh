@@ -21,6 +21,7 @@ sgsh-httpval \- data store HTTP server
 [\fB\-a\fP]
 [\fB\-b\fP \fIquery:command\fP]
 [\fB\-m\fP \fIMIME-type\fP]
+[\fB\-n\fP]
 [\fB\-p\fP \fIport\fP]
 .SH DESCRIPTION
 \fIsgsh-httpval\fP allows other programs to access \fIsgsh\fP
@@ -81,6 +82,11 @@ Other reasonable types are
 \fCtext/CSV\fP,
 \fCtext/xml\fP, or
 \fCapplication/octet-stream\fP.
+
+.IP "\fB\-n\fP
+Read values from stores using a non-blocking read command.
+This means that the server will return an empty record,
+if no complete record is available.
 
 .IP "\fB\-p\fP \fIport\fP"
 Specify the TCP port on which the server will listen for incoming HTTP

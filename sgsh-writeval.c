@@ -117,6 +117,7 @@ struct client {
 		s_inactive,		/* Free (unused or closed) */
 		s_read_command,		/* Waiting for a command (Q or R) to be read */
 		s_send_current,		/* Waiting for the current value to be written */
+		s_send_current_nblk,	/* Non-blocking: waiting for the current or empty value to be written */
 		s_send_last,		/* Waiting for the last (before EOF) value to be written */
 		s_sending_response,	/* A response is being written */
 		s_wait_close,		/* Wait for the client to close the connection */
@@ -680,6 +681,9 @@ read_command(struct client *c)
 		case 'Q':
 			(void)unlink(socket_path);
 			exit(0);
+		case 'c':
+			c->state = s_send_current_nblk;
+			break;
 		case 'C':
 			c->state = s_send_current;
 			if (time_window && head)
@@ -1090,6 +1094,10 @@ handle_events(int sock)
 			} else if (time_window)
 				set_waitptr = true;
 			break;
+		case s_send_current_nblk:	/* Waiting for a response to be written */
+			FD_SET(clients[i].fd, &sink_fds);
+			max_fd = MAX(clients[i].fd, max_fd);
+			break;
 		case s_sending_response:	/* A response is being sent */
 			FD_SET(clients[i].fd, &sink_fds);
 			max_fd = MAX(clients[i].fd, max_fd);
@@ -1160,6 +1168,25 @@ handle_events(int sock)
 				clients[i].state = s_sending_response;
 				oldest_buffer_being_written =
 					oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
+				write_record(&clients[i], true);
+			}
+			break;
+		case s_send_current_nblk:	/* Waiting for a response (even empty) to be written */
+			if (FD_ISSET(clients[i].fd, &sink_fds)) {
+				if (have_record) {
+					/* Start writing the most fresh last record */
+					clients[i].write_begin = current_record_begin;
+					clients[i].write_end = current_record_end;
+					oldest_buffer_being_written =
+						oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
+				} else {
+					static struct buffer empty;
+
+					/* Write an empty record */
+					clients[i].write_begin.b = clients[i].write_end.b = &empty;
+					clients[i].write_begin.pos = clients[i].write_end.pos = 0;
+				}
+				clients[i].state = s_sending_response;
 				write_record(&clients[i], true);
 			}
 			break;

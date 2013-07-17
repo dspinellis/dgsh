@@ -1328,7 +1328,7 @@ debug_code
 
 	return qq@
 		# Start the web server in the directory with the stores
-		( cd \$SGDIR ; ${opt_p}sgsh-httpval -m application/json -b 'server-bin/rusage?pid=%d:${opt_p}sgsh-ps %d' | ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
+		( cd \$SGDIR ; ${opt_p}sgsh-httpval -n -m application/json -b 'server-bin/rusage?pid=%d:${opt_p}sgsh-ps %d' | ${opt_p}sgsh-writeval -s .SG_HTTP_PORT ) & SGPID="\$! \$SGPID"
 		# Obtain the server's port
 		SG_HTTP_PORT=`${opt_p}sgsh-readval -c -s \$SGDIR/.SG_HTTP_PORT`
 		# Patch the Javascript with the correct port

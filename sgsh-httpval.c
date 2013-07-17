@@ -77,6 +77,7 @@ usage(void)
 		"-a\t"		"\tAllow non-localhost access\n"
 		"-b query:cmd"	"\tSpecify a command for a given HTTP query\n"
 		"-m MIME-type"	"\tSpecify the store Content-type header value\n"
+		"-n"		"\tNon-blocking read from stores\n"
 		"-p port"	"\tSpecify the port to listen to\n",
 		program_name);
 	exit(1);
@@ -89,6 +90,9 @@ static struct query {
 	struct query *next;
 } *query_list;
 
+/* Command to read from stores: blocking read current record */
+static char read_cmd = 'C';
+
 int
 main(int argc, char *argv[])
 {
@@ -100,7 +104,7 @@ main(int argc, char *argv[])
 
 	program_name = argv[0];
 
-	while ((ch = getopt(argc, argv, "am:p:b:")) != -1) {
+	while ((ch = getopt(argc, argv, "ab:m:np:")) != -1) {
 		char *p;
 		struct query *q;
 
@@ -138,6 +142,10 @@ main(int argc, char *argv[])
 			break;
 		case 'm':
 			mime_type = optarg;
+			break;
+		case 'n':
+			/* Non-blocking read */
+			read_cmd = 'c';
 			break;
 		case 'p':
 			port = atoi(optarg);
@@ -294,7 +302,7 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 		send_headers(out, 200, "Ok", NULL, mime_type,
 		    -1, (time_t)-1);
 		(void)fflush(out);
-		sgsh_send_command(file, 'C', true, false, fileno(out));
+		sgsh_send_command(file, read_cmd, true, false, fileno(out));
 	} else if (S_ISREG(sb.st_mode)) {
 		/* Regular file */
 		int ich;

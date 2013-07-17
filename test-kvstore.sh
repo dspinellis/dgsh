@@ -79,6 +79,39 @@ EXPECT='single record'
 check
 curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
 
+testcase "HTTP interface - non-blocking empty record" # {{{3
+PORT=53843
+{ sleep 2 ; echo hi ; } | ./sgsh-writeval -s testsocket 2>/dev/null &
+./sgsh-httpval -n -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+TRY="`curl -s40 http://localhost:$PORT/testsocket`"
+EXPECT=''
+check
+curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+
+testcase "HTTP interface - non-blocking first record" # {{{3
+PORT=53843
+echo 'first record' | ./sgsh-writeval -s testsocket 2>/dev/null &
+./sgsh-httpval -n -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+sleep 1
+TRY="`curl -s40 http://localhost:$PORT/testsocket`"
+EXPECT='first record'
+check
+curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+
+testcase "HTTP interface - non-blocking second record" # {{{3
+PORT=53843
+( echo 'first record' ; sleep 1 ; echo 'second record' ) |
+./sgsh-writeval -s testsocket 2>/dev/null &
+./sgsh-httpval -n -p $PORT &
+# -s40: silent, IPv4 HTTP 1.0
+sleep 2
+TRY="`curl -s40 http://localhost:$PORT/testsocket`"
+EXPECT='second record'
+check
+curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+
 testcase "HTTP interface - binary data" # {{{3
 PORT=53843
 perl -e 'BEGIN { binmode STDOUT; }
@@ -166,6 +199,26 @@ testcase "Record three" # {{{3
 sleep 3
 TRY="`./sgsh-readval -c -s testsocket 2>/dev/null `"
 EXPECT='record three'
+check
+
+section 'Non-blocking reading of newline-separated records in stream' # {{{2
+(sleep 1 ; echo record one; sleep 2; echo record two; sleep 3; echo record three) | ./sgsh-writeval -s testsocket 2>/dev/null &
+
+testcase "Empty record" # {{{3
+TRY="`./sgsh-readval -e -s testsocket 2>/dev/null `"
+EXPECT=''
+check -n
+
+testcase "Record one" # {{{3
+sleep 2
+TRY="`./sgsh-readval -e -s testsocket 2>/dev/null `"
+EXPECT='record one'
+check -n
+
+testcase "Record two" # {{{3
+sleep 2
+TRY="`./sgsh-readval -e -s testsocket 2>/dev/null `"
+EXPECT='record two'
 check
 
 section 'Reading last record' # {{{2

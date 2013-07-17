@@ -18,7 +18,7 @@
 sgsh-readval \- data store client
 .SH SYNOPSIS
 \fBsgsh-readval\fP
-[\fB\-c\fP | \fB-l\fP]
+[\fB\-c\fP | \fB-e\fP | \fB-l\fP]
 [\fB\-nq\fP]
 \fB\-s\fP \fIpath\fP
 .SH DESCRIPTION
@@ -39,6 +39,10 @@ Read the current (rather than the last) value from the store.
 If no complete record has been written into the store,
 the operation will block until such a record is available.
 
+.IP "\fB\-e\fP
+Read the current or an empty value from the store.
+If no complete record has been written into the store,
+the operation will return an empty record, rather than block.
 
 .IP "\fB\-l\fP
 Read the last value from the store.
