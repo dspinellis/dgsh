@@ -999,7 +999,6 @@ scatter_graph_io
 	my $tee_node_name = "node_tee_$scatter_n";
 	# Create tee, if needed
 	if ($scatter_targets * $parallel > 1) {
-		$show_tee = 1 if ($level == 0);
 		# Create arguments
 		my $tee_args = '';
 		if ($scatter_opts{'s'}) {
@@ -1016,7 +1015,7 @@ scatter_graph_io
 			}
 		}
 
-		if ($graph_out && $show_tee) {
+		if ($graph_out && ($show_tee || $level == 0)) {
 			# Obtain tee program
 			my $tee_prog = $opt_t;
 			$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
