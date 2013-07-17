@@ -64,7 +64,7 @@ test-sgsh: $(EXECUTABLES)
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 	./sgsh -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
-	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
+	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
 	./sgsh -m -p . example/map-hierarchy.sh test/map-hierarchy/in/a test/map-hierarchy/in/b test/map-hierarchy/out.test
 	diff -rb test/map-hierarchy/out.ok test/map-hierarchy/out.test
@@ -76,7 +76,7 @@ test-sgsh: $(EXECUTABLES)
 	diff test/duplicate-files/out.ok test/duplicate-files/out.test
 	./sgsh -m -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	diff -b test/word-properties/out.ok test/word-properties/out.test
-	./sgsh -m -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
+	./sgsh -m -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
 
 test-serial: $(EXECUTABLES)
