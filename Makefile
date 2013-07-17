@@ -54,6 +54,8 @@ sgsh-readval: sgsh-readval.c kvstore.c
 sgsh-httpval: sgsh-httpval.c kvstore.c
 
 test-sgsh: $(EXECUTABLES)
+	./sgsh -p . example/map-hierarchy.sh test/map-hierarchy/in/a test/map-hierarchy/in/b test/map-hierarchy/out.test
+	diff -rb test/map-hierarchy/out.ok test/map-hierarchy/out.test
 	./sgsh -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test
 	diff -b test/commit-stats/out.ok test/commit-stats/out.test
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
@@ -64,6 +66,8 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 	./sgsh -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
+	./sgsh -m -p . example/map-hierarchy.sh test/map-hierarchy/in/a test/map-hierarchy/in/b test/map-hierarchy/out.test
+	diff -rb test/map-hierarchy/out.ok test/map-hierarchy/out.test
 	./sgsh -m -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test
 	diff -b test/commit-stats/out.ok test/commit-stats/out.test
 	./sgsh -m -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
