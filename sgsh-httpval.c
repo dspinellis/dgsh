@@ -164,7 +164,7 @@ main(int argc, char *argv[])
 		err(2, "bind");
 
 	if (port == 0) {
-		int len = sizeof(serv_addr);
+		socklen_t len = sizeof(serv_addr);
 
 		serv_addr.sin_port = 0;
 		if (getsockname(sockfd, (struct sockaddr *)&serv_addr, &len) < 0)
@@ -176,7 +176,7 @@ main(int argc, char *argv[])
 	listen(sockfd, 5);
 
 	for (;;) {
-		int cli_len = sizeof(cli_addr);
+		socklen_t cli_len = sizeof(cli_addr);
 		FILE *in, *out;
 
 		if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0)
