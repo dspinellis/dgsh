@@ -63,17 +63,16 @@ scatter |{
 			|}
 
 			# Top 10 hosts
-			-| toplist 20 |>/stream/top10HostsByN
+			-| toplist 10 |>/stream/top10HostsByN
 		|}
 
 		# Top 20 TLDs
-		-| awk -F. '$NF !~ /^[0-9]/ {print $NF}
-		            $NF ~ /^[0-9]/ {print "unknown"}' |
-			sort | toplist 20 |>/stream/top20TLD
+		-| awk -F. '$NF !~ /^[0-9]/ {print $NF}' |
+			tee tld | sort | toplist 20 |>/stream/top20TLD
 
 		# Domains
 		-| awk -F. 'BEGIN {OFS = "."}
-		                  {$1 = ""; print}' | sort |{
+		            $NF !~ /^[0-9]/ {$1 = ""; print}' | sort |{
 			# Number of domains
 			-| uniq | wc -l |store:nDomain
 
@@ -116,7 +115,8 @@ scatter |{
 			-| sed 's|/|-|g' |
 				date -f - +%a |
 				sort |
-				uniq -c |>/stream/accessByDoW
+				uniq -c |
+				sort -rn |>/stream/accessByDoW
 		|}
 
 		# Hour
