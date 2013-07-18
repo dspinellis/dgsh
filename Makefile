@@ -109,7 +109,7 @@ sgsh: sgsh.pl
 	install sgsh.pl sgsh
 
 sgsh-ps: sgsh-ps.pl
-	perl -c sgsh-ps.pl
+	! perl -e 'use JSON' 2>/dev/null || perl -c sgsh-ps.pl
 	install sgsh-ps.pl sgsh-ps
 
 charcount: charcount.sh
