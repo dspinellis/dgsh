@@ -36,6 +36,9 @@ header()
 	echo "$1" | sed 's/./-/g'
 }
 
+# Consistent sorting
+export LC_ALL=C
+
 scatter |{
 
 	# Number of transferred bytes
