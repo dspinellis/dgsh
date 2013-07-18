@@ -32,8 +32,12 @@
 #include "sgsh.h"
 
 /*
- * Data that can't be written is stored in a sequential pool of buffers
- * each of buffer_size long.
+ * Data that can't be written is stored in a sequential pool of buffers,
+ * each buffer_size long.
+ * As more data is read the buffer pool with the pointers (buffers)
+ * is continuously increased; there is no round-robin mechanism.
+ * However, as data is written out to all sinks, the actual buffers are
+ * freed, thus keeping memory consumption reasonable.
  */
 
 static int buffer_size = 1024 * 1024;
@@ -47,6 +51,9 @@ struct buffer {
 	void *p;	/* Memory pointer */
 	size_t size;	/* Buffer size */
 };
+
+/* Maximum amount of memory to allocate. (Set through -S) */
+static unsigned long max_mem = 256 * 1024 * 1204;
 
 /* Scatter the output across the files, rather than copying it. */
 static bool opt_scatter = false;
@@ -84,6 +91,7 @@ struct sink_info {
  * presenting an infinite output buffer to the upstream process.
  * The output-side buffering will read input only if at least one
  * active output buffer is empty.
+ * The setting in effect is determined by the program's -i flag.
  */
 enum state {
 	read_ib,		/* Must read input */
@@ -95,36 +103,55 @@ enum state {
 
 /*
  * Allocate memory for the specified pool
+ * Return false if we're out of memory by reaching the user-specified limit
+ * or a system's hard limit.
  */
-static void
+static bool
 memory_allocate(int pool)
 {
 	static int pool_size;
 	static int allocated_pool_end;
-	int i;
+	int i, orig_pool_size;
+	char **orig_buffers;
 
 	if (pool < allocated_pool_end)
-		return;
+		return true;
 
+	/* Check soft memory limit through allocated plus requested memory. */
+	if (((buffers_allocated - buffers_freed) + (allocated_pool_end - pool + 1)) * buffer_size > max_mem)
+		return false;
+
+	/* Keep original values to undo on failure. */
+	orig_pool_size = pool_size;
+	orig_buffers = buffers;
 	/* Resize bank, if needed. One iteration should suffice. */
 	while (pool >= pool_size) {
 		if (pool_size == 0)
 			pool_size = 1;
 		else
 			pool_size *= 2;
-		if ((buffers = realloc(buffers, pool_size * sizeof(char *))) == NULL)
-			err(1, "Unable to reallocate buffer pool bank");
+		if ((buffers = realloc(buffers, pool_size * sizeof(char *))) == NULL) {
+			DPRINTF("Unable to reallocate buffer pool bank");
+			pool_size = orig_pool_size;
+			buffers = orig_buffers;
+			return false;
+		}
 	}
 
 	/* Allocate buffer memory [allocated_pool_end, pool]. */
 	for (i = allocated_pool_end; i <= pool; i++) {
-		if ((buffers[i] = malloc(buffer_size)) == NULL)
-			err(1, "Unable to allocate %d bytes for buffer %d", buffer_size, i);
+		if ((buffers[i] = malloc(buffer_size)) == NULL) {
+			DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, i);
+			max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+			allocated_pool_end = i;
+			return false;
+		}
 		DPRINTF("Allocated buffer %d to %p", i, buffers[i]);
 		buffers_allocated++;
 		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 	}
 	allocated_pool_end = pool + 1;
+	return true;
 }
 
 /*
@@ -150,22 +177,23 @@ memory_free(off_t pos)
 }
 
 /*
- * Return the buffer to write to for reading from a file from
+ * Set the buffer to write to for reading from a file from
  * position onward, ensuring that sufficient memory is allocated.
+ * Return false if no memory is available.
  */
-static struct buffer
-source_buffer(off_t pos)
+static bool
+source_buffer(off_t pos, /* OUT */ struct buffer *b)
 {
-	struct buffer b;
 	int pool = pos / buffer_size;
 	size_t pool_offset = pos % buffer_size;
 
-	memory_allocate(pool);
-	b.p = buffers[pool] + pool_offset;
-	b.size = buffer_size - pool_offset;
+	if (!memory_allocate(pool))
+		return false;
+	b->p = buffers[pool] + pool_offset;
+	b->size = buffer_size - pool_offset;
 	DPRINTF("Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
-	return b;
+		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b->size, b->p);
+	return true;
 }
 
 /*
@@ -224,7 +252,11 @@ source_read(fd_set *source_fds)
 	int n;
 	struct buffer b;
 
-	b = source_buffer(source_pos_read);
+	if (!source_buffer(source_pos_read, &b)) {
+		/* Provide some time for the output to drain. */
+		sleep(1);
+		return 0;
+	}
 	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
@@ -432,10 +464,11 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-s] [-t char] [file ...]\n"
+	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-S size] [-s] [-t char] [file ...]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
 		"-i"		"\tInput-side buffering\n"
 		"-m"		"\tProvide memory use statistics on termination\n"
+		"-S size[k|M|G]""\tSpecify the maximum buffer memory size\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n",
 		name);
@@ -504,6 +537,32 @@ show_state(enum state state)
 	#endif
 }
 
+/* Parse the specified option as a size with a suffix and return its value. */
+static unsigned long
+parse_size(const char *progname, const char *opt)
+{
+	char size;
+	unsigned long n;
+
+	size = 'b';
+	if (sscanf(opt, "%lu%c", &n, &size) < 1)
+		usage(progname);
+	switch (size) {
+	case 'B' : case 'b':
+		return n;
+	case 'K' : case 'k':
+		return n * 1024;
+	case 'M' : case 'm':
+		return n * 1024 * 1024;
+	case 'G' : case 'g':
+		return n * 1024 * 1024 * 1024;
+	default:
+		usage(progname);
+	}
+	/* NOTREACHED */
+	return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -514,16 +573,19 @@ main(int argc, char *argv[])
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:simt:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:S:simt:")) != -1) {
 		switch (ch) {
 		case 'b':
-			buffer_size = atoi(optarg);
+			buffer_size = (int)parse_size(progname, optarg);
 			break;
 		case 'i':
 			state = read_ib;
 			break;
 		case 'm':	/* Provide memory use statistics on termination */
 			opt_memory_stats = true;
+			break;
+		case 'S':
+			max_mem = parse_size(progname, optarg);
 			break;
 		case 's':
 			opt_scatter = true;
@@ -541,6 +603,9 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (buffer_size > max_mem)
+		errx(1, "Buffer size %d is larger than the program's maximum memory limit %lu", buffer_size, max_mem);
 
 	if ((files = (struct sink_info *)malloc(MAX(1, argc) * sizeof(struct sink_info))) == NULL)
 		err(1, NULL);

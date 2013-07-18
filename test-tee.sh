@@ -30,7 +30,7 @@ ensure_similar_buffers()
 		}
 		NR == 1 {ref = \$$n}
 		NR == 2 {test = \$$n}
-		END { exit (abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" $2 $3
+		END { exit (abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
 		then
 			echo "$1: Fields $n of $2 and $3 differ by more than 10%" 1>&2
 			exit 1
@@ -83,14 +83,14 @@ do
 
 	# Test buffering
 	# When -l is supported add, say, -l 16
-	for flags2 in ''
+	for flags2 in '' '-S 2k'
 	do
-		test=tee-fastout$flags$flags2
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 >/dev/null 2>test/tee/$test.test
-		ensure_similar_buffers "$test" test/tee/$test.ok test/tee/$test.test
-		test=tee-lagout$flags$flags2
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 2>test/tee/$test.test | (sleep 1 ; cat >/dev/null)
-		ensure_similar_buffers "$test" test/tee/$test.ok test/tee/$test.test
+		test="tee-fastout$flags$flags2"
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 >/dev/null 2>"test/tee/$test.test"
+		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
+		test="tee-lagout$flags$flags2"
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 2>"test/tee/$test.test" | (sleep 1 ; cat >/dev/null)
+		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
 	done
 done
 exit 0

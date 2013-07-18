@@ -1,4 +1,4 @@
-.TH SGSH-TEE 1 "19 March 2013"
+.TH SGSH-TEE 1 "17 July 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -18,8 +18,9 @@
 sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 .SH SYNOPSIS
 \fBsgsh-tee\fP
-[\fB\-b\fP \fIsize\fP]
+[\fB\-b\fP \fIbuffer-size\fP]
 [\fB\-ims\fP]
+[\fB\-S\fP \fImemory-size\fP]
 [\fB\-t\fP \fIcharacter\fP]
 [\fIfile ...\fP]
 .SH DESCRIPTION
@@ -39,12 +40,15 @@ to allow the creation of plug-compatible replacements
 implementing different record types.
 
 .SH OPTIONS
-.IP "\fB\-b\fP \fIsize\fP"
+.IP "\fB\-b\fP \fIbuffer-size\fP"
 Specify the size of the buffer to use.
 This is by default 1MB.
 Buffers are chained together when more space is required,
 so the main utility of this option is to decrease the buffer
 size in memory-constrained environments.
+The specified number can be suffixed with
+\fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
+The specified buffer size must be less than the program's maximum memory size.
 
 .IP "\fB\-i\fP"
 Implement input-side buffering.
@@ -69,6 +73,16 @@ will increase the number of processes that can operate concurrently.
 Provide memory use statistics on termination.
 This is mainly used for testing,
 to check against leaks of buffers.
+
+.IP "\fB\-S\fP \fImemory-size\fP"
+Specify the maximum size of memory to allocate for buffers.
+This is by default 256MB.
+When \fIsgsh-tee\fP exhausts this memory, it sleeps for one second
+to let its output buffers drain, and then tries again to allocate the
+required memory.
+The specified number can be suffixed with
+\fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
+The specified maximum memory size must be larger than the program's buffer size.
 
 .IP "\fB\-s\fP"
 Scatter the input fairly across the sinks, rather than copying it to all.
