@@ -41,7 +41,7 @@ do
 		do
 			gzip -dc $i
 		done |
-		awk -f log-grow.awk $GROW |
+		perl log-grow.pl $GROW |
 		case $PROG in
 		perl)
 			/usr/bin/time -v -o time/$DESC /usr/bin/perl wwwstats

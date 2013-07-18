@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/perl
 #
 # Grow the size of a web server log file by a factor of N,
 # which is specified as the first argument, by repeating each
@@ -20,19 +20,30 @@
 #  limitations under the License.
 #
 
-BEGIN { x = ARGV[1]; ARGC-- }
-{
+use strict;
+use warnings;
+
+# Reproducable results
+srand(0);
+
+my $x = $ARGV[0];
+shift;
+my @host;
+my @request;
+
+while (<>) {
 	print;
-	host[int(rand() * 1000)] = $1;
-	page[int(rand() * 1000)] = $7;
-        for (i = 0; i < x - 1; i++) {
-		hpos = int(rand() * 1000);
-		if (nhost = host[hpos])
-			$1 = nhost;
-		ppos = int(rand() * 1000);
-		if (npage = page[ppos])
-			$7 = npage;
-		print;
+
+	my ($host, $time, $request, $rest) = ($_ =~ m/^([^\s]+)(\s+[^"]+)(\"[^"]*\")(.*)$/);
+	$host[int(rand() * 1000)] = $host;
+	$request[int(rand() * 1000)] = $request;
+        for (my $i = 0; $i < $x - 1; $i++) {
+		my $hpos = int(rand() * 1000);
+		my $nhost;
+		$host = $nhost if ($nhost = $host[$hpos]);
+		my $ppos = int(rand() * 1000);
+		my $nrequest;
+		$request = $nrequest if ($nrequest = $request[$ppos]);
+		print $host, $time, $request, $rest;
 	}
 }
-
