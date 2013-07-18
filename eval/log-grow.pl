@@ -44,6 +44,6 @@ while (<>) {
 		my $ppos = int(rand() * 1000);
 		my $nrequest;
 		$request = $nrequest if ($nrequest = $request[$ppos]);
-		print $host, $time, $request, $rest;
+		print $host, $time, $request, $rest, "\n";
 	}
 }
