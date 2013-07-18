@@ -9,6 +9,8 @@ sgsh-ps
 sgsh-tee
 sgsh-readval
 sgsh-writeval
+sgsh-httpval
+sgsh-monitor
 charcount
 sgsh.html
 sgsh-httpval.html
