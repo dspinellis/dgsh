@@ -41,10 +41,10 @@ do
 		do
 			gzip -dc $i
 		done |
-		./log-grow.awk $GROW |
+		awk -f log-grow.awk $GROW |
 		case $PROG in
 		perl)
-			/usr/bin/time -v -o time/$DESC ./wwwstats
+			/usr/bin/time -v -o time/$DESC /usr/bin/perl wwwstats
 			;;
 		sgsh)
 			/usr/bin/time -v -o time/$DESC ../sgsh -p .. ../example/web-log-report.sh
