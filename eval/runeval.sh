@@ -36,12 +36,12 @@ while :
 do
 	for PROG in sgsh perl
 	do
-		DESC=$TYPE-$PROG-$GROW
+		DESC=web-$TYPE-$PROG-$GROW
 		for i in clarknet*.gz
 		do
 			gzip -dc $i
 		done |
-		perl log-grow.pl $GROW |
+		/usr/bin/perl log-grow.pl $GROW |
 		case $PROG in
 		perl)
 			/usr/bin/time -v -o time/$DESC /usr/bin/perl wwwstats
