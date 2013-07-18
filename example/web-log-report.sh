@@ -68,7 +68,7 @@ scatter |{
 
 		# Top 20 TLDs
 		-| awk -F. '$NF !~ /^[0-9]/ {print $NF}' |
-			tee tld | sort | toplist 20 |>/stream/top20TLD
+			sort | toplist 20 |>/stream/top20TLD
 
 		# Domains
 		-| awk -F. 'BEGIN {OFS = "."}
