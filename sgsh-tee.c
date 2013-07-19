@@ -44,6 +44,7 @@ static int buffer_size = 1024 * 1024;
 
 static char **buffers;
 
+/* The position up to which we have read data */
 static off_t source_pos_read;
 
 /* A buffer that can be used for reading */
@@ -117,6 +118,7 @@ memory_allocate(int pool)
 	if (pool < allocated_pool_end)
 		return true;
 
+	DPRINTF("Buffers allocated: %d Freed: %d", buffers_allocated, buffers_freed);
 	/* Check soft memory limit through allocated plus requested memory. */
 	if (((buffers_allocated - buffers_freed) + (allocated_pool_end - pool + 1)) * buffer_size > max_mem)
 		return false;
@@ -164,6 +166,8 @@ memory_free(off_t pos)
 	int pool_end = pos / buffer_size;
 	int i;
 
+	DPRINTF("memory_free: pos = %ld, begin=%d end=%d",
+		(long)pos, pool_begin, pool_end);
 	for (i = pool_begin; i < pool_end; i++) {
 		free(buffers[i]);
 		buffers_freed++;
@@ -242,11 +246,19 @@ sink_buffer_length(off_t start, off_t end)
 }
 
 
+/* The result of the following read operation. */
+enum read_result {
+	read_ok,	/* Normal read */
+	read_oom,	/* Out of buffer memory */
+	read_again,	/* EAGAIN */
+	read_eof,	/* EOF (0 bytes read) */
+};
+
 /*
  * Read from the source into the memory buffer
  * Return the number of bytes read, or -1 on end of file.
  */
-static size_t
+static enum read_result
 source_read(fd_set *source_fds)
 {
 	int n;
@@ -254,21 +266,22 @@ source_read(fd_set *source_fds)
 
 	if (!source_buffer(source_pos_read, &b)) {
 		/* Provide some time for the output to drain. */
+		DPRINTF("Memory full; sleeping");
 		sleep(1);
-		return 0;
+		return read_oom;
 	}
 	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
 			DPRINTF("EAGAIN on standard input");
-			return 0;
+			return read_again;
 		default:
 			err(3, "Read from standard input");
 		}
 	source_pos_read += n;
 	DPRINTF("Read %d out of %d bytes", n, b.size);
 	/* Return -1 on EOF */
-	return n ? n : -1;
+	return n ? read_ok : read_eof;
 }
 
 /*
@@ -450,8 +463,8 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 				si->pos_written += n;
 				written += n;
 			}
-			DPRINTF("Wrote %d out of %d bytes for file %s",
-				n, b.size, si->name);
+			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu",
+				n, b.size, si->name, si->pos_written);
 		}
 		if (si->active)
 			min_pos = MIN(min_pos, si->pos_written);
@@ -713,13 +726,14 @@ main(int argc, char *argv[])
 			/* Read, if possible. */
 			if (FD_ISSET(STDIN_FILENO, &source_fds))
 				switch (source_read(&source_fds)) {
-				case -1:
+				case read_eof:
 					reached_eof = true;
 					state = drain_ib;
 					break;
-				case 0:
+				case read_oom:
+				case read_again:
 					break;
-				default:
+				case read_ok:
 					state = read_ib;
 					break;
 				}
@@ -728,13 +742,14 @@ main(int argc, char *argv[])
 			/* Read, if possible. */
 			if (FD_ISSET(STDIN_FILENO, &source_fds))
 				switch (source_read(&source_fds)) {
-				case -1:
+				case read_eof:
 					reached_eof = true;
 					state = drain_ob;
 					break;
-				case 0:
+				case read_oom:
+				case read_again:
 					break;
-				default:
+				case read_ok:
 					state = drain_ob;
 					break;
 				}
