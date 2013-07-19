@@ -92,5 +92,16 @@ do
 		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -m $flags $flags2 -b 1024 2>"test/tee/$test.test" | (sleep 1 ; cat >/dev/null)
 		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
 	done
+
+	# Test low-memory behavior
+	rm -f try try2
+	mkfifo try try2
+	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | ./sgsh-tee $flags -b 512 -S 2k try try2 &
+	cat try2 >try2.out &
+	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
+	wait
+	ensure_same "Low-memory (try) $flags" lines try.out
+	ensure_same "Low-memory (try2) $flags" lines try2.out
+	rm -f lines try try2 try.out try2.out
 done
 exit 0
