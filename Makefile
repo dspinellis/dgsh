@@ -58,7 +58,7 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/spell-highlight/out.ok test/spell-highlight/out.test
 	./sgsh -p . example/map-hierarchy.sh test/map-hierarchy/in/a test/map-hierarchy/in/b test/map-hierarchy/out.test
 	diff -rb test/map-hierarchy/out.ok test/map-hierarchy/out.test
-	./sgsh -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test
+	./sgsh -p . example/commit-stats.sh --until '{2013-07-15 23:59 UTC}' >test/commit-stats/out.test
 	diff -b test/commit-stats/out.ok test/commit-stats/out.test
 	./sgsh -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test
@@ -72,7 +72,7 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/spell-highlight/out.ok test/spell-highlight/out.test
 	./sgsh -m -p . example/map-hierarchy.sh test/map-hierarchy/in/a test/map-hierarchy/in/b test/map-hierarchy/out.test
 	diff -rb test/map-hierarchy/out.ok test/map-hierarchy/out.test
-	./sgsh -m -p . example/commit-stats.sh --until '{2013-07-15}' >test/commit-stats/out.test
+	./sgsh -m -p . example/commit-stats.sh --until '{2013-07-15 23:59 UTC}' >test/commit-stats/out.test
 	diff -b test/commit-stats/out.ok test/commit-stats/out.test
 	./sgsh -m -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	diff -b test/code-metrics/out.ok test/code-metrics/out.test

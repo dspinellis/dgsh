@@ -29,7 +29,7 @@ forder()
 	sort -rn
 }
 
-git log --format="%an:%aD" "$@" |
+git log --format="%an:%ad" --date=default "$@" |
 scatter |{
 	-| awk -F: '{print $1}' | forder |>/stream/authors
 	-| awk -F: '{print substr($2, 1, 3)}' | forder |>/stream/days
