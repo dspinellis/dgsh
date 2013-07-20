@@ -19,8 +19,10 @@ sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 .SH SYNOPSIS
 \fBsgsh-tee\fP
 [\fB\-b\fP \fIbuffer-size\fP]
-[\fB\-ims\fP]
-[\fB\-S\fP \fImemory-size\fP]
+[\fB\-IMs\fP]
+[\fB\-i\fP \fIinput-file\fP]
+[\fB\-o\fP \fIoutput-file\fP]
+[\fB\-m\fP \fImemory-size\fP]
 [\fB\-t\fP \fIcharacter\fP]
 [\fIfile ...\fP]
 .SH DESCRIPTION
@@ -50,7 +52,7 @@ The specified number can be suffixed with
 \fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
 The specified buffer size must be less than the program's maximum memory size.
 
-.IP "\fB\-i\fP"
+.IP "\fB\-I\fP"
 Implement input-side buffering.
 By default \fIsgsh-tee\fP will buffer only as much input data,
 as is needed to avoid starving one of the specified sinks.
@@ -69,12 +71,26 @@ In such a case adding \fIsgsh-tee\fP with input side buffering
 enabled at the end of each data pipeline,
 will increase the number of processes that can operate concurrently.
 
-.IP "\fB\-m\fP"
+.IP "\fB\-i\fP \fIinput-file\fP"
+Read input from the specified source file, rather than the standard input.
+The option can be provided multiple times to specify files that
+will be read sequentially.
+All input files will be opened at the beginning of the program's operation
+in order to unblock the execution of asynchronous shell commands
+that redirect their output to the corresponding named pipes.
+
+.IP "\fB\-M\fP"
 Provide memory use statistics on termination.
 This is mainly used for testing,
 to check against leaks of buffers.
 
-.IP "\fB\-S\fP \fImemory-size\fP"
+.IP "\fB\-o\fP \fIoutput-file\fP"
+Write copies of the input data to the specified sink file,
+rather than the standard output.
+The option can be provided multiple times to specify multiple files
+where input data will be copied.
+
+.IP "\fB\-m\fP \fImemory-size\fP"
 Specify the maximum size of memory to allocate for buffers.
 This is by default 256MB.
 When \fIsgsh-tee\fP exhausts this memory, it sleeps for one second

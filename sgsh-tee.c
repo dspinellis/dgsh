@@ -75,13 +75,21 @@ static bool reached_eof = false;
 /* Record terminator */
 static char rt = '\n';
 
-/* Information regarding the files we write to */
+/* Linked list of files we write to */
 struct sink_info {
+	struct sink_info *next;	/* Next list element */
 	char *name;		/* Output file name */
 	int fd;			/* Output file descriptor */
 	off_t pos_written;	/* Position up to which written */
 	off_t pos_to_write;	/* Position up to which to write */
 	bool active;		/* True if this sink is still active */
+};
+
+/* Linked list of files we read from */
+struct source_info {
+	struct source_info *next;	/* Next list element */
+	char *name;			/* Input file name */
+	int fd;				/* Input file descriptor */
 };
 
 /*
@@ -205,17 +213,17 @@ source_buffer(off_t pos, /* OUT */ struct buffer *b)
  * When processing lines, b.size can be 0
  */
 static struct buffer
-sink_buffer(struct sink_info *si)
+sink_buffer(struct sink_info *ofp)
 {
 	struct buffer b;
-	int pool = si->pos_written / buffer_size;
-	size_t pool_offset = si->pos_written % buffer_size;
-	size_t source_bytes = si->pos_to_write - si->pos_written;
+	int pool = ofp->pos_written / buffer_size;
+	size_t pool_offset = ofp->pos_written % buffer_size;
+	size_t source_bytes = ofp->pos_to_write - ofp->pos_written;
 
 	b.p = buffers[pool] + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)si->pos_written, (long)si->pos_to_write, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
 	return b;
 }
 
@@ -259,27 +267,27 @@ enum read_result {
  * Return the number of bytes read, or -1 on end of file.
  */
 static enum read_result
-source_read(fd_set *source_fds)
+source_read(struct source_info *ifp)
 {
 	int n;
 	struct buffer b;
 
 	if (!source_buffer(source_pos_read, &b)) {
-		/* Provide some time for the output to drain. */
 		DPRINTF("Memory full; sleeping");
+		/* Provide some time for the output to drain. */
 		sleep(1);
 		return read_oom;
 	}
-	if ((n = read(STDIN_FILENO, b.p, b.size)) == -1)
+	if ((n = read(ifp->fd, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF("EAGAIN on standard input");
+			DPRINTF("EAGAIN on %s", ifp->name);
 			return read_again;
 		default:
-			err(3, "Read from standard input");
+			err(3, "Read from %s", ifp->name);
 		}
 	source_pos_read += n;
-	DPRINTF("Read %d out of %d bytes", n, b.size);
+	DPRINTF("Read %d out of %d bytes from %s", n, b.size, ifp->name);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
 }
@@ -289,9 +297,9 @@ source_read(fd_set *source_fds)
  * by adjusting their pos_written and pos_to_write pointers.
  */
 static void
-allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
+allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 {
-	struct sink_info *si;
+	struct sink_info *ofp;
 	int available_sinks = 0;
 	off_t pos_assigned = 0;
 	size_t available_data, data_per_sink;
@@ -300,8 +308,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 
 	/* Easy case: distribute to all files. */
 	if (!opt_scatter) {
-		for (si = files; si < files + nfiles; si++)
-			si->pos_to_write = source_pos_read;
+		for (ofp = files; ofp; ofp = ofp->next)
+			ofp->pos_to_write = source_pos_read;
 		return;
 	}
 
@@ -310,9 +318,9 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 	 */
 
 	/* Determine amount of fresh data to write and number of available sinks. */
-	for (si = files; si < files + nfiles; si++) {
-		pos_assigned = MAX(pos_assigned, si->pos_to_write);
-		if (si->pos_written == si->pos_to_write && FD_ISSET(si->fd, sink_fds))
+	for (ofp = files; ofp; ofp = ofp->next) {
+		pos_assigned = MAX(pos_assigned, ofp->pos_to_write);
+		if (ofp->pos_written == ofp->pos_to_write && FD_ISSET(ofp->fd, sink_fds))
 			available_sinks++;
 	}
 
@@ -328,9 +336,9 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 
 	/* Assign data to sinks. */
 	data_per_sink = available_data / available_sinks;
-	for (si = files; si < files + nfiles; si++) {
+	for (ofp = files; ofp; ofp = ofp->next) {
 		/* Move to next file if this has data to write, or isn't ready. */
-		if (si->pos_written != si->pos_to_write || !FD_ISSET(si->fd, sink_fds))
+		if (ofp->pos_written != ofp->pos_to_write || !FD_ISSET(ofp->fd, sink_fds))
 			continue;
 
 		DPRINTF("pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld",
@@ -342,10 +350,10 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 		else
 			data_to_assign = data_per_sink;
 		/*
-		 * Assign data_to_assign to *si (pos_written, pos_to_write),
+		 * Assign data_to_assign to *ofp (pos_written, pos_to_write),
 		 * and advance pos_assigned.
 		 */
-		si->pos_written = pos_assigned;		/* Initially nothing has been written. */
+		ofp->pos_written = pos_assigned;		/* Initially nothing has been written. */
 		if (block_len == 0) {			/* Write whole lines */
 			if (available_data > buffer_size / 2 && !use_reliable) {
 				/*
@@ -394,9 +402,9 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 							break;
 						} else {
 							/* No newline found in buffer; defer writing. */
-							si->pos_to_write = pos_assigned;
-							DPRINTF("scatter to file[%d] no newline from %ld to %ld",
-								si - files, (long)pos_assigned, (long)data_end);
+							ofp->pos_to_write = pos_assigned;
+							DPRINTF("scatter to file[%s] no newline from %ld to %ld",
+								ofp->name, (long)pos_assigned, (long)data_end);
 							return;
 						}
 					}
@@ -413,9 +421,9 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
 			}
 		} else
 			pos_assigned += data_to_assign;
-		si->pos_to_write = pos_assigned;
-		DPRINTF("scatter to file[%d] pos_written=%ld pos_to_write=%ld",
-			si - files, (long)si->pos_written, (long)si->pos_to_write);
+		ofp->pos_to_write = pos_assigned;
+		DPRINTF("scatter to file[%s] pos_written=%ld pos_to_write=%ld",
+			ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write);
 	}
 }
 
@@ -426,48 +434,48 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files, int nfiles)
  * Return the number of bytes written.
  */
 static size_t
-sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
+sink_write(fd_set *sink_fds, struct sink_info *files)
 {
-	struct sink_info *si;
+	struct sink_info *ofp;
 	off_t min_pos = source_pos_read;
 	size_t written = 0;
 
-	allocate_data_to_sinks(sink_fds, files, nfiles);
-	for (si = files; si < files + nfiles; si++) {
-		if (si->active && FD_ISSET(si->fd, sink_fds)) {
+	allocate_data_to_sinks(sink_fds, files);
+	for (ofp = files; ofp; ofp = ofp->next) {
+		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
 			struct buffer b;
 
-			b = sink_buffer(si);
+			b = sink_buffer(ofp);
 			if (b.size == 0)
 				/* Can happen when a line spans a buffer */
 				n = 0;
 			else
-				n = write(si->fd, b.p, b.size);
+				n = write(ofp->fd, b.p, b.size);
 			if (n < 0)
 				switch (errno) {
 				/* EPIPE is acceptable, for the sink's reader can terminate early. */
 				case EPIPE:
-					si->active = false;
-					(void)close(si->fd);
-					DPRINTF("EPIPE for %s", si->name);
+					ofp->active = false;
+					(void)close(ofp->fd);
+					DPRINTF("EPIPE for %s", ofp->name);
 					break;
 				case EAGAIN:
-					DPRINTF("EAGAIN for %s", si->name);
+					DPRINTF("EAGAIN for %s", ofp->name);
 					n = 0;
 					break;
 				default:
-					err(2, "Error writing to %s", si->name);
+					err(2, "Error writing to %s", ofp->name);
 				}
 			else {
-				si->pos_written += n;
+				ofp->pos_written += n;
 				written += n;
 			}
 			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu",
-				n, b.size, si->name, si->pos_written);
+				n, b.size, ofp->name, ofp->pos_written);
 		}
-		if (si->active)
-			min_pos = MIN(min_pos, si->pos_written);
+		if (ofp->active)
+			min_pos = MIN(min_pos, ofp->pos_written);
 	}
 	memory_free(min_pos);
 	DPRINTF("Wrote %d total bytes", written);
@@ -477,11 +485,13 @@ sink_write(fd_set *sink_fds, struct sink_info *files, int nfiles)
 static void
 usage(const char *name)
 {
-	fprintf(stderr, "Usage %s [-b size] [-i] [-l] [-m] [-S size] [-s] [-t char] [file ...]\n"
+	fprintf(stderr, "Usage %s [-b size] [-i file] [-IMs] [-o file] [-m size] [-t char]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
-		"-i"		"\tInput-side buffering\n"
-		"-m"		"\tProvide memory use statistics on termination\n"
-		"-S size[k|M|G]""\tSpecify the maximum buffer memory size\n"
+		"-I"		"\tInput-side buffering\n"
+		"-i file"	"\tGather input from specified file\n"
+		"-m size[k|M|G]""\tSpecify the maximum buffer memory size\n"
+		"-M"		"\tProvide memory use statistics on termination\n"
+		"-o file"	"\tScatter output to specified file\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n",
 		name);
@@ -511,17 +521,17 @@ non_block(int fd, const char *name)
  * in human-readable form
  */
 static void
-show_select_args(const char *msg, fd_set *source_fds, fd_set *sink_fds, struct sink_info *files, int n)
+show_select_args(const char *msg, struct source_info *ifp, fd_set *source_fds, fd_set *sink_fds, struct sink_info *files)
 {
 	#ifdef DEBUG
-	struct sink_info *si;
+	struct sink_info *ofp;
 
 	fprintf(stderr, "%s: ", msg);
-	if (FD_ISSET(STDIN_FILENO, source_fds))
-			fprintf(stderr, "stdin ");
-	for (si = files; si < files + n; si++)
-		if (FD_ISSET(si->fd, sink_fds))
-			fprintf(stderr, "%s ", si->name);
+	if (FD_ISSET(ifp->fd, source_fds))
+			fprintf(stderr, "%s ", ifp->name);
+	for (ofp = files; ofp; ofp = ofp->next)
+		if (FD_ISSET(ofp->fd, sink_fds))
+			fprintf(stderr, "%s ", ofp->name);
 	fputc('\n', stderr);
 	#endif
 }
@@ -580,25 +590,56 @@ int
 main(int argc, char *argv[])
 {
 	int max_fd = 0;
-	struct sink_info *files;
+	struct sink_info *ofiles = NULL, *ofp;
+	struct source_info *ifiles = NULL, *ifp, *end = NULL;
 	int ch;
 	const char *progname = argv[0];
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:S:simt:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:S:sIi:Mm:o:t:")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = (int)parse_size(progname, optarg);
 			break;
-		case 'i':
+		case 'I':
 			state = read_ib;
 			break;
-		case 'm':	/* Provide memory use statistics on termination */
+		case 'i':	/* Specify input file */
+			if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
+				err(1, NULL);
+			if ((ifp->fd = open(optarg, O_RDONLY)) < 0)
+				err(2, "Error opening %s", optarg);
+			max_fd = MAX(ifp->fd, max_fd);
+			ifp->name = strdup(optarg);
+			non_block(ifp->fd, ifp->name);
+
+			/* At file at the end of the linked list */
+			ifp->next = NULL;
+			if (end)
+				end->next = ifp;
+			else
+				ifiles = ifp;
+			end = ifp;
+			break;
+		case 'm':
+			max_mem = parse_size(progname, optarg);
+			break;
+		case 'M':	/* Provide memory use statistics on termination */
 			opt_memory_stats = true;
 			break;
-		case 'S':
-			max_mem = parse_size(progname, optarg);
+		case 'o':	/* Specify output file */
+			if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
+				err(1, NULL);
+			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0)
+				err(2, "Error opening %s", optarg);
+			max_fd = MAX(ofp->fd, max_fd);
+			ofp->name = strdup(optarg);
+			ofp->active = true;
+			ofp->pos_written = ofp->pos_to_write = 0;
+			non_block(ofp->fd, ofp->name);
+			ofp->next = ofiles;
+			ofiles = ofp;
 			break;
 		case 's':
 			opt_scatter = true;
@@ -617,43 +658,46 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	if (argc)
+		usage(progname);
+
 	if (buffer_size > max_mem)
 		errx(1, "Buffer size %d is larger than the program's maximum memory limit %lu", buffer_size, max_mem);
 
-	if ((files = (struct sink_info *)malloc(MAX(1, argc) * sizeof(struct sink_info))) == NULL)
-		err(1, NULL);
-
-	if (argc == 0) {
+	if (ofiles == NULL) {
 		/* Output to stdout */
-		files[0].fd = max_fd = STDOUT_FILENO;
-		files[0].name = "standard output";
-		files[0].active = true;
-		files[0].pos_written = files[0].pos_to_write = 0;
-		non_block(files[0].fd, files[0].name);
-		argc = 1;
-	} else {
-		int i;
-
-		/* Open files */
-		for (i = 0; i < argc; i++) {
-			if ((files[i].fd = open(argv[i], O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0)
-				err(2, "Error opening %s", argv[i]);
-			max_fd = MAX(files[i].fd, max_fd);
-			files[i].name = argv[i];
-			files[i].active = true;
-			files[i].pos_written = files[i].pos_to_write = 0;
-			non_block(files[i].fd, files[i].name);
-		}
+		if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
+			err(1, NULL);
+		ofp->fd = STDOUT_FILENO;
+		max_fd = MAX(ofp->fd, max_fd);
+		ofp->name = "standard output";
+		ofp->active = true;
+		ofp->pos_written = ofp->pos_to_write = 0;
+		non_block(ofp->fd, ofp->name);
+		ofp->next = ofiles;
+		ofiles = ofp;
 	}
 
-	non_block(STDIN_FILENO, "standard input");
+	if (ifiles == NULL) {
+		/* Input from stdin */
+		if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
+			err(1, NULL);
+		ifp->fd = STDIN_FILENO;
+		max_fd = MAX(ifp->fd, max_fd);
+		ifp->name = "standard input";
+		non_block(ifp->fd, ifp->name);
+		ifp->next = ifiles;
+		ifiles = ifp;
+	}
+
 
 	/* We will handle SIGPIPE explicitly when calling write(2). */
 	signal(SIGPIPE, SIG_IGN);
 
+	ifp = ifiles;
+
 	/* Copy source to sink without allowing any single file to block us. */
 	for (;;) {
-		struct sink_info *si;
 		fd_set source_fds;
 		fd_set sink_fds;
 
@@ -663,32 +707,32 @@ main(int argc, char *argv[])
 		FD_ZERO(&sink_fds);
 
 		if (!reached_eof && (state == read_ib || state == read_ob))
-			FD_SET(STDIN_FILENO, &source_fds);
+			FD_SET(ifp->fd, &source_fds);
 
-		for (si = files; si < files + argc; si++)
-			if (si->active) {
+		for (ofp = ofiles; ofp; ofp = ofp->next)
+			if (ofp->active) {
 				switch (state) {
 				case read_ib:
 				case read_ob:
-					if (si->pos_written < si->pos_to_write)
-						FD_SET(si->fd, &sink_fds);
+					if (ofp->pos_written < ofp->pos_to_write)
+						FD_SET(ofp->fd, &sink_fds);
 					break;
 				case drain_ib:
 				case drain_ob:
-					FD_SET(si->fd, &sink_fds);
+					FD_SET(ofp->fd, &sink_fds);
 					break;
 				}
 			}
 
 
 		/* Block until we can read or write. */
-		show_select_args("Entering select", &source_fds, &sink_fds, files, argc);
+		show_select_args("Entering select", ifp, &source_fds, &sink_fds, ofiles);
 		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
 			err(3, "select");
-		show_select_args("Select returned", &source_fds, &sink_fds, files, argc);
+		show_select_args("Select returned", ifp, &source_fds, &sink_fds, ofiles);
 
 		/* Write to all file descriptors that accept writes. */
-		if (sink_write(&sink_fds, files, argc) > 0)
+		if (sink_write(&sink_fds, ofiles) > 0)
 			/*
 			 * If we wrote something, we made progress on the
 			 * downstream end.  Loop without reading to avoid
@@ -699,17 +743,17 @@ main(int argc, char *argv[])
 		if (reached_eof) {
 			int active_fds = 0;
 
-			for (si = files; si < files + argc; si++)
-				if (si->active) {
-					if (si->pos_written < si->pos_to_write)
+			for (ofp = ofiles; ofp; ofp = ofp->next)
+				if (ofp->active) {
+					if (ofp->pos_written < ofp->pos_to_write)
 						active_fds++;
 					else {
 						DPRINTF("Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld",
-							si->name, (long)si->pos_written, (long)source_pos_read);
+							ofp->name, (long)ofp->pos_written, (long)source_pos_read);
 						/* No more data to write; close fd to avoid deadlocks downstream. */
-						if (close(si->fd) == -1)
-							err(2, "Error closing %s", si->name);
-						si->active = false;
+						if (close(ofp->fd) == -1)
+							err(2, "Error closing %s", ofp->name);
+						ofp->active = false;
 					}
 				}
 			if (active_fds == 0) {
@@ -724,11 +768,14 @@ main(int argc, char *argv[])
 		switch (state) {
 		case read_ib:
 			/* Read, if possible. */
-			if (FD_ISSET(STDIN_FILENO, &source_fds))
-				switch (source_read(&source_fds)) {
+			if (FD_ISSET(ifp->fd, &source_fds))
+				switch (source_read(ifp)) {
 				case read_eof:
-					reached_eof = true;
-					state = drain_ib;
+					ifp = ifp->next;
+					if (ifp == NULL) {
+						reached_eof = true;
+						state = drain_ib;
+					}
 					break;
 				case read_oom:
 				case read_again:
@@ -740,11 +787,14 @@ main(int argc, char *argv[])
 			break;
 		case read_ob:
 			/* Read, if possible. */
-			if (FD_ISSET(STDIN_FILENO, &source_fds))
-				switch (source_read(&source_fds)) {
+			if (FD_ISSET(ifp->fd, &source_fds))
+				switch (source_read(ifp)) {
 				case read_eof:
-					reached_eof = true;
-					state = drain_ob;
+					ifp = ifp->next;
+					if (ifp == NULL) {
+						reached_eof = true;
+						state = drain_ib;
+					}
 					break;
 				case read_oom:
 				case read_again:

@@ -651,7 +651,7 @@ scatter_code_and_pipes_code
 		$tee_args .= ' -l' if ($scatter_opts{'l'});
 			for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
 				for (my $p = 0; $p < $parallel; $p++) {
-					$tee_args .= " \$SGDIR/npi-$scatter_n.$cmd_n.$p";
+					$tee_args .= " -o \$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				}
 			}
 		# Obtain tee program
@@ -664,7 +664,9 @@ scatter_code_and_pipes_code
 			error("-S not compatible with -s", $command->{line_number}) if ($scatter_opts{'s'});
 			# The fdn redirection allows piping into the scatter block
 			$code .= "cat <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
-			my @pipes2 = split(/[\s\\]+/, $tee_args);
+			my $pipes = $tee_args;
+			$pipes =~ s/-\w//;
+			my @pipes2 = split(/[\s\\]+/, $pipes);
 			# To keep the code simple, we link the one output file with the rest
 			$code .= " >$pipes2[1]\n";
 			for my $name (@pipes2[2 .. $#pipes2]) {
@@ -701,7 +703,8 @@ scatter_code_and_pipes_code
 			if ($opt_m && $c->{input} eq 'scatter') {
 				# Split the data into a monitoring and a use path
 				$monitor = '.use';
-				$code .= qq{${opt_p}sgsh-tee \$SGDIR/npi-$scatter_n.$cmd_n.$p.use \$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
+				# Use tee(1) here to achieve tight monitoring
+				$code .= qq{tee \$SGDIR/npi-$scatter_n.$cmd_n.$p.use >\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.use";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
 				$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n];
@@ -735,7 +738,7 @@ scatter_code_and_pipes_code
 			# that the downstream merge won't block waiting for
 			# one of them and thus also block the other upstream
 			# ones.
-			$code .= " | ${opt_p}sgsh-tee -i"
+			$code .= " | ${opt_p}sgsh-tee -I"
 				if ($parallel > 1 && !$scatter_opts{'d'});
 
 			# Closing brace to redirect I/O as if the commands were one
@@ -769,7 +772,7 @@ scatter_code_and_pipes_code
 				} else {
 					if ($opt_m) {
 						# Pipe to monitor process and close subshell bracket
-						$code .= qq[ | ${opt_p}sgsh-tee \$SGDIR/npfo-$c->{file_name}.$p \$SGDIR/npfo-$c->{file_name}.$p.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
+						$code .= qq[ | tee \$SGDIR/npfo-$c->{file_name}.$p >\$SGDIR/npfo-$c->{file_name}.$p.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
@@ -787,7 +790,8 @@ scatter_code_and_pipes_code
 					$code .= ' |' unless $c->{body} eq '';
 					if ($opt_m) {
 						# Pipe to monitor process and close subshell bracket
-						$code .= qq[${opt_p}sgsh-tee \$SGDIR/nps-$c->{store_name}.use \$SGDIR/nps-$c->{store_name}.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
+						# Use tee(1) here to achieve tight monitoring
+						$code .= qq[tee \$SGDIR/nps-$c->{store_name}.use >\$SGDIR/nps-$c->{store_name}.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n];
