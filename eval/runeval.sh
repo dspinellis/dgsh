@@ -37,6 +37,10 @@ do
 	for PROG in sgsh perl
 	do
 		DESC=web-$TYPE-$PROG-$GROW
+		if [ -r err/$DESC ]
+		then
+			continue
+		fi
 		for i in clarknet*.gz
 		do
 			gzip -dc $i
