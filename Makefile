@@ -82,6 +82,7 @@ test-sgsh: $(EXECUTABLES)
 	diff -b test/word-properties/out.ok test/word-properties/out.test
 	./sgsh -m -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >test/compress-compare/out.test
 	diff -b test/compress-compare/out.ok test/compress-compare/out.test
+	for i in example/* ; do echo Syntax check $$i ; if ! ./sgsh -n $$i ; then break ; fi ; done
 
 test-serial: $(EXECUTABLES)
 	./sgsh -S -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test

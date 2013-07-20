@@ -310,10 +310,7 @@ print $output_fh $code;
 # -n only checks for syntax errors
 my @args = ($opt_s, '-n', '-a', $output_filename, @ARGV);
 
-if ($opt_n) {
-	print join(' ', @args), "\n";
-	exit 0;
-}
+print join(' ', @args), "\n" if ($opt_n);
 
 exit 0 if ($opt_o);
 
@@ -328,6 +325,8 @@ if ($? == -1) {
 	print STDERR "Syntax error in generated script $output_filename while executing $opt_s\n";
 	exit 1;
 }
+
+exit 0 if ($opt_n);
 
 # Now the real run
 @args = ($opt_s, '-a', $output_filename, @ARGV);
