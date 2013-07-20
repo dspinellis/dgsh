@@ -676,7 +676,7 @@ scatter_code_and_pipes_code
 			# Scatter code: asynchronous tee to named pipes
 			# The fdn redirection allows piping into the scatter block
 			$tee_args .= " <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
-			$code .= qq[$monitor_open_bracket$tee_prog $tee_args $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_scatter_pid\n] unless ($opt_S);
+			$code .= qq[$monitor_open_bracket$tee_prog $tee_args $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_scatter_pid\n];
 		}
 	}
 
@@ -725,12 +725,7 @@ scatter_code_and_pipes_code
 				$code .= ' { ';
 			}
 
-			# Substitute /stream/... gather points with corresponding named pipe
-			while ($body =~ m|/stream/(\w+)|) {
-				my $file_name = $1;
-				$body =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
-			}
-			$code .= $body;
+			$code .= substitute_streams_and_stores($body);
 
 			# Buffer output if parallel scatter
 			# Parallel execution probably implies high-latency
@@ -742,7 +737,7 @@ scatter_code_and_pipes_code
 				if ($parallel > 1 && !$scatter_opts{'d'});
 
 			# Closing brace to redirect I/O as if the commands were one
-			$code .= ' ; } ';
+			$code .= "\n}";
 
 			# Generate input
 			if ($c->{input} eq 'none') {
@@ -812,6 +807,36 @@ scatter_code_and_pipes_code
 	return ($code, $pipes, $kvstores);
 }
 
+# Substitute the streams and stores in the passed command
+# with their underlying implementations and return the result
+sub
+substitute_streams_and_stores
+{
+	my ($command) = @_;
+
+	# Substitute a cat /stream/... ... command of at least two streams with an sgsh-tee -i command
+	# This avoids deadlocks by ensuring that all streams are opened when the concatenations starts
+	if ($command =~ m|\bcat(\s+/stream/\w+){2,}|) {
+		$command =~ s/\bcat\b/${opt_p}sgsh-tee/;
+		$command =~ s|(/stream/\w+)|-i $1|g;
+	}
+
+	# Substitute /stream/... gather points with the corresponding named pipe
+	while ($command =~ m|/stream/(\w+)|) {
+		my $file_name = $1;
+		$command =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+	}
+
+	if ($opt_S) {
+		# Sequential code
+		# Substitute store:name points with corresponding variable
+		$command =~ s|store:(\w+)|echo \$\{$1\}|g;
+	} else {
+		# Substitute store:name points with corresponding invocation of sgsh-reaval
+		$command =~ s|store:(\w+)|${opt_p}sgsh-readval -s \$SGDIR/$1|g;
+	}
+	return $command;
+}
 
 # Return gather code for the string passed as an argument
 sub
@@ -823,23 +848,7 @@ gather_code
 	$code .= "# Gather the results\n";
 
 	for my $c (@{$commands}) {
-		my $command = $c->{body};
-		# Substitute /stream/... gather points with corresponding named pipe
-		while ($command =~ m|/stream/(\w+)|) {
-			my $file_name = $1;
-			$command =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
-		}
-
-		if ($opt_S) {
-			# Sequential code
-			# Substitute store:name points with corresponding variable
-			$command =~ s|store:(\w+)|echo \$\{$1\}|g;
-		} else {
-			# Substitute store:name points with corresponding invocation of sgsh-reaval
-			$command =~ s|store:(\w+)|${opt_p}sgsh-readval -s \$SGDIR/$1|g;
-		}
-
-		$code .= $command;
+		$code .= substitute_streams_and_stores($c->{body});
 	}
 
 	return $code;
@@ -905,6 +914,11 @@ verify_code
 			}
 			$used_stream{$file_name} = 1;
 			$processed_stream = 1;
+		}
+
+		# Mark used stores
+		while ($body =~ s|store:(\w+)||) {
+			$used_store{$1} = 1;
 		}
 
 		if ($c->{output} eq 'scatter') {
