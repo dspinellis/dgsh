@@ -103,9 +103,9 @@ struct source_info {
  * The setting in effect is determined by the program's -i flag.
  */
 enum state {
-	read_ib,		/* Must read input */
+	read_ib,		/* Must read input; write if data available */
 	read_ob,
-	drain_ib,		/* Drain output */
+	drain_ib,		/* Don't read input; write if possible */
 	drain_ob,
 };
 
@@ -273,9 +273,8 @@ source_read(struct source_info *ifp)
 	struct buffer b;
 
 	if (!source_buffer(source_pos_read, &b)) {
-		DPRINTF("Memory full; sleeping");
+		DPRINTF("Memory full");
 		/* Provide some time for the output to drain. */
-		sleep(1);
 		return read_oom;
 	}
 	if ((n = read(ifp->fd, b.p, b.size)) == -1)
@@ -777,7 +776,9 @@ main(int argc, char *argv[])
 						state = drain_ib;
 					}
 					break;
-				case read_oom:
+				case read_oom:	/* Cannot fullfill promise to never block source, so bail out. */
+					errx(1, "Out of memory with input-side buffering specified");
+					break;
 				case read_again:
 					break;
 				case read_ok:
@@ -796,9 +797,9 @@ main(int argc, char *argv[])
 						state = drain_ib;
 					}
 					break;
-				case read_oom:
 				case read_again:
 					break;
+				case read_oom:	/* Allow buffers to empty. */
 				case read_ok:
 					state = drain_ob;
 					break;

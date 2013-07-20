@@ -30,7 +30,7 @@ ensure_similar_buffers()
 		}
 		NR == 1 {ref = \$$n}
 		NR == 2 {test = \$$n}
-		END { exit (abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
+		END { exit (ref + 0 != 0 && abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
 		then
 			echo "$1: Fields $n of $2 and $3 differ by more than 10%" 1>&2
 			exit 1
@@ -109,12 +109,17 @@ do
 	# Test low-memory behavior
 	rm -f try try2
 	mkfifo try try2
-	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | ./sgsh-tee $flags -b 512 -m 2k -o try -o try2 &
+	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | ./sgsh-tee $flags -b 512 -m 2k -o try -o try2 2>err &
 	cat try2 >try2.out &
 	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
 	wait
-	ensure_same "Low-memory (try) $flags" lines try.out
-	ensure_same "Low-memory (try2) $flags" lines try2.out
-	rm -f lines try try2 try.out try2.out
+	if [ "$flags" = '-I' ]
+	then
+		ensure_same "Low-memory $flags error" err test/tee/oom.err
+	else
+		ensure_same "Low-memory (try) $flags" lines try.out
+		ensure_same "Low-memory (try2) $flags" lines try2.out
+	fi
+	rm -f lines try try2 try.out try2.out err
 done
 exit 0
