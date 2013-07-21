@@ -36,7 +36,7 @@ while :
 do
 	for PROG in sgsh perl
 	do
-		DESC=log-$TYPE-$PROG-$GROW
+		DESC=web-$TYPE-$PROG-$GROW
 		if [ -r err/$DESC ]
 		then
 			continue
