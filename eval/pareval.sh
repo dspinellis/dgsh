@@ -38,20 +38,20 @@ for flags in '' -S
 do
 	if [ "$flags" = -S ]
 	then
-		SUFF=par-$TYPE-file
+		PREF=par-$TYPE-file
 	else
-		SUFF=par-$TYPE-sgsh
+		PREF=par-$TYPE-sgsh
 	fi
 
 	CODE=usr
 
-	DESC=metrics-$SUFF
+	DESC=par-$PREF-metrics
 	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/code-metrics.sh $CODE >out/$DESC 2>err/$DESC
 
-	DESC=dup-$SUFF
+	DESC=$PREF-dup
 	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/duplicate-files.sh $CODE >out/$DESC 2>err/$DESC
 
-	DESC=compress-$SUFF
+	DESC=$PREF-compress
 	tar cf - $CODE |
 	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/compress-compare.sh >out/$DESC 2>err/$DESC
 done
