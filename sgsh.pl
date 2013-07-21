@@ -664,7 +664,7 @@ scatter_code_and_pipes_code
 			# The fdn redirection allows piping into the scatter block
 			$code .= "cat <&$1 $1<&- " if ($command->{input} =~ m/fd([0-9]+)/);
 			my $pipes = $tee_args;
-			$pipes =~ s/-\w//;
+			$pipes =~ s/\s+-\w//g;
 			my @pipes2 = split(/[\s\\]+/, $pipes);
 			# To keep the code simple, we link the one output file with the rest
 			$code .= " >$pipes2[1]\n";
