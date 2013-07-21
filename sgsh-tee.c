@@ -101,12 +101,28 @@ struct source_info {
  * The output-side buffering will read input only if at least one
  * active output buffer is empty.
  * The setting in effect is determined by the program's -i flag.
+ *
+ * States read_ib and read_ob have select return:
+ * - if data is available for reading,
+ * - if the process can write out data already read,
+ * - not if the process can write to other fds
+ *
+ * States drain_ib and write_ob have select return
+ * if the process can write to any fd.
+ * Waiting on all output buffers (not only those with data)
+ * is needed to avoid starvation of processes with no pending output.
+ * If a program can accept data this process will then transition to
+ * read_* to read more data.
+ *
+ * State drain_ob has select return only if the process can write out
+ * data already read.
  */
 enum state {
 	read_ib,		/* Must read input; write if data available */
-	read_ob,
+	read_ob,		/* As above, but don't transition to write */
 	drain_ib,		/* Don't read input; write if possible */
-	drain_ob,
+	drain_ob,		/* Empty data buffers by writing */
+	write_ob,		/* Write data, before reading */
 };
 
 
@@ -554,6 +570,9 @@ show_state(enum state state)
 	case drain_ob:
 		s = "drain_ob";
 		break;
+	case write_ob:
+		s = "write_ob";
+		break;
 	}
 	fprintf(stderr, "State: %s\n", s);
 	#endif
@@ -713,11 +732,12 @@ main(int argc, char *argv[])
 				switch (state) {
 				case read_ib:
 				case read_ob:
+				case drain_ob:
 					if (ofp->pos_written < ofp->pos_to_write)
 						FD_SET(ofp->fd, &sink_fds);
 					break;
 				case drain_ib:
-				case drain_ob:
+				case write_ob:
 					FD_SET(ofp->fd, &sink_fds);
 					break;
 				}
@@ -731,13 +751,16 @@ main(int argc, char *argv[])
 		show_select_args("Select returned", ifp, &source_fds, &sink_fds, ofiles);
 
 		/* Write to all file descriptors that accept writes. */
-		if (sink_write(&sink_fds, ofiles) > 0)
+		if (sink_write(&sink_fds, ofiles) > 0) {
 			/*
 			 * If we wrote something, we made progress on the
 			 * downstream end.  Loop without reading to avoid
 			 * allocating excessive buffer memory.
 			 */
+			if (state == drain_ob)
+				state = write_ob;
 			continue;
+		}
 
 		if (reached_eof) {
 			int active_fds = 0;
@@ -764,6 +787,10 @@ main(int argc, char *argv[])
 			}
 		}
 
+		/*
+		 * Note that we never reach this point after a successful write.
+		 * See the continue statement above.
+		 */
 		switch (state) {
 		case read_ib:
 			/* Read, if possible. */
@@ -800,14 +827,22 @@ main(int argc, char *argv[])
 				case read_again:
 					break;
 				case read_oom:	/* Allow buffers to empty. */
-				case read_ok:
 					state = drain_ob;
+					break;
+				case read_ok:
+					state = write_ob;
 					break;
 				}
 			break;
 		case drain_ib:
 			break;
 		case drain_ob:
+			if (reached_eof)
+				state = write_ob;
+			else
+				state = read_ob;
+			break;
+		case write_ob:
 			if (!reached_eof)
 				state = read_ob;
 			break;
