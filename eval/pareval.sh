@@ -45,7 +45,7 @@ do
 
 	CODE=usr
 
-	DESC=par-$PREF-metrics
+	DESC=$PREF-metrics
 	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/code-metrics.sh $CODE >out/$DESC 2>err/$DESC
 
 	DESC=$PREF-dup
