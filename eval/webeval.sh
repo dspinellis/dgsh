@@ -58,7 +58,7 @@ do
 		/usr/bin/perl log-grow.pl $GROW |
 		case $PROG in
 		perl)
-			/usr/bin/time -v -o time/$DESC /usr/bin/perl wwwstats
+			/usr/bin/time -v -o time/$DESC /usr/bin/perl web-log-report.pl
 			;;
 		sgsh)
 			/usr/bin/time -v -o time/$DESC ../sgsh -p .. ../example/web-log-report.sh
