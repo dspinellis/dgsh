@@ -806,10 +806,8 @@ main(int argc, char *argv[])
 				case read_oom:	/* Cannot fullfill promise to never block source, so bail out. */
 					errx(1, "Out of memory with input-side buffering specified");
 					break;
-				case read_again:
-					break;
 				case read_ok:
-					state = read_ib;
+				case read_again:
 					break;
 				}
 			break;
