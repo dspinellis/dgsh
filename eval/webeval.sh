@@ -20,11 +20,21 @@
 test -f clarknet_access_log_Aug28.gz || wget ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
 test -f clarknet_access_log_Sep4.gz || wget ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Sep4.gz
 
-if [ -d /opt/aws ]
+# Compile Java code if needed
+if [ ! -r WebStats.class -o WebStats.java -nt WebStats.java ]
 then
-	IID=`curl -s http://169.254.169.254/2011-01-01/meta-data/instance-id`
-	TYPE=`ec2-describe-instance-attribute $IID --instance-type | awk '{print $3}'`
-else
+	if ! javac WebStats.java
+	then
+		echo "Unable to compile WebStats.java" 1>&2
+		exit 1
+	fi
+fi
+
+# Set machine type
+if ! [ -d /opt/aws ] ||
+   ! IID=`curl -s http://169.254.169.254/2011-01-01/meta-data/instance-id` ||
+   ! TYPE=`ec2-describe-instance-attribute $IID --instance-type | awk '{print $3}'`
+then
 	TYPE=`hostname`
 fi
 
@@ -34,7 +44,7 @@ mkdir -p time out err
 GROW=1
 while :
 do
-	for PROG in sgsh perl
+	for PROG in sgsh perl java
 	do
 		DESC=web-$TYPE-$PROG-$GROW
 		if [ -r err/$DESC ]
@@ -52,6 +62,9 @@ do
 			;;
 		sgsh)
 			/usr/bin/time -v -o time/$DESC ../sgsh -p .. ../example/web-log-report.sh
+			;;
+		java)
+			/usr/bin/time -v -o time/$DESC java WebStats
 			;;
 		esac >out/$DESC 2>err/$DESC
 	done

@@ -2,3 +2,4 @@ clarknet_access_log_Aug28.gz
 clarknet_access_log_Sep4.gz
 err
 out
+*.class
