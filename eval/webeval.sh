@@ -17,8 +17,20 @@
 #  limitations under the License.
 #
 
-test -f clarknet_access_log_Aug28.gz || wget ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
-test -f clarknet_access_log_Sep4.gz || wget ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Sep4.gz
+# Download the specified URL if needed
+download()
+{
+	URL="$1"
+	FILENAME="`basename $URL`"
+	if ! [ -f "$FILENAME" ]
+	then
+		wget $URL 2>/dev/null ||
+		curl $URL >$FILENAME
+	fi
+}
+
+download ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
+download ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Sep4.gz
 
 # Compile Java code if needed
 if [ ! -r WebStats.class -o WebStats.java -nt WebStats.java ]
