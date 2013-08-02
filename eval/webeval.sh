@@ -71,7 +71,7 @@ do
 		esac
 	done
 	GROW=`expr $GROW \* 2`
-	if [ $GROW -gt 1024 ]
+	if [ $GROW -gt 128 ]
 	then
 		break
 	fi
