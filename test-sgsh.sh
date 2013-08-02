@@ -38,7 +38,7 @@ do
 	./sgsh $flags -p . example/code-metrics.sh test/code-metrics/in/ >test/code-metrics/out.test
 	ensure_same "$flags code-metrics.sh" test/code-metrics/out.ok test/code-metrics/out.test
 	./sgsh $flags -p . example/duplicate-files.sh test/duplicate-files >test/duplicate-files/out.test
-	ensure_same duplicate-files.sh test/duplicate-files/out.ok test/duplicate-files/out.test
+	ensure_same "$flags duplicate-files.sh" test/duplicate-files/out.ok test/duplicate-files/out.test
 	./sgsh $flags -p . example/word-properties.sh <test/word-properties/LostWorldChap1-3 >test/word-properties/out.test
 	ensure_same "$flags word-properties.sh" test/word-properties/out.ok test/word-properties/out.test
 	./sgsh $flags -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >test/compress-compare/out.test
