@@ -143,7 +143,7 @@ scatter |{
 			-| {
 				header 'Accesses by Day of Week'
 				sed 's|/|-|g' |
-				date -f - +%a |
+				(date -f - +%a 2>/dev/null || gdate -f - +%a) |
 				sort |
 				uniq -c |
 				sort -rn
