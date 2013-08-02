@@ -23,7 +23,7 @@ use strict;
 use warnings;
 
 use Cwd 'abs_path';
-use File::Temp qw/ tempfile /;
+use File::Temp 'tempfile';
 use File::Copy;
 use Getopt::Std;
 use IO::Handle;
