@@ -21,6 +21,8 @@
 
 use strict;
 use warnings;
+
+use Cwd 'abs_path';
 use File::Temp qw/ tempfile /;
 use File::Copy;
 use Getopt::Std;
@@ -72,11 +74,8 @@ if (!getopts('dg:kmno:p:s:St:')) {
 }
 
 # Make path absolute
-if (defined($opt_p) && $opt_p !~ m|^/|) {
-	# Readlink -f is Linux/Cygwin; realpath is FreeBSD
-	$opt_p = `readlink -f "${opt_p}" 2>/dev/null || realpath "${opt_p}"`;
-	$opt_p =~ s/\n//;
-}
+$opt_p = abs_path($opt_p) if (defined($opt_p));
+
 # Ensure defined path ends with a /
 $opt_p .= '/' if (defined($opt_p) && $opt_p !~ m|/$|);
 $opt_p = '' unless defined($opt_p);
