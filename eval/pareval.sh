@@ -17,9 +17,11 @@
 #  limitations under the License.
 #
 
+. 'eval-lib.sh'
+
 if ! [ -d usr ]
 then
-	curl http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/i386/9.0-RELEASE/src.txz |
+	download_stdout http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/i386/9.0-RELEASE/src.txz |
 	xz -dc |
 	tar xf -
 fi
@@ -46,12 +48,12 @@ do
 	CODE=usr
 
 	DESC=$PREF-metrics
-	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/code-metrics.sh $CODE >out/$DESC 2>err/$DESC
+	timerun $DESC ../sgsh $flags -p .. ../example/code-metrics.sh $CODE
 
 	DESC=$PREF-dup
-	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/duplicate-files.sh $CODE >out/$DESC 2>err/$DESC
+	timerun $DESC ../sgsh $flags -p .. ../example/duplicate-files.sh $CODE
 
 	DESC=$PREF-compress
 	tar cf - $CODE |
-	/usr/bin/time -v -o time/$DESC ../sgsh $flags -p .. ../example/compress-compare.sh >out/$DESC 2>err/$DESC
+	timerun $DESC ../sgsh $flags -p .. ../example/compress-compare.sh
 done
