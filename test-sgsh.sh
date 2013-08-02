@@ -11,6 +11,22 @@ ensure_same()
 	fi
 }
 
+LOGFILE=test/web-log/logfile
+
+# Generate a small log file if it is not there
+CLARKNET=ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
+if ! [ -f  $LOGFILE ]
+then
+	mkdir -p `dirname $LOGFILE`
+ 	{
+		curl $CLARKNET 2>/dev/null ||
+		wget -O - $CLARKNET 2>/dev/null
+	} |
+	gzip -dc |
+	perl -ne 'print if ($i++ % 1000 == 0)' >$LOGFILE
+fi
+
+
 for flags in '' -m -S
 do
 	echo hello cruwl world | ./sgsh $flags -p . example/spell-highlight.sh >test/spell-highlight/out.test
@@ -27,4 +43,6 @@ do
 	ensure_same "$flags word-properties.sh" test/word-properties/out.ok test/word-properties/out.test
 	./sgsh $flags -p . example/compress-compare.sh <test/word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >test/compress-compare/out.test
 	ensure_same "$flags compress-compare.sh" test/compress-compare/out.ok test/compress-compare/out.test
+	./sgsh $flags -p . example/web-log-report.sh <test/web-log/logfile >test/web-log/out.test
+	ensure_same "$flags web-log-report.sh" test/web-log/out.ok test/web-log/out.test
 done
