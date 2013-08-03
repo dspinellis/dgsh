@@ -14,14 +14,15 @@ digraph teestate {
 	read_ob -> read_ob [label="data written"];
 
 	read_ib -> drain_ib [label="read_eof"];
-	read_ib -> read_ib [label="*"];
+	read_ib -> read_ib [label=""];
+	read_ib -> read_ib [label="data written"];
 
-	drain_ib -> drain_ib [label="*"];
+	drain_ib -> drain_ib [label=""];
 
-	write_ob -> read_ob [label="*"];
-	write_ob -> write_ob [label="*"];
+	write_ob -> read_ob [label=""];
+	write_ob -> write_ob [label=""];
 
-	drain_ob -> read_ob [label="*"];
+	drain_ob -> read_ob [label=""];
 	drain_ob -> write_ob [label="read_eof"];
 	drain_ob -> drain_ob [label="data written"];
 
