@@ -32,5 +32,7 @@ digraph teestate {
 	bufftype -> read_ib [label="[input side buffering]"];
 	bufftype -> read_ob [label="[output side buffering]"];
 
-	/* end [shape=doublecircle,style=filled,label="",width=0.3,fixedsize=true]; */
+	end [shape=doublecircle,style=filled,label="",width=0.2,fixedsize=true,fillcolor=black];
+	empty [style=invis,label=""];
+	empty -> end [label="reached_eof && active_fds == 0"];
 }
