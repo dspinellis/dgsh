@@ -19,6 +19,7 @@
 
 . 'eval-lib.sh'
 
+# See http://ita.ee.lbl.gov/html/contrib/ClarkNet-HTTP.html
 download ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
 download ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Sep4.gz
 

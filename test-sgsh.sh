@@ -20,6 +20,7 @@ export PATH="$PATH:test/bin"
 LOGFILE=test/web-log-report/logfile
 
 # Generate a small log file if it is not there
+# See http://ita.ee.lbl.gov/html/contrib/ClarkNet-HTTP.html
 CLARKNET=ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
 if ! [ -f  $LOGFILE ]
 then
