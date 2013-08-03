@@ -2,15 +2,16 @@ digraph teestate {
 	node [shape="record", style="rounded", fontname="Arial"];
 	edge [fontname="Arial"];
 
-	drain_ib [label="{drain_ib|entry /\lFD_SET(out);\lselect_etc();\l}"];
-	drain_ob [label="{drain_ob|entry /\lif (data to write) FD_SET(out);\lselect_etc();\l}"];
-	read_ib [label="{read_ib|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect_etc();\lif (data to read) read();\l}"];
-	read_ob [label="{read_ob|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect_etc();\lif (data to read) read();\l}"];
-	write_ob [label="{write_ob|entry /\lFD_SET(out);\lselect_etc();\l}"];
+	drain_ib [label="{drain_ib|entry /\lFD_SET(out);\lselect();\lwrite();\l}"];
+	drain_ob [label="{drain_ob|entry /\lif (data to write) FD_SET(out);\lselect();\lwrite();\l}"];
+	read_ib [label="{read_ib|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\lwrite();\lif (data to read) read();\l}"];
+	read_ob [label="{read_ob|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\lwrite();\lif (data to read) read();\l}"];
+	write_ob [label="{write_ob|entry /\lFD_SET(out);\lselect();\lwrite();\l}"];
 
 	read_ob -> drain_ib [label="read_eof"];
 	read_ob -> write_ob [label="read_ok"];
 	read_ob -> drain_ob [label="read_oom"];
+	read_ob -> read_ob [label="data written"];
 
 	read_ib -> drain_ib [label="read_eof"];
 	read_ib -> read_ib [label="*"];
@@ -22,4 +23,13 @@ digraph teestate {
 
 	drain_ob -> read_ob [label="*"];
 	drain_ob -> write_ob [label="read_eof"];
+	drain_ob -> drain_ob [label="data written"];
+
+	start [shape=circle,style=filled,label="",width=0.2,fillcolor=black,fixedsize=true];
+	bufftype [shape=diamond,label="",style=""];
+	start -> bufftype;
+	bufftype -> read_ib [label="input side buffering"];
+	bufftype -> read_ob [label="output side buffering"];
+
+	/* end [shape=doublecircle,style=filled,label="",width=0.3,fixedsize=true]; */
 }
