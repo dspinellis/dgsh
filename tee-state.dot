@@ -1,0 +1,25 @@
+digraph teestate {
+	node [shape="record", style="rounded", fontname="Arial"];
+	edge [fontname="Arial"];
+
+	read_ib [label="{read_ib|}"];
+	read_ob [label="{read_ob|}"];
+	drain_ib [label="{drain_ib|}"];
+	drain_ob [label="{drain_ob|}"];
+	read_ob [label="{read_ob|}"];
+
+	read_ob -> drain_ib [label="read_eof/\lFD_SET(out);\lselect_etc();\l"];
+	read_ob -> write_ob [label="read_ok/\lFD_SET(out);\lselect_etc();\l"];
+	read_ob -> drain_ob [label="read_oom/\lif (data to write) FD_SET(out);\lselect_etc();\l"];
+
+	read_ib -> drain_ib [label="read_eof/\lFD_SET(out);\lselect_etc();\l"];
+	read_ib -> read_ib [label="*/\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect_etc();\lif (data to read) read();\l"];
+
+	drain_ib -> drain_ib [label="*/\lFD_SET(out);\lselect_etc();\l"];
+
+	write_ob -> read_ob [label="*/\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect_etc();\lif (data to read) read();\l"];
+	write_ob -> write_ob [label="*/\lFD_SET(out);\lselect_etc();\l"];
+
+	drain_ob -> read_ob [label="*/\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect_etc();\lif (data to read) read();\l"];
+	drain_ob -> write_ob [label="read_eof/\lFD_SET(out);\lselect_etc();\l"];
+}
