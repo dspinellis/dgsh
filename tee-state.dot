@@ -28,8 +28,8 @@ digraph teestate {
 	start [shape=circle,style=filled,label="",width=0.2,fillcolor=black,fixedsize=true];
 	bufftype [shape=diamond,label="",style=""];
 	start -> bufftype;
-	bufftype -> read_ib [label="input side buffering"];
-	bufftype -> read_ob [label="output side buffering"];
+	bufftype -> read_ib [label="[input side buffering]"];
+	bufftype -> read_ob [label="[output side buffering]"];
 
 	/* end [shape=doublecircle,style=filled,label="",width=0.3,fixedsize=true]; */
 }
