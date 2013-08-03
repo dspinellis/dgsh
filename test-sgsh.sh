@@ -34,6 +34,8 @@ fi
 
 for flags in '' -m -S
 do
+	rm -rf test/*/out.test
+
 	echo hello cruwl world | ./sgsh $flags -p . example/spell-highlight.sh >test/spell-highlight/out.test
 	ensure_same "$flags" spell-highlight
 
