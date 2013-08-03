@@ -4,8 +4,8 @@ digraph teestate {
 
 	drain_ib [label="{drain_ib|entry /\lFD_SET(out);\lselect();\lwrite();\l}"];
 	drain_ob [label="{drain_ob|entry /\lif (data to write) FD_SET(out);\lselect();\lwrite();\l}"];
-	read_ib [label="{read_ib|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\lwrite();\lif (data to read) read();\l}"];
-	read_ob [label="{read_ob|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\lwrite();\lif (data to read) read();\l}"];
+	read_ib [label="{read_ib|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\ldo /\lwrite();\lif (data to read) read();\l}"];
+	read_ob [label="{read_ob|entry /\lFD_SET(in);\lif (data to write) FD_SET(out);\lselect();\ldo /\lwrite();\lif (data to read) read();\l}"];
 	write_ob [label="{write_ob|entry /\lFD_SET(out);\lselect();\lwrite();\l}"];
 
 	read_ob -> drain_ib [label="read_eof"];
