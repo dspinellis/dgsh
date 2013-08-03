@@ -7,12 +7,15 @@ ensure_same()
 	local flags=$1
 	local base=$2
 	echo "$base.sh [$flags]"
-	if ! diff -rb test/$base/out.ok test/$base/out.test >/dev/null
+	if ! diff -rw test/$base/out.ok test/$base/out.test >/dev/null
 	then
 		echo "$base.sh: test/$base/out.ok and test/$base/out.test differ" 1>&2
 		exit 1
 	fi
 }
+
+# Include fallback commands in our executable path
+export PATH="$PATH:test/bin"
 
 LOGFILE=test/web-log-report/logfile
 
