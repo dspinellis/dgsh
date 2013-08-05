@@ -186,6 +186,11 @@ my $library_path;
 # Ordinal of the scatter-gather block being processed
 my $block_ordinal = 0;
 
+# File names of named pipes that must be waited on at program end
+# (by reading until EOF), in order to allow the corresponding processes
+# whose blocks are delimited with |. to run to completion.
+my @gather_collect;
+
 # Regular expressions for the input files scatter-gather operators
 # scatter |{
 my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
@@ -278,6 +283,23 @@ while (get_next_line()) {
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
 		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
+
+		# Wait for processes that are running in blocks delimited by |.
+		# No other process depends on these processes (because they don't scatter
+		# output or send it to a stream). Therefore, they would normally
+		# be killed after any other gather programs terminate (or immediately
+		# if no gather code is given).
+		# Waiting is done by reading the associated pipes until EOF, in order to allow
+		# the corresponding processes to run to completion.
+		# Use sgsh-tee, rather than cat, to open all named pipes immediately.
+		my $no_output_wait = '';
+
+		if ($#gather_collect != -1) {
+			$no_output_wait = "${opt_p}sgsh-tee " .
+				join(' ', map(" -i $_", @gather_collect)) .
+				" >/dev/null\n";
+		}
+
 		# Prompt to exit debugging if debugging from an interactive session
 		my $debug_wait = $opt_d ? qq{
 		if [ -t 0 ]
@@ -291,6 +313,7 @@ while (get_next_line()) {
 			"$code2\n" .
 			debug_code() .
 			gather_code(\@gather_commands) .
+			$no_output_wait .
 			$debug_wait .
 			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
 		debug_create_html();
@@ -723,7 +746,7 @@ scatter_code_and_pipes_code
 			if ($opt_m) {
 				# Code to store a command's pid into a file when monitoring
 				$monitor_pid .= qq[ ; echo '{ "pid" : "'\$!'" }' >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p.json];
-				my $monitor_close_bracket = ')';
+				$monitor_close_bracket = ')';
 				# Opening bracket to obtain subshell pid and brace to redirect I/O as if the commands were one
 				$code .= ' ( { ';
 			} else {
@@ -757,7 +780,11 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				$code .= qq{ >/dev/null $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n};
+				my $out_name = "\$SGDIR/npfo-none-$cmd_n.$p";
+				$code .= qq[ >$out_name $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n];
+				$pipes .= " \\\n$out_name";
+				# Save file name to be waited on later
+				push(@gather_collect, $out_name);
 			} elsif ($c->{output} eq 'scatter') {
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
 				if ($c->{body} ne '' && !$opt_S) {
