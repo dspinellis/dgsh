@@ -101,6 +101,7 @@ sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 		iov[1].iov_len = sizeof(buff);
 		if ((n = readv(s, iov, 2)) == -1)
 			err(5, "readv");
+		DPRINTF("Read %d characters", n);
 		cbuff[CONTENT_LENGTH_DIGITS] = 0;
 		if (sscanf(cbuff, "%u", &content_length) != 1) {
 			fprintf(stderr, "Unable to read content length from string [%s]\n", cbuff);
