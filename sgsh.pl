@@ -523,6 +523,14 @@ parse_scatter_command
 			return \%command;
 		}
 
+		# Gather no output endpoint: |.
+		if (s/$NO_OUTPUT//o) {
+			error("Headless command in scatter block") if (!defined($command{input}));
+			$command{output} = 'none';
+			$command{body} .= $_;
+			return \%command;
+		}
+
 		# Scatter group end: |}
 		if (/$BLOCK_END/o) {
 			error("Unterminated scatter command");
@@ -749,7 +757,7 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				$code .= qq{ >/dev/null $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid"\n};
+				$code .= qq{ >/dev/null $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n};
 			} elsif ($c->{output} eq 'scatter') {
 				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
 				if ($c->{body} ne '' && !$opt_S) {
