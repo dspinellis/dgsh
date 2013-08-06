@@ -696,12 +696,18 @@ scatter_code_and_pipes_code
 		my $tee_args = '';
 		$tee_args .= ' -s' if ($scatter_opts{'s'});
 		$tee_args .= ' -l' if ($scatter_opts{'l'});
-			for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
+
+		my $cmd_n = 0;
+		for my $c (@{$commands}) {
+			if ($c->{input} eq 'scatter') {
 				for (my $p = 0; $p < $parallel; $p++) {
 					$tee_args .= " -o \$SGDIR/npi-$scatter_n.$cmd_n.$p";
 					$written_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
 				}
 			}
+			$cmd_n++;
+		}
+
 		# Obtain tee program
 		my $tee_prog = $opt_t;
 		$tee_prog = $scatter_opts{'t'} if ($scatter_opts{'t'});
