@@ -688,8 +688,10 @@ scatter_code_and_pipes_code
 		$scatter_targets++ if ($c->{input} eq 'scatter');
 	}
 
+	warning("Scatter to a single target") if ($scatter_targets * $parallel == 1);
+
 	# Create tee, if needed
-	if ($scatter_targets * $parallel > 1) {
+	if ($scatter_targets * $parallel >= 1) {
 		# Create arguments
 		my $tee_args = '';
 		$tee_args .= ' -s' if ($scatter_opts{'s'});
