@@ -26,7 +26,6 @@
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |
 awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
-head -1000 |
 sort -n |
 scatter |{
 	# Calculate number of committers
