@@ -68,5 +68,4 @@ scatter |{
 		   awk 'BEGIN {OFMT = "%.2g%%"}
 		   {print $1, $2, $1 / '`store:NCHARS`' * 100}' >character.txt |.
 	|}
-|} gather |{
 |}

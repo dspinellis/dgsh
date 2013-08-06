@@ -92,5 +92,4 @@ EOF
 		-| pamscale -width 640 |
 		   pnmtopng >small.png |.
 	|}
-|} gather |{
 |}

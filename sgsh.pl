@@ -205,6 +205,8 @@ my @gather_collect;
 my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
 # |{
 my $SCATTER_BEGIN = q!\|\{\s*(.*)?$!;
+# |} gather |{ or |}
+my $SCATTER_BLOCK_END = q!^[^'#"]*\|\}(\s*gather\s*\|\{)?\s*(\#.*)?$!;
 # |} gather |{
 my $GATHER_BLOCK_BEGIN = q!^[^'#"]*\|\}\s*gather\s*\|\{\s*(\#.*)?$!;
 # |} [redirection]
@@ -270,9 +272,9 @@ while (get_next_line()) {
 		$scatter_command{output} = 'scatter';
 		$scatter_command{body} = '';
 		$scatter_command{scatter_flags} = $1;
-		$scatter_command{scatter_commands} = parse_scatter_command_sequence($GATHER_BLOCK_BEGIN);
+		$scatter_command{scatter_commands} = parse_scatter_command_sequence($SCATTER_BLOCK_END);
 
-		my ($redirection, @gather_commands) = parse_gather_command_sequence();
+		my ($redirection, @gather_commands) = parse_gather_command_sequence() if (/$GATHER_BLOCK_BEGIN/);
 
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
