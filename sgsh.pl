@@ -808,7 +808,7 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				my $out_name = "npfo-none-$cmd_n.$p";
+				my $out_name = "npfo-none-$scatter_n.$cmd_n.$p";
 				$code .= qq[ >\$SGDIR/$out_name $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n];
 				$written_pipe{$out_name} = 1;
 				# Save file name to be waited on later
