@@ -970,7 +970,7 @@ verify_code
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} &&
 			    # Risk: we have already encountered a stream in a previous command in this block
 			    ($processed_block_stream ||
-			    # Risk: we have already encountered a stream in this unsage command (e.g. cat)
+			    # Risk: we have already encountered a stream in this unsafe command (e.g. cat)
 			    ($processed_command_stream && sequential_command($tmp_command)))) {
 				warning("Unsafe use of pass-through /stream/$file_name in the gather section", $command->{line_number});
 				error("Consult the DEADLOCK section of the manual page", $command->{line_number});
