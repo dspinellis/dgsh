@@ -60,7 +60,7 @@ Usage: $0 [-g style] [-dkmnS] [-o file] [-p path] [-s shell] [-t tee] [file]
 -o filename	Write the script in the specified file (- is stdout) and exit
 -p path		Path where the sgsh helper programs are located
 -s shell	Specify shell to use (/bin/sh is the default)
--S		Set barriers at the scatter points and use temporary fiels
+-S		Set barriers at the scatter points and use temporary files
 -t tee		Path to the sgsh-tee command
 };
 }
