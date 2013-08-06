@@ -331,7 +331,7 @@ while (get_next_line()) {
 			gather_code(\@gather_commands) .
 			$no_output_wait .
 			$debug_wait .
-			"\n) 3<&0 $redirection\n";		# The fd3 redirections allow piping into the scatter block
+			"\n) $redirection 3<&0\n";		# The fd3 redirections allow piping into the scatter block
 		debug_create_html();
 	} else {
 		$code .= $_ ;
