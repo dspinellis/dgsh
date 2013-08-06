@@ -795,7 +795,7 @@ scatter_code_and_pipes_code
 				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p$monitor";
 				$read_pipe{"npi-$scatter_n.$cmd_n.$p$monitor"} = 1;
 			} else {
-				die "Headless command";
+				internal_error("Headless command");
 			}
 
 			# Generate output redirection
@@ -854,7 +854,7 @@ scatter_code_and_pipes_code
 					$kvstores .= "{\$SGDIR/$c->{store_name}}";
 				}
 			} else {
-				die "Tailless command";
+				internal_error("Tailless command");
 			}
 		}
 		$cmd_n++;
@@ -927,7 +927,7 @@ get_next_line
 sub
 unget_line
 {
-	die "unget_line past beginning" if ($line_number-- == 0);
+	internal_error("unget_line past beginning") if ($line_number-- == 0);
 }
 
 # Return true if the specified command processes its arguments one-by-one
@@ -1154,7 +1154,7 @@ scatter_graph_io
 			} elsif ($c->{input} =~ m/fd([0-9]+)/) {
 				;
 			} else {
-				die "Headless command";
+				internal_error("Headless command");
 			}
 
 			# Generate output redirection
@@ -1179,7 +1179,7 @@ scatter_graph_io
 					print $graph_out qq(\t$node_name -> "$c->{store_name}" [id="nps-$c->{store_name}"];\n)
 				}
 			} else {
-				die "Tailless command";
+				internal_error("Tailless command");
 			}
 		}
 		$cmd_n++;
