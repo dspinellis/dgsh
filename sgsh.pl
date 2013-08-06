@@ -307,6 +307,7 @@ while (get_next_line()) {
 			$no_output_wait = "${opt_p}sgsh-tee " .
 				join(' ', map(" -i $_", @gather_collect)) .
 				" >/dev/null\n";
+			grep($read_pipe{$_} = 1, @gather_collect);
 		}
 
 		# Prompt to exit debugging if debugging from an interactive session
