@@ -767,10 +767,10 @@ scatter_code_and_pipes_code
 				$monitor_pid .= qq[ ; echo '{ "pid" : "'\$!'" }' >\$SGDIR/pid-node_cmd_${scatter_n}_${cmd_n}_$p.json];
 				$monitor_close_bracket = ')';
 				# Opening bracket to obtain subshell pid and brace to redirect I/O as if the commands were one
-				$code .= ' ( { ';
+				$code .= ' ( { '; # }
 			} else {
 				# Opening brace to redirect I/O as if the commands were one
-				$code .= ' { ';
+				$code .= ' { '; # }
 			}
 
 			$code .= substitute_streams_and_stores($body);
