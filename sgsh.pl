@@ -305,7 +305,7 @@ while (get_next_line()) {
 
 		if ($#gather_collect != -1) {
 			$no_output_wait = "${opt_p}sgsh-tee " .
-				join(' ', map(" -i $_", @gather_collect)) .
+				join(' ', map(" -i \$SGDIR/$_", @gather_collect)) .
 				" >/dev/null\n";
 			grep($read_pipe{$_} = 1, @gather_collect);
 		}
