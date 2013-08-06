@@ -61,4 +61,13 @@ do
 	./sgsh $flags -p . example/web-log-report.sh <test/web-log-report/logfile >test/web-log-report/out.test
 	ensure_same "$flags" web-log-report
 
+	(
+	cd test/text-properties
+	rm -rf out.test
+	mkdir out.test
+	cd out.test
+	../../../sgsh $flags -p ../../.. ../../../example/text-properties.sh <../../word-properties/LostWorldChap1-3
+	)
+	ensure_same "$flags" text-properties
+
 done
