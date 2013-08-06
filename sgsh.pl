@@ -157,6 +157,9 @@ my %used_store;
 # Map containing all created named pipes for scatter commands
 my %written_pipe;
 
+# Map containing all symbolically linked named pipes for scatter commands
+my %linked_pipe;
+
 # Map containing all used named pipes for scatter commands
 my %read_pipe;
 
@@ -288,7 +291,7 @@ while (get_next_line()) {
 		$global_scatter_n = 0;
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
-		my ($code2, $pipes, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
+		my ($code2, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
 
 		# Wait for processes that are running in blocks delimited by |.
 		# No other process depends on these processes (because they don't scatter
@@ -315,7 +318,7 @@ while (get_next_line()) {
 		fi
 		} : '' ;
 		$code .= "(\n" .
-			initialization_code($pipes, $kvstores) .
+			initialization_code($kvstores) .
 			"$code2\n" .
 			debug_code() .
 			gather_code(\@gather_commands) .
@@ -387,7 +390,7 @@ clear_global_variables
 sub
 initialization_code
 {
-	my ($pipes, $kvstores) = @_;
+	my ($kvstores) = @_;
 
 	my $stop_httpd = '';
 	if ($opt_d) {
@@ -445,9 +448,13 @@ initialization_code
 
 	mkdir $SGDIR
 	) .
-	($opt_S ? '' : qq{
-	mkfifo $pipes
-	}) .
+	($opt_S ? '' :
+		(
+			"\nmkfifo " .
+			join(" \\\n", map("\t\$SGDIR/$_", sort keys %written_pipe)) .
+			"\n\n"
+		)
+	) .
 	debug_initialize();
 }
 
@@ -663,7 +670,6 @@ scatter_code_and_pipes_code
 {
 	my($command, $monitor_scatter_pid) = @_;
 	my $code = '';
-	my $pipes = '';
 	my $kvstores = '';
 	# Open the bracket unless opened by a preceding command (recursive call)
 	my $monitor_open_bracket = ($opt_m && !$monitor_scatter_pid) ? ' ( ' : '';
@@ -728,8 +734,7 @@ scatter_code_and_pipes_code
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream' && !$opt_m) {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
 				$read_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
-				$written_pipe{"npfo-$c->{file_name}.$p"} = 1;
-				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
+				$linked_pipe{"npfo-$c->{file_name}.$p"} = 1;
 				next;
 			}
 
@@ -749,8 +754,6 @@ scatter_code_and_pipes_code
 				$read_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
 				$written_pipe{"npi-$scatter_n.$cmd_n.$p.use"} = 1;
 				$written_pipe{"npi-$scatter_n.$cmd_n.$p.monitor"} = 1;
-				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.use";
-				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
 				$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n];
 				$read_pipe{"npi-$scatter_n.$cmd_n.$p.monitor"} = 1;
 				$kvstores .= "{\$SGDIR/mon-npi-$scatter_n.$cmd_n.$p}";
@@ -790,7 +793,6 @@ scatter_code_and_pipes_code
 			} elsif ($c->{input} eq 'scatter') {
 				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p$monitor";
 				$read_pipe{"npi-$scatter_n.$cmd_n.$p$monitor"} = 1;
-				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 			} else {
 				die "Headless command";
 			}
@@ -800,16 +802,14 @@ scatter_code_and_pipes_code
 				my $out_name = "npfo-none-$cmd_n.$p";
 				$code .= qq[ >\$SGDIR/$out_name $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n];
 				$written_pipe{$out_name} = 1;
-				$pipes .= " \\\n\$SGDIR/$out_name";
 				# Save file name to be waited on later
 				push(@gather_collect, $out_name);
 			} elsif ($c->{output} eq 'scatter') {
-				my ($code2, $pipes2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
+				my ($code2, $kvstores2) = scatter_code_and_pipes_code($c, $monitor_pid);
 				if ($c->{body} ne '' && !$opt_S) {
 					$code .= " |\n";
 				}
 				$code .= $code2;
-				$pipes .= $pipes2;
 				$kvstores .= $kvstores2;
 			} elsif ($c->{output} eq 'stream') {
 				if ($opt_S) {
@@ -820,7 +820,6 @@ scatter_code_and_pipes_code
 						# Pipe to monitor process and close subshell bracket
 						$code .= qq[ | tee \$SGDIR/npfo-$c->{file_name}.$p >\$SGDIR/npfo-$c->{file_name}.$p.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$written_pipe{"npfo-$c->{file_name}.$p.monitor"} = 1;
-						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 						$read_pipe{"npfo-$c->{file_name}.$p.monitor"} = 1;
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
@@ -828,7 +827,6 @@ scatter_code_and_pipes_code
 						$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 					}
 				}
-				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
 				$written_pipe{"npfo-$c->{file_name}.$p"} = 1;
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
@@ -843,8 +841,6 @@ scatter_code_and_pipes_code
 						$code .= qq[tee \$SGDIR/nps-$c->{store_name}.use >\$SGDIR/nps-$c->{store_name}.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
 						$written_pipe{"nps-$c->{store_name}.use"} = 1;
 						$written_pipe{"nps-$c->{store_name}.monitor"} = 1;
-						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
-						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n];
 						$read_pipe{"nps-$c->{store_name}.monitor"} = 1;
 						$kvstores .= "{\$SGDIR/mon-nps-$c->{store_name}}";
@@ -862,7 +858,7 @@ scatter_code_and_pipes_code
 		}
 		$cmd_n++;
 	}
-	return ($code, $pipes, $kvstores);
+	return ($code, $kvstores);
 }
 
 # Substitute the streams and stores in the passed command
@@ -1038,8 +1034,11 @@ verify_generated_code
 	for my $gp (keys %written_pipe) {
 		internal_error("Named pipe $gp written-to but never read\n") unless (defined($read_pipe{$gp}));
 	}
+	for my $gp (keys %linked_pipe) {
+		internal_error("Named pipe link $gp created but never read\n") unless (defined($read_pipe{$gp}));
+	}
 	for my $gp (keys %read_pipe) {
-		internal_error("Named pipe $gp read but never written-to\n") unless (defined($written_pipe{$gp}));
+		internal_error("Named pipe $gp read but never written-to\n") unless (defined($written_pipe{$gp}) || defined($linked_pipe{$gp}));
 	}
 }
 
