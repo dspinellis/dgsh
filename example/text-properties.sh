@@ -29,7 +29,7 @@
 export LC_ALL=C
 
 
-# Convert input into a ranged frequency list
+# Convert input into a ranked frequency list
 ranked_frequency()
 {
 	sort |
@@ -60,7 +60,13 @@ scatter |{
 	|}
 	# Character frequency
 	-| sed 's/./&\
-/g' |
-	   ranked_frequency >character.txt |.
+/g' |{
+		# Count total characters
+		-| wc -c |store:NCHARS
+		# Print absolute and percentage
+		-| ranked_frequency |
+		   awk 'BEGIN {OFMT = "%.2g%%"}
+		   {print $1, $2, $1 / '`store:NCHARS`' * 100}' >character.txt |.
+	|}
 |} gather |{
 |}
