@@ -154,6 +154,12 @@ my %defined_store;
 # Map containing all used gather store names
 my %used_store;
 
+# Map containing all created named pipes for scatter commands
+my %written_pipe;
+
+# Map containing all used named pipes for scatter commands
+my %read_pipe;
+
 # Map from /stream/ file names into an array of named pipes
 # For code and the graph structure
 my %parallel_file_map;
@@ -335,6 +341,9 @@ my @args = ($opt_s, '-n', '-a', $output_filename, @ARGV);
 print join(' ', @args), "\n" if ($opt_n);
 
 exit 0 if ($opt_o);
+
+# Verify the consistency of the generated code
+verify_generated_code();
 
 # Check for syntax error before executing
 # This avoids leaving commands in the background
@@ -631,7 +640,7 @@ scatter_code_and_pipes_map
 
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
-				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
+				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 				next;
 			}
 
@@ -639,7 +648,7 @@ scatter_code_and_pipes_map
 			if ($c->{output} eq 'scatter') {
 				scatter_code_and_pipes_map($c);
 			} elsif ($c->{output} eq 'stream') {
-				push(@{$parallel_file_map{$c->{file_name}}}, "\$SGDIR\/npfo-$c->{file_name}.$p");
+				push(@{$parallel_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
 			}
 		}
 		$cmd_n++;
@@ -681,6 +690,7 @@ scatter_code_and_pipes_code
 			for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
 				for (my $p = 0; $p < $parallel; $p++) {
 					$tee_args .= " -o \$SGDIR/npi-$scatter_n.$cmd_n.$p";
+					$written_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
 				}
 			}
 		# Obtain tee program
@@ -717,6 +727,8 @@ scatter_code_and_pipes_code
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream' && !$opt_m) {
 				$code .= "ln -s \$SGDIR\/npi-$scatter_n.$cmd_n.$p \$SGDIR\/npfo-$c->{file_name}.$p\n";
+				$read_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
+				$written_pipe{"npfo-$c->{file_name}.$p"} = 1;
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 				next;
 			}
@@ -734,9 +746,13 @@ scatter_code_and_pipes_code
 				$monitor = '.use';
 				# Use tee(1) here to achieve tight monitoring
 				$code .= qq{tee \$SGDIR/npi-$scatter_n.$cmd_n.$p.use >\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n};
+				$read_pipe{"npi-$scatter_n.$cmd_n.$p"} = 1;
+				$written_pipe{"npi-$scatter_n.$cmd_n.$p.use"} = 1;
+				$written_pipe{"npi-$scatter_n.$cmd_n.$p.monitor"} = 1;
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.use";
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor";
 				$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npi-$scatter_n.$cmd_n.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npi-$scatter_n.$cmd_n.$p & SGPID="\$! \$SGPID"\n];
+				$read_pipe{"npi-$scatter_n.$cmd_n.$p.monitor"} = 1;
 				$kvstores .= "{\$SGDIR/mon-npi-$scatter_n.$cmd_n.$p}";
 				$body = 'cat' if ($body eq '');
 			}
@@ -773,6 +789,7 @@ scatter_code_and_pipes_code
 				$code .= '</dev/null ';
 			} elsif ($c->{input} eq 'scatter') {
 				$code .= " <\$SGDIR/npi-$scatter_n.$cmd_n.$p$monitor";
+				$read_pipe{"npi-$scatter_n.$cmd_n.$p$monitor"} = 1;
 				$pipes .= " \\\n\$SGDIR/npi-$scatter_n.$cmd_n.$p";
 			} else {
 				die "Headless command";
@@ -780,9 +797,10 @@ scatter_code_and_pipes_code
 
 			# Generate output redirection
 			if ($c->{output} eq 'none') {
-				my $out_name = "\$SGDIR/npfo-none-$cmd_n.$p";
-				$code .= qq[ >$out_name $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n];
-				$pipes .= " \\\n$out_name";
+				my $out_name = "npfo-none-$cmd_n.$p";
+				$code .= qq[ >\$SGDIR/$out_name $monitor_close_bracket & SGPID="\$! \$SGPID"$monitor_pid\n];
+				$written_pipe{$out_name} = 1;
+				$pipes .= " \\\n\$SGDIR/$out_name";
 				# Save file name to be waited on later
 				push(@gather_collect, $out_name);
 			} elsif ($c->{output} eq 'scatter') {
@@ -801,14 +819,17 @@ scatter_code_and_pipes_code
 					if ($opt_m) {
 						# Pipe to monitor process and close subshell bracket
 						$code .= qq[ | tee \$SGDIR/npfo-$c->{file_name}.$p >\$SGDIR/npfo-$c->{file_name}.$p.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
+						$written_pipe{"npfo-$c->{file_name}.$p.monitor"} = 1;
 						$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/npfo-$c->{file_name}.$p.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
+						$read_pipe{"npfo-$c->{file_name}.$p.monitor"} = 1;
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
 					} else {
 						$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 					}
 				}
 				$pipes .= " \\\n\$SGDIR/npfo-$c->{file_name}.$p";
+				$written_pipe{"npfo-$c->{file_name}.$p"} = 1;
 			} elsif ($c->{output} eq 'store') {
 				error("Stores not allowed in parallel execution", $c->{line_number}) if ($p > 0);
 				if ($opt_S) {
@@ -820,11 +841,15 @@ scatter_code_and_pipes_code
 						# Pipe to monitor process and close subshell bracket
 						# Use tee(1) here to achieve tight monitoring
 						$code .= qq[tee \$SGDIR/nps-$c->{store_name}.use >\$SGDIR/nps-$c->{store_name}.monitor ) & SGPID="\$! \$SGPID"$monitor_pid\n];
+						$written_pipe{"nps-$c->{store_name}.use"} = 1;
+						$written_pipe{"nps-$c->{store_name}.monitor"} = 1;
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.use";
 						$pipes .= " \\\n\$SGDIR/nps-$c->{store_name}.monitor";
 						$code .= qq[${opt_p}sgsh-monitor <\$SGDIR/nps-$c->{store_name}.monitor | ${opt_p}sgsh-writeval -s \$SGDIR/mon-nps-$c->{store_name} & SGPID="\$! \$SGPID"\n];
+						$read_pipe{"nps-$c->{store_name}.monitor"} = 1;
 						$kvstores .= "{\$SGDIR/mon-nps-$c->{store_name}}";
 						$monitor = "<\$SGDIR/nps-$c->{store_name}.use";
+						$read_pipe{"nps-$c->{store_name}.use"} = 1;
 					} else {
 						$monitor = '';
 					}
@@ -857,7 +882,10 @@ substitute_streams_and_stores
 	# Substitute /stream/... gather points with the corresponding named pipe
 	while ($command =~ m|/stream/(\w+)|) {
 		my $file_name = $1;
-		$command =~ s|/stream/$file_name|join(' ', @{$parallel_file_map{$file_name}})|eg;
+		$command =~ s|/stream/$file_name|join(' ', map("\$SGDIR\/$_", @{$parallel_file_map{$file_name}}))|eg;
+		for my $np (@{$parallel_file_map{$file_name}}) {
+			$read_pipe{$np} = 1;
+		}
 	}
 
 	if ($opt_S) {
@@ -1003,6 +1031,18 @@ verify_code
 	}
 }
 
+# Verify code generation
+sub
+verify_generated_code
+{
+	for my $gp (keys %written_pipe) {
+		internal_error("Named pipe $gp written-to but never read\n") unless (defined($read_pipe{$gp}));
+	}
+	for my $gp (keys %read_pipe) {
+		internal_error("Named pipe $gp read but never written-to\n") unless (defined($written_pipe{$gp}));
+	}
+}
+
 # Report an error and exit
 sub
 error
@@ -1010,9 +1050,21 @@ error
 	my($message, $line) = @_;
 
 	$line = $line_number unless(defined($line));
-	print STDERR "$input_filename($line): $message\n";
+	print STDERR "$input_filename($line): error: $message\n";
 	exit 1;
 }
+
+# Report an internal error and exit
+sub
+internal_error
+{
+	my($message, $line) = @_;
+
+	$line = $line_number unless(defined($line));
+	print STDERR "$input_filename($line): internal error: $message\n";
+	exit 1;
+}
+
 
 # Report a warning (don't exit)
 sub
@@ -1021,7 +1073,7 @@ warning
 	my($message, $line) = @_;
 
 	$line = $line_number unless(defined($line));
-	print STDERR "$input_filename($line): $message\n";
+	print STDERR "$input_filename($line): warning: $message\n";
 }
 
 # Process the I/O redirection specifications returning
