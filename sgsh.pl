@@ -343,10 +343,10 @@ my @args = ($opt_s, '-n', '-a', $output_filename, @ARGV);
 
 print join(' ', @args), "\n" if ($opt_n);
 
-exit 0 if ($opt_o);
-
 # Verify the consistency of the generated code
 verify_generated_code();
+
+exit 0 if ($opt_o);
 
 # Check for syntax error before executing
 # This avoids leaving commands in the background
