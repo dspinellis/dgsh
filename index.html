@@ -109,7 +109,7 @@ An <em>sgsh</em> script follows the syntax of an <em>sh</em>(1) shell
 script with the addition of <em>scatter/gather</em> blocks.
 A <em>scatter</em> block starts with a line
 containing the sequence <code>scatter |{</code>.
-Data may be piped into the block.
+Data may be redirected or piped into and out of the block.
 A scatter block contains one or more <em>sgsh</em> commands,
 which are executed asynchronously (in the background).
 Each command starts with a source (input) specification at
@@ -121,11 +121,12 @@ Then follows a normal <em>sh</em>(1) pipeline,
 followed by a sink (output) specification at the end of a line.
 This can be a stream (<code>|&gt;/stream/</code><em>name</em>),
 a data store (<code>|store:</code><em>name</em>),
+<code>|.</code> to specify that no output will be generated,
 or a nested scatter block
 (starting with <code>|{</code> and ending with <code>|}</code>).
 </p>
 <p>
-A <em>gather</em> block starts with a line
+The (optional) <em>gather</em> block starts with a line
 containing the sequence <code>|} gather |{</code>,
 which also ends the preceding scatter block,
 and ends with a line containing <code>|}</code>.
