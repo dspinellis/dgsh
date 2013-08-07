@@ -24,6 +24,7 @@ LOGFILE=test/web-log-report/logfile
 CLARKNET=ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz
 if ! [ -f  $LOGFILE ]
 then
+	echo "Fetching web test data"
  	{
 		curl $CLARKNET 2>/dev/null ||
 		wget -O - $CLARKNET 2>/dev/null
@@ -71,3 +72,15 @@ do
 	ensure_same "$flags" text-properties
 
 done
+
+for i in example/*
+do
+	echo -n "Testing graph of $i "
+	if ./sgsh -g pretty -p . $i | fgrep '???' >/dev/null
+	then
+		echo "FAIL: Graph for $i has unknown nodes" 1>&2
+		exit 1
+	fi
+	echo OK
+done
+exit 0
