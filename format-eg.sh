@@ -12,7 +12,9 @@ SECTION='compress-compare
 	parallel-logresolve
 	web-log-report
 	web-log-stats
+	text-properties
 	map-hierarchy
+	committer-plot
 	dir'
 
 

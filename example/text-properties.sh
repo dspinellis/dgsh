@@ -5,7 +5,8 @@
 # Read text from the standard input and create files
 # containing word, character, digram, and trigram frequencies.
 #
-# Demonstrates the use of scatter blocks without output
+# Demonstrates the use of scatter blocks without output and the use
+# of stores within the scatter block.
 #
 # Example:
 # curl ftp://sunsite.informatik.rwth-aachen.de/pub/mirror/ibiblio/gutenberg/1/3/139/139.txt | text-properties
