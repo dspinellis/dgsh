@@ -1,4 +1,4 @@
-#!/usr/local/bin/sgsh -s /usr/bin/bash
+#!/usr/local/bin/sgsh -s /bin/bash
 #
 # SYNOPSIS Web log reporting
 # DESCRIPTION
