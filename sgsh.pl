@@ -1133,7 +1133,7 @@ scatter_graph_io
 
 	my $tee_node_name = "node_tee_$scatter_n";
 	# Create tee, if needed
-	if ($scatter_targets * $parallel > 1) {
+	if ($scatter_targets * $parallel >= 1) {
 		# Create arguments
 		my $tee_args = '';
 		if ($scatter_opts{'s'}) {
@@ -1144,10 +1144,15 @@ scatter_graph_io
 			$tee_args .= ' -l';
 			$show_tee = 1;
 		}
-		for (my $cmd_n = 0; $cmd_n  < $scatter_targets; $cmd_n++) {
-			for (my $p = 0; $p < $parallel; $p++) {
-				$edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs} = $tee_node_name;
+
+		my $cmd_n = 0;
+		for my $c (@{$commands}) {
+			if ($c->{input} eq 'scatter') {
+				for (my $p = 0; $p < $parallel; $p++) {
+					$edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs} = $tee_node_name;
+				}
 			}
+			$cmd_n++;
 		}
 
 		if ($graph_out && ($show_tee || $level == 0)) {
