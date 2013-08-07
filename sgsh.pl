@@ -607,17 +607,48 @@ sub
 parse_gather_command_sequence
 {
 	my @commands;
+	my $state = 'plain';
+	my $here_delim;		# HERE document delimiter
 
+	my $command;
 	while (get_next_line()) {
 		# Gather block end: |}
 		if (/$GATHER_BLOCK_END/o) {
 			# $1 is the optional block redirection
 			return ($1, @commands);
 		}
-		my $command;
-		$command->{body} = $_;
-		$command->{line_number} = $line_number;
-		push(@commands, $command);
+
+		# Attempt to handle multi-line commands
+		if ($state eq 'plain' || $state eq 'continuation') {
+			if ($state eq 'plain') {
+				$command->{line_number} = $line_number;
+				$command->{body} = $_;
+			} else {
+				$command->{body} .= $_;
+			}
+			if (/<<-?(.*)/) {
+				$here_delim = $1;
+				$here_delim =~ s/[\'\"\\]//g;
+				$state = 'here';
+			} elsif (/^\s*(\#.*)?$/ && $state eq 'continuation') {
+				;
+			} elsif (/\\$/ || /\|\s*(\#.*)?$/) {
+				$state = 'continuation';
+			} else {
+				push(@commands, $command);
+				undef $command;
+				$state = 'plain';
+			}
+		} elsif ($state eq 'here') {
+			$command->{body} .= $_;
+			if (/^$here_delim$/) {
+				$state = 'plain';
+				push(@commands, $command);
+				undef $command;
+			}
+		} else {
+			internal_error("parse_gather_command_sequence: Illegal state $state");
+		}
 	}
 	error("End of file reached file parsing a gather block");
 }
@@ -1245,12 +1276,21 @@ scatter_graph_body
 			# Generate body sans trailing newline and update corresponding edges
 			my $body = $c->{body};
 			chop $body;
-			while ($body =~ s|/stream/(\w+)||) {
+
+			my $command_tmp = $body;
+			# Generate stream input edges
+			while ($command_tmp =~ s|/stream/(\w+)||) {
 				my $file_name = $1;
 				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 					$edge{$file_name_p}->{rhs} = $node_name;
 				}
 			}
+
+			# Generate store reading edges
+			while ($command_tmp =~ s|\bstore:(\w+)||) {
+				print $graph_out qq(\t$1 -> $node_name [id="store-read"];\n) if ($graph_out);
+			}
+
 			print $graph_out qq{\t$node_name [id="$node_name", label="} . graphviz_escape($body) . qq{", $gv_proc_attr];\n} if ($graph_out);
 			$node_label{$node_name} = $body;
 
@@ -1272,6 +1312,14 @@ graphviz_escape
 	$name =~ s/\s+$//;
 	$name =~ s/^\s+//;
 	if ($graph_style eq 'pretty') {
+		# Attempt to remove HERE documents
+		if ($name =~ m/<<\-?(.*?)\n/) {
+			my $delim = $1;
+			$delim =~ s/[\\\'\"]//g;
+			# /s makes . match newlines
+			$name =~ s/<<\-?(.*?)\n.*$delim//s;
+		}
+
 		# Remove single-quoted elements
 		$name =~ s/'[^']*'//g;
 		# Remove double-quoted elements
@@ -1312,6 +1360,8 @@ gather_graph
 		my $is_node = 0;
 		my $node_name = "gather_node_$n";
 		my $command_tmp = $command->{body};
+
+		# Handle streams
 		while ($command_tmp =~ s|/stream/(\w+)||) {
 			my $file_name = $1;
 			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
@@ -1319,7 +1369,14 @@ gather_graph
 			}
 			$is_node = 1;
 		}
-		print $graph_out qq{\t$node_name [id="$node_name", label="} . graphviz_escape($command_tmp) . qq{", $gv_proc_attr];\n} if ($graph_out && $is_node);
+
+		# Handle stores
+		while ($command_tmp =~ s|\bstore:(\w+)||) {
+			print $graph_out qq(\t$1 -> $node_name [id="store-read"];\n) if ($graph_out);
+			$is_node = 1;
+		}
+
+		print $graph_out qq{\t$node_name [id="$node_name", label="} . graphviz_escape($command->{body}) . qq{", $gv_proc_attr];\n} if ($graph_out && $is_node);
 		$n++;
 	}
 }
