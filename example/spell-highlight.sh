@@ -26,10 +26,13 @@ export LC_ALL=C
 
 scatter |{
 
+	# Ensure dictionary is sorted consistently with our settings
+	.| sort /usr/share/dict/words |>/stream/dict
+
 	-| tr -cs A-Za-z \\n |
 	tr A-Z a-z |
 	sort -u |
-	comm -23 - /usr/share/dict/words |>/stream/errors
+	comm -23 - /stream/dict |>/stream/errors
 
 	# Using a pass-through construct would (rightly) result in a
 	# deadlock warning, because fgrep needs to read the file in its
