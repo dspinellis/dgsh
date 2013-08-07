@@ -324,6 +324,19 @@ while (get_next_line()) {
 			read sgsh_return
 		fi
 		} : '' ;
+
+		# Handle redirection
+		# 1. Remove line comments
+		$redirection =~ s/\#.*//;
+		# 2. Pipe redirection should follow 3<&0, input redirection should precede it
+		my $redirection2 = '';
+		if ($redirection =~ m/(.*?)(\|.*)/) {
+			$redirection = $1;
+			$redirection2 = $2;
+		}
+		# 3. The fd3 redirections allow piping into the scatter block
+		$redirection = "$redirection 3<&0 $redirection2";
+
 		$code .= "(\n" .
 			initialization_code($kvstores) .
 			"$code2\n" .
@@ -331,7 +344,7 @@ while (get_next_line()) {
 			gather_code(\@gather_commands) .
 			$no_output_wait .
 			$debug_wait .
-			"\n) $redirection 3<&0\n";		# The fd3 redirections allow piping into the scatter block
+			"\n) $redirection\n";		
 		debug_create_html();
 	} else {
 		$code .= $_ ;
