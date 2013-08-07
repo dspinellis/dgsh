@@ -132,8 +132,10 @@ Streams are internally implemented through named pipes.
 .SH SYNTAX
 .PP
 .ft C
+.ps -1
 .nf
 program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
+        | 'scatter |{' command ... '}|'
         ;
 
 command : source pipeline sink
@@ -145,9 +147,11 @@ source  : '-|'          // Receive scatter input
 
 sink    : '|>/stream/' filename                 // Sink to specified stream
         | '|store:' store_name [ store-flags ]  // Sink to specified store
-        | '|{' [ tee-flags ] command ... '|}'   // Scatter
+        | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
+        | '|.'                                  // No output
         ;
 .fi
+.ps +1
 .ft P
 .br
 
@@ -287,6 +291,22 @@ the command within the block, and
 the command's instance, when multiple instances of a command
 are invoked in parallel.
 The numbers are used in the same way in all similarly constructed names.
+.TP
+.B npfo-none-#.#.#
+A named pipe used to wait on a process that has no output
+(is terminated with \fC|.\fP).
+The (background) process's (non-existent) output is redirected to that named pipe.
+At the end of the generated code an \fIsgsh-tee\fP(1) command executing
+synchronously (in the foreground) is automatically added to read from those named pipes.
+When each background process terminates, the write-end of the corresponding named pipe is closed,
+\fIsgsh-tee\fP(1) receives an EOF at the read-end,
+and stops reading from it.
+When all background processes using such named pipes terminate, \fIsgsh-tee\fP(1)
+will also terminate and the pipes and stores created for the block are
+dismantled.
+Without this waiting, the block would terminate too early,
+with pipes and stores that were still required by asynchronously
+executing processes prematurely removed.
 .PP
 In addition, when a script is being debugged with the
 .B -d

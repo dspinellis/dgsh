@@ -176,6 +176,7 @@ Here the formal description of the <em>sgsh</em> syntax.
 
 <pre class="prettyprint">
 program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
+        | 'scatter |{' command ... '}|'
         ;
 
 command : source pipeline sink
@@ -187,7 +188,8 @@ source  : '-|'                                  // Receive scatter input
 
 sink    : '|&gt;/stream/' filename                 // Sink to specified stream
         | '|store:' store_name [ store-flags ]  // Sink to specified store
-        | '|{' [ tee-flags ] command ... '|}'   // Scatter
+        | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
+        | '|.'                                  // No output
         ;
 </pre>
 </section> <!-- syntax -->
