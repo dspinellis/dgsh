@@ -238,6 +238,9 @@ if ($#ARGV >= 0) {
 	@lines = <STDIN>;
 }
 
+# Remove spaces passwd by the Linux kernel in #!
+$opt_s =~ s/^\s+//;
+
 # Generate code heading
 print $output_fh "#!$opt_s
 # Automatically generated file
