@@ -42,13 +42,31 @@
 
 static int buffer_size = 1024 * 1024;
 
-static char **buffers;
+/*
+ * A buffer in the memory pool.
+ */
+struct pool_buffer {
+	union {
+		void *p;	/* Memory allocated for it (b_memory) */
+		off_t o;	/* File offset where stored (b_file) */
+	};
+	enum {
+		s_none,		/* Stored nowhere */
+		s_memory,	/* Stored in memory */
+		s_file		/* Stored in temporary file */
+	} s; 			/* Where it is stored */
+};
+
+static struct pool_buffer *buffers;
 
 /* The position up to which we have read data */
 static off_t source_pos_read;
 
-/* A buffer that can be used for reading */
-struct buffer {
+/*
+ * A buffer that is used for I/O.
+ * It points to a part of a pool buffer.
+ */
+struct io_buffer {
 	void *p;	/* Memory pointer */
 	size_t size;	/* Buffer size */
 };
@@ -130,8 +148,10 @@ enum state {
 
 /*
  * Allocate memory for the specified pool
- * Return false if we're out of memory by reaching the user-specified limit
- * or a system's hard limit.
+ * If we're out of memory by reaching the user-specified limit
+ * or a system's hard limit return false.
+ * If sufficient memory is available return true.
+ * buffers[pool] will then point to a buffer_size block of available memory.
  */
 static bool
 memory_allocate(int pool)
@@ -139,7 +159,7 @@ memory_allocate(int pool)
 	static int pool_size;
 	static int allocated_pool_end;
 	int i, orig_pool_size;
-	char **orig_buffers;
+	struct pool_buffer *orig_buffers;
 
 	if (pool < allocated_pool_end)
 		return true;
@@ -158,7 +178,7 @@ memory_allocate(int pool)
 			pool_size = 1;
 		else
 			pool_size *= 2;
-		if ((buffers = realloc(buffers, pool_size * sizeof(char *))) == NULL) {
+		if ((buffers = realloc(buffers, pool_size * sizeof(struct pool_buffer))) == NULL) {
 			DPRINTF("Unable to reallocate buffer pool bank");
 			pool_size = orig_pool_size;
 			buffers = orig_buffers;
@@ -168,13 +188,14 @@ memory_allocate(int pool)
 
 	/* Allocate buffer memory [allocated_pool_end, pool]. */
 	for (i = allocated_pool_end; i <= pool; i++) {
-		if ((buffers[i] = malloc(buffer_size)) == NULL) {
+		if ((buffers[i].p = malloc(buffer_size)) == NULL) {
 			DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, i);
 			max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 			allocated_pool_end = i;
 			return false;
 		}
-		DPRINTF("Allocated buffer %d to %p", i, buffers[i]);
+		buffers[i].s = s_memory;
+		DPRINTF("Allocated buffer %d to %p", i, buffers[i].p);
 		buffers_allocated++;
 		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 	}
@@ -195,10 +216,11 @@ memory_free(off_t pos)
 	DPRINTF("memory_free: pos = %ld, begin=%d end=%d",
 		(long)pos, pool_begin, pool_end);
 	for (i = pool_begin; i < pool_end; i++) {
-		free(buffers[i]);
+		free(buffers[i].p);
+		buffers[i].s = s_none;
 		buffers_freed++;
 		#ifdef DEBUG
-		buffers[i] = NULL;
+		buffers[i].p = NULL;
 		#endif
 		DPRINTF("Freed buffer %d (pos = %ld, begin=%d end=%d)",
 			i, (long)pos, pool_begin, pool_end);
@@ -212,17 +234,17 @@ memory_free(off_t pos)
  * Return false if no memory is available.
  */
 static bool
-source_buffer(off_t pos, /* OUT */ struct buffer *b)
+source_buffer(off_t pos, /* OUT */ struct io_buffer *b)
 {
 	int pool = pos / buffer_size;
 	size_t pool_offset = pos % buffer_size;
 
 	if (!memory_allocate(pool))
 		return false;
-	b->p = buffers[pool] + pool_offset;
+	b->p = buffers[pool].p + pool_offset;
 	b->size = buffer_size - pool_offset;
 	DPRINTF("Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)pos, pool, buffers[pool], (long)pool_offset, (long)b->size, b->p);
+		(long)pos, pool, buffers[pool].p, (long)pool_offset, (long)b->size, b->p);
 	return true;
 }
 
@@ -230,18 +252,18 @@ source_buffer(off_t pos, /* OUT */ struct buffer *b)
  * Return a buffer to read from for writing to a file from a position onward
  * When processing lines, b.size can be 0
  */
-static struct buffer
+static struct io_buffer
 sink_buffer(struct sink_info *ofp)
 {
-	struct buffer b;
+	struct io_buffer b;
 	int pool = ofp->pos_written / buffer_size;
 	size_t pool_offset = ofp->pos_written % buffer_size;
 	size_t source_bytes = ofp->pos_to_write - ofp->pos_written;
 
-	b.p = buffers[pool] + pool_offset;
+	b.p = buffers[pool].p + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, buffers[pool], (long)pool_offset, (long)b.size, b.p);
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, buffers[pool].p, (long)pool_offset, (long)b.size, b.p);
 	return b;
 }
 
@@ -254,7 +276,7 @@ sink_pointer(off_t pos_written)
 	int pool = pos_written / buffer_size;
 	size_t pool_offset = pos_written % buffer_size;
 
-	return buffers[pool] + pool_offset;
+	return buffers[pool].p + pool_offset;
 }
 
 /*
@@ -288,7 +310,7 @@ static enum read_result
 source_read(struct source_info *ifp)
 {
 	int n;
-	struct buffer b;
+	struct io_buffer b;
 
 	if (!source_buffer(source_pos_read, &b)) {
 		DPRINTF("Memory full");
@@ -461,7 +483,7 @@ sink_write(fd_set *sink_fds, struct sink_info *files)
 	for (ofp = files; ofp; ofp = ofp->next) {
 		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
-			struct buffer b;
+			struct io_buffer b;
 
 			b = sink_buffer(ofp);
 			if (b.size == 0)
