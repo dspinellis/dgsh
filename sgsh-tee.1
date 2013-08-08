@@ -104,9 +104,8 @@ where input data will be copied.
 .IP "\fB\-m\fP \fImemory-size\fP"
 Specify the maximum size of memory to allocate for buffers.
 This is by default 256MB.
-When \fIsgsh-tee\fP exhausts this memory, it sleeps for one second
-to let its output buffers drain, and then tries again to allocate the
-required memory.
+When \fIsgsh-tee\fP exhausts this memory, it enters a state where it
+waits for its output buffers drain, thus freeing allocated memory.
 The specified number can be suffixed with
 \fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
 The specified maximum memory size must be larger than the program's buffer size.
