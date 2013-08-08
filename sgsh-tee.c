@@ -57,7 +57,11 @@ struct pool_buffer {
 	} s; 			/* Where it is stored */
 };
 
+/* A dynamically adjusted vector of buffers */
 static struct pool_buffer *buffers;
+
+/* The first buffer in the above pool that has not been allocated */
+static int allocated_pool_end;
 
 /* The position up to which we have read data */
 static off_t source_pos_read;
@@ -76,6 +80,12 @@ static unsigned long max_mem = 256 * 1024 * 1204;
 
 /* Scatter the output across the files, rather than copying it. */
 static bool opt_scatter = false;
+
+/* Use a temporary file for overflowing buffered data */
+static bool use_tmp_file = false;
+
+/* User-specified temporary directory */
+static char *opt_tmp_dir = NULL;
 
 /*
  * Split scattered data on blocks of specified size; otherwise on line boundaries
@@ -146,6 +156,111 @@ enum state {
 };
 
 
+/* File descriptor of temporary file used for paging buffer pool */
+int tmp_file_fd = -1;
+
+
+/*
+ * Return the total number of bytes required for storing all buffers
+ * up to the specified memory pool
+ */
+static unsigned long
+memory_pool_size(int pool)
+{
+	return ((buffers_allocated - buffers_freed) + (pool - allocated_pool_end + 1)) * buffer_size;
+}
+
+/* Write half of the allocated buffer pool to the temporary file */
+static void
+page_out(void)
+{
+	static int pool_ptr = 0;
+
+	if (tmp_file_fd == -1) {
+		char *template;
+
+		/*
+		 * Create a temporary file that will be deleted on exit.
+		 * The location follows tempnam rules (argument, TMPDIR,
+		 * P_tmpdir, /tmp), while the creation through mkstemp
+		 * avoids race conditions.
+		 */
+		if ((template = tempnam(opt_tmp_dir, "sg-")) == NULL)
+			err(1, "Unable to obtain temporary file name");
+		if ((template = realloc(template, strlen(template) + 6)) == NULL)
+			err(1, "Error obtaining temporary file name space");
+		strcat(template, "XXXXXX");
+		if ((tmp_file_fd = mkstemp(template)) == -1)
+			err(1, "Unable to create temporary file %s", template);
+	}
+
+	/*
+	 * Page-out memory buffers from the pool, round-robin fashion,
+	 * starting from the oldest buffers.
+	 * This is good enough for the simple common case where one output fd is blocked.
+	 */
+	while (memory_pool_size(allocated_pool_end - 1) > max_mem / 2) {
+		if (buffers[pool_ptr].s == s_memory) {
+			if (pwrite(tmp_file_fd, buffers[pool_ptr].p, buffer_size, (off_t)pool_ptr * buffer_size) != buffer_size)
+				err(1, "Write to temporary file failed");
+			buffers[pool_ptr].s = s_file;
+			free(buffers[pool_ptr].p);
+			buffers_freed++;
+		}
+		if (++pool_ptr == allocated_pool_end)
+			pool_ptr = 0;
+	}
+}
+
+/*
+ * Allocate memory for the passed memory pool buffer.
+ * Return false if no such memory is available.
+ */
+static bool
+allocate_pool_buffer(struct pool_buffer *b)
+{
+	if ((b->p = malloc(buffer_size)) == NULL) {
+		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, i);
+		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+		return false;
+	}
+	b->s = s_memory;
+	DPRINTF("Allocated buffer %d to %p", i, b->p);
+	buffers_allocated++;
+	max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+	return true;
+}
+
+
+/*
+ * Ensure that the specified pool buffer is in memory
+ */
+static void
+page_in(int pool)
+{
+	struct pool_buffer *b = &buffers[pool];
+
+	switch (b->s) {
+	case s_memory:
+		break;
+	case s_file:
+		/* Good time to ensure that there will be page-in memory available */
+		if (memory_pool_size(allocated_pool_end - 1) > max_mem)
+			page_out();
+		if (!allocate_pool_buffer(b))
+			err(1, "Out of memory paging-in buffer");
+		if (pread(tmp_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
+			err(1, "Read from temporary file failed");
+		b->s = s_memory;
+		break;
+	case s_none:
+	default:
+		assert(false);
+		break;
+	}
+
+}
+
 /*
  * Allocate memory for the specified pool
  * If we're out of memory by reaching the user-specified limit
@@ -157,7 +272,6 @@ static bool
 memory_allocate(int pool)
 {
 	static int pool_size;
-	static int allocated_pool_end;
 	int i, orig_pool_size;
 	struct pool_buffer *orig_buffers;
 
@@ -166,8 +280,12 @@ memory_allocate(int pool)
 
 	DPRINTF("Buffers allocated: %d Freed: %d", buffers_allocated, buffers_freed);
 	/* Check soft memory limit through allocated plus requested memory. */
-	if (((buffers_allocated - buffers_freed) + (allocated_pool_end - pool + 1)) * buffer_size > max_mem)
-		return false;
+	if (memory_pool_size(pool) > max_mem) {
+		if (use_tmp_file)
+			page_out();
+		else
+			return false;
+	}
 
 	/* Keep original values to undo on failure. */
 	orig_pool_size = pool_size;
@@ -187,18 +305,11 @@ memory_allocate(int pool)
 	}
 
 	/* Allocate buffer memory [allocated_pool_end, pool]. */
-	for (i = allocated_pool_end; i <= pool; i++) {
-		if ((buffers[i].p = malloc(buffer_size)) == NULL) {
-			DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, i);
-			max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+	for (i = allocated_pool_end; i <= pool; i++)
+		if (!allocate_pool_buffer(&buffers[i])) {
 			allocated_pool_end = i;
 			return false;
 		}
-		buffers[i].s = s_memory;
-		DPRINTF("Allocated buffer %d to %p", i, buffers[i].p);
-		buffers_allocated++;
-		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
-	}
 	allocated_pool_end = pool + 1;
 	return true;
 }
@@ -216,9 +327,32 @@ memory_free(off_t pos)
 	DPRINTF("memory_free: pos = %ld, begin=%d end=%d",
 		(long)pos, pool_begin, pool_end);
 	for (i = pool_begin; i < pool_end; i++) {
-		free(buffers[i].p);
+		switch (buffers[i].s) {
+		case s_memory:
+			free(buffers[i].p);
+			buffers_freed++;
+			break;
+		case s_file:
+			/* Punch a hole; best-effort */
+			#ifdef FALLOC_FL_PUNCH_HOLE
+			{
+				static bool warned = false;
+
+				if (fallocate(tmp_fd, FALLOC_FL_PUNCH_HOLE, buffers[i].o, buffer_size) < 0 &&
+				    !warned) {
+					warn("Failed to free temporary buffer space");
+					warned = true;
+				}
+			}
+			#endif
+			break;
+		case s_none:
+			break;
+		default:
+			assert(false);
+			break;
+		}
 		buffers[i].s = s_none;
-		buffers_freed++;
 		#ifdef DEBUG
 		buffers[i].p = NULL;
 		#endif
@@ -241,6 +375,7 @@ source_buffer(off_t pos, /* OUT */ struct io_buffer *b)
 
 	if (!memory_allocate(pool))
 		return false;
+	assert(buffers[pool].s == s_memory);
 	b->p = buffers[pool].p + pool_offset;
 	b->size = buffer_size - pool_offset;
 	DPRINTF("Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
@@ -260,6 +395,8 @@ sink_buffer(struct sink_info *ofp)
 	size_t pool_offset = ofp->pos_written % buffer_size;
 	size_t source_bytes = ofp->pos_to_write - ofp->pos_written;
 
+	if (tmp_file_fd != -1)
+		page_in(pool);
 	b.p = buffers[pool].p + pool_offset;
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
@@ -276,6 +413,8 @@ sink_pointer(off_t pos_written)
 	int pool = pos_written / buffer_size;
 	size_t pool_offset = pos_written % buffer_size;
 
+	if (tmp_file_fd != -1)
+		page_in(pool);
 	return buffers[pool].p + pool_offset;
 }
 
@@ -526,12 +665,14 @@ usage(const char *name)
 {
 	fprintf(stderr, "Usage %s [-b size] [-i file] [-IMs] [-o file] [-m size] [-t char]\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
+		"-f"		"\tOverflow buffered data into a temporary file\n"
 		"-I"		"\tInput-side buffering\n"
 		"-i file"	"\tGather input from specified file\n"
 		"-m size[k|M|G]""\tSpecify the maximum buffer memory size\n"
 		"-M"		"\tProvide memory use statistics on termination\n"
 		"-o file"	"\tScatter output to specified file\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
+		"-T dir"	"\tSpecify directory for storing temporary file\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n",
 		name);
 	exit(1);
@@ -639,10 +780,13 @@ main(int argc, char *argv[])
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:S:sIi:Mm:o:t:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:fIi:Mm:o:S:sTt:")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = (int)parse_size(progname, optarg);
+			break;
+		case 'f':
+			use_tmp_file = true;
 			break;
 		case 'I':
 			state = read_ib;
@@ -685,6 +829,9 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			opt_scatter = true;
+			break;
+		case 'T':
+			opt_tmp_dir = optarg;
 			break;
 		case 't':	/* Record terminator */
 			/* We allow \0 as rt */
