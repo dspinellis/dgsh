@@ -116,6 +116,8 @@ struct source_info {
  *
  * State drain_ob has select return only if the process can write out
  * data already read.
+ *
+ * See also the diagram tee-state.dot
  */
 enum state {
 	read_ib,		/* Must read input; write if data available */
