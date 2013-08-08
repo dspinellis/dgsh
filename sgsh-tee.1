@@ -1,4 +1,4 @@
-.TH SGSH-TEE 1 "17 July 2013"
+.TH SGSH-TEE 1 "9 August 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -19,10 +19,11 @@ sgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 .SH SYNOPSIS
 \fBsgsh-tee\fP
 [\fB\-b\fP \fIbuffer-size\fP]
-[\fB\-IMs\fP]
+[\fB\-fIMs\fP]
 [\fB\-i\fP \fIinput-file\fP]
 [\fB\-o\fP \fIoutput-file\fP]
 [\fB\-m\fP \fImemory-size\fP]
+[\fB\-T\fP \fIdirectory\fP]
 [\fB\-t\fP \fIcharacter\fP]
 [\fIfile ...\fP]
 .SH DESCRIPTION
@@ -51,6 +52,16 @@ size in memory-constrained environments.
 The specified number can be suffixed with
 \fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
 The specified buffer size must be less than the program's maximum memory size.
+
+.IP "\fB\-f\fP
+When the allocated memory size reaches the maximum memory threshold,
+start using a temporary file for buffering the data.
+This extends the amount of data that can be buffered to the
+space available on disk.
+The location of the temporary file follows the
+\fItempnam\fP(3) rules, and can be overridden through the
+.B -T
+option.
 
 .IP "\fB\-I\fP"
 Implement input-side buffering.
@@ -108,6 +119,10 @@ and each chunk is written only to a single sink.
 This is useful for dividing the work among multiple processes operating
 in parallel.
 
+.IP "\fB\-T\fP \fIdirectory\fP"
+Specify the directory to use for storing the temporary file,
+when the specified maximum buffer memory size is exceeded.
+
 .IP "\fB\-t\fP \fIchar\fP"
 Use \fIchar\fP as the record separator,
 By default the record separator is a newline,
@@ -116,6 +131,7 @@ will make the record separator be the null character.
 
 .SH "SEE ALSO"
 \fIsgsh\fP(1)
+\fItempnam\fP(3)
 
 .SH AUTHOR
 Diomidis Spinellis \(em <http://www.spinellis.gr>
