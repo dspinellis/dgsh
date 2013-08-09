@@ -69,10 +69,17 @@ update_pipe_content = function() {
 	$.ajax({
                 url: url,
                 success: function(json) {
+			// Calculate channel's idle time
+			var idle = (new Date).getTime() / 1000 - json.atime;
+			if (idle < 0)
+				idle = 0;
+
+			// Fill values
 			$('#bytes').text(ts(json.nbytes));
 			$('#lines').text(ts(json.nlines));
 			$('#bps').text(ts((json.nbytes / json.rtime).toFixed(0)));
 			$('#lps').text(ts((json.nlines / json.rtime).toFixed(0)));
+			$('#idle').text(idle.toFixed(3));
 			if (json.data.length > 500)
 				json.data = json.data.substr(500) + "[...]";
 			$('#record').text(json.data);

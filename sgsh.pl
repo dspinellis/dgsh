@@ -1505,6 +1505,7 @@ debug_create_html
 <tr><td class='colHead'>Lines</td><td class='colValue'><span id="lines"></span></td></tr>
 <tr><td class='colHead'>Bytes/s</td><td class='colValue'><span id="bps"></span></td></tr>
 <tr><td class='colHead'>Lines/s</td><td class='colValue'><span id="lps"></span></td></tr>
+<tr><td class='colHead'>Idle time</td><td class='colValue'><span id="idle"></span></td></tr>
 <tr><th align='center' colspan=2>Last record</th></tr>
 <tr><td colspan=2><span id="record"></span></td></tr>
 </table>
