@@ -16,7 +16,6 @@
  */
 
 #define _XOPEN_SOURCE 500	// pread pwrite
-#define _BSD_SOURCE // DEFFILEMODE
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -851,7 +850,7 @@ main(int argc, char *argv[])
 		case 'o':	/* Specify output file */
 			if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
 				err(1, NULL);
-			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0)
+			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ofp->fd, max_fd);
 			ofp->name = strdup(optarg);
