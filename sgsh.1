@@ -1,4 +1,4 @@
-.TH SGSH 1 "11 July 2013"
+.TH SGSH 1 "9 August 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -199,6 +199,7 @@ Report file type, length, and compression performance for a
 URL retrieved from the web.  The web file never touches the
 disk.
 .ft C
+.ps -1
 .nf
 #!/usr/local/bin/sgsh
 
@@ -219,11 +220,13 @@ gzip:          `store:GZIP` bytes
 bzip2:         `store:BZIP2` bytes
 EOF
 |}
-.ft P
 .fi
+.ps +1
+.ft P
 .PP
 List the names of duplicate files in the specified directory
 .ft C
+.ps -1
 .nf
 #!/usr/local/bin/sgsh
 
@@ -258,8 +261,9 @@ scatter |{
 	END {if (prev) print "\n"}
 	{if (prev) print " "; prev = $1; print $2}'
 |}
-.ft P
 .fi
+.ps +1
+.ft P
 
 .SH FILES
 When run,
