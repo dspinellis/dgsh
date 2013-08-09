@@ -192,7 +192,7 @@ page_out(void)
 		 */
 		if ((template = tempnam(opt_tmp_dir, "sg-")) == NULL)
 			err(1, "Unable to obtain temporary file name");
-		if ((template = realloc(template, strlen(template) + 6)) == NULL)
+		if ((template = realloc(template, strlen(template) + 7)) == NULL)
 			err(1, "Error obtaining temporary file name space");
 		strcat(template, "XXXXXX");
 		if ((tmp_file_fd = mkstemp(template)) == -1)
@@ -265,13 +265,13 @@ page_in(int pool)
 		/* Good time to ensure that there will be page-in memory available */
 		if (memory_pool_size(allocated_pool_end - 1) > max_mem)
 			page_out();
+		if (!allocate_pool_buffer(b))
 			err(1, "Out of memory paging-in buffer");
 		if (pread(tmp_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
 			err(1, "Read from temporary file failed");
 		buffers_paged_in++;
 		b->s = s_memory_backed;
 		DPRINTF("Page in buffer %d", pool);
-		if (!allocate_pool_buffer(b))
 		break;
 	case s_none:
 	default:
@@ -431,11 +431,15 @@ sink_buffer(struct sink_info *ofp)
 	size_t source_bytes = ofp->pos_to_write - ofp->pos_written;
 
 	b.size = MIN(buffer_size - pool_offset, source_bytes);
-	if (tmp_file_fd != -1 && b.size != 0)
-		page_in(pool);
-	b.p = buffers[pool].p + pool_offset;
+	if (b.size == 0)
+		b.p = NULL;
+	else {
+		if (tmp_file_fd != -1)
+			page_in(pool);
+		b.p = buffers[pool].p + pool_offset;
+	}
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, buffers[pool].p, (long)pool_offset, (long)b.size, b.p);
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p);
 	return b;
 }
 
