@@ -213,6 +213,7 @@ page_out(void)
 			free(buffers[pool_ptr].p);
 			buffers_freed++;
 			buffers_paged_out++;
+			DPRINTF("Page out buffer %d", pool_ptr);
 		}
 		if (++pool_ptr == allocated_pool_end)
 			pool_ptr = 0;
@@ -247,6 +248,7 @@ page_in(int pool)
 {
 	struct pool_buffer *b = &buffers[pool];
 
+	DPRINTF("Page in buffer %d", pool);
 	switch (b->s) {
 	case s_memory_backed:
 	case s_memory:
@@ -264,6 +266,7 @@ page_in(int pool)
 		break;
 	case s_none:
 	default:
+		DPRINTF("Buffer %d has invalid storage %d", pool, b->s);
 		assert(false);
 		break;
 	}
@@ -418,10 +421,10 @@ sink_buffer(struct sink_info *ofp)
 	size_t pool_offset = ofp->pos_written % buffer_size;
 	size_t source_bytes = ofp->pos_to_write - ofp->pos_written;
 
-	if (tmp_file_fd != -1)
+	b.size = MIN(buffer_size - pool_offset, source_bytes);
+	if (tmp_file_fd != -1 && b.size != 0)
 		page_in(pool);
 	b.p = buffers[pool].p + pool_offset;
-	b.size = MIN(buffer_size - pool_offset, source_bytes);
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
 		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, buffers[pool].p, (long)pool_offset, (long)b.size, b.p);
 	return b;
