@@ -43,8 +43,6 @@ ensure_similar_buffers()
 
 for flags in '' -I
 do
-if false
-then
 	# Test two input files
 	cat sgsh-tee.c sgsh-tee.c /usr/share/dict/words >expected
 	./sgsh-tee $flags -b 64 -i sgsh-tee.c -i sgsh-tee.c -i /usr/share/dict/words >a
@@ -111,7 +109,6 @@ then
 		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
 	done
 
-fi
 	# Test low-memory behavior (memory)
 	rm -f try try2
 	mkfifo try try2
