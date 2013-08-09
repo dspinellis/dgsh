@@ -733,7 +733,7 @@ show_select_args(const char *msg, struct source_info *ifp, fd_set *source_fds, f
 	struct sink_info *ofp;
 
 	fprintf(stderr, "%s: ", msg);
-	if (FD_ISSET(ifp->fd, source_fds))
+	if (ifp && FD_ISSET(ifp->fd, source_fds))
 			fprintf(stderr, "%s ", ifp->name);
 	for (ofp = files; ofp; ofp = ofp->next)
 		if (FD_ISSET(ofp->fd, sink_fds))
