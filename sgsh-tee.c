@@ -48,10 +48,7 @@ static int buffer_size = 1024 * 1024;
  * A buffer in the memory pool.
  */
 struct pool_buffer {
-	union {
-		void *p;	/* Memory allocated for it (b_memory) */
-		off_t o;	/* File offset where stored (b_file) */
-	};
+	void *p;		/* Memory allocated for it (b_memory) */
 	enum {
 		s_none,		/* Stored nowhere */
 		s_memory,	/* Stored in memory */
