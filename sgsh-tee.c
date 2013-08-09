@@ -206,14 +206,22 @@ page_out(void)
 	 * This is good enough for the simple common case where one output fd is blocked.
 	 */
 	while (memory_pool_size(allocated_pool_end - 1) > max_mem / 2) {
-		if (buffers[pool_ptr].s == s_memory) {
-			DPRINTF("Page out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
+		switch (buffers[pool_ptr].s) {
+		case s_memory:
 			if (pwrite(tmp_file_fd, buffers[pool_ptr].p, buffer_size, (off_t)pool_ptr * buffer_size) != buffer_size)
 				err(1, "Write to temporary file failed");
+			/* FALLTHROUGH */
+		case s_memory_backed:
+			DPRINTF("Page out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
 			buffers[pool_ptr].s = s_file;
 			free(buffers[pool_ptr].p);
 			buffers_freed++;
 			buffers_paged_out++;
+		case s_file:
+		case s_none:
+			break;
+		default:
+			assert(false);
 		}
 		if (++pool_ptr == allocated_pool_end)
 			pool_ptr = 0;
