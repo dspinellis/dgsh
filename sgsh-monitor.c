@@ -85,7 +85,9 @@ main(int argc, char *argv[])
 			if (wrote_header)
 				printf("\" }\n");
 			printf("{ "
+				// Absolute time (s)
 				"\"atime\": %lld.%06d, "
+				// Relative time (s, from program start)
 				"\"rtime\": %.06lf, "
 				"\"nlines\": %lu, "
 				"\"nbytes\": %lu, "
