@@ -73,6 +73,11 @@ if (!getopts('dg:kmno:p:s:St:')) {
 	exit 1;
 }
 
+if ($opt_S && ($opt_d || $opt_m)) {
+	print STDERR "The -S option is not compatible with -d or -m\n";
+	exit 1;
+}
+
 # Make path absolute
 $opt_p = abs_path($opt_p) if (defined($opt_p));
 
