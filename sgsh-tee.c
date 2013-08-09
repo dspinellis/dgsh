@@ -216,6 +216,8 @@ page_out(void)
 			free(buffers[pool_ptr].p);
 			buffers_freed++;
 			buffers_paged_out++;
+			DPRINTF("Paged out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
+			break;
 		case s_file:
 		case s_none:
 			break;
@@ -255,7 +257,6 @@ page_in(int pool)
 {
 	struct pool_buffer *b = &buffers[pool];
 
-	DPRINTF("Page in buffer %d", pool);
 	switch (b->s) {
 	case s_memory_backed:
 	case s_memory:
@@ -264,12 +265,13 @@ page_in(int pool)
 		/* Good time to ensure that there will be page-in memory available */
 		if (memory_pool_size(allocated_pool_end - 1) > max_mem)
 			page_out();
-		if (!allocate_pool_buffer(b))
 			err(1, "Out of memory paging-in buffer");
 		if (pread(tmp_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
 			err(1, "Read from temporary file failed");
 		buffers_paged_in++;
 		b->s = s_memory_backed;
+		DPRINTF("Page in buffer %d", pool);
+		if (!allocate_pool_buffer(b))
 		break;
 	case s_none:
 	default:
@@ -386,11 +388,11 @@ memory_free(off_t pos)
 			break;
 		}
 		buffers[i].s = s_none;
+		DPRINTF("Freed buffer %d %p (pos = %ld, begin=%d end=%d)",
+			i, buffers[i].p, (long)pos, pool_begin, pool_end);
 		#ifdef DEBUG
 		buffers[i].p = NULL;
 		#endif
-		DPRINTF("Freed buffer %d (pos = %ld, begin=%d end=%d)",
-			i, (long)pos, pool_begin, pool_end);
 	}
 	pool_begin = pool_end;
 }
