@@ -21,25 +21,30 @@ ensure_same()
 ensure_similar_buffers()
 {
 	echo "$1"
-	for n in 3 5 8
+	for nr in 1 2
 	do
-		if ! awk "
-		function abs(v)
-		{
-			return (v < 0 ? -v : v)
-		}
-		NR == 1 {ref = \$$n}
-		NR == 2 {test = \$$n}
-		END { exit (ref + 0 != 0 && abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
-		then
-			echo "$1: Fields $n of $2 and $3 differ by more than 10%" 1>&2
-			exit 1
-		fi
+		for nf in 3 5 8
+		do
+			if ! awk "
+			function abs(v)
+			{
+				return (v < 0 ? -v : v)
+			}
+			NR == $nr {ref = \$$nf}
+			NR == $nr + 2 {test = \$$nf}
+			END { exit (ref + 0 != 0 && abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
+			then
+				echo "$1: Line $nr, fields $nf of $2 and $3 differ by more than 10%" 1>&2
+				exit 1
+			fi
+		done
 	done
 }
 
 for flags in '' -I
 do
+if false
+then
 	# Test two input files
 	cat sgsh-tee.c sgsh-tee.c /usr/share/dict/words >expected
 	./sgsh-tee $flags -b 64 -i sgsh-tee.c -i sgsh-tee.c -i /usr/share/dict/words >a
@@ -96,7 +101,7 @@ do
 
 	# Test buffering
 	# When -l is supported add, say, -l 16
-	for flags2 in '' '-m 2k'
+	for flags2 in '' '-m 2k' '-m 2k -f'
 	do
 		test="tee-fastout$flags$flags2"
 		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | ./sgsh-tee -M $flags $flags2 -b 1024 >/dev/null 2>"test/tee/$test.test"
@@ -106,7 +111,8 @@ do
 		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
 	done
 
-	# Test low-memory behavior
+fi
+	# Test low-memory behavior (memory)
 	rm -f try try2
 	mkfifo try try2
 	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | ./sgsh-tee $flags -b 512 -m 2k -o try -o try2 2>err &
@@ -120,6 +126,17 @@ do
 		ensure_same "Low-memory (try) $flags" lines try.out
 		ensure_same "Low-memory (try2) $flags" lines try2.out
 	fi
+	rm -f lines try try2 try.out try2.out err
+
+	# Test low-memory behavior (file)
+	rm -f try try2
+	mkfifo try try2
+	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | ./sgsh-tee -f $flags -b 512 -m 2k -o try -o try2 2>err &
+	cat try2 >try2.out &
+	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
+	wait
+	ensure_same "Low-memory temporary file (try) $flags" lines try.out
+	ensure_same "Low-memory temporary file (try2) $flags" lines try2.out
 	rm -f lines try try2 try.out try2.out err
 done
 exit 0

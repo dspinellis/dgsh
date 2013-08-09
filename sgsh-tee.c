@@ -53,6 +53,7 @@ struct pool_buffer {
 	enum {
 		s_none,		/* Stored nowhere */
 		s_memory,	/* Stored in memory */
+		s_memory_backed,/* Stored in memory and backed to temporary file */
 		s_file		/* Stored in temporary file */
 	} s; 			/* Where it is stored */
 };
@@ -96,6 +97,8 @@ static bool block_len = 0;
 
 /* Allocated bufffer information */
 static int buffers_allocated, buffers_freed, max_buffers_allocated;
+/* Paging information */
+static int buffers_paged_out, buffers_paged_in, pages_freed;
 
 /* Set to true when we reach EOF on input */
 static bool reached_eof = false;
@@ -206,6 +209,7 @@ page_out(void)
 			buffers[pool_ptr].s = s_file;
 			free(buffers[pool_ptr].p);
 			buffers_freed++;
+			buffers_paged_out++;
 		}
 		if (++pool_ptr == allocated_pool_end)
 			pool_ptr = 0;
@@ -241,6 +245,7 @@ page_in(int pool)
 	struct pool_buffer *b = &buffers[pool];
 
 	switch (b->s) {
+	case s_memory_backed:
 	case s_memory:
 		break;
 	case s_file:
@@ -251,7 +256,8 @@ page_in(int pool)
 			err(1, "Out of memory paging-in buffer");
 		if (pread(tmp_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
 			err(1, "Read from temporary file failed");
-		b->s = s_memory;
+		buffers_paged_in++;
+		b->s = s_memory_backed;
 		break;
 	case s_none:
 	default:
@@ -315,6 +321,26 @@ memory_allocate(int pool)
 }
 
 /*
+ * Free a file-backed buffer at the specified pool location
+ * by punching a hole to the file. This is a best effort
+ * operation, as it is only supported on Linux.
+ */
+static void
+buffer_file_free(int pool)
+{
+#ifdef FALLOC_FL_PUNCH_HOLE
+	static bool warned = false;
+
+	if (fallocate(tmp_fd, FALLOC_FL_PUNCH_HOLE, pool * buffer_size, buffer_size) < 0 &&
+	    !warned) {
+		warn("Failed to free temporary buffer space");
+		warned = true;
+	}
+#endif
+	pages_freed++;
+}
+
+/*
  * Ensure that pool buffers from [0,pos) are free.
  */
 static void
@@ -333,18 +359,12 @@ memory_free(off_t pos)
 			buffers_freed++;
 			break;
 		case s_file:
-			/* Punch a hole; best-effort */
-			#ifdef FALLOC_FL_PUNCH_HOLE
-			{
-				static bool warned = false;
-
-				if (fallocate(tmp_fd, FALLOC_FL_PUNCH_HOLE, buffers[i].o, buffer_size) < 0 &&
-				    !warned) {
-					warn("Failed to free temporary buffer space");
-					warned = true;
-				}
-			}
-			#endif
+			buffer_file_free(i);
+			break;
+		case s_memory_backed:
+			buffer_file_free(i);
+			free(buffers[i].p);
+			buffers_freed++;
 			break;
 		case s_none:
 			break;
@@ -951,9 +971,12 @@ main(int argc, char *argv[])
 				}
 			if (active_fds == 0) {
 				/* If no read possible, and no writes pending, terminate. */
-				if (opt_memory_stats)
+				if (opt_memory_stats) {
 					fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
 						buffers_allocated, buffers_freed, max_buffers_allocated);
+					fprintf(stderr, "Page out: %d In: %d Pages freed: %d\n",
+						buffers_paged_out, buffers_paged_in, pages_freed);
+				}
 				return 0;
 			}
 		}
