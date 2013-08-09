@@ -207,13 +207,13 @@ page_out(void)
 	 */
 	while (memory_pool_size(allocated_pool_end - 1) > max_mem / 2) {
 		if (buffers[pool_ptr].s == s_memory) {
+			DPRINTF("Page out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
 			if (pwrite(tmp_file_fd, buffers[pool_ptr].p, buffer_size, (off_t)pool_ptr * buffer_size) != buffer_size)
 				err(1, "Write to temporary file failed");
 			buffers[pool_ptr].s = s_file;
 			free(buffers[pool_ptr].p);
 			buffers_freed++;
 			buffers_paged_out++;
-			DPRINTF("Page out buffer %d", pool_ptr);
 		}
 		if (++pool_ptr == allocated_pool_end)
 			pool_ptr = 0;
