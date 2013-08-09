@@ -15,6 +15,9 @@
  *
  */
 
+#define _XOPEN_SOURCE 500	// pread pwrite
+#define _BSD_SOURCE // DEFFILEMODE
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/select.h>
@@ -224,12 +227,12 @@ static bool
 allocate_pool_buffer(struct pool_buffer *b)
 {
 	if ((b->p = malloc(buffer_size)) == NULL) {
-		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, i);
+		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, b -buffers);
 		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 		return false;
 	}
 	b->s = s_memory;
-	DPRINTF("Allocated buffer %d to %p", i, b->p);
+	DPRINTF("Allocated buffer %d to %p", b - buffers, b->p);
 	buffers_allocated++;
 	max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
 	return true;
