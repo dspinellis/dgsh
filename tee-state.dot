@@ -20,11 +20,11 @@ digraph teestate {
 	drain_ib -> drain_ib [label=""];
 
 	write_ob -> read_ob [label=""];
-	write_ob -> write_ob [label=""];
+	write_ob -> write_ob [label="data written || reached_eof"];
 
 	drain_ob -> read_ob [label=""];
 	drain_ob -> write_ob [label="read_eof"];
-	drain_ob -> drain_ob [label="data written"];
+	drain_ob -> write_ob [label="data written"];
 
 	start [shape=circle,style=filled,label="",width=0.2,fillcolor=black,fixedsize=true];
 	bufftype [shape=diamond,label="",style=""];
