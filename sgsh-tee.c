@@ -57,14 +57,47 @@ struct pool_buffer {
 	} s; 			/* Where it is stored */
 };
 
-/* A dynamically adjusted vector of buffers */
-static struct pool_buffer *buffers;
+/*
+ * A pool of buffers
+ */
+struct buffer_pool {
+	struct pool_buffer *buffers;	/* A dynamically adjusted vector of buffers */
+	int pool_size;			/* Size of allocated pool_buffers vectors */
+	int allocated_pool_end;		/* The first buffer in the above pool that has not been allocated */
 
-/* The first buffer in the above pool that has not been allocated */
-static int allocated_pool_end;
+	/* Allocated bufffer information */
+	int buffers_allocated, buffers_freed, max_buffers_allocated;
 
-/* The position up to which we have read data */
-static off_t source_pos_read;
+	/* Paging information */
+	int buffers_paged_out, buffers_paged_in, pages_freed;
+
+	int page_out_ptr;		/* Pointer to first buffer to page out */
+	int page_file_fd;		/* File descriptor of temporary file used for paging buffer pool */
+	int free_pool_begin;		/* Start of freed area */
+};
+
+
+/* Construct a new buffer pool object */
+static struct buffer_pool *
+new_buffer_pool(void)
+{
+	struct buffer_pool *bp;
+
+	if ((bp = (struct buffer_pool *)malloc(sizeof(struct buffer_pool))) == NULL)
+		err(1, NULL);
+	bp->buffers = NULL;
+	bp->pool_size = 0;
+	bp->page_out_ptr = 0;
+	bp->page_file_fd = -1;
+	bp->free_pool_begin = 0;
+
+	bp->allocated_pool_end = 0;
+	 
+	bp->buffers_allocated = bp->buffers_freed = bp->max_buffers_allocated =
+	bp->buffers_paged_out = bp->buffers_paged_in = bp->pages_freed = 0;
+
+	return bp;
+}
 
 /*
  * A buffer that is used for I/O.
@@ -94,11 +127,6 @@ static char *opt_tmp_dir = NULL;
 
 static bool block_len = 0;
 
-/* Allocated bufffer information */
-static int buffers_allocated, buffers_freed, max_buffers_allocated;
-/* Paging information */
-static int buffers_paged_out, buffers_paged_in, pages_freed;
-
 /* Set to true when we reach EOF on input */
 static bool reached_eof = false;
 
@@ -113,14 +141,48 @@ struct sink_info {
 	off_t pos_written;	/* Position up to which written */
 	off_t pos_to_write;	/* Position up to which to write */
 	bool active;		/* True if this sink is still active */
+	struct source_info *ifp;/* Input file we read from */
 };
+
+/* Construct a new sink_info object */
+struct sink_info *
+new_sink_info(const char *name)
+{
+	struct sink_info *ofp;
+
+	if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
+		err(1, NULL);
+	ofp->name = strdup(name);
+	ofp->active = true;
+	ofp->pos_written = ofp->pos_to_write = 0;
+	return ofp;
+}
 
 /* Linked list of files we read from */
 struct source_info {
 	struct source_info *next;	/* Next list element */
 	char *name;			/* Input file name */
 	int fd;				/* Input file descriptor */
+	struct buffer_pool *bp;		/* Buffers where pending input is stored */
+	off_t source_pos_read;		/* The position up to which all sinks have read data */
+	bool reached_eof;		/* True if we reached EOF for this source */
+	off_t read_min_pos;		/* Minimum position read by all sinks */
+	bool is_read;			/* True if an active sink reads it */
 };
+
+/* Construct a new source_info object */
+struct source_info *
+new_source_info(const char *name)
+{
+	struct source_info *ifp;
+
+	if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
+		err(1, NULL);
+	ifp->name = strdup(name);
+	ifp->bp = new_buffer_pool();
+	ifp->source_pos_read = 0;
+	return ifp;
+}
 
 /*
  * States for the copying engine.
@@ -157,28 +219,21 @@ enum state {
 	write_ob,		/* Write data, before reading */
 };
 
-
-/* File descriptor of temporary file used for paging buffer pool */
-int tmp_file_fd = -1;
-
-
 /*
  * Return the total number of bytes required for storing all buffers
  * up to the specified memory pool
  */
 static unsigned long
-memory_pool_size(int pool)
+memory_pool_size(struct buffer_pool *bp, int pool)
 {
-	return ((buffers_allocated - buffers_freed) + (pool - allocated_pool_end + 1)) * buffer_size;
+	return ((bp->buffers_allocated - bp->buffers_freed) + (pool - bp->allocated_pool_end + 1)) * buffer_size;
 }
 
 /* Write half of the allocated buffer pool to the temporary file */
 static void
-page_out(void)
+page_out(struct buffer_pool *bp)
 {
-	static int pool_ptr = 0;
-
-	if (tmp_file_fd == -1) {
+	if (bp->page_file_fd == -1) {
 		char *template;
 
 		/*
@@ -192,7 +247,7 @@ page_out(void)
 		if ((template = realloc(template, strlen(template) + 7)) == NULL)
 			err(1, "Error obtaining temporary file name space");
 		strcat(template, "XXXXXX");
-		if ((tmp_file_fd = mkstemp(template)) == -1)
+		if ((bp->page_file_fd = mkstemp(template)) == -1)
 			err(1, "Unable to create temporary file %s", template);
 	}
 
@@ -201,19 +256,19 @@ page_out(void)
 	 * starting from the oldest buffers.
 	 * This is good enough for the simple common case where one output fd is blocked.
 	 */
-	while (memory_pool_size(allocated_pool_end - 1) > max_mem / 2) {
-		switch (buffers[pool_ptr].s) {
+	while (memory_pool_size(bp, bp->allocated_pool_end - 1) > max_mem / 2) {
+		switch (bp->buffers[bp->page_out_ptr].s) {
 		case s_memory:
-			if (pwrite(tmp_file_fd, buffers[pool_ptr].p, buffer_size, (off_t)pool_ptr * buffer_size) != buffer_size)
+			if (pwrite(bp->page_file_fd, bp->buffers[bp->page_out_ptr].p, buffer_size, (off_t)bp->page_out_ptr * buffer_size) != buffer_size)
 				err(1, "Write to temporary file failed");
 			/* FALLTHROUGH */
 		case s_memory_backed:
-			DPRINTF("Page out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
-			buffers[pool_ptr].s = s_file;
-			free(buffers[pool_ptr].p);
-			buffers_freed++;
-			buffers_paged_out++;
-			DPRINTF("Paged out buffer %d %p", pool_ptr, buffers[pool_ptr].p);
+			DPRINTF("Page out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
+			bp->buffers[bp->page_out_ptr].s = s_file;
+			free(bp->buffers[bp->page_out_ptr].p);
+			bp->buffers_freed++;
+			bp->buffers_paged_out++;
+			DPRINTF("Paged out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
 			break;
 		case s_file:
 		case s_none:
@@ -221,27 +276,29 @@ page_out(void)
 		default:
 			assert(false);
 		}
-		if (++pool_ptr == allocated_pool_end)
-			pool_ptr = 0;
+		if (++bp->page_out_ptr == bp->allocated_pool_end)
+			bp->page_out_ptr = 0;
 	}
 }
 
 /*
- * Allocate memory for the passed memory pool buffer.
+ * Allocate memory for the specified pool member.
  * Return false if no such memory is available.
  */
 static bool
-allocate_pool_buffer(struct pool_buffer *b)
+allocate_pool_buffer(struct buffer_pool *bp, int pool)
 {
+	struct pool_buffer *b = &bp->buffers[pool];
+
 	if ((b->p = malloc(buffer_size)) == NULL) {
-		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, b -buffers);
-		max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, b -bp->buffers);
+		bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 		return false;
 	}
 	b->s = s_memory;
-	DPRINTF("Allocated buffer %d to %p", b - buffers, b->p);
-	buffers_allocated++;
-	max_buffers_allocated = MAX(buffers_allocated - buffers_freed, max_buffers_allocated);
+	DPRINTF("Allocated buffer %d to %p", b - bp->buffers, b->p);
+	bp->buffers_allocated++;
+	bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 	return true;
 }
 
@@ -250,9 +307,9 @@ allocate_pool_buffer(struct pool_buffer *b)
  * Ensure that the specified pool buffer is in memory
  */
 static void
-page_in(int pool)
+page_in(struct buffer_pool *bp, int pool)
 {
-	struct pool_buffer *b = &buffers[pool];
+	struct pool_buffer *b = &bp->buffers[pool];
 
 	switch (b->s) {
 	case s_memory_backed:
@@ -260,13 +317,13 @@ page_in(int pool)
 		break;
 	case s_file:
 		/* Good time to ensure that there will be page-in memory available */
-		if (memory_pool_size(allocated_pool_end - 1) > max_mem)
-			page_out();
-		if (!allocate_pool_buffer(b))
+		if (memory_pool_size(bp, bp->allocated_pool_end - 1) > max_mem)
+			page_out(bp);
+		if (!allocate_pool_buffer(bp, pool))
 			err(1, "Out of memory paging-in buffer");
-		if (pread(tmp_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
+		if (pread(bp->page_file_fd, b->p, buffer_size, (off_t)pool * buffer_size) != buffer_size)
 			err(1, "Read from temporary file failed");
-		buffers_paged_in++;
+		bp->buffers_paged_in++;
 		b->s = s_memory_backed;
 		DPRINTF("Page in buffer %d", pool);
 		break;
@@ -287,48 +344,47 @@ page_in(int pool)
  * buffers[pool] will then point to a buffer_size block of available memory.
  */
 static bool
-memory_allocate(int pool)
+memory_allocate(struct buffer_pool *bp, int pool)
 {
-	static int pool_size;
 	int i, orig_pool_size;
 	struct pool_buffer *orig_buffers;
 
-	if (pool < allocated_pool_end)
+	if (pool < bp->allocated_pool_end)
 		return true;
 
-	DPRINTF("Buffers allocated: %d Freed: %d", buffers_allocated, buffers_freed);
+	DPRINTF("Buffers allocated: %d Freed: %d", bp->buffers_allocated, bp->buffers_freed);
 	/* Check soft memory limit through allocated plus requested memory. */
-	if (memory_pool_size(pool) > max_mem) {
+	if (memory_pool_size(bp, pool) > max_mem) {
 		if (use_tmp_file)
-			page_out();
+			page_out(bp);
 		else
 			return false;
 	}
 
 	/* Keep original values to undo on failure. */
-	orig_pool_size = pool_size;
-	orig_buffers = buffers;
+	orig_pool_size = bp->pool_size;
+	orig_buffers = bp->buffers;
 	/* Resize bank, if needed. One iteration should suffice. */
-	while (pool >= pool_size) {
-		if (pool_size == 0)
-			pool_size = 1;
+	while (pool >= bp->pool_size) {
+		if (bp->pool_size == 0)
+			bp->pool_size = 1;
 		else
-			pool_size *= 2;
-		if ((buffers = realloc(buffers, pool_size * sizeof(struct pool_buffer))) == NULL) {
+			bp->pool_size *= 2;
+		if ((bp->buffers = realloc(bp->buffers, bp->pool_size * sizeof(struct pool_buffer))) == NULL) {
 			DPRINTF("Unable to reallocate buffer pool bank");
-			pool_size = orig_pool_size;
-			buffers = orig_buffers;
+			bp->pool_size = orig_pool_size;
+			bp->buffers = orig_buffers;
 			return false;
 		}
 	}
 
 	/* Allocate buffer memory [allocated_pool_end, pool]. */
-	for (i = allocated_pool_end; i <= pool; i++)
-		if (!allocate_pool_buffer(&buffers[i])) {
-			allocated_pool_end = i;
+	for (i = bp->allocated_pool_end; i <= pool; i++)
+		if (!allocate_pool_buffer(bp, i)) {
+			bp->allocated_pool_end = i;
 			return false;
 		}
-	allocated_pool_end = pool + 1;
+	bp->allocated_pool_end = pool + 1;
 	return true;
 }
 
@@ -338,7 +394,7 @@ memory_allocate(int pool)
  * operation, as it is only supported on Linux.
  */
 static void
-buffer_file_free(int pool)
+buffer_file_free(struct buffer_pool *bp, int pool)
 {
 #ifdef FALLOC_FL_PUNCH_HOLE
 	static bool warned = false;
@@ -349,34 +405,33 @@ buffer_file_free(int pool)
 		warned = true;
 	}
 #endif
-	pages_freed++;
+	bp->pages_freed++;
 }
 
 /*
  * Ensure that pool buffers from [0,pos) are free.
  */
 static void
-memory_free(off_t pos)
+memory_free(struct buffer_pool *bp, off_t pos)
 {
-	static int pool_begin = 0;
 	int pool_end = pos / buffer_size;
 	int i;
 
-	DPRINTF("memory_free: pos = %ld, begin=%d end=%d",
-		(long)pos, pool_begin, pool_end);
-	for (i = pool_begin; i < pool_end; i++) {
-		switch (buffers[i].s) {
+	DPRINTF("memory_free: pool=%p pos = %ld, begin=%d end=%d",
+		bp, (long)pos, bp->free_pool_begin, pool_end);
+	for (i = bp->free_pool_begin; i < pool_end; i++) {
+		switch (bp->buffers[i].s) {
 		case s_memory:
-			free(buffers[i].p);
-			buffers_freed++;
+			free(bp->buffers[i].p);
+			bp->buffers_freed++;
 			break;
 		case s_file:
-			buffer_file_free(i);
+			buffer_file_free(bp, i);
 			break;
 		case s_memory_backed:
-			buffer_file_free(i);
-			free(buffers[i].p);
-			buffers_freed++;
+			buffer_file_free(bp, i);
+			free(bp->buffers[i].p);
+			bp->buffers_freed++;
 			break;
 		case s_none:
 			break;
@@ -384,14 +439,14 @@ memory_free(off_t pos)
 			assert(false);
 			break;
 		}
-		buffers[i].s = s_none;
+		bp->buffers[i].s = s_none;
 		DPRINTF("Freed buffer %d %p (pos = %ld, begin=%d end=%d)",
-			i, buffers[i].p, (long)pos, pool_begin, pool_end);
+			i, bp->buffers[i].p, (long)pos, bp->free_pool_begin, pool_end);
 		#ifdef DEBUG
-		buffers[i].p = NULL;
+		bp->buffers[i].p = NULL;
 		#endif
 	}
-	pool_begin = pool_end;
+	bp->free_pool_begin = pool_end;
 }
 
 /*
@@ -400,18 +455,18 @@ memory_free(off_t pos)
  * Return false if no memory is available.
  */
 static bool
-source_buffer(off_t pos, /* OUT */ struct io_buffer *b)
+source_buffer(struct source_info *ifp, /* OUT */ struct io_buffer *b)
 {
-	int pool = pos / buffer_size;
-	size_t pool_offset = pos % buffer_size;
+	int pool = ifp->source_pos_read / buffer_size;
+	size_t pool_offset = ifp->source_pos_read % buffer_size;
 
-	if (!memory_allocate(pool))
+	if (!memory_allocate(ifp->bp, pool))
 		return false;
-	assert(buffers[pool].s == s_memory);
-	b->p = buffers[pool].p + pool_offset;
+	assert(ifp->bp->buffers[pool].s == s_memory);
+	b->p = ifp->bp->buffers[pool].p + pool_offset;
 	b->size = buffer_size - pool_offset;
 	DPRINTF("Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)pos, pool, buffers[pool].p, (long)pool_offset, (long)b->size, b->p);
+		(long)ifp->source_pos_read, pool, ifp->bp->buffers[pool].p, (long)pool_offset, (long)b->size, b->p);
 	return true;
 }
 
@@ -431,12 +486,12 @@ sink_buffer(struct sink_info *ofp)
 	if (b.size == 0)
 		b.p = NULL;
 	else {
-		if (tmp_file_fd != -1)
-			page_in(pool);
-		b.p = buffers[pool].p + pool_offset;
+		if (ofp->ifp->bp->page_file_fd != -1)
+			page_in(ofp->ifp->bp, pool);
+		b.p = ofp->ifp->bp->buffers[pool].p + pool_offset;
 	}
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p);
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p);
 	return b;
 }
 
@@ -444,14 +499,14 @@ sink_buffer(struct sink_info *ofp)
  * Return a pointer to read from for writing to a file from a position onward
  */
 static char *
-sink_pointer(off_t pos_written)
+sink_pointer(struct buffer_pool *bp, off_t pos_written)
 {
 	int pool = pos_written / buffer_size;
 	size_t pool_offset = pos_written % buffer_size;
 
-	if (tmp_file_fd != -1)
-		page_in(pool);
-	return buffers[pool].p + pool_offset;
+	if (bp->page_file_fd != -1)
+		page_in(bp, pool);
+	return bp->buffers[pool].p + pool_offset;
 }
 
 /*
@@ -487,7 +542,7 @@ source_read(struct source_info *ifp)
 	int n;
 	struct io_buffer b;
 
-	if (!source_buffer(source_pos_read, &b)) {
+	if (!source_buffer(ifp, &b)) {
 		DPRINTF("Memory full");
 		/* Provide some time for the output to drain. */
 		return read_oom;
@@ -500,7 +555,7 @@ source_read(struct source_info *ifp)
 		default:
 			err(3, "Read from %s", ifp->name);
 		}
-	source_pos_read += n;
+	ifp->source_pos_read += n;
 	DPRINTF("Read %d out of %d bytes from %s", n, b.size, ifp->name);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
@@ -508,7 +563,7 @@ source_read(struct source_info *ifp)
 
 /*
  * Allocate available read data to empty sinks that can be written to,
- * by adjusting their pos_written and pos_to_write pointers.
+ * by adjusting their ifp, pos_written, and pos_to_write pointers.
  */
 static void
 allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
@@ -522,13 +577,22 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 
 	/* Easy case: distribute to all files. */
 	if (!opt_scatter) {
-		for (ofp = files; ofp; ofp = ofp->next)
-			ofp->pos_to_write = source_pos_read;
+		for (ofp = files; ofp; ofp = ofp->next) {
+			/* Advance to next input file, if required */
+			if (ofp->pos_written == ofp->ifp->source_pos_read &&
+			    ofp->ifp->reached_eof &&
+			    ofp->ifp->next) {
+				ofp->ifp = ofp->ifp->next;
+				ofp->pos_written = 0;
+			}
+			ofp->pos_to_write = ofp->ifp->source_pos_read;
+		}
 		return;
 	}
 
 	/*
 	 * Difficult case: fair scattering across available sinks
+	 * Thankfully here we only have a single input file
 	 */
 
 	/* Determine amount of fresh data to write and number of available sinks. */
@@ -543,7 +607,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 	 * the length of the available data to terminate at the end of
 	 * the buffer.
 	 */
-	available_data = sink_buffer_length(pos_assigned, source_pos_read);
+	available_data = sink_buffer_length(pos_assigned, files->ifp->source_pos_read);
 
 	if (available_sinks == 0)
 		return;
@@ -556,7 +620,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 			continue;
 
 		DPRINTF("pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld",
-			(long)pos_assigned, (long)source_pos_read, (long)available_data, available_sinks, (long)data_per_sink);
+			(long)pos_assigned, (long)ofp->ifp->source_pos_read, (long)available_data, available_sinks, (long)data_per_sink);
 		/* First file also gets the remainder bytes. */
 		if (data_to_assign == 0)
 			data_to_assign = sink_buffer_length(pos_assigned,
@@ -579,7 +643,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 				off_t data_end = pos_assigned + data_to_assign - 1;
 
 				for (;;) {
-					if (*sink_pointer(data_end) == rt) {
+					if (*sink_pointer(ofp->ifp->bp, data_end) == rt) {
 						pos_assigned = data_end + 1;
 						break;
 					}
@@ -610,7 +674,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 				last_nl = -1;
 				data_end = pos_assigned;
 				for (;;) {
-					if (data_end >= source_pos_read) {
+					if (data_end >= ofp->ifp->source_pos_read) {
 						if (last_nl != -1) {
 							pos_assigned = last_nl + 1;
 							break;
@@ -623,7 +687,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 						}
 					}
 
-					if (*sink_pointer(data_end) == rt) {
+					if (*sink_pointer(ofp->ifp->bp, data_end) == rt) {
 						last_nl = data_end;
 						if (data_end - pos_assigned > data_per_sink) {
 							pos_assigned = data_end + 1;
@@ -648,14 +712,19 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
  * Return the number of bytes written.
  */
 static size_t
-sink_write(fd_set *sink_fds, struct sink_info *files)
+sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofiles)
 {
 	struct sink_info *ofp;
-	off_t min_pos = source_pos_read;
+	struct source_info *ifp;
 	size_t written = 0;
 
-	allocate_data_to_sinks(sink_fds, files);
-	for (ofp = files; ofp; ofp = ofp->next) {
+	for (ifp = ifiles; ifp; ifp = ifp->next) {
+		ifp->read_min_pos = ifp->source_pos_read;
+		ifp->is_read = false;
+	}
+
+	allocate_data_to_sinks(sink_fds, ofiles);
+	for (ofp = ofiles; ofp; ofp = ofp->next) {
 		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
 			struct io_buffer b;
@@ -688,10 +757,23 @@ sink_write(fd_set *sink_fds, struct sink_info *files)
 			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu",
 				n, b.size, ofp->name, ofp->pos_written);
 		}
-		if (ofp->active)
-			min_pos = MIN(min_pos, ofp->pos_written);
+		if (ofp->active) {
+			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
+			ofp->ifp->is_read = true;
+		}
 	}
-	memory_free(min_pos);
+
+	/* Free buffers all sinks have read */
+	for (ifp = ifiles; ifp; ifp = ifp->next) {
+		memory_free(ifp->bp, ifp->read_min_pos);
+		/*
+		 * We are reading this source, so don't even think freeing
+		 * sources after this.
+		 */
+		if (ifp->is_read)
+			break;
+	}
+
 	DPRINTF("Wrote %d total bytes", written);
 	return written;
 }
@@ -733,22 +815,31 @@ non_block(int fd, const char *name)
 }
 
 /*
- * Show the arguments passed to select(2)
- * in human-readable form
+ * Show the arguments passed to select(2) in human-readable form
+ * If check is true, abort the program if no bit is on
  */
 static void
-show_select_args(const char *msg, struct source_info *ifp, fd_set *source_fds, fd_set *sink_fds, struct sink_info *files)
+show_select_args(const char *msg, fd_set *source_fds, struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofiles, bool check)
 {
 	#ifdef DEBUG
 	struct sink_info *ofp;
+	struct source_info *ifp;
+	int nbits = 0;
 
 	fprintf(stderr, "%s: ", msg);
-	if (ifp && FD_ISSET(ifp->fd, source_fds))
+	for (ifp = ifiles; ifp; ifp = ifp->next)
+		if (FD_ISSET(ifp->fd, source_fds)) {
 			fprintf(stderr, "%s ", ifp->name);
-	for (ofp = files; ofp; ofp = ofp->next)
-		if (FD_ISSET(ofp->fd, sink_fds))
+			nbits++;
+		}
+	for (ofp = ofiles; ofp; ofp = ofp->next)
+		if (FD_ISSET(ofp->fd, sink_fds)) {
 			fprintf(stderr, "%s ", ofp->name);
+			nbits++;
+		}
 	fputc('\n', stderr);
+	if (check && nbits == 0)
+		abort();
 	#endif
 }
 
@@ -811,6 +902,7 @@ main(int argc, char *argv[])
 	int max_fd = 0;
 	struct sink_info *ofiles = NULL, *ofp;
 	struct source_info *ifiles = NULL, *ifp, *end = NULL;
+	struct source_info *front_ifp;	/* To keep output sequential, never output past this one */
 	int ch;
 	const char *progname = argv[0];
 	enum state state = read_ob;
@@ -828,15 +920,14 @@ main(int argc, char *argv[])
 			state = read_ib;
 			break;
 		case 'i':	/* Specify input file */
-			if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
-				err(1, NULL);
+			ifp = new_source_info(optarg);
+
 			if ((ifp->fd = open(optarg, O_RDONLY)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ifp->fd, max_fd);
-			ifp->name = strdup(optarg);
 			non_block(ifp->fd, ifp->name);
 
-			/* At file at the end of the linked list */
+			/* Add file at the end of the linked list */
 			ifp->next = NULL;
 			if (end)
 				end->next = ifp;
@@ -851,14 +942,10 @@ main(int argc, char *argv[])
 			opt_memory_stats = true;
 			break;
 		case 'o':	/* Specify output file */
-			if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
-				err(1, NULL);
+			ofp = new_sink_info(optarg);
 			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ofp->fd, max_fd);
-			ofp->name = strdup(optarg);
-			ofp->active = true;
-			ofp->pos_written = ofp->pos_to_write = 0;
 			non_block(ofp->fd, ofp->name);
 			ofp->next = ofiles;
 			ofiles = ofp;
@@ -889,15 +976,14 @@ main(int argc, char *argv[])
 	if (buffer_size > max_mem)
 		errx(1, "Buffer size %d is larger than the program's maximum memory limit %lu", buffer_size, max_mem);
 
+	if (opt_scatter && ifiles && ifiles->next)
+		errx(1, "Scattering not supported with more than one input file");
+
 	if (ofiles == NULL) {
 		/* Output to stdout */
-		if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
-			err(1, NULL);
+		ofp = new_sink_info("standard output");
 		ofp->fd = STDOUT_FILENO;
 		max_fd = MAX(ofp->fd, max_fd);
-		ofp->name = "standard output";
-		ofp->active = true;
-		ofp->pos_written = ofp->pos_to_write = 0;
 		non_block(ofp->fd, ofp->name);
 		ofp->next = ofiles;
 		ofiles = ofp;
@@ -905,11 +991,9 @@ main(int argc, char *argv[])
 
 	if (ifiles == NULL) {
 		/* Input from stdin */
-		if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
-			err(1, NULL);
+		ifp = new_source_info("standard input");
 		ifp->fd = STDIN_FILENO;
 		max_fd = MAX(ifp->fd, max_fd);
-		ifp->name = "standard input";
 		non_block(ifp->fd, ifp->name);
 		ifp->next = ifiles;
 		ifiles = ifp;
@@ -919,7 +1003,11 @@ main(int argc, char *argv[])
 	/* We will handle SIGPIPE explicitly when calling write(2). */
 	signal(SIGPIPE, SIG_IGN);
 
-	ifp = ifiles;
+	front_ifp = ifiles;
+
+	/* Initially all output comes from the first input file */
+	for (ofp = ofiles; ofp; ofp = ofp->next)
+		ofp->ifp = front_ifp;
 
 	/* Copy source to sink without allowing any single file to block us. */
 	for (;;) {
@@ -931,8 +1019,19 @@ main(int argc, char *argv[])
 		FD_ZERO(&source_fds);
 		FD_ZERO(&sink_fds);
 
-		if (!reached_eof && (state == read_ib || state == read_ob))
-			FD_SET(ifp->fd, &source_fds);
+		if (!reached_eof)
+			switch (state) {
+			case read_ib:
+				for (ifp = front_ifp; ifp; ifp = ifp->next)
+					if (!ifp->reached_eof)
+						FD_SET(ifp->fd, &source_fds);
+				break;
+			case read_ob:
+				FD_SET(front_ifp->fd, &source_fds);
+				break;
+			default:
+				break;
+			}
 
 		for (ofp = ofiles; ofp; ofp = ofp->next)
 			if (ofp->active) {
@@ -952,13 +1051,13 @@ main(int argc, char *argv[])
 
 
 		/* Block until we can read or write. */
-		show_select_args("Entering select", ifp, &source_fds, &sink_fds, ofiles);
+		show_select_args("Entering select", &source_fds, ifiles, &sink_fds, ofiles, true);
 		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
 			err(3, "select");
-		show_select_args("Select returned", ifp, &source_fds, &sink_fds, ofiles);
+		show_select_args("Select returned", &source_fds, ifiles, &sink_fds, ofiles, false);
 
 		/* Write to all file descriptors that accept writes. */
-		if (sink_write(&sink_fds, ofiles) > 0) {
+		if (sink_write(ifiles, &sink_fds, ofiles) > 0) {
 			/*
 			 * If we wrote something, we made progress on the
 			 * downstream end.  Loop without reading to avoid
@@ -978,7 +1077,7 @@ main(int argc, char *argv[])
 						active_fds++;
 					else {
 						DPRINTF("Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld",
-							ofp->name, (long)ofp->pos_written, (long)source_pos_read);
+							ofp->name, (long)ofp->pos_written, (long)ofp->ifp->source_pos_read);
 						/* No more data to write; close fd to avoid deadlocks downstream. */
 						if (close(ofp->fd) == -1)
 							err(2, "Error closing %s", ofp->name);
@@ -988,10 +1087,13 @@ main(int argc, char *argv[])
 			if (active_fds == 0) {
 				/* If no read possible, and no writes pending, terminate. */
 				if (opt_memory_stats) {
-					fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
-						buffers_allocated, buffers_freed, max_buffers_allocated);
-					fprintf(stderr, "Page out: %d In: %d Pages freed: %d\n",
-						buffers_paged_out, buffers_paged_in, pages_freed);
+					for (ifp = ifiles; ifp; ifp = ifp->next) {
+						fprintf(stderr, "Input file: %s\n", ifp->name);
+						fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
+							ifp->bp->buffers_allocated, ifp->bp->buffers_freed, ifp->bp->max_buffers_allocated);
+						fprintf(stderr, "Page out: %d In: %d Pages freed: %d\n",
+							ifp->bp->buffers_paged_out, ifp->bp->buffers_paged_in, ifp->bp->pages_freed);
+					}
 				}
 				return 0;
 			}
@@ -1003,31 +1105,35 @@ main(int argc, char *argv[])
 		 */
 		switch (state) {
 		case read_ib:
-			/* Read, if possible. */
-			if (FD_ISSET(ifp->fd, &source_fds))
-				switch (source_read(ifp)) {
-				case read_eof:
-					ifp = ifp->next;
-					if (ifp == NULL) {
-						reached_eof = true;
-						state = drain_ib;
+			/* Read, if possible; set global reached_eof if all have reached it */
+			reached_eof = true;
+			for (ifp = front_ifp; ifp; ifp = ifp->next) {
+				if (FD_ISSET(ifp->fd, &source_fds))
+					switch (source_read(ifp)) {
+					case read_eof:
+						ifp->reached_eof = true;
+						break;
+					case read_oom:	/* Cannot fullfill promise to never block source, so bail out. */
+						errx(1, "Out of memory with input-side buffering specified");
+						break;
+					case read_ok:
+					case read_again:
+						break;
 					}
-					break;
-				case read_oom:	/* Cannot fullfill promise to never block source, so bail out. */
-					errx(1, "Out of memory with input-side buffering specified");
-					break;
-				case read_ok:
-				case read_again:
-					break;
-				}
+				if (!ifp->reached_eof)
+					reached_eof = false;
+			}
+			if (reached_eof)
+				state = drain_ib;
 			break;
 		case read_ob:
 			/* Read, if possible. */
-			if (FD_ISSET(ifp->fd, &source_fds))
-				switch (source_read(ifp)) {
+			if (FD_ISSET(front_ifp->fd, &source_fds))
+				switch (source_read(front_ifp)) {
 				case read_eof:
-					ifp = ifp->next;
-					if (ifp == NULL) {
+					front_ifp->reached_eof = true;
+					front_ifp = front_ifp->next;
+					if (front_ifp == NULL) {
 						reached_eof = true;
 						state = drain_ib;
 					}

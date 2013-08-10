@@ -940,10 +940,10 @@ substitute_streams_and_stores
 {
 	my ($command) = @_;
 
-	# Substitute a cat /stream/... ... command of at least two streams with an sgsh-tee -i command
+	# Substitute a cat /stream/... ... command of at least two streams with an sgsh-tee -f -I -i ... command
 	# This avoids deadlocks by ensuring that all streams are opened when the concatenations starts
 	if ($command =~ m|\bcat(\s+/stream/\w+){2,}|) {
-		$command =~ s/\bcat\b/${opt_p}sgsh-tee/;
+		$command =~ s/\bcat\b/${opt_p}sgsh-tee -f -I/;
 		$command =~ s|(/stream/\w+)|-i $1|g;
 	}
 

@@ -1,4 +1,4 @@
-.TH SGSH-TEE 1 "9 August 2013"
+.TH SGSH-TEE 1 "11 August 2013"
 .\"
 .\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -84,11 +84,13 @@ will increase the number of processes that can operate concurrently.
 
 .IP "\fB\-i\fP \fIinput-file\fP"
 Read input from the specified source file, rather than the standard input.
-The option can be provided multiple times to specify files that
+The option can be provided multiple times to specify multiple files that
 will be read sequentially.
 All input files will be opened at the beginning of the program's operation
 in order to unblock the execution of asynchronous shell commands
 that redirect their output to the corresponding named pipes.
+Furthermore, when input-side buffering is specified \fB-I\fP
+data is read asynchronously from all specified input files.
 
 .IP "\fB\-M\fP"
 Provide memory use statistics on termination.

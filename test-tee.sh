@@ -21,7 +21,7 @@ ensure_same()
 ensure_similar_buffers()
 {
 	echo "$1"
-	for nr in 1 2
+	for nr in 2 3
 	do
 		for nf in 3 5 8
 		do
@@ -31,7 +31,7 @@ ensure_similar_buffers()
 				return (v < 0 ? -v : v)
 			}
 			NR == $nr {ref = \$$nf}
-			NR == $nr + 2 {test = \$$nf}
+			NR == $nr + 3 {test = \$$nf}
 			END { exit (ref + 0 != 0 && abs((test - ref) / ref * 100) > 10) ? 1 : 0 }" "$2" "$3"
 			then
 				echo "$1: Line $nr, fields $nf of $2 and $3 differ by more than 10%" 1>&2
@@ -136,4 +136,23 @@ do
 	ensure_same "Low-memory temporary file (try2) $flags" lines try2.out
 	rm -f lines try try2 try.out try2.out err
 done
+
+# Test asynchronous reading from multiple input files
+# Without it the following blocks
+# Also test multiple temporary files
+for flags in '' '-m 65536 -f'
+do
+	rm -f a b c d
+	mkfifo a b c
+	./sgsh-tee -b 4096 -m 65536 -i /usr/share/dict/words -o a -o b -o c &
+	./sgsh-tee -b 4096 -I $flags -i a -i b -i c -o d &
+	wait
+        for i in . . .
+        do
+                cat /usr/share/dict/words
+        done >expect
+	ensure_same "Asynchronous gather $flags" expect d
+	rm -f a b c d expect
+done
+
 exit 0
