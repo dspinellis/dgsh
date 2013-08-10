@@ -125,3 +125,10 @@ web: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
+
+# Debugger examples
+debug-word-properties: sgsh
+	cat /usr/share/dict/words | ./sgsh -d -p . example/word-properties.sh
+
+debug-web-log-report: sgsh
+	gzip -dc eval/clarknet_access_log_Aug28.gz | ./sgsh -d -p . example/web-log-report.sh
