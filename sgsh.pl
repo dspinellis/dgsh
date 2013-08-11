@@ -1153,7 +1153,7 @@ warning
 sub
 scatter_graph_io
 {
-	my($command, $level) = @_;
+	my($command, $level, $parent_node_name) = @_;
 	my @output_edges;
 
 	my $scatter_n = $global_scatter_n++;
@@ -1212,7 +1212,7 @@ scatter_graph_io
 
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
-				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
+				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $level == 0 ? $tee_node_name : $parent_node_name;
 				$edge{"npfo-$c->{file_name}.$p"}->{teearg} = 1;
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
@@ -1237,7 +1237,7 @@ scatter_graph_io
 			if ($c->{output} eq 'none') {
 				;
 			} elsif ($c->{output} eq 'scatter') {
-				my ($tee_node_name, @output_edges) = scatter_graph_io($c, $level + 1);
+				my ($tee_node_name, @output_edges) = scatter_graph_io($c, $level + 1, $node_name);
 				# Generate scatter edges
 				for my $output_edge (@output_edges) {
 					$edge{$output_edge}->{lhs} =
