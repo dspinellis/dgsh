@@ -1039,7 +1039,7 @@ verify_code
 			error("Stream /stream/$file_name used for input more than once", $c->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
 				warning("Unsafe use of pass-through /stream/$file_name in the scatter section", $c->{line_number});
-				error("Consult the DEADLOCK section of the manual page", $c->{line_number});
+				warning("Consult the DEADLOCK section of the manual page", $c->{line_number});
 			}
 			$used_stream{$file_name} = 1;
 			$processed_stream = 1;
