@@ -1039,7 +1039,7 @@ verify_code
 			error("Stream /stream/$file_name used for input more than once", $c->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
 				warning("Unsafe use of pass-through /stream/$file_name in the scatter section", $c->{line_number});
-				error("Consult the DEADLOCK section of the manual page", $c->{line_number});
+				warning("Consult the DEADLOCK section of the manual page", $c->{line_number});
 			}
 			$used_stream{$file_name} = 1;
 			$processed_stream = 1;
@@ -1153,7 +1153,7 @@ warning
 sub
 scatter_graph_io
 {
-	my($command, $level) = @_;
+	my($command, $level, $parent_node_name) = @_;
 	my @output_edges;
 
 	my $scatter_n = $global_scatter_n++;
@@ -1212,7 +1212,7 @@ scatter_graph_io
 
 			# Pass-through fast exit
 			if ($c->{input} eq 'scatter' && $c->{body} eq '' && $c->{output} eq 'stream') {
-				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $edge{"npi-$scatter_n.$cmd_n.$p"}->{lhs};
+				$edge{"npfo-$c->{file_name}.$p"}->{lhs} = $level == 0 ? $tee_node_name : $parent_node_name;
 				$edge{"npfo-$c->{file_name}.$p"}->{teearg} = 1;
 				$edge{"npi-$scatter_n.$cmd_n.$p"}->{passthru} = 1;
 				push(@{$parallel_graph_file_map{$c->{file_name}}}, "npfo-$c->{file_name}.$p");
@@ -1237,7 +1237,7 @@ scatter_graph_io
 			if ($c->{output} eq 'none') {
 				;
 			} elsif ($c->{output} eq 'scatter') {
-				my ($tee_node_name, @output_edges) = scatter_graph_io($c, $level + 1);
+				my ($tee_node_name, @output_edges) = scatter_graph_io($c, $level + 1, $node_name);
 				# Generate scatter edges
 				for my $output_edge (@output_edges) {
 					$edge{$output_edge}->{lhs} =
