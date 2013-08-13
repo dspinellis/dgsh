@@ -416,8 +416,13 @@ clear_global_variables
 	undef %used_stream;
 	undef %defined_store;
 	undef %used_store;
+	undef %written_pipe;
+	undef %linked_pipe;
+	undef %read_pipe;
 	undef %parallel_file_map;
 	undef %parallel_graph_file_map;
+	undef %node_label; # ?
+	undef @gather_collect;
 	$graph = Graph->new() if (defined($graph));
 }
 
