@@ -124,6 +124,13 @@ if ($opt_g) {
 
 my $graph_filename;
 if ($opt_d) {
+	# Verify that dot is available; Later, with redirection, we get an
+	# error from the shell execution.
+	system('dot', '/dev/null');
+	if ($? == -1) {
+		print STDERR "Unable to execute dot: $!\n";
+		exit 1;
+	}
 	($graph_out, $graph_filename) = tempfile($temp_name, UNLINK => 1);
 	$graph_style = 'pretty';
 	$gv_edge_attr = ' [penwidth="3pt", color="grey"]';
@@ -1478,7 +1485,7 @@ debug_create_html
 	close($svg_out);
 	system qq[dot -Tsvg <"$graph_filename" >>"$svg_filename"];
 	if ($? == -1) {
-		print STDERR "Unable to execute dot: $!\n";
+		print STDERR "Unable to execute shell dot command: $!\n";
 		exit 1;
 	} elsif (($? >> 8) != 0) {
 		$File::Temp::KEEP_ALL = 1;
