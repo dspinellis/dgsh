@@ -231,12 +231,13 @@ my $SCATTER_INPUT = q!^[^'#"]*-\|!;
 my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |store:name
 my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*([^#]*)(\#.*)?$!;
-# |>/stream/name
-my $GATHER_STREAM_OUTPUT = q!\|\>\s*\/stream\/([\w.\-+=,]+)\s*(\#.*)?$!;
+# Steam of buffer specification: /stream/name or /buffer/name
+# $1 is 'stream' or 'buffer'; $2 is the name
+my $SB_SPEC = q!\/(stream|buffer)\/([\w.\-+=,]+)!;
+# |>/stream/name or |>/buffer/name (see SB_SPEC)
+my $GATHER_STREAM_OUTPUT = '\|\>\s*' . $SB_SPEC . '\s*(\#.*)?$';
 # |.
 my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
-# -||>/stream/name
-my $SCATTER_GATHER_PASS_THROUGH = q!^[^'#"]*-\|\|\>\s*\/stream\/([\w.\-+=,]+)\s*(\#.*)?$!;
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
 my $COMMENT_LINE = '^\s*(\#.*)?$';
 
@@ -584,12 +585,12 @@ parse_scatter_command
 		# Gather file output endpoint: |>
 		if (s/$GATHER_STREAM_OUTPUT//o) {
 			error("Headless command in scatter block") if (!defined($command{input}));
-			error("Output stream /stream/$1 already used for output") if (defined($defined_stream{$1}));
-			$defined_stream{$1} = 1;
-			undef @{$parallel_file_map{$1}};
-			undef @{$parallel_graph_file_map{$1}};
+			error("Output stream /stream/$2 already used for output") if (defined($defined_stream{$2}));
+			$defined_stream{$2} = 1;
+			undef @{$parallel_file_map{$2}};
+			undef @{$parallel_graph_file_map{$2}};
 			$command{output} = 'stream';
-			$command{file_name} = $1;
+			$command{file_name} = $2;
 			$command{body} .= $_;
 			return \%command;
 		}
@@ -952,15 +953,15 @@ substitute_streams_and_stores
 
 	# Substitute a cat /stream/... ... command of at least two streams with an sgsh-tee -f -I -i ... command
 	# This avoids deadlocks by ensuring that all streams are opened when the concatenations starts
-	if ($command =~ m|\bcat(\s+/stream/[\w.\-+=,]+){2,}|) {
+	if ($command =~ m|\bcat(\s+$SB_SPEC){2,}|) {
 		$command =~ s/\bcat\b/${opt_p}sgsh-tee -f -I/;
-		$command =~ s|(/stream/[\w.\-+=,]+)|-i $1|g;
+		$command =~ s|($SB_SPEC)|-i $1|g;
 	}
 
 	# Substitute /stream/... gather points with the corresponding named pipe
-	while ($command =~ m|/stream/([\w.\-+=,]+)|) {
-		my $file_name = $1;
-		$command =~ s|/stream/$file_name|join(' ', map("\$SGDIR\/$_", @{$parallel_file_map{$file_name}}))|eg;
+	while ($command =~ m|$SB_SPEC|) {
+		my $file_name = $2;
+		$command =~ s!/(stream|buffer)/$file_name!join(' ', map("\$SGDIR\/$_", @{$parallel_file_map{$file_name}}))!eg;
 		for my $np (@{$parallel_file_map{$file_name}}) {
 			$read_pipe{$np} = 1;
 		}
@@ -1043,8 +1044,8 @@ verify_code
 		# E.g. cat /stream/a /stream/b
 		# where b is a pass-through stream
 		my $processed_stream = 0;
-		while ($body =~ s|/stream/([\w.\-+=,]+)||) {
-			my $file_name = $1;
+		while ($body =~ s|$SB_SPEC||) {
+			my $file_name = $2;
 			error("Undefined stream /stream/$file_name specified for input", $c->{line_number}) unless ($defined_stream{$file_name});
 			error("Stream /stream/$file_name used for input more than once", $c->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
@@ -1069,8 +1070,8 @@ verify_code
 	for my $command (@{$gather_commands}) {
 		my $tmp_command = $command->{body};
 		my $processed_command_stream = 0;
-		while ($tmp_command =~ s|/stream/([\w.\-+=,]+)||) {
-			my $file_name = $1;
+		while ($tmp_command =~ s|$SB_SPEC||) {
+			my $file_name = $2;
 			error("Undefined stream /stream/$file_name specified for input", $command->{line_number}) unless ($defined_stream{$file_name});
 			error("Stream /stream/$file_name used for input more than once", $command->{line_number}) if ($used_stream{$file_name});
 			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} &&
@@ -1305,8 +1306,8 @@ scatter_graph_body
 
 			my $command_tmp = $body;
 			# Generate stream input edges
-			while ($command_tmp =~ s|/stream/([\w.\-+=,]+)||) {
-				my $file_name = $1;
+			while ($command_tmp =~ s|$SB_SPEC||) {
+				my $file_name = $2;
 				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 					$edge{$file_name_p}->{rhs} = $node_name;
 				}
@@ -1388,8 +1389,8 @@ gather_graph
 		my $command_tmp = $command->{body};
 
 		# Handle streams
-		while ($command_tmp =~ s|/stream/([\w.\-+=,]+)||) {
-			my $file_name = $1;
+		while ($command_tmp =~ s|$SB_SPEC||) {
+			my $file_name = $2;
 			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
 				$edge{$file_name_p}->{rhs} = $node_name;
 			}
