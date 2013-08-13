@@ -1,13 +1,14 @@
 #!/usr/local/bin/sgsh
 #
-# SYNOPSIS Simple examples of 2D Fourier transforms with Madagascar
+# SYNOPSIS Waves: 2D Fourier transforms
 # DESCRIPTION
 # Create two graphs:
-# 1) a broadened pulse and the real part of its 2D Fourier transform
-# 2) a simulated air wave and the amplitude of its 2D Fourier transform
+# 1) a broadened pulse and the real part of its 2D Fourier transform, and
+# 2) a simulated air wave and the amplitude of its 2D Fourier transform.
 # Demonstrates using the tools of the Madagascar shared research environment
 # for computational data analysis in geophysics and related fields.
 # Also demonstrates the use of two scatter blocks in the same script.
+#
 # Adapted from: http://www.reproducibility.org/RSF/book/bei/ft1/ft2d.html
 # Description: http://www.reproducibility.org/RSF/book/bei/ft1/paper_html/node14.html
 # Madagascar project: http://www.reproducibility.org

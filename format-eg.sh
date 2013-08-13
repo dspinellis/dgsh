@@ -15,12 +15,13 @@ SECTION='compress-compare
 	text-properties
 	map-hierarchy
 	committer-plot
+	ft2d
 	dir'
 
 
 for NAME in ${SECTION}
 do
-	TITLE="`sed -n 's/^# SYNOPSIS //p' example/$NAME.sh`"
+	TITLE="`sed -n 's/^# SYNOPSIS //p;s/^# TITLE //p' example/$NAME.sh | head -1`"
 	if [ "$1" = '-c' ]
 	then
 		echo "<li> <a href='#$NAME'>$TITLE</a></li>"

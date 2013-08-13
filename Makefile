@@ -84,6 +84,8 @@ allpng: sgsh
 		./sgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
 		./sgsh -g plain $$i | dot -Tpng >png/`basename $$i .sh`-plain.png ; \
 	done
+	# Outdate example file that needs special processing
+	touch -r example/ft2d.sh png/ft2d-pretty.png
 
 # Regression test based on generated output files
 test-regression:
@@ -132,3 +134,8 @@ debug-word-properties: sgsh
 
 debug-web-log-report: sgsh
 	gzip -dc eval/clarknet_access_log_Aug28.gz | ./sgsh -d -p . example/web-log-report.sh
+
+png/ft2d-pretty.png: example/ft2d.sh
+	./sgsh -g pretty $< | dot -Tpng | pngtopnm >top.pnm
+	./sgsh -g pretty $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | pnmcat -topbottom top.pnm - | pnmtopng >$@
+	rm top.pnm
