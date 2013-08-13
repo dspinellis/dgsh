@@ -859,7 +859,13 @@ scatter_code_and_pipes_code
 				if ($parallel > 1 && !$scatter_opts{'d'});
 
 			# Closing brace to redirect I/O as if the commands were one
-			$code .= "\n}";
+			# If no output append a null command to ensure npfo-none will
+			# stay open if the last command redirects its output
+			if ($c->{output} eq 'none') {
+				$code .= "\n: ; }";
+			} else {
+				$code .= "\n}";
+			}
 
 			# Generate input
 			if ($c->{input} eq 'none') {
