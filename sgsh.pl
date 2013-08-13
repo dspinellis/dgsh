@@ -1546,7 +1546,7 @@ debug_code
 		# Patch the Javascript with the correct port
 		sed "s/HTTP_PORT/\$SG_HTTP_PORT/g" "$library_path/graph-monitor.js" >\$SGDIR/graph-monitor.js
 		# Open the corresponding web page for the user
-		for cmd in open cygstart gnome-open kde-open 'echo "Point browser to "'
+		for cmd in open cygstart gnome-open kde-open 'echo Point browser to '
 		do
 			if \$cmd http://localhost:\$SG_HTTP_PORT/index.html 2>/dev/null
 			then
