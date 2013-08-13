@@ -259,14 +259,6 @@ print $output_fh "#!$opt_s
 # Source file $input_filename
 ";
 
-# Generate graph heading
-print $graph_out qq[
-digraph \"\" {
-	rankdir = LR;
-	node $gv_node_attr;
-	edge $gv_edge_attr;
-] if ($graph_out);
-
 my $code = '';
 
 # Parse the file and generate the corresponding code
@@ -1173,6 +1165,14 @@ scatter_graph_io
 {
 	my($command, $level, $parent_node_name) = @_;
 	my @output_edges;
+
+	# Generate graph heading
+	print $graph_out qq[
+	digraph \"\" {
+		rankdir = LR;
+		node $gv_node_attr;
+		edge $gv_edge_attr;
+	] if ($graph_out && $level == 0);
 
 	my $scatter_n = $global_scatter_n++;
 
