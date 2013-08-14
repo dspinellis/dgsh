@@ -16,6 +16,7 @@ SECTION='compress-compare
 	map-hierarchy
 	committer-plot
 	ft2d
+	NMRPipe
 	dir'
 
 
