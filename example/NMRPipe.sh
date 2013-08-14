@@ -57,11 +57,10 @@ scatter |{
 	   nmrPipe -fn PS -p0 -90 -p1 0 -di |
 	   nmrPipe -fn TP |
 	   nmrPipe -fn POLY -auto -verb >B |.
-
-|} gather |{
-	# We use temporary files rather than streams, because
-	# addNMR mmaps its input files. The diagram displayed in the
-	# example shows the notional data flow.
-	addNMR -in1 A -in2 B -out A+B.sgsh.ft2 -c1 1.0 -c2 1.25 -add
-	addNMR -in1 A -in2 B -out A-B.sgsh.ft2 -c1 1.0 -c2 1.25 -sub
 |}
+
+# We use temporary files rather than streams, because
+# addNMR mmaps its input files. The diagram displayed in the
+# example shows the notional data flow.
+addNMR -in1 A -in2 B -out A+B.sgsh.ft2 -c1 1.0 -c2 1.25 -add
+addNMR -in1 A -in2 B -out A-B.sgsh.ft2 -c1 1.0 -c2 1.25 -sub
