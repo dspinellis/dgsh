@@ -12,17 +12,17 @@
 # http://spin.niddk.nih.gov/NMRPipe/
 #
 
-curl http://www.acornnmr.com/Data/ebc13.fid |
-var2pipe -noaswap  \
-  -xN              1280  -yN               400  \
-  -xT               640  -yT               200  \
-  -xMODE        Complex  -yMODE        Complex \
-  -xSW        10002.501  -ySW         2800.000  \
-  -xOBS         799.805  -yOBS          81.053  \
-  -xCAR           4.754  -yCAR         118.618  \
-  -xLAB              H1  -yLAB             N15  \
-  -ndim               2  -aq2D          States \
-  -verb |
+curl http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
+var2pipe						\
+ -xN            1280            -yN     256		\
+ -xT            640             -yT     128		\
+ -xMODE         Complex -yMODE  Complex			\
+ -xSW           8000    -ySW    6000			\
+ -xOBS          599.4489584     -yOBS   60.7485301      \
+ -xCAR          4.73    -yCAR   118.000			\
+ -xLAB          1H      -yLAB   15N			\
+ -ndim          2       -aq2D   States			\
+-verb  |
 scatter |{
 	# IP/AP channel conversion
 	# See http://tech.groups.yahoo.com/group/nmrpipe/message/389
