@@ -1,0 +1,43 @@
+# ft2d example souped up to compare with sgsh
+
+from rsf.proj import *
+
+Flow('pulse',None,
+     '''
+     spike n1=10000 n2=10000 d1=1 d2=1 nsp=2 k1=16,17 k2=5,5 mag=16,16
+     label1='time' label2='space' unit1= unit2= |
+     smooth rect2=2 | smooth rect2=2
+     ''')
+Plot('pulse','grey pclip=100 wanttitle=n')
+
+Flow('ft2d','pulse','fft1 | fft3 axis=2 pad=1 | real')
+Flow('ft2d2','ft2d','window f1=1 | reverse which=3 | cat axis=1 $SOURCE')
+Plot('ft2d','ft2d2',
+     'grey pclip=100 wanttitle=n label1="1/time" label2="1/space" ')
+
+Result('ft2dofpulse','pulse ft2d','SideBySideIso',vppen='yscale=1.25')
+
+Flow('air',None,
+     '''
+     spike n1=10000 d1=1 o1=5000 nsp=4 k1=1,2,3,4 mag=1,3,3,1
+     label1='time' unit1= |
+     spray n=32 d=1 o=0 | put label2=space |
+     lmostretch delay=0 v0=-1
+     ''')
+Flow('air2','air','window f2=1 | reverse which=2 | cat axis=2 $SOURCE')
+Plot('airtx','air2','grey pclip=100 wanttitle=n')
+
+Flow('airft','air2','fft1 | fft3 sign=1')
+Flow('airft1 airftr airfti','airft',
+     '''
+     real > ${TARGETS[1]} &&
+     imag < $SOURCE > ${TARGETS[2]} &&
+     math re=${TARGETS[1]} im=${TARGETS[2]} output="sqrt(re*re+im*im)"
+     ''')
+Flow('airft2','airft1','window f1=1 | reverse which=3 | cat axis=1 $SOURCE')
+Plot('airfk','airft2',
+     'grey pclip=100 wanttitle=n label1="1/time" label2="1/space" ')
+
+Result('airwave','airtx airfk','SideBySideIso',vppen='yscale=1.25')
+
+End()
