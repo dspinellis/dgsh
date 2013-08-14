@@ -12,8 +12,9 @@
 # http://spin.niddk.nih.gov/NMRPipe/
 #
 
-curl http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
-var2pipe						\
+# The conversion is configured for the following file:
+# http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
+var2pipe -in $1						\
  -xN            1280            -yN     256		\
  -xT            640             -yT     128		\
  -xMODE         Complex -yMODE  Complex			\
