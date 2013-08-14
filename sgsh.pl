@@ -352,7 +352,7 @@ while (get_next_line()) {
 			gather_code(\@gather_commands) .
 			$no_output_wait .
 			$debug_wait .
-			"\n) $redirection\n";		
+			"\n) $redirection\n";
 		debug_create_html();
 	} else {
 		$code .= $_ ;
