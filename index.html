@@ -82,7 +82,7 @@ This record can be later retrieved asynchronously by one or more readers.
 Data can be piped into a store or out of a store, or it can be read
 using the shell's command output substitution syntax.
 Stores are implemented internally through Unix-domain sockets,
-a writer program, <em>sgsh-write</em>(1), and a reader program, <em>sgsh-read</em>(1).
+a writer program, <em>sgsh-writeval</em>(1), and a reader program, <em>sgsh-readval</em>(1).
 The behavior of store I/O can be modified by adding
 <em>sgsh-writeval</em>(1) and <em>sgsh-readval</em>(1) flags after the store's name.
 In particular, this feature can be used to operate on windows of stream data,
