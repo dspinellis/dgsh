@@ -1,4 +1,4 @@
-#!/usr/local/bin/sgsh
+#!/usr/bin/env sgsh
 #
 # SYNOPSIS C code metrics
 # DESCRIPTION

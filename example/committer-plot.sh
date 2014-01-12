@@ -1,4 +1,4 @@
-#!/usr/local/bin/sgsh -s /bin/bash
+#!/usr/bin/env sgsh -s /bin/bash
 #
 # SYNOPSIS Plot git committer activity over time
 # DESCRIPTION

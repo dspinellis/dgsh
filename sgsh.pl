@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Read as input a shell script extended with scatter-gather operation syntax
 # Produce as output and execute a plain shell script implementing the

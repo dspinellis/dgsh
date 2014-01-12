@@ -1,6 +1,6 @@
-.TH SGSH 1 "9 August 2013"
+.TH SGSH 1 "12 January 2014"
 .\"
-.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\" (C) Copyright 2013-2014 Diomidis Spinellis.  All rights reserved.
 .\"
 .\"  Licensed under the Apache License, Version 2.0 (the "License");
 .\"  you may not use this file except in compliance with the License.
@@ -201,7 +201,7 @@ disk.
 .ft C
 .ps -1
 .nf
-#!/usr/local/bin/sgsh
+#!/usr/bin/env sgsh
 
 curl -s "$1" |
 scatter |{
@@ -228,7 +228,7 @@ List the names of duplicate files in the specified directory
 .ft C
 .ps -1
 .nf
-#!/usr/local/bin/sgsh
+#!/usr/bin/env sgsh
 
 # Create list of files
 find "$@" -type f |

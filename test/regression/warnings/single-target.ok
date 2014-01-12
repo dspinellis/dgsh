@@ -1,1 +1,1 @@
-test/regression/warnings/single-target.sh(11): warning: Scatter to a single target
+test/regression/warnings/single-target.sh(26): warning: Scatter to a single target

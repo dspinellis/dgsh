@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/spell-highlight.sh
-#!/usr/local/bin/sgsh
+#!/usr/bin/env sgsh
 #
 # SYNOPSIS Highlight misspelled words
 # DESCRIPTION

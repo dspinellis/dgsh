@@ -1,4 +1,4 @@
-#!/usr/local/bin/sgsh
+#!/usr/bin/env sgsh
 #
 # SYNOPSIS Waves: 2D Fourier transforms
 # DESCRIPTION
