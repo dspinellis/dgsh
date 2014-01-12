@@ -42,35 +42,58 @@ sort -u |
 
 	rm -rf $SGDIR
 
-	trap '
-	# Stop key-value stores
-	
-	# Kill processes we have launched in the background
-	kill $SGPID 2>/dev/null
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
 
-	# Remove temporary directory
-	rm -rf "$SGDIR"' 0
+		# Stop key-value stores
+		
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
 
-	trap 'exit $?' 1 2 3 15
+		# Remove temporary directory
+		rm -rf "$SGDIR"
+
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
 
 	mkdir $SGDIR
 	
-	mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npfo-palindromes.0 \
-$SGDIR/npi-0.2.0 \
-$SGDIR/npfo-consonants.0 \
-$SGDIR/npi-0.3.0 \
-$SGDIR/npfo-long.0
-	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 <&3 3<&-  & SGPID="$! $SGPID"
+mkfifo 	$SGDIR/npfo-consonants.0 \
+	$SGDIR/npfo-long.0 \
+	$SGDIR/npfo-palindromes.0 \
+	$SGDIR/npi-0.0.0 \
+	$SGDIR/npi-0.1.0 \
+	$SGDIR/npi-0.2.0 \
+	$SGDIR/npi-0.3.0
+
+sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.3.0 <&3 3<&-   & SGPID="$! $SGPID"
 ln -s $SGDIR/npi-0.0.0 $SGDIR/npfo-words.0
  {  sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
-		g' ; }  <$SGDIR/npi-0.1.0 >$SGDIR/npfo-palindromes.0 & SGPID="$! $SGPID"
+		g'
+} <$SGDIR/npi-0.1.0 >$SGDIR/npfo-palindromes.0 & SGPID="$! $SGPID"
  {  sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
-		g' ; }  <$SGDIR/npi-0.2.0 >$SGDIR/npfo-consonants.0 & SGPID="$! $SGPID"
+		g'
+} <$SGDIR/npi-0.2.0 >$SGDIR/npfo-consonants.0 & SGPID="$! $SGPID"
  {  awk '{if (length($1) > 12) print "l:", length($1);
-		else print ""}' ; }  <$SGDIR/npi-0.3.0 >$SGDIR/npfo-long.0 & SGPID="$! $SGPID"
+		else print ""}'
+} <$SGDIR/npi-0.3.0 >$SGDIR/npfo-long.0 & SGPID="$! $SGPID"
 
 # Gather the results
 	# Paste the four streams side-by-side
@@ -78,4 +101,4 @@ ln -s $SGDIR/npi-0.0.0 $SGDIR/npfo-words.0
 	# List only words satisfying one or more properties
 	grep :
 
-) 3<&0 
+)  3<&0 

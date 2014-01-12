@@ -1,17 +1,18 @@
 
-digraph D {
-	rankdir = LR;
-	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
-	node_cmd_0_1_0 [label="sed 's/.*\\(.\\)\\(.\\)\\2\\1.*/p: \\1\\2-\\2\\1/;t\lg'\l", shape="ellipse"];
-	node_cmd_0_2_0 [label="sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \\1/;t\lg'\l", shape="ellipse"];
-	node_cmd_0_3_0 [label="awk '{if (length($1) > 12) print \"l:\", length($1);\lelse print \"\"}'\l", shape="ellipse"];
-	gather_node_1 [label="paste     |\l", shape="ellipse"];
-	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
-	node_cmd_0_1_0 -> gather_node_1; // npfo-palindromes.0
-	node_tee_0 -> node_cmd_0_3_0; // npi-0.3.0
-	node_cmd_0_3_0 -> gather_node_1; // npfo-long.0
-	node_cmd_0_2_0 -> gather_node_1; // npfo-consonants.0
-	node_tee_0 -> gather_node_1; // npfo-words.0
-	node_tee_0 -> node_cmd_0_2_0; // npi-0.2.0
+	digraph "" {
+		rankdir = LR;
+		node [fontname="Courier"];
+		edge [];
+		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="sed 's/.*\\(.\\)\\(.\\)\\2\\1.*/p: \\1\\2-\\2\\1/;t\lg'\l", shape="ellipse"];
+	node_cmd_0_2_0 [id="node_cmd_0_2_0", label="sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \\1/;t\lg'\l", shape="ellipse"];
+	node_cmd_0_3_0 [id="node_cmd_0_3_0", label="awk '{if (length($1) > 12) print \"l:\", length($1);\lelse print \"\"}'\l", shape="ellipse"];
+	gather_node_1 [id="gather_node_1", label="paste /stream/words /stream/palindromes /stream/consonants /stream/long |\l# List only words satisfying one or more properties\lgrep :\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
+	node_cmd_0_1_0 -> gather_node_1 [id="npfo-palindromes.0"];
+	node_tee_0 -> node_cmd_0_3_0 [id="npi-0.3.0"];
+	node_cmd_0_3_0 -> gather_node_1 [id="npfo-long.0"];
+	node_cmd_0_2_0 -> gather_node_1 [id="npfo-consonants.0"];
+	node_tee_0 -> gather_node_1 [id="npfo-words.0"];
+	node_tee_0 -> node_cmd_0_2_0 [id="npi-0.2.0"];
 }

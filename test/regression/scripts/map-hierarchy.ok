@@ -7,8 +7,8 @@
 # DESCRIPTION
 # Given two directory hierarchies A and B passed as input arguments
 # (where these represent a project at different parts of its lifetime)
-# copy the files of hierarchy A to a new directory "new" corresponding
-# to the structure of directories in B.
+# copy the files of hierarchy A to a new directory, passed as a third
+# argument, corresponding to the structure of directories in B.
 # Demonstrates the use of <em>join</em> to gather results from streams
 # in the <em>scatter</em> part,
 # and the use of <em>cat</em> to order asynchronous results in the gather part.
@@ -28,6 +28,14 @@
 #  limitations under the License.
 #
 
+if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
+then
+	echo "Usage: $0 dir-1 dir-2 new-dir-name" 1>&2
+	exit 1
+fi
+
+NEWDIR="$3"
+
 export LC_ALL=C
 
 line_signatures()
@@ -40,9 +48,9 @@ line_signatures()
 		# Print "directory filename content" of lines with
 		# at least one alphabetic character
 		# The fields are separated by ^A and ^B
-		sed -n "/[a-z]/s|^|$dir:$file;|p" "$dir/$file"
+		sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
 	done |
-	sort -t: -k 2
+	sort -t -k 2
 }
 
 (
@@ -51,41 +59,66 @@ line_signatures()
 
 	rm -rf $SGDIR
 
-	trap '
-	# Stop key-value stores
-	
-	# Kill processes we have launched in the background
-	kill $SGPID 2>/dev/null
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
 
-	# Remove temporary directory
-	rm -rf "$SGDIR"' 0
+		# Stop key-value stores
+		
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
 
-	trap 'exit $?' 1 2 3 15
+		# Remove temporary directory
+		rm -rf "$SGDIR"
+
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
 
 	mkdir $SGDIR
 	
-	mkfifo  \
-$SGDIR/npfo-a.0 \
-$SGDIR/npfo-b.0 \
-$SGDIR/npi-1.0.0 \
-$SGDIR/npfo-cp.0 \
-$SGDIR/npi-1.1.0 \
-$SGDIR/npfo-mkdir.0
-	 {  line_signatures $1 ; } </dev/null  >$SGDIR/npfo-a.0 & SGPID="$! $SGPID"
- {  line_signatures $2 ; } </dev/null  >$SGDIR/npfo-b.0 & SGPID="$! $SGPID"
- {  join -t: -1 2 -2 2 $SGDIR/npfo-a.0 $SGDIR/npfo-b.0 |
+mkfifo 	$SGDIR/npfo-a.0 \
+	$SGDIR/npfo-b.0 \
+	$SGDIR/npfo-cp.0 \
+	$SGDIR/npfo-mkdir.0 \
+	$SGDIR/npi-1.0.0 \
+	$SGDIR/npi-1.1.0
+
+ {  line_signatures $1
+}</dev/null  >$SGDIR/npfo-a.0 & SGPID="$! $SGPID"
+ {  line_signatures $2
+}</dev/null  >$SGDIR/npfo-b.0 & SGPID="$! $SGPID"
+ {  join -t -1 2 -2 2 $SGDIR/npfo-a.0 $SGDIR/npfo-b.0 |
 	# Print filename dir1 dir2
-	sed 's/;/:/g' |
-	awk -F: 'BEGIN{OFS=" "}{print $1, $3, $4}' |
+	sed 's///g' |
+	awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 	# Unique occurrences
-	sort -u ; } </dev/null  |
-sgsh-tee  $SGDIR/npi-1.0.0 $SGDIR/npi-1.1.0 & SGPID="$! $SGPID"
- {  awk '{print "cp " $2 "/" $1 " new/" $3 "/" $1}' ; }  <$SGDIR/npi-1.0.0 >$SGDIR/npfo-cp.0 & SGPID="$! $SGPID"
- {  awk '{print "mkdir -p new/" $3}' | sort -u ; }  <$SGDIR/npi-1.1.0 >$SGDIR/npfo-mkdir.0 & SGPID="$! $SGPID"
+	sort -u
+}</dev/null  |
+sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
+ {  awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}'
+} <$SGDIR/npi-1.0.0 >$SGDIR/npfo-cp.0 & SGPID="$! $SGPID"
+ {  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u
+} <$SGDIR/npi-1.1.0 >$SGDIR/npfo-mkdir.0 & SGPID="$! $SGPID"
 
 # Gather the results
 	# Order: first make directories, then copy files
-	cat $SGDIR/npfo-mkdir.0 $SGDIR/npfo-cp.0 |
+	sgsh-tee -f -I -i $SGDIR/npfo-mkdir.0 -i $SGDIR/npfo-cp.0 |
 	sh
 
-) 3<&0 
+)  3<&0 

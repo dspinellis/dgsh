@@ -1,2 +1,0 @@
-test/regression/errors/unsafe-scatter.sh(21): Unsafe use of pass-through /stream/b in the scatter section
-test/regression/errors/unsafe-scatter.sh(21): Consult the DEADLOCK section of the manual page

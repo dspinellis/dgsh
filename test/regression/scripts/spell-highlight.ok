@@ -33,32 +33,57 @@ export LC_ALL=C
 
 	rm -rf $SGDIR
 
-	trap '
-	# Stop key-value stores
-	
-	# Kill processes we have launched in the background
-	kill $SGPID 2>/dev/null
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
 
-	# Remove temporary directory
-	rm -rf "$SGDIR"' 0
+		# Stop key-value stores
+		
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
 
-	trap 'exit $?' 1 2 3 15
+		# Remove temporary directory
+		rm -rf "$SGDIR"
+
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
 
 	mkdir $SGDIR
 	
-	mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npfo-errors.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npfo-text.0
-	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 <&3 3<&-  & SGPID="$! $SGPID"
+mkfifo 	$SGDIR/npfo-dict.0 \
+	$SGDIR/npfo-errors.0 \
+	$SGDIR/npfo-text.0 \
+	$SGDIR/npi-0.1.0 \
+	$SGDIR/npi-0.2.0
+
+sgsh-tee  -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 <&3 3<&-   & SGPID="$! $SGPID"
+ {  sort /usr/share/dict/words
+}</dev/null  >$SGDIR/npfo-dict.0 & SGPID="$! $SGPID"
  {  tr -cs A-Za-z \\n |
 	tr A-Z a-z |
 	sort -u |
-	comm -23 - /usr/share/dict/words ; }  <$SGDIR/npi-0.0.0 >$SGDIR/npfo-errors.0 & SGPID="$! $SGPID"
- {  cat ; }  <$SGDIR/npi-0.1.0 >$SGDIR/npfo-text.0 & SGPID="$! $SGPID"
+	comm -23 - $SGDIR/npfo-dict.0
+} <$SGDIR/npi-0.1.0 >$SGDIR/npfo-errors.0 & SGPID="$! $SGPID"
+ {  cat
+} <$SGDIR/npi-0.2.0 >$SGDIR/npfo-text.0 & SGPID="$! $SGPID"
 
 # Gather the results
 	fgrep -f $SGDIR/npfo-errors.0 -i --color -w -C 2 $SGDIR/npfo-text.0
 
-) 3<&0 
+)  3<&0 

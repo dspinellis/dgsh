@@ -31,36 +31,61 @@
 
 	rm -rf $SGDIR
 
-	trap '
-	# Stop key-value stores
-	sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+
+		# Stop key-value stores
+		sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/FILETYPE" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/XZ" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/BZIP2" 2>/dev/null
 sgsh-readval -q -s "$SGDIR/GZIP" 2>/dev/null
 
-	# Kill processes we have launched in the background
-	kill $SGPID 2>/dev/null
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
 
-	# Remove temporary directory
-	rm -rf "$SGDIR"' 0
+		# Remove temporary directory
+		rm -rf "$SGDIR"
 
-	trap 'exit $?' 1 2 3 15
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
 
 	mkdir $SGDIR
 	
-	mkfifo  \
-$SGDIR/npi-0.0.0 \
-$SGDIR/npi-0.1.0 \
-$SGDIR/npi-0.2.0 \
-$SGDIR/npi-0.3.0 \
-$SGDIR/npi-0.4.0
-	sgsh-tee  $SGDIR/npi-0.0.0 $SGDIR/npi-0.1.0 $SGDIR/npi-0.2.0 $SGDIR/npi-0.3.0 $SGDIR/npi-0.4.0 <&3 3<&-  & SGPID="$! $SGPID"
- {  wc -c ; }  <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/NBYTES & SGPID="$! $SGPID"
- {  file - ; }  <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/FILETYPE & SGPID="$! $SGPID"
- {  xz -c | wc -c ; }  <$SGDIR/npi-0.2.0 | sgsh-writeval  -s $SGDIR/XZ & SGPID="$! $SGPID"
- {  bzip2 -c | wc -c ; }  <$SGDIR/npi-0.3.0 | sgsh-writeval  -s $SGDIR/BZIP2 & SGPID="$! $SGPID"
- {  gzip -c | wc -c ; }  <$SGDIR/npi-0.4.0 | sgsh-writeval  -s $SGDIR/GZIP & SGPID="$! $SGPID"
+mkfifo 	$SGDIR/npi-0.0.0 \
+	$SGDIR/npi-0.1.0 \
+	$SGDIR/npi-0.2.0 \
+	$SGDIR/npi-0.3.0 \
+	$SGDIR/npi-0.4.0
+
+sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.3.0 -o $SGDIR/npi-0.4.0 <&3 3<&-   & SGPID="$! $SGPID"
+ {  wc -c
+} <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/NBYTES  & SGPID="$! $SGPID"
+ {  file -
+} <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/FILETYPE  & SGPID="$! $SGPID"
+ {  xz -c | wc -c
+} <$SGDIR/npi-0.2.0 | sgsh-writeval  -s $SGDIR/XZ  & SGPID="$! $SGPID"
+ {  bzip2 -c | wc -c
+} <$SGDIR/npi-0.3.0 | sgsh-writeval  -s $SGDIR/BZIP2  & SGPID="$! $SGPID"
+ {  gzip -c | wc -c
+} <$SGDIR/npi-0.4.0 | sgsh-writeval  -s $SGDIR/GZIP  & SGPID="$! $SGPID"
 
 # Gather the results
 	cat <<EOF
@@ -71,4 +96,4 @@ bzip2:		`sgsh-readval -s $SGDIR/BZIP2` bytes
 xz:		`sgsh-readval -s $SGDIR/XZ` bytes
 EOF
 
-) 3<&0 
+)  3<&0 

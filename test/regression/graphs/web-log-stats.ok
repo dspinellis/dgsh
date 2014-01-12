@@ -1,29 +1,41 @@
 
-digraph D {
-	rankdir = LR;
-	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
-	"page" [shape="box"];
-	node_cmd_0_0_0 -> "page";
-	"total_bytes" [shape="box"];
-	node_cmd_1_0_0 -> "total_bytes";
-	"total_pages" [shape="box"];
-	node_cmd_1_1_0 -> "total_pages";
-	"bytes" [shape="box"];
-	node_cmd_1_2_0 -> "bytes";
-	"bytes_old" [shape="box"];
-	node_cmd_1_3_0 -> "bytes_old";
-	node_cmd_0_1_0 -> node_tee_1
-	node_cmd_0_0_0 [label="awk -Winteractive '{print $7}'\l", shape="ellipse"];
-	node_cmd_0_1_0 [label="awk -Winteractive '{print $10}'\l", shape="ellipse"];
-	node_cmd_1_0_0 [label="awk -Winteractive '{ s += $1; print s}'\l", shape="ellipse"];
-	node_cmd_1_1_0 [label="awk -Winteractive '{print ++n}'\l", shape="ellipse"];
-	node_cmd_1_2_0 [label="\l", shape="ellipse"];
-	node_cmd_1_3_0 [label="\l", shape="ellipse"];
-	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
-	node_tee_1 -> node_cmd_1_2_0; // npi-1.2.0
-	node_tee_1 -> node_cmd_1_0_0; // npi-1.0.0
-	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0
-	node_tee_1 -> node_cmd_1_1_0; // npi-1.1.0
-	node_tee_1 -> node_cmd_1_3_0; // npi-1.3.0
+	digraph "" {
+		rankdir = LR;
+		node [fontname="Courier"];
+		edge [];
+		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+	"page" [id="store:page", shape="box"];
+	node_cmd_0_0_0 -> "page" [id="nps-page"];
+	"total_bytes" [id="store:total_bytes", shape="box"];
+	node_cmd_1_0_0 -> "total_bytes" [id="nps-total_bytes"];
+	"total_pages" [id="store:total_pages", shape="box"];
+	node_cmd_1_1_0 -> "total_pages" [id="nps-total_pages"];
+	"bytes" [id="store:bytes", shape="box"];
+	node_cmd_1_2_0 -> "bytes" [id="nps-bytes"];
+	"bytes_old" [id="store:bytes_old", shape="box"];
+	node_cmd_1_3_0 -> "bytes_old" [id="nps-bytes_old"];
+	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="awk -Winteractive '{print $7}'\l", shape="ellipse"];
+	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="awk -Winteractive '{print $10}'\l", shape="ellipse"];
+	node_cmd_1_0_0 [id="node_cmd_1_0_0", label="awk -Winteractive '{ s += $1; print s}'\l", shape="ellipse"];
+	node_cmd_1_1_0 [id="node_cmd_1_1_0", label="awk -Winteractive '{print ++n}'\l", shape="ellipse"];
+	node_cmd_1_2_0 [id="node_cmd_1_2_0", label="\l", shape="ellipse"];
+	node_cmd_1_3_0 [id="node_cmd_1_3_0", label="\l", shape="ellipse"];
+	bytes -> gather_node_3 [id="store-read"];
+	gather_node_3 [id="gather_node_3", label="WINDOW_PAGES=$(store:bytes -c | wc -l)\l", shape="ellipse"];
+	bytes -> gather_node_4 [id="store-read"];
+	gather_node_4 [id="gather_node_4", label="WINDOW_BYTES=$(store:bytes -c | sum )\l", shape="ellipse"];
+	bytes_old -> gather_node_5 [id="store-read"];
+	gather_node_5 [id="gather_node_5", label="WINDOW_PAGES_OLD=$(store:bytes_old -c | wc -l)\l", shape="ellipse"];
+	bytes_old -> gather_node_6 [id="store-read"];
+	gather_node_6 [id="gather_node_6", label="WINDOW_BYTES_OLD=$(store:bytes_old -c | sum)\l", shape="ellipse"];
+	total_pages -> gather_node_8 [id="store-read"];
+	total_bytes -> gather_node_8 [id="store-read"];
+	page -> gather_node_8 [id="store-read"];
+	gather_node_8 [id="gather_node_8", label="cat <<EOF\lTotal\l-----\lPages: $(store:total_pages -c)\lBytes: $(store:total_bytes -c)\lOver last ${WINDOW}s\l--------------------\lPages: $WINDOW_PAGES\lBytes: $WINDOW_BYTES\lkBytes/s: $(awk \"END {OFMT=\\\"%.0f\\\"; print $WINDOW_BYTES / $WINDOW / 1000}\" </dev/null )\lTop page: $(store:page -c | sort | uniq -c | sort -rn | head -1)\lChange\l------\lRequests: $(change $WINDOW_PAGES_OLD $WINDOW_PAGES)\lData bytes: $(change $WINDOW_BYTES_OLD $WINDOW_BYTES)\lEOF\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
+	node_cmd_0_1_0 -> node_cmd_1_2_0 [id="npi-1.2.0"];
+	node_cmd_0_1_0 -> node_cmd_1_0_0 [id="npi-1.0.0"];
+	node_tee_0 -> node_cmd_0_0_0 [id="npi-0.0.0"];
+	node_cmd_0_1_0 -> node_cmd_1_1_0 [id="npi-1.1.0"];
+	node_cmd_0_1_0 -> node_cmd_1_3_0 [id="npi-1.3.0"];
 }

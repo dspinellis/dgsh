@@ -1,14 +1,15 @@
 
-digraph D {
-	rankdir = LR;
-	node [fontname="Courier"];
-	node_tee_0 [label="sgsh-tee ", shape="ellipse"];
-	node_cmd_0_0_0 [label="awk -F: '{print $1}' | forder\l", shape="ellipse"];
-	node_cmd_0_1_0 [label="awk -F: '{print substr($2, 1, 3)}' | forder\l", shape="ellipse"];
-	gather_node_1 [label="cat\l", shape="ellipse"];
-	gather_node_3 [label="cat\l", shape="ellipse"];
-	node_tee_0 -> node_cmd_0_1_0; // npi-0.1.0
-	node_cmd_0_0_0 -> gather_node_1; // npfo-authors.0
-	node_cmd_0_1_0 -> gather_node_3; // npfo-days.0
-	node_tee_0 -> node_cmd_0_0_0; // npi-0.0.0
+	digraph "" {
+		rankdir = LR;
+		node [fontname="Courier"];
+		edge [];
+		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="awk -F: '{print $1}' | forder\l", shape="ellipse"];
+	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="awk -F: '{print substr($2, 1, 3)}' | forder\l", shape="ellipse"];
+	gather_node_1 [id="gather_node_1", label="cat /stream/authors\l", shape="ellipse"];
+	gather_node_3 [id="gather_node_3", label="cat /stream/days\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
+	node_cmd_0_0_0 -> gather_node_1 [id="npfo-authors.0"];
+	node_cmd_0_1_0 -> gather_node_3 [id="npfo-days.0"];
+	node_tee_0 -> node_cmd_0_0_0 [id="npi-0.0.0"];
 }
