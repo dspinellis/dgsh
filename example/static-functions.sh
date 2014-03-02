@@ -1,12 +1,12 @@
 #!/usr/bin/env sgsh
 #
-# SYNOPSIS Show C/C++ symbols that should be declared static
+# SYNOPSIS C/C++ symbols that should be static
 # DESCRIPTION
 # Given as an argument a directory containing object files, show which
 # symbols are declared with global visibility, but should have been
 # declared with file-local (static) visibility instead.
 # Demonstrates the use of streams and comm (1) to combine data from
-# two sourcces.
+# two sources.
 #
 #  Copyright 2014 Diomidis Spinellis
 #
