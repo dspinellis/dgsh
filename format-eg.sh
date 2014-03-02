@@ -13,6 +13,7 @@ SECTION='compress-compare
 	web-log-report
 	web-log-stats
 	text-properties
+	static-functions
 	map-hierarchy
 	committer-plot
 	ft2d
