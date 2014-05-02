@@ -157,6 +157,16 @@ sink    : '|>/stream/' name                     // Sink to a named stream
         | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
         | '|.'                                  // No output
         ;
+
+// Extend the type of input arguments commands can receive
+input   : file_path           // Traditional, file-based input
+	| '/stream/' name     // Named stream
+	| '<-'                // Unnamed stream
+	;
+
+command	: existing_command
+	| 'store:' name [ store-flags ]         // Outputs a store's value
+	;
 .fi
 .ps +1
 .ft P
