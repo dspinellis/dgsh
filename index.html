@@ -89,7 +89,13 @@ In particular, this feature can be used to operate on windows of stream data,
 rather than a single value written to a store.
 </dd>
 <dt>Streams</dt><dd> are named as <code>/stream/</code><em>name</em>.
-They connect the output of one process
+In addition, unnamed streams can be specified with a single dash  when
+writing to a data sink (<code>|-</code>),
+and with <code><-</code> when reading from it.
+Unnamed streams read match the sequence of unnamed streams written.
+(The first stream written will be the first stream read.)
+
+Streams connect the output of one process
 with the input of another.
 In contrast to scatter blocks,
 which restrict the data flow through a tree of processes,
@@ -120,7 +126,7 @@ scatter block, or
 <code>.|</code> to specify that no input will be received.
 Then follows a normal <em>sh</em>(1) pipeline,
 followed by a sink (output) specification at the end of a line.
-This can be a stream (<code>|&gt;/stream/</code><em>name</em>),
+This can be a stream (<code>|&gt;/stream/</code><em>name</em> or <code>|-</code>),
 a data store (<code>|store:</code><em>name</em>),
 <code>|.</code> to specify that no output will be generated,
 or a nested scatter block
@@ -188,7 +194,8 @@ source  : '-|'                                  // Receive scatter input
         | '.|'                                  // Receive no input
         ;
 
-sink    : '|&gt;/stream/' filename                 // Sink to specified stream
+sink    : '|&gt;/stream/' filename                 // Sink to a named stream
+        | '|-'                                  // Sink to an unnamed stream
         | '|store:' store_name [ store-flags ]  // Sink to specified store
         | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
         | '|.'                                  // No output

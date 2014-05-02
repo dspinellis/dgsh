@@ -119,8 +119,13 @@ The behavior of store I/O can be modified by adding
 In particular, this feature can be used to operate on windows of stream data,
 rather than a single value written to a store.
 .PP
-\fBStreams\fP, named as \fC/stream/\fP\fIname\fP, connect the output of one process
-with the input of another.
+\fBStreams\fP are named as \fC/stream/\fP\fIname\fP.
+In addition, unnamed streams can be specified with a single dash  when
+writing to a data sink (\fC|-\fP), and with \fC<-\fP when reading from
+it.
+Unnamed streams read match the sequence of unnamed streams written.
+(The first stream written will be the first stream read.)
+Streams connect the output of one process with the input of another.
 In contrast to scatter blocks,
 which restrict the data flow through a tree of processes,
 streams allow the specification of a directed acyclic process graph.
@@ -146,7 +151,8 @@ source  : '-|'          // Receive scatter input
         | '.|'          // Receive no input
         ;
 
-sink    : '|>/stream/' filename                 // Sink to specified stream
+sink    : '|>/stream/' filename                 // Sink to a named stream
+        | '|-'                                  // Sink to an unnamed stream
         | '|store:' store_name [ store-flags ]  // Sink to specified store
         | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
         | '|.'                                  // No output
@@ -246,14 +252,14 @@ sort -k2 |
 scatter |{
 
 	 # Print an MD5 sum for each file that appears more than once
-	 -| awk '{print $2}' | uniq -d |>/stream/dupes
+	 -| awk '{print $2}' | uniq -d |-
 
 	 # Pass through the filename md5sum pairs
-	 -||>/stream/names
+	 -||-
 
 |} gather |{
 	# Join the repeated MD5 sums with the corresponding file names
-	join -2 2 /stream/dupes /stream/names |
+	join -2 2 <- <- |
 	# Output same files on a single line
 	awk '
 	BEGIN {ORS=""}

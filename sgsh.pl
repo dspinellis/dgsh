@@ -4,7 +4,7 @@
 # Produce as output and execute a plain shell script implementing the
 # specified operations through named pipes
 #
-#  Copyright 2012-2013 Diomidis Spinellis
+#  Copyright 2012-2014 Diomidis Spinellis
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -212,6 +212,12 @@ my $block_ordinal = 0;
 # whose blocks are delimited with |. to run to completion.
 my @gather_collect;
 
+# Number of next scatter unnamed stream file name to be allocated
+my $unnamed_scatter_stream_ordinal;
+
+# Number of next unnamed stream file name to be used for reading
+my $unnamed_read_stream_ordinal;
+
 # Regular expressions for the input files scatter-gather operators
 # scatter |{
 my $SCATTER_BLOCK_BEGIN = q!^[^'#"]*scatter\s*\|\{\s*(.*)?$!;
@@ -231,11 +237,15 @@ my $SCATTER_INPUT = q!^[^'#"]*-\|!;
 my $NO_INPUT = q!^[^'#"]*\.\|!;
 # |store:name
 my $GATHER_STORE_OUTPUT = q!\|\s*store\:(\w+)\s*([^#]*)(\#.*)?$!;
-# Steam of buffer specification: /stream/name or /buffer/name
+# Steam or buffer specification: /stream/name or /buffer/name
 # $1 is 'stream' or 'buffer'; $2 is the name
 my $SB_SPEC = q!\/(stream|buffer)\/([\w.\-+=,]+)!;
 # |>/stream/name or |>/buffer/name (see SB_SPEC)
 my $GATHER_STREAM_OUTPUT = '\|\>\s*' . $SB_SPEC . '\s*(\#.*)?$';
+# |-
+my $GATHER_UNNAMED_STREAM_OUTPUT = '\|\-\s*(\#.*)?$';
+# Specification of input from an unnamed stream
+my $UNNAMED_STREAM_SPEC = q!\<\-!;
 # |.
 my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
@@ -291,11 +301,13 @@ while (get_next_line()) {
 		$global_scatter_n = 0;
 		scatter_graph_io(\%scatter_command, 0);
 		$global_scatter_n = 0;
+		$unnamed_read_stream_ordinal = 0;
 		scatter_graph_body(\%scatter_command);
 		gather_graph(\@gather_commands);
 		graph_edges();
 
 		# Now that we have the edges we can verify the graph
+		$unnamed_read_stream_ordinal = 0;
 		verify_code(0, \%scatter_command, \@gather_commands);
 
 		print $graph_out "}\n" if ($graph_out);
@@ -305,6 +317,7 @@ while (get_next_line()) {
 		$global_scatter_n = 0;
 		scatter_code_and_pipes_map(\%scatter_command);
 		$global_scatter_n = 0;
+		$unnamed_read_stream_ordinal = 0;
 		my ($code2, $kvstores) = scatter_code_and_pipes_code(\%scatter_command, '');
 
 		# Wait for processes that are running in blocks delimited by |.
@@ -401,7 +414,7 @@ if ($? == -1) {
 	exit (($? >> 8) | (($? & 127) << 8));
 }
 
-# Clear the global variables used for processing each scatter-gather blog
+# Clear the global variables used for processing each scatter-gather block
 sub
 clear_global_variables
 {
@@ -416,6 +429,8 @@ clear_global_variables
 	undef %parallel_graph_file_map;
 	undef %node_label; # ?
 	undef @gather_collect;
+	$unnamed_scatter_stream_ordinal = 0;
+	$unnamed_read_stream_ordinal = 0;
 	$graph = Graph->new() if (defined($graph));
 }
 
@@ -594,6 +609,21 @@ parse_scatter_command
 			$command{body} .= $_;
 			return \%command;
 		}
+
+		# Unnamed gather file output endpoint: |-
+		if (s/$GATHER_UNNAMED_STREAM_OUTPUT//o) {
+			error("Headless command in scatter block") if (!defined($command{input}));
+			my $name = "_unnamed_$unnamed_scatter_stream_ordinal";
+			$unnamed_scatter_stream_ordinal++;
+			$defined_stream{$name} = 1;
+			undef @{$parallel_file_map{$name}};
+			undef @{$parallel_graph_file_map{$name}};
+			$command{output} = 'stream';
+			$command{file_name} = $name;
+			$command{body} .= $_;
+			return \%command;
+		}
+
 
 		# Gather no output endpoint: |.
 		if (s/$NO_OUTPUT//o) {
@@ -953,9 +983,11 @@ substitute_streams_and_stores
 
 	# Substitute a cat /stream/... ... command of at least two streams with an sgsh-tee -f -I -i ... command
 	# This avoids deadlocks by ensuring that all streams are opened when the concatenations starts
-	if ($command =~ m|\bcat(\s+$SB_SPEC){2,}|) {
+	if ($command =~ m|\bcat(\s+$SB_SPEC){2,}| ||
+	    $command =~ m|\bcat(\s+$UNNAMED_STREAM_SPEC){2,}|) {
 		$command =~ s/\bcat\b/${opt_p}sgsh-tee -f -I/;
 		$command =~ s|($SB_SPEC)|-i $1|g;
+		$command =~ s|($UNNAMED_STREAM_SPEC)|-i $1|g;
 	}
 
 	# Substitute /stream/... gather points with the corresponding named pipe
@@ -965,6 +997,14 @@ substitute_streams_and_stores
 		for my $np (@{$parallel_file_map{$file_name}}) {
 			$read_pipe{$np} = 1;
 		}
+	}
+
+	# Substitute <- unnamed gather points with the corresponding named pipe
+	while ($command =~ s!$UNNAMED_STREAM_SPEC!join(' ', map("\$SGDIR\/$_", @{$parallel_file_map{"_unnamed_$unnamed_read_stream_ordinal"}}))!e) {
+		for my $np (@{$parallel_file_map{"_unnamed_$unnamed_read_stream_ordinal"}}) {
+			$read_pipe{$np} = 1;
+		}
+		$unnamed_read_stream_ordinal++;
 	}
 
 	if ($opt_S) {
@@ -1055,6 +1095,17 @@ verify_code
 			$used_stream{$file_name} = 1;
 			$processed_stream = 1;
 		}
+		while ($body =~ s|$UNNAMED_STREAM_SPEC||) {
+			my $file_name = "_unnamed_$unnamed_read_stream_ordinal";
+			error("Number of read unnamed streams exceeds number of output unnamed streams", $c->{line_number}) if ($unnamed_read_stream_ordinal >= $unnamed_scatter_stream_ordinal);
+			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} && $processed_stream && sequential_command($body)) {
+				warning("Unsafe use of pass-through through unnamed stream in the scatter section", $c->{line_number});
+				warning("Consult the DEADLOCK section of the manual page", $c->{line_number});
+			}
+			$used_stream{$file_name} = 1;
+			$processed_stream = 1;
+			$unnamed_read_stream_ordinal++;
+		}
 
 		# Mark used stores
 		while ($body =~ s|store:(\w+)||) {
@@ -1084,6 +1135,21 @@ verify_code
 			}
 			$used_stream{$file_name} = 1;
 			$processed_command_stream = 1;
+		}
+		while ($tmp_command =~ s|$UNNAMED_STREAM_SPEC||) {
+			my $file_name = "_unnamed_$unnamed_read_stream_ordinal";
+			error("Number of read unnamed streams exceeds number of output unnamed streams", $command->{line_number}) if ($unnamed_read_stream_ordinal >= $unnamed_scatter_stream_ordinal);
+			if ($edge{$parallel_graph_file_map{$file_name}[0]}->{teearg} &&
+			    # Risk: we have already encountered a stream in a previous command in this block
+			    ($processed_block_stream ||
+			    # Risk: we have already encountered a stream in this unsafe command (e.g. cat)
+			    ($processed_command_stream && sequential_command($tmp_command)))) {
+				warning("Unsafe use of pass-through /stream/$file_name in the gather section", $command->{line_number});
+				error("Consult the DEADLOCK section of the manual page", $command->{line_number});
+			}
+			$used_stream{$file_name} = 1;
+			$processed_command_stream = 1;
+			$unnamed_read_stream_ordinal++;
 		}
 		$processed_block_stream = 1 if ($processed_command_stream);
 		while ($tmp_command =~ s|store:(\w+)||) {
@@ -1312,6 +1378,13 @@ scatter_graph_body
 					$edge{$file_name_p}->{rhs} = $node_name;
 				}
 			}
+			while ($command_tmp =~ s|$UNNAMED_STREAM_SPEC||) {
+				my $file_name = "_unnamed_$unnamed_read_stream_ordinal";
+				for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
+					$edge{$file_name_p}->{rhs} = $node_name;
+				}
+				$unnamed_read_stream_ordinal++;
+			}
 
 			# Generate store reading edges
 			while ($command_tmp =~ s|\bstore:(\w+)||) {
@@ -1395,6 +1468,14 @@ gather_graph
 				$edge{$file_name_p}->{rhs} = $node_name;
 			}
 			$is_node = 1;
+		}
+		while ($command_tmp =~ s|$UNNAMED_STREAM_SPEC||) {
+			my $file_name = "_unnamed_$unnamed_read_stream_ordinal";
+			for my $file_name_p (@{$parallel_graph_file_map{$file_name}}) {
+				$edge{$file_name_p}->{rhs} = $node_name;
+			}
+			$is_node = 1;
+			$unnamed_read_stream_ordinal++;
 		}
 
 		# Handle stores

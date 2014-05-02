@@ -4,8 +4,8 @@
 # DESCRIPTION
 # Highlight the words that are misspelled in the command's standard
 # input.
-# Demonstrates stream buffering and the avoidance of pass-through
-# constructs to avoid deadlocks.
+# Demonstrates stream buffering, the avoidance of pass-through
+# constructs to avoid deadlocks, and the use of named streams.
 #
 #  Copyright 2013 Diomidis Spinellis
 #

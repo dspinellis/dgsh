@@ -26,7 +26,7 @@ FREE=`df -h . | awk '!/Use%/{print $4}'`
 ls -n |
 scatter |{
 	# Reorder fields in DIR-like way
-	-| awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' |>/stream/files
+	-| awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' |-
 
 	# Count number of files
 	-| wc -l |store:NFILES
@@ -37,7 +37,7 @@ scatter |{
 	# Tally number of bytes
 	-| awk '{s += $5} END {print s}' |store:NBYTES
 |} gather |{
-	cat /stream/files
+	cat <-
 	echo "               `store:NFILES` File(s) `store:NBYTES` bytes"
 	echo "               `store:NDIRS` Dir(s) $FREE bytes free"
 |}

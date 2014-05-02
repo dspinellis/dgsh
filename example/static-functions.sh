@@ -31,13 +31,13 @@ xargs nm |
 
 scatter |{
 
-	# List all undefined (imported) symbols
-	-| awk '$1 == "U" {print $2}' | sort |>/stream/imports
-
 	# List all defined (exported) symbols
-	-| awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort |>/stream/exports
+	-| awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort |-
+
+	# List all undefined (imported) symbols
+	-| awk '$1 == "U" {print $2}' | sort |-
 
 |} gather |{
 	# Print exports that are not imported
-	comm -23 /stream/exports /stream/imports
+	comm -23 <- <-
 |}

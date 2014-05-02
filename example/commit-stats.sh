@@ -31,11 +31,11 @@ forder()
 
 git log --format="%an:%ad" --date=default "$@" |
 scatter |{
-	-| awk -F: '{print $1}' | forder |>/stream/authors
-	-| awk -F: '{print substr($2, 1, 3)}' | forder |>/stream/days
+	-| awk -F: '{print $1}' | forder |-
+	-| awk -F: '{print substr($2, 1, 3)}' | forder |-
 |} gather |{
 	echo "Authors ordered by number of commits"
-	cat /stream/authors
+	cat <-
 	echo "Days ordered by number of commits"
-	cat /stream/days
+	cat <-
 |}

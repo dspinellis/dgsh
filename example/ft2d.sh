@@ -7,7 +7,8 @@
 # 2) a simulated air wave and the amplitude of its 2D Fourier transform.
 # Demonstrates using the tools of the Madagascar shared research environment
 # for computational data analysis in geophysics and related fields.
-# Also demonstrates the use of two scatter blocks in the same script.
+# Also demonstrates the use of two scatter blocks in the same script,
+# and the used of named streams.
 #
 # Adapted from: http://www.reproducibility.org/RSF/book/bei/ft1/ft2d.html
 # Description: http://www.reproducibility.org/RSF/book/bei/ft1/paper_html/node14.html

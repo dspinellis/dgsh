@@ -26,11 +26,11 @@ awk '{$2 = ++n " " $2; print}' "$@" |
 # Two parallel line scatter invocations
 scatter |{ -s -p 10
 
-	-| logresolve |>/stream/resolved
+	-| logresolve |-
 
 |} gather |{
 	# Merge the files on the second numerical field
-	sort -m -k2n /stream/resolved |
+	sort -m -k2n <- |
 
 	# Remove second field
 	cut -d ' ' -f 1,3-

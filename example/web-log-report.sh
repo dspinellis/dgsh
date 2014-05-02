@@ -3,9 +3,9 @@
 # SYNOPSIS Web log reporting
 # DESCRIPTION
 # Creates a report for a fixed-size web log file read from the standard input.
-# Demonstrates the combined use of stores and streams, the use of shell group
-# commands and functions in the scatter block, and the use of cat(1) as
-# a way to sequentially combine multiple streams.
+# Demonstrates the combined use of stores and named streams,
+# the use of shell group commands and functions in the scatter block, and
+# the use of cat(1) as a way to sequentially combine multiple streams.
 # Used to measure throughput increase achieved through parallelism.
 #
 #  Copyright 2013 Diomidis Spinellis

@@ -43,11 +43,11 @@ scatter |{
 	   sort -n |
 	   awk 'BEGIN {l = 0; r = '`store:NCOMMITTERS`';}
 		      {print NR % 2 ? l++ : --r, $2}' |
-	   sort -k2 |>/stream/committerpos
+	   sort -k2 |-
 
 	# Join committer positions with commit time stamps
 	-| sort -k2 |
-	   join -j 2 - /stream/committerpos |
+	   join -j 2 - <- |
 	   # Order by time
 	   sort -k 2n |
 	{
