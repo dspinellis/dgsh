@@ -151,7 +151,7 @@ source  : '-|'          // Receive scatter input
         | '.|'          // Receive no input
         ;
 
-sink    : '|>/stream/' filename                 // Sink to a named stream
+sink    : '|>/stream/' name                     // Sink to a named stream
         | '|-'                                  // Sink to an unnamed stream
         | '|store:' store_name [ store-flags ]  // Sink to specified store
         | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
