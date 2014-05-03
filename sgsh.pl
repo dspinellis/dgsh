@@ -245,7 +245,9 @@ my $GATHER_STREAM_OUTPUT = '\|\>\s*' . $SB_SPEC . '\s*(\#.*)?$';
 # |-
 my $GATHER_UNNAMED_STREAM_OUTPUT = '\|\-\s*(\#.*)?$';
 # Specification of input from an unnamed stream
-my $UNNAMED_STREAM_SPEC = q!\<\-!;
+# Use a zero-width negative look-behind assertion (?<!pattern) to avoid
+# matching "<<-", which has special meaning in HERE documents
+my $UNNAMED_STREAM_SPEC = '(?<!\<)\<\-';
 # |.
 my $NO_OUTPUT = q!\|\.\s*(\#.*)?$!;
 # Line comment lines. Skip them to avoid getting confused by commented-out sgsh lines.
