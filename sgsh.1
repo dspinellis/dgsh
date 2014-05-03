@@ -140,32 +140,32 @@ Streams are internally implemented through named pipes.
 .ft C
 .ps -1
 .nf
-program : 'scatter |{' command ... '}| gather |{' pipeline '|}'
-        | 'scatter |{' command ... '}|'
+program : 'scatter |{' conduit ... '}| gather |{' pipeline '|}'
+        | 'scatter |{' conduit ... '}|'
         ;
 
-command : source pipeline sink
+conduit : source pipeline sink
         ;
 
 source  : '-|'                // Receive scatter input
         | '.|'                // Receive no input
         ;
 
-sink    : '|>/stream/' name                     // Sink to a named stream
+sink    : '|>/stream/' stream-name              // Sink to a named stream
         | '|-'                                  // Sink to an unnamed stream
-        | '|store:' store_name [ store-flags ]  // Sink to specified store
-        | '|{' [ tee-flags ] command ... '|}'   // Scatter to multiple commands
+        | '|store:' store-name [ store-flags ]  // Sink to specified store
+        | '|{' [ tee-flags ] conduit ... '|}'   // Scatter to multiple conduits
         | '|.'                                  // No output
         ;
 
-// Extend the type of input arguments commands can receive
-input   : file_path           // Traditional, file-based input
-	| '/stream/' name     // Named stream
-	| '<-'                // Unnamed stream
+// Extend the type of file input arguments commands can receive
+input   : file-path                  // Traditional, file-based input
+	| '/stream/' stream-name     // Named stream
+	| '<-'                       // Unnamed stream
 	;
 
-command	: existing_command
-	| 'store:' name [ store-flags ]         // Outputs a store's value
+command	: existing-command
+	| 'store:' store-name [ store-flags ]   // Outputs a store's value
 	;
 .fi
 .ps +1
