@@ -62,7 +62,9 @@ skip right down to the <a href="#examples">examples</a> section.
 <section id="ipc"> <!-- {{{2 -->
 <h2>Inter-process communication</h2>
 <p>
-<em>Sgsh</em> provides three inter-process communication mechanisms.
+<em>Sgsh</em> provides three new ways
+for expressing inter-process communication.
+
 </p>
 <dl class="dl-horizontal">
 <dt>Scatter blocks</dt><dd> send the output of one pipeline ending
@@ -85,15 +87,16 @@ Stores are implemented internally through Unix-domain sockets,
 a writer program, <em>sgsh-writeval</em>(1), and a reader program, <em>sgsh-readval</em>(1).
 The behavior of store I/O can be modified by adding
 <em>sgsh-writeval</em>(1) and <em>sgsh-readval</em>(1) flags after the store's name.
-In particular, this feature can be used to operate on windows of stream data,
+In particular, flags can be used to operate on windows of stream data,
 rather than a single value written to a store.
 </dd>
 <dt>Streams</dt><dd> are named as <code>/stream/</code><em>name</em>.
 In addition, unnamed streams can be specified with a single dash  when
 writing to a data sink (<code>|-</code>),
 and with <code><-</code> when reading from it.
-Unnamed streams read match the sequence of unnamed streams written.
-(The first stream written will be the first stream read.)
+Unnamed streams read match lexically the sequence of unnamed streams written.
+(The first specified unnamed output stream will be read by
+the first specified unnamed input stream.)
 
 Streams connect the output of one process
 with the input of another.
