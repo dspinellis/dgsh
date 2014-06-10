@@ -103,7 +103,8 @@ with the input of another.
 In contrast to scatter blocks,
 which restrict the data flow through a tree of processes,
 streams allow the specification of a directed acyclic process graph.
-Streams require exactly one reader and one writer in order to operate.
+Streams require exactly one reader and one writer,
+operating asynchronously, in order to operate.
 Consequently, they should not be used in sequential synchronous steps
 specified in the gather block, because steps waiting to be executed
 will completely block all upstream processing in the scatter block.
@@ -121,7 +122,7 @@ A <em>scatter</em> block starts with a line
 containing the sequence <code>scatter |{</code>.
 Data may be redirected or piped into and out of the block.
 A scatter block contains one or more <em>sgsh</em> commands,
-which are executed asynchronously (in the background).
+which are executed asynchronously (in parallel, in the background).
 Each command starts with a source (input) specification at
 the beginning of a line:
 <code>-|</code> to receive input that was piped into the
@@ -141,7 +142,7 @@ containing the sequence <code>|} gather |{</code>,
 which also ends the preceding scatter block,
 and ends with a line containing <code>|}</code>.
 The gather block contains normal <em>sh</em>(1) commands,
-which are executed synchronously with the scatter commands.
+which are executed synchronously&emdash;one by one in the specified order.
 Names of data stores and streams appearing in the gather
 block are set to match the output of the corresponding gather commands.
 The gather block ends with <code>|}</code> appearing in a single line.
