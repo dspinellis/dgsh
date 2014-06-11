@@ -643,7 +643,7 @@ parse_scatter_command
 		# Append command to body
 		$command{body} .= $_;
 	}
-	error("End of file reached file parsing a scatter command");
+	error("End of file reached while parsing a scatter command");
 }
 
 
