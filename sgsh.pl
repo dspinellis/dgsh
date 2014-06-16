@@ -943,6 +943,7 @@ scatter_code_and_pipes_code
 						if ($parallel > 1 && !$scatter_opts{'d'}) {
 							$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.${p}.bo & SGPID="\$! \$SGPID"\n];
 							$code .= qq[${opt_p}sgsh-tee -I -i \$SGDIR/npfo-$c->{file_name}.${p}.bo -o \$SGDIR/npfo-$c->{file_name}.${p} & SGPID="\$! \$SGPID"\n];
+							$written_pipe{"npfo-$c->{file_name}.${p}.bo"} = $read_pipe{"npfo-$c->{file_name}.${p}.bo"} = 1;
 						} else {
 							$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
 						}
