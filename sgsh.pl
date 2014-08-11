@@ -879,15 +879,6 @@ scatter_code_and_pipes_code
 
 			$code .= substitute_streams_and_stores($body);
 
-			# Buffer output if parallel scatter
-			# Parallel execution probably implies high-latency
-			# upstream commands.  Buffering their output ensures
-			# that the downstream merge won't block waiting for
-			# one of them and thus also block the other upstream
-			# ones.
-			$code .= " | ${opt_p}sgsh-tee -I"
-				if ($parallel > 1 && !$scatter_opts{'d'});
-
 			# Closing brace to redirect I/O as if the commands were one
 			# If no output append a null command to ensure npfo-none will
 			# stay open if the last command redirects its output
@@ -939,7 +930,23 @@ scatter_code_and_pipes_code
 						$read_pipe{"npfo-$c->{file_name}.$p.monitor"} = 1;
 						$kvstores .= "{\$SGDIR/mon-npfo-$c->{file_name}.$p}";
 					} else {
-						$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
+						# Buffer output if parallel scatter
+						# Parallel execution probably implies high-latency
+						# upstream commands.  Buffering their output ensures
+						# that the downstream merge won't block waiting for
+						# one of them and thus also block the other upstream
+						# ones.
+						# Buffering asynchronously ensures that all conduits
+						# can start and run in parallel, rather than blocking
+						# before they start waiting e.g. for a sort -m to open
+						# each of its input files.
+						if ($parallel > 1 && !$scatter_opts{'d'}) {
+							$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.${p}.bo & SGPID="\$! \$SGPID"\n];
+							$code .= qq[${opt_p}sgsh-tee -I -i \$SGDIR/npfo-$c->{file_name}.${p}.bo -o \$SGDIR/npfo-$c->{file_name}.${p} & SGPID="\$! \$SGPID"\n];
+							$written_pipe{"npfo-$c->{file_name}.${p}.bo"} = $read_pipe{"npfo-$c->{file_name}.${p}.bo"} = 1;
+						} else {
+							$code .= qq[ >\$SGDIR/npfo-$c->{file_name}.$p & SGPID="\$! \$SGPID"\n];
+						}
 					}
 				}
 				$written_pipe{"npfo-$c->{file_name}.$p"} = 1;
