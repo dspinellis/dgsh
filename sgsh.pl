@@ -1434,10 +1434,10 @@ graphviz_escape
 		# Escape special characters
 		$name =~ s/\\/\\\\/g;
 		# Remove arguments of first command
-		$name =~ s/^([^ ]*) [^\n\|]*/$1/;
+		$name =~ s/^([^ ]*) [^\n\|\)\`]*/$1/;
 		# Remove arguments from subsequent commands
-		$name =~ s/\n\s*([^ ]*)[^\n\|]*/\n$1/g;
-		$name =~ s/\|[ \t]*([^ ]*)[^\n\|]*/|$1/g;
+		$name =~ s/\n\s*([^ ]*)[^\n\|\)\`]*/\n$1/g;
+		$name =~ s/\|[ \t]*([^ ]*)[^\n\|\)\`]*/|$1/g;
 		# Improve presentation of pipes
 		$name =~ s/\|/ | /g;
 	} else {
