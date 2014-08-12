@@ -32,7 +32,7 @@ MANHTML=$(patsubst %.1,%.html,$(MANSRC))
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
-WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
+WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES)) debug.png profile.png
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
 %.png: %.sh

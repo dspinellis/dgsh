@@ -25,6 +25,7 @@
 	</ul>
 	</li>
     <li ><a href="#download">Downloading and installation</a></li>
+    <li ><a href="#debug">Debugging and profiling</a></li>
     <li ><a href="#reference">Reference</a></li>
     <li><a href="#examples">Examples</a></li>
 	<li>
@@ -231,6 +232,47 @@ as in
 <code>./sgsh -p . example/compress-compare.sh http://www.google.com</code>.
 </p>
 </section>
+
+<!-- Debugging and profiling {{{1
+================================================== -->
+<section id="debug">
+  <div class="page-header">
+    <h1>Debugging and profiling</h1>
+  </div>
+<p>
+Running <em>sgsh</em> with the <code>-d</code> option will
+generate and launch a web-based debug and monitoring interface.
+This amounts to
+generating a graph of the running processes,
+instrumenting the code with monitoring probes,
+running a tiny web server to respond to AJAX requests,
+and opening a JavaScript-based web page depicting the processing graph.
+</p>
+<p>
+Hovering the mouse over a graph's edge,
+opens up another window displaying
+the number of bytes and lines that have gone through the edge,
+the edge's throughput in terms of bytes and lines per second,
+the time the edge has been idle,
+and (part) of the last record that have gone through the edge.
+</p>
+<img src="debug.png" class="img-polaroid" alt="Debugging interface" />
+<p>
+Hovering the mouse over a graph's processing node opens a popup window that
+displays details about the top two processes running on that node
+that impose the highest CPU load on the system.
+</p>
+<img src="profile.png" class="img-polaroid" alt="Profiling interface" />
+<p>
+The details listed vary according to the underlying operating system.
+They include
+elapsed, user, and system time,
+resident set size, virtual set size,
+processor number,
+memory and CPU percentage claimed by the process, and
+major and minor page faults.
+</p>
+</section> <!-- debug -->
 
 <!-- Reference {{{1
 ================================================== -->
