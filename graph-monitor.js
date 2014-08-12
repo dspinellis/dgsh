@@ -181,7 +181,10 @@ out_store_handler = function(e) {
 	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
-	set_child_color(this, "ellipse", null);
+	if (this.getElementsByTagName("ellipse")[0] != null)
+		set_child_color(this, "ellipse", null);
+	else
+		set_child_color(this, "polygon", null);
 }
 
 over_process_handler = function(e) {
@@ -201,10 +204,7 @@ out_process_handler = function(e) {
 	label.style.visibility = 'hidden';
 	clearInterval(popup_update);
 
-	if (this.getElementsByTagName("ellipse")[0] != null)
-		set_child_color(this, "ellipse", null);
-	else
-		set_child_color(this, "polygon", null);
+	set_child_color(this, "ellipse", null);
 }
 
 
