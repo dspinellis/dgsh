@@ -17,6 +17,9 @@
  *
  */
 
+/* The color used for highlighting */
+var highlight = "lightblue";
+
 /* The URL used to periodically update the displayed popup */
 var url;
 
@@ -147,8 +150,8 @@ over_edge_handler = function(e) {
 	update_pipe_content();
 	popup_update = setInterval(update_pipe_content, 500);
 
-	set_child_color(this, "path", "blue");
-	set_child_color(this, "polygon", "blue");
+	set_child_color(this, "path", highlight);
+	set_child_color(this, "polygon", highlight);
 }
 
 out_edge_handler = function() {
@@ -170,9 +173,9 @@ over_store_handler = function(e) {
 	popup_update = setInterval(update_pipe_content, 500);
 
 	if (this.getElementsByTagName("ellipse")[0] != null)
-		set_child_color(this, "ellipse", "blue");
+		set_child_color(this, "ellipse", highlight);
 	else
-		set_child_color(this, "polygon", "blue");
+		set_child_color(this, "polygon", highlight);
 }
 
 out_store_handler = function(e) {
@@ -195,7 +198,7 @@ over_process_handler = function(e) {
 	update_process_content();
 	popup_update = setInterval(update_process_content, 3000);
 
-	set_child_color(this, "ellipse", "blue");
+	set_child_color(this, "ellipse", highlight);
 }
 
 out_process_handler = function(e) {
