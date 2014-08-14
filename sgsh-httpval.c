@@ -355,8 +355,13 @@ send_headers(FILE *out, int status, char *title, char *extra_header,
 	if (mime_type != (char *) 0)
 		(void)fprintf(out, "Content-Type: %s\015\012", mime_type);
 	if (length >= 0)
+#if __STDC_VERSION__ >= 199901L
+		(void)fprintf(out, "Content-Length: %jd\015\012",
+		    (intmax_t) length);
+#else
 		(void)fprintf(out, "Content-Length: %lld\015\012",
-		    (int64_t) length);
+		    (long long) length);
+#endif
 	if (mod != (time_t) - 1) {
 		(void)strftime(timebuf, sizeof(timebuf), RFC1123FMT,
 		    gmtime(&mod));

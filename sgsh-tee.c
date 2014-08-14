@@ -291,12 +291,12 @@ allocate_pool_buffer(struct buffer_pool *bp, int pool)
 	struct pool_buffer *b = &bp->buffers[pool];
 
 	if ((b->p = malloc(buffer_size)) == NULL) {
-		DPRINTF("Unable to allocate %d bytes for buffer %d", buffer_size, b -bp->buffers);
+		DPRINTF("Unable to allocate %d bytes for buffer %ld", buffer_size, b - bp->buffers);
 		bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 		return false;
 	}
 	b->s = s_memory;
-	DPRINTF("Allocated buffer %d to %p", b - bp->buffers, b->p);
+	DPRINTF("Allocated buffer %ld to %p", b - bp->buffers, b->p);
 	bp->buffers_allocated++;
 	bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 	return true;
