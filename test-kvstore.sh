@@ -13,6 +13,10 @@ fail()
 	echo "FAIL"
 	echo "$1"
 	./sgsh-readval -q -s testsocket 2>/dev/null
+	if [ "$SERVER_PID" ]
+	then
+		stop_server
+	fi
 	exit 1
 }
 
@@ -48,6 +52,24 @@ testcase()
 }
 
 
+# Start the HTTP server
+start_server()
+{
+	./sgsh-httpval -p $PORT "$@" &
+	SERVER_PID=$!
+}
+
+# Stop the HTTP server
+stop_server()
+{
+	curl -s40 http://localhost:$PORT/.server?quit >/dev/null
+	sleep 1
+	kill $SERVER_PID 2>/dev/null
+	sleep 2
+	SERVER_PID=''
+}
+
+
 # Simple tests {{{1
 section 'Simple tests' # {{{2
 
@@ -72,52 +94,52 @@ check
 testcase "HTTP interface - text data" # {{{3
 PORT=53843
 echo single record | ./sgsh-writeval -s testsocket 2>/dev/null &
-./sgsh-httpval -p $PORT &
+start_server
 # -s40: silent, IPv4 HTTP 1.0
 TRY="`curl -s40 http://localhost:$PORT/testsocket`"
 EXPECT='single record'
 check
-curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+stop_server
 
 testcase "HTTP interface - non-blocking empty record" # {{{3
 PORT=53843
 { sleep 2 ; echo hi ; } | ./sgsh-writeval -s testsocket 2>/dev/null &
-./sgsh-httpval -n -p $PORT &
+start_server -n
 # -s40: silent, IPv4 HTTP 1.0
 TRY="`curl -s40 http://localhost:$PORT/testsocket`"
 EXPECT=''
 check
-curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+stop_server
 
 testcase "HTTP interface - non-blocking first record" # {{{3
 PORT=53843
 echo 'first record' | ./sgsh-writeval -s testsocket 2>/dev/null &
-./sgsh-httpval -n -p $PORT &
+start_server -n
 # -s40: silent, IPv4 HTTP 1.0
 sleep 1
 TRY="`curl -s40 http://localhost:$PORT/testsocket`"
 EXPECT='first record'
 check
-curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+stop_server
 
 testcase "HTTP interface - non-blocking second record" # {{{3
 PORT=53843
 ( echo 'first record' ; sleep 1 ; echo 'second record' ) |
 ./sgsh-writeval -s testsocket 2>/dev/null &
-./sgsh-httpval -n -p $PORT &
+start_server -n
 # -s40: silent, IPv4 HTTP 1.0
 sleep 2
 TRY="`curl -s40 http://localhost:$PORT/testsocket`"
 EXPECT='second record'
 check
-curl -s40 "http://localhost:$PORT/.server?quit" >/dev/null
+stop_server
 
 testcase "HTTP interface - binary data" # {{{3
 PORT=53843
 perl -e 'BEGIN { binmode STDOUT; }
 for ($i = 0; $i < 256; $i++) { print chr($i); }' |
 ./sgsh-writeval -l 256 -s testsocket 2>/dev/null &
-./sgsh-httpval -m application/octet-stream -p $PORT &
+start_server -m application/octet-stream
 # -s40: silent, IPv4 HTTP 1.0
 curl -s40 http://localhost:$PORT/testsocket |
 perl -e 'BEGIN { binmode STDIN; }
@@ -132,7 +154,7 @@ if ($try ne $expect) {
 exit ($try ne $expect);
 '
 EXITCODE=$?
-curl -s40 http://localhost:$PORT/.server?quit >/dev/null
+stop_server
 ./sgsh-readval -q -s testsocket 2>/dev/null 1>/dev/null
 test $EXITCODE = 0 || exit 1
 
@@ -140,11 +162,11 @@ testcase "HTTP interface - large data" # {{{3
 PORT=53843
 dd if=/dev/zero bs=1M count=1 2>/dev/null |
 ./sgsh-writeval -l 1000000 -s testsocket 2>/dev/null &
-./sgsh-httpval -m application/octet-stream -p $PORT &
+start_server -m application/octet-stream
 # -s40: silent, IPv4 HTTP 1.0
 BYTES=`curl -s40 http://localhost:$PORT/testsocket |
 wc -c`
-curl -s40 http://localhost:$PORT/.server?quit >/dev/null
+stop_server
 ./sgsh-readval -q -s testsocket 2>/dev/null 1>/dev/null
 if [ "$BYTES" != 1000000 ]
 then
@@ -210,7 +232,7 @@ EXPECT=''
 check -n
 
 testcase "Record one" # {{{3
-sleep 2
+sleep 1
 TRY="`./sgsh-readval -e -s testsocket 2>/dev/null `"
 EXPECT='record one'
 check -n
@@ -428,8 +450,16 @@ check
 
 section 'Multi-client stress test' # {{{1
 echo -n "	Running"
-head -50000 /usr/share/dict/words | sort >sorted-words
-./sgsh-writeval -s testsocket 2>/dev/null <sorted-words &
+
+if [ ! -r test/sorted-words ]
+then
+	{
+		cat /usr/share/dict/words 2>/dev/null ||
+		curl -s https://raw.githubusercontent.com/freebsd/freebsd/master/share/dict/web2
+	} | head -50000 | sort >test/sorted-words
+fi
+
+./sgsh-writeval -s testsocket 2>/dev/null <test/sorted-words &
 
 # Number of parallel clients to run
 NUMCLIENTS=5
@@ -461,7 +491,7 @@ wait
 
 for i in `sequence $NUMCLIENTS`
 do
-	if sort -u read-words-$i | comm -13 sorted-words - | grep .
+	if sort -u read-words-$i | comm -13 test/sorted-words - | grep .
 	then
 		fail "Stress test client $i has trash output"
 	fi
@@ -470,18 +500,14 @@ do
 		fail "Stress test client is missing output"
 	fi
 done
-rm -f sorted-words read-words-*
+rm -f read-words-*
 echo "OK"
 
 section 'Time window stress test' # {{{1
 echo -n "	Running"
-head -50000 /usr/share/dict/words | sort >sorted-words
 
 # Feed words at a slower pace
-while read i
-do
-	echo $i
-done <sorted-words |
+perl -pe 'select(undef, undef, undef, 0.001);' test/sorted-words |
 ./sgsh-writeval -u s -b 3 -e 2 -s testsocket 2>/dev/null &
 echo
 echo "	Server started"
@@ -517,7 +543,7 @@ wait
 
 for i in `sequence $NUMCLIENTS`
 do
-	if sort -u read-words-$i | comm -13 sorted-words - | grep .
+	if sort -u read-words-$i | comm -13 test/sorted-words - | grep .
 	then
 		fail "Stress test client $i has trash output"
 	fi
@@ -527,6 +553,5 @@ do
 	fi
 done
 
-rm -f sorted-words read-words-*
+rm -f read-words-*
 echo "OK"
-

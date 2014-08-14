@@ -101,6 +101,8 @@ main(int argc, char *argv[])
 	int ch, port = 0;
 	bool localhost_access = true;
 	const char *mime_type = "text/plain";
+	int so_reuseaddr = 1;
+	struct linger so_linger;
 
 	program_name = argv[0];
 
@@ -163,6 +165,17 @@ main(int argc, char *argv[])
 
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		err(2, "socket");
+
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &so_reuseaddr,
+			sizeof (so_reuseaddr)) < 0)
+		err(2, "setsockopt SO_REUSEADDR");
+
+	so_linger.l_onoff = 1;
+	so_linger.l_linger = 1;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &so_linger,
+			sizeof (so_linger)) < 0)
+		err(2, "setsockopt SO_LINGER");
+
 	memset((char *)&serv_addr, 0, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
