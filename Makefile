@@ -32,7 +32,8 @@ MANHTML=$(patsubst %.1,%.html,$(MANSRC))
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
-WEBPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES)) debug.png profile.png
+EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
+WEBPNG=$(EGPNG) debug.png profile.png
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
 %.png: %.sh
@@ -129,7 +130,7 @@ seed-regression:
 	done
 
 clean:
-	rm -f *.o *.exe $(EXECUTABLES) $(MANPDF) $(MANHTML) $(WEBPNG)
+	rm -f *.o *.exe $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG)
 
 install: $(EXECUTABLES)
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
