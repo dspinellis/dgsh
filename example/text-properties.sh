@@ -33,8 +33,7 @@ export LC_ALL=C
 # Convert input into a ranked frequency list
 ranked_frequency()
 {
-	sort |
-	uniq -c |
+	awk '{count[$1]++} END {for (i in count) print count[i], i}' |
 	sort -rn
 }
 
