@@ -22,13 +22,19 @@
 mkdir -p time out
 rm -f time/*
 
+RESULTS='*.rsf *.vpl Fig *.rsf\@ .sconsign.dbhash hier words.txt trigram.txt digram.txt character.txt'
 PERFDIR=`pwd`
 
 # Run the specified command twice, in order to minimize caching effects
 run_twice()
 {
-	"$@"
-	"$@"
+	local input=$1
+	shift
+
+	rm -rf $RESULTS
+	"$@" <$input
+	rm -rf $RESULTS
+	"$@" <$input
 }
 
 measure()
@@ -36,13 +42,14 @@ measure()
 	local flags=$1
 	local script=$2
 	local size=$3
+	local input=$4
 	local name="$PERFDIR/time/$script:$size:$flags"
 
-	shift 3
+	shift 4
 
 	echo 1>&2 "Running for $name"
 
-	run_twice /usr/bin/time -p -o $name $PERFDIR/../sgsh -p $PERFDIR/.. $flags \
+	run_twice $input /usr/bin/time -p -o $name $PERFDIR/../sgsh -p $PERFDIR/.. $flags \
 		$PERFDIR/../example/$script "$@"
 }
 
@@ -57,41 +64,35 @@ run_examples()
 	local git=$7
 	local range=$8
 
-	( cd $git ; measure "$flags" commit-stats.sh $size  ) >out/commit-stats.out
+	( cd $git ; measure "$flags" commit-stats.sh $size /dev/null ) >out/commit-stats.out
 
-	measure "$flags" spell-highlight.sh $size <$text >out/spell.out
+	measure "$flags" spell-highlight.sh $size $text >out/spell.out
 
-	rm -rf hier
-	measure "$flags" map-hierarchy.sh $size $old $new hier
+	measure "$flags" map-hierarchy.sh $size /dev/null $old $new hier
 
 
-	measure "$flags" code-metrics.sh $size $new >out/metrics.out
-	measure "$flags" duplicate-files.sh $size $new >out/dup.out
-	measure "$flags" word-properties.sh $size <$text >out/word-properties.out
-	measure "$flags" compress-compare.sh $size <$text >out/compress.out
-	measure "$flags" web-log-report.sh $size <$weblog >out/weblog.out
+	measure "$flags" code-metrics.sh $size /dev/null $new >out/metrics.out
+	measure "$flags" duplicate-files.sh $size /dev/null $new >out/dup.out
+	measure "$flags" word-properties.sh $size $text >out/word-properties.out
+	measure "$flags" compress-compare.sh $size $text >out/compress.out
+	measure "$flags" web-log-report.sh $size $weblog >out/weblog.out
 
-	measure "$flags" text-properties.sh $size <$text
-	rm -f words.txt trigram.txt digram.txt character.txt
+	measure "$flags" text-properties.sh $size $text
 }
 
 # Alternative implementations of (modified) ft2d
-rm -rf Fig
 /usr/bin/time -p -o time/ft2d.sh:large: ../sgsh -p `pwd`/.. ft2d.sh
-rm -rf Fig
 /usr/bin/time -p -o time/ft2d.sh:large:-S ../sgsh -p `pwd`/.. -S ft2d.sh
 
 # Compare with native tool
-rm -rf Fig
-run_twice /usr/bin/time -p -o time/ft2d.scons:large: scons
-rm -rf *.rsf *.vpl Fig *.rsf\@ .sconsign.dbhash
+run_twice /dev/null /usr/bin/time -p -o time/ft2d.scons:large: scons
 
 # Alternative implementation of text statistics
-run_twice /usr/bin/time -p -o time/TextProperties:large: java TextProperties <books.txt
+run_twice books.txt /usr/bin/time -p -o time/TextProperties:large: java TextProperties
 
 # Alternative implementations of web log statistics
-run_twice /usr/bin/time -p -o time/WebStats:large: java WebStats <access.log >out/webstats-java.out
-run_twice /usr/bin/time -p -o time/web-log-report.pl:large: perl web-log-report.pl <access.log >out/webstats-pl.out
+run_twice access.log /usr/bin/time -p -o time/WebStats:large: java WebStats >out/webstats-java.out
+run_twice access.log /usr/bin/time -p -o time/web-log-report.pl:large: perl web-log-report.pl >out/webstats-pl.out
 
 # sh and sgsh implementations of other examples
 for flags in '' -S

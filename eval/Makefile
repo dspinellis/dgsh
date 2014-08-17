@@ -14,10 +14,13 @@ export ELNEW
 # History of the United States by Charles A. Beard and Mary Ritter Beard
 # The Adventures of Sherlock Holmes by Arthur Conan Doyle
 # Les Misérables by Victor Hugo
-books.txt:
+books1.txt:
 	curl http://www.gutenberg.org/files/16960/16960.txt \
 	http://www.gutenberg.org/files/1661/1661.txt \
-	http://www.gutenberg.org/files/135/135.txt >$@
+	http://www.gutenberg.org/files/135/135.txt >books1.txt
+
+books.txt: books1.txt
+	for i in `seq 1 10` ; do cat $? ; done >$@
 
 access.log:
 	curl ftp://ita.ee.lbl.gov/traces/clarknet_access_log_Aug28.gz |\
