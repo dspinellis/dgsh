@@ -71,7 +71,11 @@ class WebStats {
 	    Comparator<Map.Entry<String, Integer>>() {
 		public int compare(Map.Entry<String, Integer> a,
 			Map.Entry<String, Integer> b) {
-		    return (-a.getValue().compareTo(b.getValue()));
+		    int c = -a.getValue().compareTo(b.getValue());
+		    if (c != 0)
+			return (c);
+		    else
+			return -a.getKey().compareTo(b.getKey());
 		}
 	    }
 	);
