@@ -1,5 +1,13 @@
-clarknet_access_log_Aug28.gz
-clarknet_access_log_Sep4.gz
-err
-out
 *.class
+access-small.log
+access.log
+books.txt
+character.txt
+emptydir
+emptygit
+hier
+linux.new
+linux.old
+linux
+out
+time
