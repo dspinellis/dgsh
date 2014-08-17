@@ -35,6 +35,7 @@ run_twice()
 	"$@" <$input
 	rm -rf $RESULTS
 	"$@" <$input
+	rm -rf $RESULTS
 }
 
 measure()
