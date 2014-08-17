@@ -24,6 +24,13 @@ rm -f time/*
 
 PERFDIR=`pwd`
 
+# Run the specified command twice, in order to minimize caching effects
+run_twice()
+{
+	"$@"
+	"$@"
+}
+
 measure()
 {
 	local flags=$1
@@ -35,7 +42,7 @@ measure()
 
 	echo 1>&2 "Running for $name"
 
-	/usr/bin/time -p -o $name $PERFDIR/../sgsh -p $PERFDIR/.. $flags \
+	run_twice /usr/bin/time -p -o $name $PERFDIR/../sgsh -p $PERFDIR/.. $flags \
 		$PERFDIR/../example/$script "$@"
 }
 
@@ -76,20 +83,19 @@ rm -rf Fig
 
 # Compare with native tool
 rm -rf Fig
-/usr/bin/time -p -o time/ft2d.scons:large: scons
+run_twice /usr/bin/time -p -o time/ft2d.scons:large: scons
 rm -rf *.rsf *.vpl Fig *.rsf\@ .sconsign.dbhash
 
+# Alternative implementation of text statistics
+run_twice /usr/bin/time -p -o time/TextProperties:large: java TextProperties <books.txt
+
 # Alternative implementations of web log statistics
-/usr/bin/time -p -o time/WebStats:large: java WebStats <access.log >out/webstats-java.out
-/usr/bin/time -p -o time/web-log-report.pl:large: perl web-log-report.pl <access.log >out/webstats-pl.out
+run_twice /usr/bin/time -p -o time/WebStats:large: java WebStats <access.log >out/webstats-java.out
+run_twice /usr/bin/time -p -o time/web-log-report.pl:large: perl web-log-report.pl <access.log >out/webstats-pl.out
 
 # sh and sgsh implementations of other examples
 for flags in '' -S
 do
-	for i in a b ; do
-		run_examples "$flags" small /dev/null emptydir emptydir access-small.log emptygit HEAD
-	done
-	for i in a b ; do
-		run_examples "$flags" large books.txt linux.old linux.new access.log linux $ELOLD..$ELNEW
-	done
+	run_examples "$flags" small /dev/null emptydir emptydir access-small.log emptygit HEAD
+	run_examples "$flags" large books.txt linux.old linux.new access.log linux $ELOLD..$ELNEW
 done

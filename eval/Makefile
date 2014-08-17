@@ -1,4 +1,4 @@
-all: data WebStats.class
+all: data WebStats.class TextProperties.class
 	sh perf-eval.sh
 
 data: books.txt linux access.log linux.new linux.old emptydir access-small.log
@@ -52,6 +52,9 @@ emptygit:
 	cd $@ ; git init ; echo hello >hello ; git add hello ; git commit -am 'Add hello'
 
 WebStats.class: WebStats.java
+	javac $?
+
+TextProperties.class: TextProperties.java
 	javac $?
 
 clean:
