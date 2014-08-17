@@ -53,3 +53,6 @@ emptygit:
 
 WebStats.class: WebStats.java
 	javac $?
+
+clean:
+	rm -rf `cat .gitignore`
