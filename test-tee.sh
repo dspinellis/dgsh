@@ -41,6 +41,8 @@ ensure_similar_buffers()
 	done
 }
 
+
+
 for flags in '' -I
 do
 	# Test two input files
@@ -49,18 +51,44 @@ do
 	ensure_same "Three input $flags" expected a
 	rm expected a
 
-	# Test line scatter reliable algorithm
+	# Test line scatter reliable algorithm (stdin)
 	cat -n /usr/share/dict/words >words
 	./sgsh-tee $flags -s -b 1000000 <words -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable stdin $flags" words words2
 
-	# Test line scatter reliable algorithm
+	# Test line scatter reliable algorithm (pipe)
+	cat -n /usr/share/dict/words |
+	./sgsh-tee $flags -s -b 1000000 -o a -o b -o c -o d
+	cat a b c d | sort -n >words2
+	ensure_same "Line scatter reliable pipe $flags" words words2
+
+
+	# Test line scatter reliable algorithm (file argument)
 	cat -n /usr/share/dict/words >words
 	./sgsh-tee $flags -s -b 1000000 -i words -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable file $flags" words words2
 
+	# Test scatter to blocking sinks
+	cat -n /usr/share/dict/words >words
+	for buffer in 128 1000000
+	do
+		perl sgsh.pl -o - -p . <<EOF |
+		scatter |{ -s -p 8
+			-| cat |-
+		|} gather |{
+			# Merge sorted counts
+			sort -mn <-
+		|} <words >a
+EOF
+		sed "s/sgsh-tee  *-s/sgsh-tee -s -b $buffer/" |
+		# Logging for the debug version
+		# sed 's/-o $SGDIR\/npfo-_unnamed_0.\(.\)/& 2>ilog.\1/' |
+		sh
+		ensure_same "Scatter to blocking sinks $flags -b $buffer" words a
+	done
+	rm a
 
 	# Test line scatter efficient algorithm
 	./sgsh-tee $flags -s -b 128 <words -o a -o b -o c -o d
