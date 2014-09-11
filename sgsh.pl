@@ -716,9 +716,10 @@ parse_scatter_arguments
 	@ARGV = @save_argv;
 
 	# Number of commands to invoke in parallel
+	# 0 means equal to the number of cores
 	my $parallel;
-	if ($scatter_opts{'p'}) {
-		$parallel = $scatter_opts{'p'};
+	if (defined($scatter_opts{'p'})) {
+		$parallel = $scatter_opts{'p'} || ncore();
 	} else {
 		$parallel = 1;
 	}
@@ -1656,4 +1657,28 @@ debug_code
 			fi
 		done
 @
+}
+
+# Return number of CPU cores, or 1 if they can't be determined
+sub
+ncore
+{
+	my $in;
+	my $ncore = 0;
+
+	if (open($in, '<', '/proc/cpuinfo')) {
+		while (<$in>) {
+			$ncore++ if (/^processor\b/);
+		}
+	} elsif (open($in, '-|', 'sysctl hw.ncpu')) {
+		while (<$in>) {
+			if (/^hw\.ncpu\:\s*(\d+)/) {
+				$ncore = $1;
+				last;
+			}
+		}
+	} else {
+		$ncore = 1;
+	}
+	return $ncore;
 }
