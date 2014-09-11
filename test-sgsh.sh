@@ -70,8 +70,17 @@ do
 	../../../sgsh $flags -p ../../.. ../../../example/text-properties.sh <../../word-properties/LostWorldChap1-3
 	)
 	ensure_same "$flags" text-properties
-
 done
+
+# Outside the loop, because scatter -s is not compatible with -S
+# The correct file was generated using
+# tr -s ' \t\n\r\f' \\n <test/word-properties/LostWorldChap1-3 | sort | uniq -c | sed 's/^  *//'
+# An empty line is removed from the test output, because it can be generated
+# by tr when the first line of a split file is empty. (In that case \n is not
+# a repeated character that tr will remove.)
+./sgsh -p . example/parallel-word-count.sh <test/word-properties/LostWorldChap1-3 | sed '/^[0-9]* $/d' >test/parallel-word-count/out.test
+ensure_same "" parallel-word-count
+
 
 for i in example/*
 do

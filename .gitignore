@@ -6,6 +6,7 @@
 png/*.png
 sgsh
 sgsh-ps
+sgsh-merge-sum
 sgsh-tee
 sgsh-readval
 sgsh-writeval

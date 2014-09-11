@@ -10,6 +10,7 @@ SECTION='compress-compare
 	spell-highlight
 	word-properties
 	parallel-logresolve
+	parallel-word-count
 	web-log-report
 	web-log-stats
 	text-properties

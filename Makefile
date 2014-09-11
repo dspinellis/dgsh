@@ -23,7 +23,7 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
-	sgsh-ps
+	sgsh-ps sgsh-merge-sum
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -60,6 +60,9 @@ test-sgsh: $(EXECUTABLES)
 test-tee: sgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
+test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
+	./test-merge-sum.sh
+
 test-kvstore: test-kvstore.sh
 	# Make versions that will exercise the buffers
 	$(MAKE) clean
@@ -75,6 +78,10 @@ sgsh: sgsh.pl
 sgsh-ps: sgsh-ps.pl
 	! perl -e 'use JSON' 2>/dev/null || perl -c sgsh-ps.pl
 	install sgsh-ps.pl sgsh-ps
+
+sgsh-merge-sum: sgsh-merge-sum.pl
+	perl -c sgsh-merge-sum.pl
+	install sgsh-merge-sum.pl sgsh-merge-sum
 
 charcount: charcount.sh
 	install charcount.sh charcount
