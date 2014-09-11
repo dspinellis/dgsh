@@ -556,7 +556,8 @@ source_read(struct source_info *ifp)
 			err(3, "Read from %s", ifp->name);
 		}
 	ifp->source_pos_read += n;
-	DPRINTF("Read %d out of %d bytes from %s", n, b.size, ifp->name);
+	DPRINTF("Read %d out of %d bytes from %s data=[%.*s]", n, b.size, ifp->name,
+		(int)n, b.p);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
 }
@@ -643,12 +644,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 				off_t data_end = pos_assigned + data_to_assign - 1;
 
 				for (;;) {
-					if (*sink_pointer(ofp->ifp->bp, data_end) == rt) {
-						pos_assigned = data_end + 1;
-						break;
-					}
-					data_end--;
-					if (data_end + 1 == pos_assigned) {
+					if (data_end <= pos_assigned) {
 						/*
 						 * If no newline was found with backward scanning
 						 * degenerate to the efficient algorithm. This will
@@ -658,6 +654,11 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 						use_reliable = true;
 						goto reliable;
 					}
+					if (*sink_pointer(ofp->ifp->bp, data_end) == rt) {
+						pos_assigned = data_end + 1;
+						break;
+					}
+					data_end--;
 				}
 			} else {
 				/*
@@ -700,8 +701,9 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 		} else
 			pos_assigned += data_to_assign;
 		ofp->pos_to_write = pos_assigned;
-		DPRINTF("scatter to file[%s] pos_written=%ld pos_to_write=%ld",
-			ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write);
+		DPRINTF("scatter to file[%s] pos_written=%ld pos_to_write=%ld data=[%.*s]",
+			ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write,
+			(int)(ofp->pos_to_write - ofp->pos_written), sink_pointer(ofp->ifp->bp, ofp->pos_written));
 	}
 }
 
@@ -733,29 +735,30 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 			if (b.size == 0)
 				/* Can happen when a line spans a buffer */
 				n = 0;
-			else
-				n = write(ofp->fd, b.p, b.size);
-			if (n < 0)
-				switch (errno) {
-				/* EPIPE is acceptable, for the sink's reader can terminate early. */
-				case EPIPE:
-					ofp->active = false;
-					(void)close(ofp->fd);
-					DPRINTF("EPIPE for %s", ofp->name);
-					break;
-				case EAGAIN:
-					DPRINTF("EAGAIN for %s", ofp->name);
-					n = 0;
-					break;
-				default:
-					err(2, "Error writing to %s", ofp->name);
-				}
 			else {
-				ofp->pos_written += n;
-				written += n;
+				n = write(ofp->fd, b.p, b.size);
+				if (n < 0)
+					switch (errno) {
+					/* EPIPE is acceptable, for the sink's reader can terminate early. */
+					case EPIPE:
+						ofp->active = false;
+						(void)close(ofp->fd);
+						DPRINTF("EPIPE for %s", ofp->name);
+						break;
+					case EAGAIN:
+						DPRINTF("EAGAIN for %s", ofp->name);
+						n = 0;
+						break;
+					default:
+						err(2, "Error writing to %s", ofp->name);
+					}
+				else {
+					ofp->pos_written += n;
+					written += n;
+				}
 			}
-			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu",
-				n, b.size, ofp->name, ofp->pos_written);
+			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu data=[%.*s]",
+				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n, b.p);
 		}
 		if (ofp->active) {
 			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
