@@ -556,8 +556,8 @@ source_read(struct source_info *ifp)
 			err(3, "Read from %s", ifp->name);
 		}
 	ifp->source_pos_read += n;
-	DPRINTF("Read %d out of %d bytes from %s data=[%.*s]", n, b.size, ifp->name,
-		(int)n, b.p);
+	DPRINTF("Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, ifp->name,
+		(int)n, (char *)b.p);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
 }
@@ -757,8 +757,8 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 					written += n;
 				}
 			}
-			DPRINTF("Wrote %d out of %d bytes for file %s pos_written=%lu data=[%.*s]",
-				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n, b.p);
+			DPRINTF("Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
+				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n, (char *)b.p);
 		}
 		if (ofp->active) {
 			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
@@ -777,7 +777,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 			break;
 	}
 
-	DPRINTF("Wrote %d total bytes", written);
+	DPRINTF("Wrote %zu total bytes", written);
 	return written;
 }
 
