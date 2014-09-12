@@ -615,6 +615,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 	 * the buffer.
 	 */
 	available_data = sink_buffer_length(pos_assigned, files->ifp->source_pos_read);
+	DPRINTF("Available data=%zu available sinks=%d", available_data, available_sinks);
 
 	if (available_sinks == 0)
 		return;
@@ -713,6 +714,41 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 	}
 }
 
+/* Free buffers that are no longer needed */
+static void
+garbage_collect(struct source_info *ifiles, struct sink_info *ofiles)
+{
+	struct sink_info *ofp;
+	struct source_info *ifp;
+	off_t write_max_pos = 0;
+
+	/* Determine input file position still needed */
+	for (ofp = ofiles; ofp; ofp = ofp->next) {
+		if (!ofp->active)
+			continue;
+		/* Keep buffer at the end of the most advanced output file */
+		if (ofp->pos_written != ofp->pos_to_write)
+			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
+		ofp->ifp->is_read = true;
+
+		/* Still more to write from this file */
+		write_max_pos = MAX(write_max_pos, ofp->pos_written);
+	}
+
+	/* Advance the position to the most advanced output file */
+	ofiles->ifp->read_min_pos = MIN(ofiles->ifp->read_min_pos, write_max_pos);
+
+	/* Free buffers all sinks have read */
+	for (ifp = ifiles; ifp; ifp = ifp->next) {
+		memory_free(ifp->bp, ifp->read_min_pos);
+		/*
+		 * We are reading this source, so don't even think freeing
+		 * sources after this.
+		 */
+		if (ifp->is_read)
+			break;
+	}
+}
 
 /*
  * Write out from the memory buffer to the sinks where write will not block.
@@ -766,23 +802,9 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 			DPRINTF("Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
 				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n * DATA_DUMP, (char *)b.p);
 		}
-		if (ofp->active) {
-			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
-			ofp->ifp->is_read = true;
-		}
 	}
 
-	/* Free buffers all sinks have read */
-	for (ifp = ifiles; ifp; ifp = ifp->next) {
-		memory_free(ifp->bp, ifp->read_min_pos);
-		/*
-		 * We are reading this source, so don't even think freeing
-		 * sources after this.
-		 */
-		if (ifp->is_read)
-			break;
-	}
-
+	garbage_collect(ifiles, ofiles);
 	DPRINTF("Wrote %zu total bytes", written);
 	return written;
 }
