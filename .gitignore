@@ -3,6 +3,7 @@
 *.exe
 *.o
 *.pdf
+.gdb_history
 png/*.png
 sgsh
 sgsh-ps
