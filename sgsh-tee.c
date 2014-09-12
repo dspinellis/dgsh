@@ -33,6 +33,12 @@
 
 #include "sgsh.h"
 
+#if defined(DEBUG_DATA)
+#define DATA_DUMP 1
+#else
+#define DATA_DUMP 0
+#endif
+
 /*
  * Data that can't be written is stored in a sequential pool of buffers,
  * each buffer_size long.
@@ -557,7 +563,7 @@ source_read(struct source_info *ifp)
 		}
 	ifp->source_pos_read += n;
 	DPRINTF("Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, ifp->name,
-		(int)n, (char *)b.p);
+		(int)n * DATA_DUMP, (char *)b.p);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
 }
@@ -703,7 +709,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 		ofp->pos_to_write = pos_assigned;
 		DPRINTF("scatter to file[%s] pos_written=%ld pos_to_write=%ld data=[%.*s]",
 			ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write,
-			(int)(ofp->pos_to_write - ofp->pos_written), sink_pointer(ofp->ifp->bp, ofp->pos_written));
+			(int)(ofp->pos_to_write - ofp->pos_written) * DATA_DUMP, sink_pointer(ofp->ifp->bp, ofp->pos_written));
 	}
 }
 
@@ -758,7 +764,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 				}
 			}
 			DPRINTF("Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
-				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n, (char *)b.p);
+				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n * DATA_DUMP, (char *)b.p);
 		}
 		if (ofp->active) {
 			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
@@ -1042,6 +1048,8 @@ main(int argc, char *argv[])
 				case read_ib:
 				case read_ob:
 				case drain_ob:
+					DPRINTF("Check active file[%s] pos_written=%ld pos_to_write=%ld",
+						ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write);
 					if (ofp->pos_written < ofp->pos_to_write)
 						FD_SET(ofp->fd, &sink_fds);
 					break;
