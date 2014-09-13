@@ -20,7 +20,7 @@
 #  limitations under the License.
 #
 
-scatter |{ -s -p 0
+scatter |{ -ds -p 0
 	# Emulate Java's default StringTokenizer, sort, count
 	-| tr -s ' \t\n\r\f' \\n | sort -S 512M | uniq -c |-
 |} gather |{
