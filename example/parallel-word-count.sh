@@ -22,7 +22,7 @@
 
 scatter |{ -ds -p 0
 	# Emulate Java's default StringTokenizer, sort, count
-	-| tr -s ' \t\n\r\f' \\n | sort -S 512M | uniq -c |-
+	-| tr -s ' \t\n\r\f' \\n | LC_ALL=C sort -S 512M | uniq -c |-
 |} gather |{
 	# Merge sorted counts
 	sgsh-merge-sum <-
