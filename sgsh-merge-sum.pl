@@ -34,13 +34,17 @@ read_record
 	($fr->{value}, $fr->{key}) = ($line =~ m/^\s*(\d+)\s+(.*)/);
 }
 
-# Open input files and read first file
+# Open input files; opening before reading prevents pipe writers from blocking
 my @file;
 my $i = 0;
 for my $name (@ARGV) {
 	open($file[$i]->{file}, '<', $name) || die "Unable to open $name: $!\n";
-	read_record($file[$i]);
 	$i++;
+}
+
+# Read first record from all files
+for my $f (@file) {
+	read_record($f);
 }
 
 for (;;) {
