@@ -9,7 +9,7 @@ testcase()
 	local name="$1"
 	local expect="$2"
 	shift 2
-	if ! diff <(perl sgsh-merge-sum.pl "$@") $expect
+	if ! diff <(perl sgsh-merge-sum.pl "$@" 2>/dev/null) $expect
 	then
 		echo 1>&2 "Test $name failed"
 		exit 1
@@ -129,6 +129,22 @@ EOF
 EOF
 ) <(cat <<EOF
 5 b
+4 c
+8 z
+EOF
+)
+
+testcase unsorted <(cat <<RESULT
+1 a
+4 c
+2 d
+RESULT
+) <(cat <<EOF
+1 a
+2 d
+5 a
+EOF
+) <(cat <<EOF
 4 c
 8 z
 EOF

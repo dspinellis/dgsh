@@ -47,6 +47,9 @@ for my $f (@file) {
 	read_record($f);
 }
 
+# Previous key printed
+my $prev;
+
 for (;;) {
 	# Find smallest key
 	my $smallest;
@@ -68,5 +71,13 @@ for (;;) {
 			read_record($r);
 		}
 	}
+
+	# Verify that input is sorted
+	if (defined($prev) && $key lt $prev) {
+		print STDERR "Input is not sorted: [$key] came after [$prev]\n";
+		exit 1;
+	}
+	$prev = $key;
+
 	print "$sum $key\n";
 }
