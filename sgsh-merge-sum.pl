@@ -20,6 +20,10 @@
 use strict;
 use warnings;
 
+use Unicode::Collate::Locale;
+
+my $Collator = Unicode::Collate->new(locale => $ENV{'LANG'});
+
 # Read a record from the specified file reference
 sub
 read_record
@@ -38,7 +42,7 @@ read_record
 my @file;
 my $i = 0;
 for my $name (@ARGV) {
-	open($file[$i]->{file}, '<', $name) || die "Unable to open $name: $!\n";
+	open($file[$i]->{file}, '<:encoding(utf8)', $name) || die "Unable to open $name: $!\n";
 	$i++;
 }
 
@@ -66,14 +70,14 @@ for (;;) {
 	my $sum = 0;
 	my $key = $smallest->{key};
 	for my $r (@file) {
-		if (defined($r->{key}) && $r->{key} eq $key) {
+		if (defined($r->{key}) && $Collator->cmp($r->{key}, $key) == 0) {
 			$sum += $r->{value};
 			read_record($r);
 		}
 	}
 
 	# Verify that input is sorted
-	if (defined($prev) && $key lt $prev) {
+	if (defined($prev) && $Collator->cmp($key, $prev) < 0) {
 		print STDERR "Input is not sorted: [$key] came after [$prev]\n";
 		exit 1;
 	}
