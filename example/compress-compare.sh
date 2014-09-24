@@ -23,17 +23,17 @@
 #
 
 scatter |{
-	-| wc -c |store:NBYTES
-	-| file - |store:FILETYPE
-	-| xz -c | wc -c |store:XZ
-	-| bzip2 -c | wc -c |store:BZIP2
-	-| gzip -c | wc -c |store:GZIP
+	-| wc -c |>/stream/NBYTES
+	-| file - |>/stream/FILETYPE
+	-| xz -c | wc -c |>/stream/XZ
+	-| bzip2 -c | wc -c |>/stream/BZIP2
+	-| gzip -c | wc -c |>/stream/GZIP
 |} gather |{
 	cat <<EOF
-File type:	`store:FILETYPE`
-Original size:	`store:NBYTES` bytes
-gzip:		`store:GZIP` bytes
-bzip2:		`store:BZIP2` bytes
-xz:		`store:XZ` bytes
+File type:	`cat /stream/FILETYPE`
+Original size:	`cat /stream/NBYTES` bytes
+gzip:		`cat /stream/GZIP` bytes
+bzip2:		`cat /stream/BZIP2` bytes
+xz:		`cat /stream/XZ` bytes
 EOF
 |}
