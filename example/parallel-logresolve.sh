@@ -3,7 +3,7 @@
 # SYNOPSIS Parallel logresolve
 # DESCRIPTION
 # Resolve IP addresses of web logs in parallel.
-# Demonstrates parallel execution.
+# Demonstrates multi-pipeline with sgsh-capable commands.
 #
 #  Copyright 2013 Diomidis Spinellis
 #
@@ -23,15 +23,14 @@
 # Add record number as the second field
 awk '{$2 = ++n " " $2; print}' "$@" |
 
-# Two parallel line scatter invocations
-scatter |{ -s -p 10
+# Parallel line scatter invocations
+scatter -s -p 10 |
 
-	-| logresolve |-
+# Log resolve in parallel
+sgsh-parallel logresolve |
 
-|} gather |{
-	# Merge the files on the second numerical field
-	sort -m -k2n <- |
+# Merge the files on the second numerical field
+sgsh-sort -m -k2n |
 
-	# Remove second field
-	cut -d ' ' -f 1,3-
-|}
+# Remove second field
+cut -d ' ' -f 1,3-

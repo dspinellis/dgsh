@@ -48,25 +48,24 @@ ngram()
 	ranked_frequency
 }
 
-scatter |{
+scatter | {{
 	# Split input one word per line
-	-| tr -cs a-zA-Z \\n |{
+	tr -cs a-zA-Z \\n |
+	scatter {{
 		# Digram frequency
-		-| ngram 2 >digram.txt |.
+		{ ngram 2 >digram.txt ; } &
 		# Trigram frequency
-		-| ngram 3 >trigram.txt |.
+		{ ngram 3 >trigram.txt ; } &
 		# Word frequency
-		-| ranked_frequency >words.txt |.
-	|}
-
-	# Count total characters
-	-| wc -c |store:NCHARS
+		{ ranked_frequency >words.txt ; } &
+	}} &
 
 	# Character frequency
-	-| sed 's/./&\
+	sed 's/./&\
 /g' |
-	   # Print absolute and percentage
-	   ranked_frequency |
-	   awk 'BEGIN {OFMT = "%.2g%%"}
-	   {print $1, $2, $1 / '"`store:NCHARS`"' * 100}' >character.txt |.
-|}
+	# Print absolute and percentage
+	ranked_frequency |
+	# The wc forms a second input to count total characters
+	awk 'BEGIN {OFMT = "%.2g%%"}
+	{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
+}}

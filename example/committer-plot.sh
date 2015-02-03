@@ -5,7 +5,9 @@
 # Process the git history, and create two PNG diagrams depicting
 # committer activity over time. The most active committers appear
 # at the center vertical of the diagram.
-# Demonstrates image processing and no-output scatter blocks.
+# Demonstrates image processing, mixining of synchronous and
+# asynchronous processing in a scatter block, and the use of an
+# sgsh-compliant join command.
 #
 #  Copyright 2013 Diomidis Spinellis
 #
@@ -27,53 +29,62 @@
 git log --pretty=tformat:'%at %ae' |
 awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
-scatter |{
-	# Calculate number of committers
-	-| awk '{print $2}' | sort -u | wc -l |store:NCOMMITTERS
+scatter | {{
+  set $(
+    scatter | {{
+      # Calculate number of committers
+      awk '{print $2}' | sort -u | wc -l
 
-	# Calculate number of days in window
-	-| tail -1 | awk '{print $1}' |store:LAST
-	-| head -1 | awk '{print $1}' |store:FIRST
-	.| expr \( `store:LAST` - `store:FIRST` \) / 60 / 60  / 24 |store:NDAYS
+      # Calculate number of days in window
+      tail -1 | awk '{print $1}'
+      head -1 | awk '{print $1}'
+    }} |
+    gather
+  )
+  NCOMMITTERS="$1"
+  LAST="$2"
+  FIRST="$3"
 
-	# Place committers left/right according to the number of their commits
-	-| awk '{print $2}' |
-	   sort |
-	   uniq -c |
-	   sort -n |
-	   awk 'BEGIN {l = 0; r = '`store:NCOMMITTERS`';}
-		      {print NR % 2 ? l++ : --r, $2}' |
-	   sort -k2 |-
+  NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
 
-	# Join committer positions with commit time stamps
-	-| sort -k2 |
-	   join -j 2 - <- |
-	   # Order by time
-	   sort -k 2n |
-	{
-	# Create portable bitmap
-	echo 'P1'
-	echo "`store:NCOMMITTERS` `store:NDAYS`"
-	perl -na -e '
-	BEGIN { @empty['`store:NCOMMITTERS`' - 1] = 0; @committers = @empty; }
-	sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
+  # Place committers left/right according to the number of their commits
+  awk '{print $2}' |
+  sort |
+  uniq -c |
+  sort -n |
+  awk 'BEGIN {l = 0; r = '$NCOMMITTERS';}
+       {print NR % 2 ? l++ : --r, $2}' |
+  sort -k2 &
 
-	$day = int($F[1] / 60 / 60 / 24);
-	$pday = $day if (!defined($pday));
+  sort -k2 &
+}} |
+# Join committer positions with commit time stamps
+sgsh-join -j 2 |
+# Order by time
+sort -k 2n | {
+  # Create portable bitmap
+  echo 'P1'
+  echo "$NCOMMITTERS $NDAYS"
+  perl -na -e '
+  BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
+  sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
-	while ($day != $pday) {
-		out();
-		@committers = @empty;
-		$pday++;
-	}
+  $day = int($F[1] / 60 / 60 / 24);
+  $pday = $day if (!defined($pday));
 
-	$committers[$F[2]] = 1;
+  while ($day != $pday) {
+    out();
+    @committers = @empty;
+    $pday++;
+  }
 
-	END { out(); }
-	'
-	} |
-	# Enlarge points into discs through morphological convolution
-	pgmmorphconv -erode <(
+  $committers[$F[2]] = 1;
+
+  END { out(); }
+  '
+} |
+# Enlarge points into discs through morphological convolution
+pgmmorphconv -erode <(
 cat <<EOF
 P1
 7 7
@@ -85,11 +96,11 @@ P1
 0 0 1 1 1 0 0
 0 0 0 1 0 0 0
 EOF
-	) |{
-		# Full-scale image
-		-| pnmtopng >large.png |.
-		# A smaller image
-		-| pamscale -width 640 |
-		   pnmtopng >small.png |.
-	|}
-|}
+) |
+scatter | {{
+    # Full-scale image
+    pnmtopng >large.png &
+    # A smaller image
+    pamscale -width 640 |
+    pnmtopng >small.png &
+}}

@@ -5,7 +5,7 @@
 # Given as an argument a directory containing object files, show which
 # symbols are declared with global visibility, but should have been
 # declared with file-local (static) visibility instead.
-# Demonstrates the use of streams and comm (1) to combine data from
+# Demonstrates the use of sgsh-capable comm (1) to combine data from
 # two sources.
 #
 #  Copyright 2014 Diomidis Spinellis
@@ -29,15 +29,14 @@ find "$1" -name \*.o |
 # Print defined symbols
 xargs nm |
 
-scatter |{
+scatter | {{
 
-	# List all defined (exported) symbols
-	-| awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort |-
+  # List all defined (exported) symbols
+  awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort &
 
-	# List all undefined (imported) symbols
-	-| awk '$1 == "U" {print $2}' | sort |-
+  # List all undefined (imported) symbols
+  awk '$1 == "U" {print $2}' | sort &
 
-|} gather |{
-	# Print exports that are not imported
-	comm -23 <- <-
-|}
+}} |
+# Print exports that are not imported
+sgsh-comm -23

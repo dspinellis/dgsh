@@ -20,10 +20,10 @@
 #  limitations under the License.
 #
 
-scatter |{ -s -p 0
-	# Emulate Java's default StringTokenizer, sort, count
-	-| tr -s ' \t\n\r\f' \\n | sort | uniq -c |-
-|} gather |{
-	# Merge sorted counts
-	sgsh-merge-sum <-
-|}
+scatter -s -p 0 |
+
+# Emulate Java's default StringTokenizer, sort, count
+sgsh-parallel tr -s ' \t\n\r\f' \\n \| sort \| uniq -c |
+
+# Merge sorted counts
+sgsh-merge-sum

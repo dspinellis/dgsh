@@ -6,7 +6,7 @@
 # containing a two-letter palindrome, words containing
 # four consonants, and words longer than 12 characters.
 #
-# Demonstrates the use of paste as a gather function
+# Demonstrates the use of sgsh-compatible paste as a gather function
 #
 # Example:
 # curl ftp://sunsite.informatik.rwth-aachen.de/pub/mirror/ibiblio/gutenberg/1/3/139/139.txt | word-properties
@@ -33,24 +33,23 @@ export LC_ALL=C
 tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
-scatter |{
+scatter | {{
 	# Pass through the original words
-	-||-
+	cat &
 
 	# List two-letter palindromes
-	-| sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
-		g' |-
+	sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
+		g' &
 
 	# List four consecutive consonants
-	-| sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
-		g' |-
+	sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
+		g' &
 
 	# List length of words longer than 12 characters
-	-| awk '{if (length($1) > 12) print "l:", length($1);
-		else print ""}' |-
-|} gather |{
-	# Paste the four streams side-by-side
-	paste <- <- <- <- |
-	# List only words satisfying one or more properties
-	grep :
-|}
+	awk '{if (length($1) > 12) print "l:", length($1);
+		else print ""}' &
+}} |
+# Paste the four streams side-by-side
+sgsh-paste |
+# List only words satisfying one or more properties
+grep :

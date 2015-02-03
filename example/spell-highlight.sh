@@ -24,23 +24,17 @@
 
 export LC_ALL=C
 
-scatter |{
+# Ensure dictionary is sorted consistently with our settings
+scatter | {{
 
-	# Ensure dictionary is sorted consistently with our settings
-	.| sort /usr/share/dict/words |>/stream/dict
+  # Find errors
+  tr -cs A-Za-z \\n |
+  tr A-Z a-z |
+  sort -u |
+  comm -13 <(sort /usr/share/dict/words) &
 
-	-| tr -cs A-Za-z \\n |
-	tr A-Z a-z |
-	sort -u |
-	comm -23 - /stream/dict |>/stream/errors
+  # Pass through text
+  cat
 
-	# Using a pass-through construct would (rightly) result in a
-	# deadlock warning, because fgrep needs to read the file in its
-	# /stream/errors argument before opening /stream/text, thereby
-	# causing the scatter operation to block.
-	-| cat |>/stream/text
-
-
-|} gather |{
-	fgrep -f /stream/errors -i --color -w -C 2 /stream/text
-|}
+}} |
+sgsh-fgrep -f - -i --color -w -C 2

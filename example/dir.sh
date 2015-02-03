@@ -24,20 +24,17 @@
 FREE=`df -h . | awk '!/Use%/{print $4}'`
 
 ls -n |
-scatter |{
+scatter | {{
 	# Reorder fields in DIR-like way
-	-| awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' |-
+	awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
 
 	# Count number of files
-	-| wc -l |store:NFILES
-
-	# Count number of directories
-	-| grep -c '^d' |store:NDIRS
+	{ wc -l >/stream/nfiles | tr -d \\n ; echo -n ' File(s) ' ; } &
 
 	# Tally number of bytes
-	-| awk '{s += $5} END {print s}' |store:NBYTES
-|} gather |{
-	cat <-
-	echo "               `store:NFILES` File(s) `store:NBYTES` bytes"
-	echo "               `store:NDIRS` Dir(s) $FREE bytes free"
-|}
+	awk '{s += $5} END {printf("%d bytes", s)}' &
+
+	# Count number of directories
+	{ grep -c '^d' | tr -d \\n ; echo -n " Dir(s) $FREE bytes free" ; } &
+}} |
+gather

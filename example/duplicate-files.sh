@@ -33,21 +33,18 @@ sed 's/^MD5(//;s/)= / /' |
 # Sort by MD5 sum
 sort -k2 |
 
-scatter |{
+scatter | {{
 
-	 # Print an MD5 sum for each file that appears more than once
-	 -| awk '{print $2}' | uniq -d |-
-
-	 # Pass through the filename md5sum pairs
-	 -||-
-
-|} gather |{
+	# Print an MD5 sum for each file that appears more than once
+	awk '{print $2}' |
+	uniq -d |
 	# Join the repeated MD5 sums with the corresponding file names
-	join -2 2 <- <- |
+	# Join expects two inputs, second will come from scatter
+	join -2 2 |
 	# Output same files on a single line
 	awk '
 	BEGIN {ORS=""}
 	$1 != prev && prev {print "\n"}
 	END {if (prev) print "\n"}
 	{if (prev) print " "; prev = $1; print $2}'
-|}
+}}

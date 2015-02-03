@@ -21,136 +21,181 @@
 #  limitations under the License.
 #
 
-scatter |{
+{{
 
-	# C and header code
-	.| find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |{
+  # C and header code
+  find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |
+  scatter | {{
 
-		# Average file name length
-		# Convert to newline separation for counting
-		-| tr \\0 \\n |
-		# Remove path
-		sed 's|^.*/||' |
-		# Maintain average
-		awk '{s += length($1); n++} END {print s / n}' |store:FNAMELEN
+    # Average file name length
+    # Convert to newline separation for counting
+    {
+      echo -n 'FNAMELEN: '
+      tr \\0 \\n |
+      # Remove path
+      sed 's|^.*/||' |
+      # Maintain average
+      awk '{s += length($1); n++} END {print s / n}'
+    } &
 
-		-| xargs -0 cat |{
+    xargs -0 cat |
+    scatter | {{
 
-			# Remove strings and comments
-			-| sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |{
+      # Remove strings and comments
+      sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+      cpp -P 2>/dev/null |
+      scatter | {{
 
-				# Structure definitions
-				-|  egrep -c 'struct[ 	]*{|struct[ 	]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' |store:NSTRUCT
-				#}}
+	# Structure definitions
+	{
+	  echo -n 'NSTRUCT: '
+	  egrep -c 'struct[   ]*{|struct[   ]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{'
+	  #}} (match preceding openings)
+	} &
 
-				# Type definitions
-				-| grep -cw typedef |store:NTYPEDEF
+	# Type definitions
+	{
+	  echo -n 'NSTRUCT: '
+	  grep -cw typedef
+	} &
 
-				# Use of void
-				-| grep -cw void |store:NVOID
+	# Use of void
+	{
+	  echo -n 'NVOID: '
+	  grep -cw void
+	} &
 
-				# Use of gets
-				-| grep -cw gets |store:NGETS
+	# Use of gets
+	{
+	  echo -n 'NGETS: '
+	  grep -cw gets |store:NGETS
+	} &
 
-				# Average identifier length
-				-| tr -cs 'A-Za-z0-9_' '\n' |
-				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}' |store:IDLEN
-			|}
+	# Average identifier length
+	{
+	  echo -n 'IDLEN: '
+	  tr -cs 'A-Za-z0-9_' '\n' |
+	  sort -u |
+	  awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len / n}'
+	} &
+      }} &
 
-			# Lines and characters
-			-| wc -lc | awk '{OFS=":"; print $1, $2}' |store:CHLINESCHAR
+      # Lines and characters
+      {
+	echo -n 'CHLINESCHAR: '
+	wc -lc | awk '{OFS=":"; print $1, $2}'
+      } &
 
-			# Non-comment characters (rounded thousands)
-			# -traditional avoids expansion of tabs
-			# We round it to avoid failing due to minor
-			# differences between preprocessors in regression
-			# testing
-			-| sed 's/#/@/g' |
-			cpp -traditional -P 2>/dev/null |
-			wc -c |
-			awk '{OFMT = "%.0f"; print $1/1000}' |store:NCCHAR
+      # Non-comment characters (rounded thousands)
+      # -traditional avoids expansion of tabs
+      # We round it to avoid failing due to minor
+      # differences between preprocessors in regression
+      # testing
+      {
+	echo -n 'NCCHAR: '
+	sed 's/#/@/g' |
+	cpp -traditional -P 2>/dev/null |
+	wc -c |
+	awk '{OFMT = "%.0f"; print $1/1000}'
+      } &
 
-			# Number of comments
-			-| egrep -c '/\*|//' |store:NCOMMENT
+      # Number of comments
+      {
+	echo -n 'NCOMMENT: '
+	egrep -c '/\*|//'
+      } &
 
-			# Occurences of the word Copyright
-			-| grep -ci copyright |store:NCOPYRIGHT
-		|}
-	|}
+      # Occurences of the word Copyright
+      {
+	echo -n 'NCOPYRIGHT: '
+	grep -ci copyright
+      } &
+    }} &
+  }} &
 
-	# C files
-	.| find "$@" -name \*.c -type f -print0 |{
+  # C files
+  find "$@" -name \*.c -type f -print0 |
+  scatter | {{
 
-		# Convert to newline separation for counting
-		-| tr \\0 \\n |{
+    # Convert to newline separation for counting
+    tr \\0 \\n |
+    scatter | {{
 
-			# Number of C files
-			-| wc -l |store:NCFILE
+      # Number of C files
+      {
+	echo -n 'NSTRUCT: '
+	wc -l |store:NCFILE
+      } &
 
-			# Number of directories containing C files
-			-| sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l |store:NCDIR
-		|}
+      # Number of directories containing C files
+      {
+	echo -n 'NCDIR: '
+	sed 's,/[^/]*$,,;s,^.*/,,' | sort -u | wc -l
+      } &
+    }} &
 
-		# C code
-		-| xargs -0 cat |{
+    # C code
+    xargs -0 cat |
+    scatter | {{
 
-			# Lines and characters
-			-| wc -lc | awk '{OFS=":"; print $1, $2}' |store:CLINESCHAR
+      # Lines and characters
+      {
+	echo -n 'CLINESCHAR: '
+	wc -lc | awk '{OFS=":"; print $1, $2}'
+      } &
 
-			# C code without comments and strings
-			-| sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |{
+	# C code without comments and strings
+      sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
+      cpp -P 2>/dev/null |
+      scatter | {{
 
-				# Number of functions
-				-| grep -c '^{' |store:NFUNCTION
-				# } (match preceding open)
+        # Number of functions
+	{
+	  echo -n 'NFUNCTION: '
+	  grep -c '^{'
+	  # } (match preceding open)
+	} &
 
-				# Number of gotos
-				-| grep -cw goto |store:NGOTO
+        # Number of gotos
+	{
+	  echo -n 'NGOTO: '
+	  grep -cw goto
+	} &
 
-				# Occurrences of the register keyword
-				-| grep -cw register |store:NREGISTER
+        # Occurrences of the register keyword
+	{
+	  echo -n 'NREGISTER: '
+	  grep -cw register
+	} &
 
-				# Number of macro definitions
-				-| grep -c '@[ 	]*define[ 	][ 	]*[a-zA-Z_][a-zA-Z0-9_]*(' |store:NMACRO
+        # Number of macro definitions
+	{
+	  echo -n 'NMACRO: '
+	  grep -c '@[   ]*define[   ][   ]*[a-zA-Z_][a-zA-Z0-9_]*('
+	} &
 
-				# Number of include directives
-				-| grep -c '@[ 	]*include' |store:NINCLUDE
+        # Number of include directives
+	{
+	  echo -n 'NINCLUDE: '
+	  grep -c '@[   ]*include'
+	} &
 
-				# Number of constants
-				-| grep -o -h '[0-9][x0-9][0-9a-f]*' | wc -l |store:NCONST
+        # Number of constants
+	{
+	  echo -n 'NCONST: '
+	  grep -o -h '[0-9][x0-9][0-9a-f]*' | wc -l
+	} &
 
-			|}
-		|}
-	|}
+      }} &
+    }} &
+  }} &
 
-	# Header files
-	.| find "$@" -name \*.h -type f | wc -l |store:NHFILE
+  # Header files
+  {
+    echo -n 'NHFILE: '
+    find "$@" -name \*.h -type f | wc -l
+  } &
 
+}} |
 # Gather and print the results
-|} gather |{
-cat <<EOF
-FNAMELEN: `store:FNAMELEN`
-NSTRUCT: `store:NSTRUCT`
-NTYPEDEF: `store:NTYPEDEF`
-IDLEN: `store:IDLEN`
-CHLINESCHAR: `store:CHLINESCHAR`
-NCCHAR: `store:NCCHAR`
-NCOMMENT: `store:NCOMMENT`
-NCOPYRIGHT: `store:NCOPYRIGHT`
-NCFILE: `store:NCFILE`
-NCDIR: `store:NCDIR`
-CLINESCHAR: `store:CLINESCHAR`
-NFUNCTION: `store:NFUNCTION`
-NGOTO: `store:NGOTO`
-NREGISTER: `store:NREGISTER`
-NMACRO: `store:NMACRO`
-NINCLUDE: `store:NINCLUDE`
-NCONST: `store:NCONST`
-NVOID: `store:NVOID`
-NHFILE: `store:NHFILE`
-NGETS: `store:NGETS`
-EOF
-|}
+gather
