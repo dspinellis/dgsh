@@ -29,31 +29,31 @@ struct sgsh_negotiation {
 				memory allocation. */
 };
 
-static struct sgsh_negotiation *selected_message_block;
+static struct sgsh_negotiation *selected_mb;
 
 static int fit_node_to_graph(struct sgsh_node *node_to_fit, 
 				struct sgsh_node *last_node_in_list) {
-	int n_nodes = selected_memory_block->n_nodes;
-	last_node_in_list->next = &selected_memory_block[1] + 
+	int n_nodes = selected_mb->n_nodes;
+	last_node_in_list->next = &selected_mb[1] + 
 				sizeof(struct sgsh_node) * n_nodes;
 	memcpy(last_node_in_list->next, node_to_fit, sizeof(struct sgsh_node));
 	last_node_in_list->next->prev = last_node_in_list;
-	selected_memory_block->n_nodes++;
+	selected_mb->n_nodes++;
 }
 
 static int realloc_for_new_node() {
-	void *p = realloc(selected_memory_block,total_size + sizeof(sgsh_node));
+	void *p = realloc(selected_mb,total_size + sizeof(sgsh_node));
 	if (!p) {
 		err(1, "Memory block reallocation failed.\n");
 		return OP_ERROR;
 	} else 
-		selected_message_block = (struct sgsh_negotiation *)p;
+		selected_mb = (struct sgsh_negotiation *)p;
 	return OP_SUCCESS;
 }
 
 static int try_register_node(struct sgsh_node *node) {
 	struct sgsh_node *iter, *prev_iter, 
-			*node_list = selected_memory_block->node_list;
+			*node_list = selected_mb->node_list;
 	for (iter = node_list; iter != NULL; 
 				prev_iter = iter, iter = iter->next)
 		if (node->unique_id == iter->unique_id) break;
@@ -75,32 +75,33 @@ static int fill_sgsh_node(struct sgsh_node *node, const char *tool_name,
 }
 
 static int compete_memory_block(struct sgsh_negotiation *fresh_mb) {
-	if (selected_memory_block) {
-		pid_t selected_mb_pid = selected_memory_block->initiator_pid;
-		pid_t fresh_mb_pid = fresh_mb->initiator_pid;
-		if (selected_mb_pid > fresh_mb_pid) {
-			free(selected_memory_block); /* Hail compact 
-							allocation. */
-			selected_memory_block = fresh_mb;
-		} else if (selected_mb_pid < fresh_mb_pid)
-			don't write
-	} else
-		selected_memory_block = fresh_mb;
+	int perform_iteration = 1;
+	pid_t selected_mb_pid = selected_mb->initiator_pid;
+	pid_t fresh_mb_pid = fresh_mb->initiator_pid;
+        if (fresh_mb->initiator_pid < selected_initiator_pid) {
+		free(selected_mb); /* Hail compact allocation. */
+		selected_mb = fresh_mb;
+                try_register_node(&me_node, &selected_initiator_pid);
+        } else if (fresh_mb->initiator_pid > selected_initiator_pid) {
+		free(fresh_mb);
+                perform_iteration = 0;
+	}
+	return perform_iteration;
 }
 
 static int adjust_memory_block_size(int fresh_mb_size) {
-	active_mb_size = selected_message_block->total_size;
+	active_mb_size = selected_mb->total_size;
 	if (active_mb_size > fresh_mb_size) {
 		err(1, "Memory block seems to have shrunk or read operation \
 			was incomplete.\n");
 		return OP_ERROR;
 	} else if (active_mb_size < fresh_mb_size) {
-		void *p = sgsh_realloc(selected_message_block, fresh_mb_size);
+		void *p = sgsh_realloc(selected_mb, fresh_mb_size);
 		if (!p) {
 			err(1, "Memory block reallocation failed.\n");
 			return OP_ERROR;
 		} else 
-			selected_message_block = (struct sgsh_negotiation *)p;
+			selected_mb = (struct sgsh_negotiation *)p;
 	}
 }
 
@@ -155,19 +156,19 @@ static int try_read_message_block(char *buf, int buf_size,
 	}
 }
 
-static int construct_message_block() {
+static int construct_message_block(pid_t self_pid) {
 	int memory_allocation_size = sizeof(struct sgsh_negotiation);
-	selected_message_block = (struct sgsh_negotiation *)malloc(
+	selected_mb = (struct sgsh_negotiation *)malloc(
 				memory_allocation_size);
-	if (!selected_message_block) {
+	if (!selected_mb) {
 		err(1, "Memory allocation of memory block failed.");
 		return OP_ERROR;
 	}
-	selected_message_block->n_nodes = 0;
-	selected_message_block->selected_pid = getpid();
-	selected_message_block->state_flag = PROT_STATE_ZERO;
-	selected_message_block->serial_no = 0;
-	selected_message_block->total_size = memory_allocation_size;
+	selected_mb->n_nodes = 0;
+	selected_mb->selected_pid = self_pid;
+	selected_mb->state_flag = PROT_STATE_ZERO;
+	selected_mb->serial_no = 0;
+	selected_mb->total_size = memory_allocation_size;
 	return OP_SUCCESS;
 }
 
@@ -215,26 +216,45 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int n_output_fds) { /* Number of output file descriptors. */
 	int sgsh_in, sgsh_out;
 	int write_direction_fd;
+	int negotiation_round = 0;
+	int perform_iteration = 1;
+	pid_t self_pid = getpid(), initiator_pid;
 	int buf_size = getpagesize();
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb;
 	struct sgsh_node me_node;
+	int selected_initiator_pid;
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR)
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \ 
 			environment variables.";)
         if ((sgsh_out) && (!sgsh_in)) {      /* Negotiation starter. */
-                construct_message_block();
+                construct_message_block(self_pid);
                 write_direction_fd = STDOUT_FILENO;
         } else {
-		selected_message_block = NULL;
+		selected_mb = NULL;
 		write_direction_fd = try_read_message_block(buf, buf_size, 
 								fresh_mb);
+		selected_mb = fresh_mb;
 	}
 	fill_sgsh_node(&me_node, tool_name, unique_id, channels_required,
 						channels_provided);
-	try_register_node(&me_node);
-	compete_memory_block(fresh_mb);
-	return 
+	try_register_node(&me_node, &selected_initiator_pid);
+	
+	while (selected_mb->state_flag = PROT_STATE_NEGOTIATE) {
+		if (self_pid == selected_mb->initiator_pid) {
+			negotiation_round++;
+			if (negotiation_round == 3)
+				selected_mb->state_flag = 
+						PROT_STATE_NEGOTIATION_END;
+		}
+		if (perform_iteration)
+			write(write_direction_fd, buf, buf_size);
+		write_direction_fd = try_read_message_block(buf, buf_size, 
+								fresh_mb);
+
+		perform_iteration = compete_memory_block(fresh_mb);
+	}
+	return write_direction_fd;
 }
 
 /* If negotiation is successful, tools configure input and output 
