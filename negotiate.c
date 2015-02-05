@@ -1,3 +1,5 @@
+#include "sgsh-negotiate.h"
+
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in 
