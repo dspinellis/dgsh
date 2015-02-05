@@ -254,7 +254,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 
 		perform_iteration = compete_memory_block(fresh_mb);
 	}
-	return write_direction_fd;
+	return selected_mb->state_flag;
 }
 
 /* If negotiation is successful, tools configure input and output 
