@@ -31,11 +31,22 @@ struct sgsh_negotiation {
 
 static struct sgsh_negotiation *selected_message_block;
 
-void free_message_block() {
 
+static int compete_memory_block(struct sgsh_negotiation *fresh_mb) {
+	if (selected_memory_block) {
+		pid_t selected_mb_pid = selected_memory_block->initiator_pid;
+		pid_t fresh_mb_pid = fresh_mb->initiator_pid;
+		if (selected_mb_pid > fresh_mb_pid) {
+			free(selected_memory_block); /* Hail compact 
+							allocation. */
+			selected_memory_block = fresh_mb;
+		} else if (selected_mb_pid < fresh_mb_pid)
+			don't write
+	} else
+		selected_memory_block = fresh_mb;
 }
 
-int adjust_memory_block_size(int fresh_mb_size) {
+static int adjust_memory_block_size(int fresh_mb_size) {
 	active_mb_size = selected_message_block->total_size;
 	if (active_mb_size > fresh_mb_size) {
 		err(1, "Memory block seems to have shrunk or read operation \
@@ -51,12 +62,19 @@ int adjust_memory_block_size(int fresh_mb_size) {
 	}
 }
 
-int call_read_retry(int fd, char *buf, buf_size, int *bytes_read) {
-	int error_code = 0;
+static int call_read_pass_fail(int fd, char *buf, int buf_size, 
+				int *fd_side, /* Input or output fd? */
+				int *bytes_read, 
+				int *error_code) {
+	*error_code = 0;
+	*fd_side = 0;
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
-		error_code = -errno;
-	if ((error_code == 0) || (error_code != -EAGAIN)) return ;
-	return error_code;
+		*error_code = -errno;
+	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
+		fd_side = 1;
+		return 1;
+	}
+	return 0;
 }
 
 /* Read in circulated message block from either direction,
@@ -66,15 +84,17 @@ int call_read_retry(int fd, char *buf, buf_size, int *bytes_read) {
  * for the negotiation phase. 
  * Set I/O to non-blocking in order to be able to retry on both
  * sides.
+ * Returns the fd to write to the message block if need be transmitted.
  */
-static int try_read_message_block(char *buf, int buf_size) {
+/* TODO:Error handling */
+static int try_read_message_block(char *buf, int buf_size, 
+					struct sgsh_negotiation *fresh_mb) {
 	int bytes_read, error_code = -EAGAIN, stdin_side = 0, stdout_size = 0;
 	while (error_code == -EAGAIN) {
-		if (call_read_pass_fail(STDIN_FILENO, buf, buf_size, 
-						&bytes_read, &error_code))
-			break;
-		if (call_read_pass_fail(STDOUT_FILENO, buf, buf_size, 
-						&bytes_read, &error_code))
+		if ((call_read_pass_fail(STDIN_FILENO, buf, buf_size, 
+				&stdin_side, &bytes_read, &error_code)) ||
+		(call_read_pass_fail(STDOUT_FILENO, buf, buf_size, 
+				&stdout_size, &bytes_read, &error_code)))
 			break;
 	}
 	if (bytes_read == -1) {  /* Read failed. */
@@ -82,15 +102,15 @@ static int try_read_message_block(char *buf, int buf_size) {
 		(stdin_side) ? err(1, "stdin ") : err(1, "stdout ");
 		err(1, "file descriptor failed with error code %d.\n", 
 						error_code);
+		return error_code;
 	} else {  /* Read succeeded. */
 		if (adjust_memory_block_size(bytes_read) == OP_ERROR)
 			return OP_ERROR;
-		struct sgsh_negotiation *fresh_mb = (struct sgsh_negotiation *)
-				malloc(bytes_read);
+		fresh_mb = (struct sgsh_negotiation *)malloc(bytes_read);
 		memcpy(fresh_mb, buf, bytes_read);
-		check_memory_block_age(fresh_mb);
-
-		return error_code;
+		assert(bytes_read == fresh_mb->total_size);
+		(stdin_side) ? return STDOUT_FILENO : return STDIN_FILENO;
+	}
 }
 
 static int construct_message_block() {
@@ -152,19 +172,25 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *output_fds, /* Output file descriptors. */
                     int n_output_fds) { /* Number of output file descriptors. */
 	int sgsh_in, sgsh_out;
-	FILE *write_direction_stream;
+	int write_direction_fd;
 	int buf_size = getpagesize();
 	char buf[buf_size];
+	struct sgsh_negotiation *fresh_mb;
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR)
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \ 
 			environment variables.";)
         if ((sgsh_out) && (!sgsh_in)) {      /* Negotiation starter. */
                 construct_message_block();
-                write_direction_stream = stdout;
+                write_direction_fd = STDOUT_FILENO;
         } else {
 		selected_message_block = NULL;
-		write_direction_stream = try_read_message(buf, buf_size);
+		write_direction_fd = try_read_message_block(buf, buf_size, 
+								fresh_mb);
 	}
+
+
+	compete_memory_block(fresh_mb);
+	return 
 }
 
 /* If negotiation is successful, tools configure input and output 
