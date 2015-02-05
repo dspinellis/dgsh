@@ -1,10 +1,51 @@
 #include <stdlib.h> /* getenv() */
 #include <err.h> /* err() */
+#include <unistd.h> /* getpid() */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
 
 
 #define OP_ERROR 1
 #define OP_SUCCESS 0
+#define PROT_STATE_ZERO 0
+#define PROT_STATE_NEGOTIATION 1
+
+struct sgsh_node {
+        int id;
+        char name[100];
+        int requires_channels;
+        int provides_channels;
+	struct sgsh_node *prev;
+	struct sgsh_node *next;
+};
+
+struct sgsh_negotiation {
+        struct sgsh_node *node_list;
+        int n_nodes;
+	pid_t initiator_pid;
+        int state_flag;
+        int serial_no;
+};
+
+static struct sgsh_negotiation *selected_message_block;
+
+void free_message_block() {
+
+}
+
+int construct_message_block() {
+	selected_message_block = (struct sgsh_negotiation *)malloc(
+				sizeof(struct sgsh_negotiation));
+	if (!selected_message_block) {
+		err(1, "Memory allocation of memory block failed.");
+		return OP_ERROR;
+	}
+	selected_message_block->n_nodes = 0;
+	selected_message_block->selected_pid = getpid();
+	selected_message_block->state_flag = PROT_STATE_ZERO;
+	selected_message_block->serial_no = 0;
+	return OP_SUCCESS;
+}
+
 
 int get_env_var(const char *env_var,int *value) {
 	char *string_value = getenv(env_var);
@@ -37,7 +78,7 @@ int get_environment_vars(int *sgsh_in, int *sgsh_out) {
  * negotiation phase.
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
-                    int hash,        /* Identifier. (Distinguish multiple 
+                    int unique_id,        /* Identifier. (Distinguish multiple 
 					appearances of same tool.) */
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
@@ -51,16 +92,22 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR)
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \ 
 			environment variables.";)
+        if ((sgsh_out) && (!sgsh_in)) {      /* Negotiation starter. */
+                construct_message_block();
+                write_direction_stream = stdout;
+        } else {
+		selected_message_block = NULL;
+	}
 }
 
 /* If negotiation is successful, tools configure input and output 
  * according to the provided file descriptors and then they call
  * sgsh_run() to signal that they have set their input/output and
- * are ready for execution (or that they failed) by setting STATE_RUN
- * or STATE_ERROR. An algorithm
+ * are ready for execution (or that they failed) by setting PROT_STATE_RUN
+ * or PROT_STATE_ERROR. An algorithm
  * verifies that all tools completed this stage too successfully 
  * and the function returns success or failure.
  */
-int sgsh_run(int hash) {
+int sgsh_run(int unique_id) {
 
 }
