@@ -18,7 +18,9 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *input_fds,  /* Input file descriptors. */
                     int n_input_fds, /* Number of input file descriptors. */
                     int *output_fds, /* Output file descriptors. */
-                    int n_output_fds); /* Number of output file descriptors. */
+                    int n_output_fds) { /* Number of output file descriptors. */
+
+}
 
 /* If negotiation is successful, tools configure input and output 
  * according to the provided file descriptors and then they call
@@ -28,5 +30,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
  * verifies that all tools completed this stage too successfully 
  * and the function returns success or failure.
  */
-int sgsh_run(int hash);
+int sgsh_run(int hash) {
 
+}
