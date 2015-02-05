@@ -11,7 +11,7 @@
 #define PROT_STATE_NEGOTIATION 1
 
 struct sgsh_node {
-        int id;
+        int unique_id;
         char name[100];
         int requires_channels;
         int provides_channels;
@@ -31,6 +31,48 @@ struct sgsh_negotiation {
 
 static struct sgsh_negotiation *selected_message_block;
 
+static int fit_node_to_graph(struct sgsh_node *node_to_fit, 
+				struct sgsh_node *last_node_in_list) {
+	int n_nodes = selected_memory_block->n_nodes;
+	last_node_in_list->next = &selected_memory_block[1] + 
+				sizeof(struct sgsh_node) * n_nodes;
+	memcpy(last_node_in_list->next, node_to_fit, sizeof(struct sgsh_node));
+	last_node_in_list->next->prev = last_node_in_list;
+	selected_memory_block->n_nodes++;
+}
+
+static int realloc_for_new_node() {
+	void *p = realloc(selected_memory_block,total_size + sizeof(sgsh_node));
+	if (!p) {
+		err(1, "Memory block reallocation failed.\n");
+		return OP_ERROR;
+	} else 
+		selected_message_block = (struct sgsh_negotiation *)p;
+	return OP_SUCCESS;
+}
+
+static int try_register_node(struct sgsh_node *node) {
+	struct sgsh_node *iter, *prev_iter, 
+			*node_list = selected_memory_block->node_list;
+	for (iter = node_list; iter != NULL; 
+				prev_iter = iter, iter = iter->next)
+		if (node->unique_id == iter->unique_id) break;
+	if (iter == NULL) { /* Node not in graph yet. */
+		realloc_for_new_node();
+		register_node_to_graph(node, prev_iter);
+	}
+}
+
+static int fill_sgsh_node(struct sgsh_node *node, const char *tool_name,
+				int unique_id, int requires_channels,
+				int provides_channels) {
+	node->unique_id = unique_id;
+	memcpy(node->name, tool_name, strlen(tool_name) + 1);
+	node->requires_channels = requires_channels;
+	node->provides_channels = provides_channels;
+	node->next = NULL;
+	node->prev = NULL;
+}
 
 static int compete_memory_block(struct sgsh_negotiation *fresh_mb) {
 	if (selected_memory_block) {
@@ -53,7 +95,7 @@ static int adjust_memory_block_size(int fresh_mb_size) {
 			was incomplete.\n");
 		return OP_ERROR;
 	} else if (active_mb_size < fresh_mb_size) {
-		void *p = realloc(selected_message_block, fresh_mb_size);
+		void *p = sgsh_realloc(selected_message_block, fresh_mb_size);
 		if (!p) {
 			err(1, "Memory block reallocation failed.\n");
 			return OP_ERROR;
@@ -176,6 +218,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	int buf_size = getpagesize();
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb;
+	struct sgsh_node me_node;
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR)
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \ 
 			environment variables.";)
@@ -187,8 +230,9 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 		write_direction_fd = try_read_message_block(buf, buf_size, 
 								fresh_mb);
 	}
-
-
+	fill_sgsh_node(&me_node, tool_name, unique_id, channels_required,
+						channels_provided);
+	try_register_node(&me_node);
 	compete_memory_block(fresh_mb);
 	return 
 }
