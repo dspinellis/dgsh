@@ -5,7 +5,9 @@
 #include <string.h> /* memcpy() */
 #include <assert.h> /* assert() */
 #include <errno.h> /* EAGAIN */
+#include <stdio.h> /* fprintf() in DPRINTF() */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
+#include "sgsh.h" /* DPRINTF() */
 
 #define OP_SUCCESS 0
 #define OP_ERROR 1
@@ -224,6 +226,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *output_fds, /* Output file descriptors. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
+	DPRINTF("Entered sgsh_negotiation().\n");
 	int sgsh_in, sgsh_out;
 	int write_direction_fd;
 	int negotiation_round = 0;
@@ -234,6 +237,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb = NULL;
 	struct sgsh_node self_node;
+	DPRINTF("Try to get environment variables.");
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR) {
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \
 			environment variables.");
