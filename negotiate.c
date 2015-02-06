@@ -1,15 +1,17 @@
-#include <stdlib.h> /* getenv() */
+#include <stdlib.h> /* getenv(), errno */
 #include <err.h> /* err() */
 #include <unistd.h> /* getpid(), getpagesize(), 
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
 #include <string.h> /* memcpy() */
 #include <assert.h> /* assert() */
-#include <errno.h> /* errno */
+#include <errno.h> /* EAGAIN */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
 
 #define OP_SUCCESS 0
 #define OP_ERROR 1
 #define OP_QUIT 2
+
+/* TODO: message block size vs page size check before write. */
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
