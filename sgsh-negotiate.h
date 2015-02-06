@@ -1,3 +1,8 @@
+#define PROT_STATE_NEGOTIATION 1
+#define PROT_STATE_NEGOTIATION_END 2
+#define PROT_STATE_RUN 3
+#define PROT_STATE_ERROR 4
+
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in 
@@ -16,9 +21,9 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 						provide. */
                                      /* Output: to fill. */
                     int *input_fds,  /* Input file descriptors. */
-                    int n_input_fds, /* Number of input file descriptors. */
+                    int *n_input_fds, /* Number of input file descriptors. */
                     int *output_fds, /* Output file descriptors. */
-                    int n_output_fds); /* Number of output file descriptors. */
+                    int *n_output_fds); /* Number of output file descriptors. */
 
 /* If negotiation is successful, tools configure input and output 
  * according to the provided file descriptors and then they call

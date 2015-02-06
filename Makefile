@@ -83,6 +83,10 @@ sgsh-merge-sum: sgsh-merge-sum.pl
 	perl -c sgsh-merge-sum.pl
 	install sgsh-merge-sum.pl sgsh-merge-sum
 
+negotiate: negotiate.c
+	$(CC) $(CFLAGS) -c $^ -o $@
+	ar rcs libsgsh-negotiate.a $@
+
 charcount: charcount.sh
 	install charcount.sh charcount
 

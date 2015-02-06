@@ -2,14 +2,14 @@
 #include <err.h> /* err() */
 #include <unistd.h> /* getpid(), getpagesize(), 
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
+#include <string.h> /* memcpy() */
+#include <assert.h> /* assert() */
+#include <errno.h> /* errno */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
 
 #define OP_SUCCESS 0
 #define OP_ERROR 1
 #define OP_QUIT 2
-#define PROT_STATE_NEGOTIATION 1
-#define PROT_STATE_NEGOTIATION_END 2
-#define PROT_STATE_RUN 3
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
@@ -53,17 +53,19 @@ static int realloc_mb_new_node() {
 	} else {
 		chosen_mb = (struct sgsh_negotiation *)p;
 		chosen_mb->total_size = new_size;
-		chosen_mb->node_list = &chosen_mb[1]; /* Node instances go after
+		chosen_mb->node_list = (struct sgsh_node *)&chosen_mb[1]; /* 
+						* Node instances go after
 						* the message block instance. */
 	}
 	return OP_SUCCESS;
 }
 
 /* Add a node to message block, if it does not exist. */
-static int try_add_sgsh_node(struct sgsh_node *node) {
+static void try_add_sgsh_node(struct sgsh_node *node) {
 	struct sgsh_node *node_list = chosen_mb->node_list;
 	int n_nodes = chosen_mb->n_nodes;
-	for (int i = 0; i < n_nodes; i++) 
+	int i;
+	for (i = 0; i < n_nodes; i++) 
 		if (node_list[i].unique_id == node->unique_id) break;
 	if (i == n_nodes) { /* Node not in graph yet. */
 		realloc_mb_new_node();
@@ -72,7 +74,7 @@ static int try_add_sgsh_node(struct sgsh_node *node) {
 }
 
 /* A constructor-like function for struct sgsh_node. */
-static int fill_sgsh_node(struct sgsh_node *node, const char *tool_name,
+static void fill_sgsh_node(struct sgsh_node *node, const char *tool_name,
 				int unique_id, int requires_channels,
 				int provides_channels) {
 	node->unique_id = unique_id;
@@ -92,7 +94,7 @@ static void compete_message_block(struct sgsh_negotiation *fresh_mb,
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
 		free(chosen_mb); /* Heil compact allocation. */
 		chosen_mb = fresh_mb;
-                try_add_sgsh_node(&self_node);
+                try_add_sgsh_node(self_node);
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free(fresh_mb);
                 should_transmit_mb = 0;
@@ -120,7 +122,7 @@ static int call_read_pass_fail(int fd, char *buf, int buf_size,
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
 	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
-		fd_side = 1; /* Mark the side where input is coming from. */
+		*fd_side = 1; /* Mark the side where input is coming from. */
 		return OP_QUIT;
 	}
 	return OP_SUCCESS;
@@ -171,7 +173,7 @@ static int construct_message_block(pid_t self_pid) {
 	}
 	chosen_mb->node_list = NULL;
 	chosen_mb->n_nodes = 0;
-	chosen_mb->selected_pid = self_pid;
+	chosen_mb->initiator_pid = self_pid;
 	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
 	chosen_mb->serial_no = 0;
 	chosen_mb->total_size = memory_allocation_size;
@@ -216,33 +218,34 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 						provide. */
                                      /* Output: to fill. */
                     int *input_fds,  /* Input file descriptors. */
-                    int n_input_fds, /* Number of input file descriptors. */
+                    int *n_input_fds, /* Number of input file descriptors. */
                     int *output_fds, /* Output file descriptors. */
-                    int n_output_fds) { /* Number of output file descriptors. */
+                    int *n_output_fds) { /* Number of output file 
+						descriptors. */
 	int sgsh_in, sgsh_out;
 	int write_direction_fd;
 	int negotiation_round = 0;
 	int done_negotiating = 0;
 	int should_transmit_mb = 1;
-	pid_t self_pid = getpid(), initiator_pid;
+	pid_t self_pid = getpid();
 	int buf_size = getpagesize();
 	char buf[buf_size];
-	struct sgsh_negotiation *fresh_mb;
+	struct sgsh_negotiation *fresh_mb = NULL;
 	struct sgsh_node self_node;
 	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR) {
-		err(1, "Failed to extract SGSH_IN, SGSH_OUT \ 
-			environment variables.";)
-		return OP_ERROR;
+		err(1, "Failed to extract SGSH_IN, SGSH_OUT \
+			environment variables.");
+		return PROT_STATE_ERROR;
 	}
         if ((sgsh_out) && (!sgsh_in)) {      /* Negotiation starter. */
                 if (construct_message_block(self_pid) == OP_ERROR) 
-			return OP_ERROR;
+			return PROT_STATE_ERROR;
                 write_direction_fd = STDOUT_FILENO;
         } else {
 		chosen_mb = NULL;
 		if (try_read_message_block(buf, buf_size, fresh_mb, 
 				&write_direction_fd) == OP_ERROR)
-			return OP_ERROR;
+			return PROT_STATE_ERROR;
 		chosen_mb = fresh_mb;
 	}
 	fill_sgsh_node(&self_node, tool_name, unique_id, channels_required,
@@ -264,7 +267,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 		if (done_negotiating) break; /* Spread the word, now leave. */
 		if (try_read_message_block(buf, buf_size, fresh_mb, 
 					&write_direction_fd) == OP_ERROR)
-			return OP_ERROR;
+			return PROT_STATE_ERROR;
 		compete_message_block(fresh_mb, &self_node, 
 						&should_transmit_mb);
 	}
@@ -280,5 +283,5 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
  * and the function returns success or failure.
  */
 int sgsh_run(int unique_id) {
-
+	return PROT_STATE_RUN;
 }
