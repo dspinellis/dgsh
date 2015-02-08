@@ -14,8 +14,6 @@
  * negotiation phase.
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
-                    int hash,        /* Identifier. (Distinguish multiple 
-					appearances of same tool.) */
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
 						provide. */
@@ -33,5 +31,5 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
  * verifies that all tools completed this stage too successfully 
  * and the function returns success or failure.
  */
-int sgsh_run(int hash);
+int sgsh_run();
 
