@@ -25,8 +25,10 @@ struct dispatcher_node {
 struct sgsh_node {
         int index; /* Position in node array. */
         char name[100];
-        int requires_channels;
-        int provides_channels;
+        int requires_channels; /* Input channels it can take. */
+        int provides_channels; /* Output channels it can provide. */
+	int sgsh_in;   /* Takes input from other tool(s) in sgsh graph. */
+	int sgsh_out;  /* Provides output to other tool(s) in sgsh graph. */
 };
 
 /* The messge block structure that provides the vehicle for negotiation. */
@@ -42,8 +44,6 @@ struct sgsh_negotiation {
 };
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
-static int sgsh_in;   /* Takes input from other tool(s) in sgsh graph. */
-static int sgsh_out;  /* Provides output to other tool(s) in sgsh graph. */
 static struct sgsh_node self_node;
 static struct dispatcher_node self_dispatcher;
 
@@ -122,9 +122,9 @@ static void compete_message_block(struct sgsh_negotiation *fresh_mb,
 
 /* Point next write operation to the correct file descriptor: stdin or stdout.*/
 static void point_io_direction(int current_direction) {
-	if ((current_direction == STDIN_FILENO) && (sgsh_out))
+	if ((current_direction == STDIN_FILENO) && (self_node.sgsh_out))
 			self_dispatcher.fd_direction = STDOUT_FILENO;
-	else if ((current_direction == STDOUT_FILENO) && (sgsh_in))
+	else if ((current_direction == STDOUT_FILENO) && (self_node.sgsh_in))
 			self_dispatcher.fd_direction = STDIN_FILENO;
 }
 
@@ -228,9 +228,11 @@ static int get_env_var(const char *env_var,int *value) {
  */
 static int get_environment_vars() {
 	DPRINTF("Try to get environment variable SGSH_IN.\n");
-	if (get_env_var("SGSH_IN", &sgsh_in) == OP_ERROR) return OP_ERROR;
+	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR) 
+		return OP_ERROR;
 	DPRINTF("Try to get environment variable SGSH_OUT.\n");
-	if (get_env_var("SGSH_OUT", &sgsh_out) == OP_ERROR) return OP_ERROR;
+	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR) 
+		return OP_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -254,8 +256,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *output_fds, /* Output file descriptors. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
-	sgsh_in = 0;
-	sgsh_out = 0;
 	int negotiation_round = 0;
 	int done_negotiating = 0;
 	int should_transmit_mb = 1;
@@ -273,7 +273,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 			environment variables.");
 		return PROT_STATE_ERROR;
 	}
-        if ((sgsh_out) && (!sgsh_in)) {      /* Negotiation starter. */
+        if ((self_node.sgsh_out) && (!self_node.sgsh_in)) { /* Negotiation starter. */
                 if (construct_message_block(self_pid) == OP_ERROR) 
 			return PROT_STATE_ERROR;
                 self_dispatcher.fd_direction = STDOUT_FILENO;
