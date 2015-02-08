@@ -35,6 +35,8 @@ struct sgsh_negotiation {
 };
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
+static int sgsh_in;
+static int sgsh_out;
 
 /* Add node to message block. Copy the node using offset-based
  * calculation from the start of the array of nodes.
@@ -44,11 +46,13 @@ static void add_node(struct sgsh_node *node_to_fit) {
 	memcpy(&chosen_mb->node_list[n_nodes], node_to_fit, 
 		sizeof(struct sgsh_node));
 	chosen_mb->n_nodes++;
+	DPRINTF("Added node %s in sgsh graph.\n", node_to_fit->name);
 }
 
 /* Reallocate message block to fit new node coming in. */
 static int realloc_mb_new_node() {
 	int new_size = chosen_mb->total_size + sizeof(struct sgsh_node);
+	int old_size = chosen_mb->total_size;
 	void *p = realloc(chosen_mb, new_size);
 	if (!p) {
 		err(1, "Message block reallocation for adding a new node \
@@ -60,6 +64,8 @@ static int realloc_mb_new_node() {
 		chosen_mb->node_list = (struct sgsh_node *)&chosen_mb[1]; /* 
 						* Node instances go after
 						* the message block instance. */
+		DPRINTF("Reallocated memory (%d -> %d) ", old_size, new_size);
+		DPRINTF("to message block to fit new node.\n");
 	}
 	return OP_SUCCESS;
 }
@@ -75,6 +81,7 @@ static void try_add_sgsh_node(struct sgsh_node *node) {
 		realloc_mb_new_node();
 		add_node(node);
 	}
+	DPRINTF("Sgsh graph has %d nodes.\n", chosen_mb->n_nodes);
 }
 
 /* A constructor-like function for struct sgsh_node. */
@@ -85,6 +92,8 @@ static void fill_sgsh_node(struct sgsh_node *node, const char *tool_name,
 	memcpy(node->name, tool_name, strlen(tool_name) + 1);
 	node->requires_channels = requires_channels;
 	node->provides_channels = provides_channels;
+	DPRINTF("Sgsh node for tool %s with unique id %d created.\n", 
+						tool_name, unique_id);
 }
 
 /* Check if the arrived message block preexists our chosen one
@@ -105,6 +114,14 @@ static void compete_message_block(struct sgsh_negotiation *fresh_mb,
 	}
 }
 
+/* Point next write operation to the correct file descriptor: stdin or stdout.*/
+static void point_io_direction(int current_direction, int *write_direction_fd) {
+	if ((current_direction == STDIN_FILENO) && (sgsh_out))
+			*write_direction_fd = STDOUT_FILENO;
+	else if ((current_direction == STDOUT_FILENO) && (sgsh_in))
+			*write_direction_fd = STDIN_FILENO;
+}
+
 /* Allocate memory for message_block and copy from buffer. */
 static void alloc_copy_mb(struct sgsh_negotiation *mb, char *buf, 
 							int bytes_read) {
@@ -123,6 +140,7 @@ static int call_read_pass_fail(int fd, char *buf, int buf_size,
 				int *error_code) {
 	*error_code = 0;
 	*fd_side = 0;
+	DPRINTF("Try read from %s.\n", (fd) ? "stdout" : "stdin");
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
 	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
@@ -145,7 +163,7 @@ static int try_read_message_block(char *buf, int buf_size,
 					struct sgsh_negotiation *fresh_mb,
 					int *write_direction_fd) {
 	int bytes_read, error_code = -EAGAIN, stdin_side = 0, stdout_size = 0;
-	while (error_code == -EAGAIN) {
+	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
 		if ((call_read_pass_fail(STDIN_FILENO, buf, buf_size, 
 			&stdin_side, &bytes_read, &error_code) == OP_QUIT) ||
 		    (call_read_pass_fail(STDOUT_FILENO, buf, buf_size, 
@@ -160,8 +178,9 @@ static int try_read_message_block(char *buf, int buf_size,
 		return error_code;
 	} else {  /* Read succeeded. */
 		alloc_copy_mb(fresh_mb, buf, bytes_read);
-		if (stdin_side) *write_direction_fd = STDOUT_FILENO;
-		else *write_direction_fd = STDIN_FILENO;
+		point_io_direction(stdin_side, write_direction_fd);
+		DPRINTF("Read succeeded: %d bytes read from %s.\n", bytes_read,
+				(write_direction_fd) ? "stdout" : "stdin");
 	}
 	return OP_SUCCESS;
 }
@@ -181,26 +200,32 @@ static int construct_message_block(pid_t self_pid) {
 	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
 	chosen_mb->serial_no = 0;
 	chosen_mb->total_size = memory_allocation_size;
+	DPRINTF("Message block created by pid %d.\n", (int)self_pid);
 	return OP_SUCCESS;
 }
 
 /* Get environment variable env_var. */
 static int get_env_var(const char *env_var,int *value) {
+	DPRINTF("Call getenv().\n");
 	char *string_value = getenv(env_var);
 	if (!string_value) {
 		err(1, "Getting environment variable %s failed.\n", env_var);
 		return OP_ERROR;
-	}
+	} else
+		DPRINTF("getenv() returned string value %s.\n", string_value);
 	*value = atoi(string_value);
+	DPRINTF("Integer form of value is %d.\n", *value);
 	return OP_SUCCESS;
 }
 
 /* Get environment variables SGSH_IN, SGSH_OUT set up by
  * the shell (through execvpe()).
  */
-static int get_environment_vars(int *sgsh_in, int *sgsh_out) {
-	if (get_env_var("SGSH_IN", sgsh_in) == OP_ERROR) return OP_ERROR;
-	if (get_env_var("SGSH_OUT", sgsh_out) == OP_ERROR) return OP_ERROR;
+static int get_environment_vars() {
+	DPRINTF("Try to get environment variable SGSH_IN.\n");
+	if (get_env_var("SGSH_IN", &sgsh_in) == OP_ERROR) return OP_ERROR;
+	DPRINTF("Try to get environment variable SGSH_OUT.\n");
+	if (get_env_var("SGSH_OUT", &sgsh_out) == OP_ERROR) return OP_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -226,8 +251,8 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *output_fds, /* Output file descriptors. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
-	DPRINTF("Entered sgsh_negotiation().\n");
-	int sgsh_in, sgsh_out;
+	sgsh_in = 0;
+	sgsh_out = 0;
 	int write_direction_fd;
 	int negotiation_round = 0;
 	int done_negotiating = 0;
@@ -237,8 +262,11 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb = NULL;
 	struct sgsh_node self_node;
+	memset(buf, 0, buf_size);
+	DPRINTF("Tool %s with pid %d entered sgsh_negotiation.\n", tool_name,
+							(int)self_pid);
 	DPRINTF("Try to get environment variables.");
-	if (get_environment_vars(&sgsh_in, &sgsh_out) == OP_ERROR) {
+	if (get_environment_vars() == OP_ERROR) {
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \
 			environment variables.");
 		return PROT_STATE_ERROR;
@@ -266,10 +294,15 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 				chosen_mb->state_flag = 
 						PROT_STATE_NEGOTIATION_END;
 				done_negotiating = 1;
+				DPRINTF("Negotiation protocol state change: \
+					End of negotiation phase.\n");
 			}
 		}
-		if (should_transmit_mb)
-			write(write_direction_fd, buf, buf_size);
+		if (should_transmit_mb) {
+			memcpy(buf, chosen_mb, chosen_mb->total_size);
+			write(write_direction_fd, buf, chosen_mb->total_size);
+			DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (write_direction_fd) ? "stdout" : "stdin");
+		}
 		if (done_negotiating) break; /* Spread the word, now leave. */
 		if (try_read_message_block(buf, buf_size, fresh_mb, 
 					&write_direction_fd) == OP_ERROR)
