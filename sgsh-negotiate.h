@@ -14,6 +14,7 @@
  * negotiation phase.
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
+		    int unique_id, /* Multiple appearances of same tool. */
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
 						provide. */

@@ -23,7 +23,7 @@ struct dispatcher_node {
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
-        int index; /* Position in node array. */
+        int unique_id; 
         char name[100];
         int requires_channels; /* Input channels it can take. */
         int provides_channels; /* Output channels it can provide. */
@@ -63,8 +63,7 @@ static int realloc_mb_new_node() {
 		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1]; /* 
 						* Node instances go after
 						* the message block instance. */
-		DPRINTF("Reallocated memory (%d -> %d) ", old_size, new_size);
-		DPRINTF("to message block to fit new node.\n");
+		DPRINTF("Reallocated memory (%d -> %d) to message block to fit new node.\n", old_size, new_size);
 	}
 	return OP_SUCCESS;
 }
@@ -74,32 +73,40 @@ static int realloc_mb_new_node() {
  * the send operation. This is a deep copy for simplicity. */
 static void set_dispatcher() {
 	chosen_mb->origin.index = self_dispatcher.index;
+	assert(self_dispatcher.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin.fd_direction = self_dispatcher.fd_direction;
 }
 
 /* Add node to message block. Copy the node using offset-based
  * calculation from the start of the array of nodes.
  */
-static void add_sgsh_node() {
+static void try_add_sgsh_node() {
 	int n_nodes = chosen_mb->n_nodes;
-	realloc_mb_new_node();
-	memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
+	int i;
+	for (i = 0; i < n_nodes; i++)
+		if (chosen_mb->node_array[i].unique_id == self_node.unique_id) 
+			break;
+	if (i == n_nodes) {
+		realloc_mb_new_node();
+		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
 					sizeof(struct sgsh_node));
-	self_dispatcher.index = self_node.index = n_nodes;
-	DPRINTF("Added node %s indexed in position %d in sgsh graph.\n", 
-					self_node.name, self_node.index);
-	chosen_mb->n_nodes++;
-	DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
+		self_dispatcher.index = n_nodes;
+		DPRINTF("Added node %s indexed in position %d in sgsh graph.\n",
+					self_node.name, self_dispatcher.index);
+		chosen_mb->n_nodes++;
+		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
+	}
 }
 
 /* A constructor-like function for struct sgsh_node. */
-static void fill_sgsh_node(const char *tool_name, int requires_channels, 
-						int provides_channels) {
-	self_node.index = -1;
+static void fill_sgsh_node(const char *tool_name, int unique_id,
+				int requires_channels, int provides_channels) {
+	self_node.unique_id = unique_id;
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 	self_node.requires_channels = requires_channels;
 	self_node.provides_channels = provides_channels;
-	DPRINTF("Sgsh node for tool %s created.\n", tool_name);
+	DPRINTF("Sgsh node for tool %s with unique id %d created.\n", 
+						tool_name, unique_id);
 }
 
 /* Check if the arrived message block preexists our chosen one
@@ -113,7 +120,7 @@ static void compete_message_block(struct sgsh_negotiation *fresh_mb,
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
 		free(chosen_mb); /* Heil compact allocation. */
 		chosen_mb = fresh_mb;
-                add_sgsh_node();
+                try_add_sgsh_node();
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free(fresh_mb);
                 should_transmit_mb = 0;
@@ -211,7 +218,6 @@ static int construct_message_block(pid_t self_pid) {
 
 /* Get environment variable env_var. */
 static int get_env_var(const char *env_var,int *value) {
-	DPRINTF("Call getenv().\n");
 	char *string_value = getenv(env_var);
 	if (!string_value) {
 		err(1, "Getting environment variable %s failed.\n", env_var);
@@ -247,6 +253,7 @@ static int get_environment_vars() {
  * negotiation phase.
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
+		    int unique_id, /* For multiple appearances of same tool. */ 
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
 						provide. */
@@ -267,7 +274,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	memset(buf, 0, buf_size);
 	DPRINTF("Tool %s with pid %d entered sgsh_negotiation.\n", tool_name,
 							(int)self_pid);
-	DPRINTF("Try to get environment variables.");
 	if (get_environment_vars() == OP_ERROR) {
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT \
 			environment variables.");
@@ -283,8 +289,9 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 			return PROT_STATE_ERROR;
 		chosen_mb = fresh_mb;
 	}
-	fill_sgsh_node(tool_name, channels_required, channels_provided);
-	add_sgsh_node();
+	fill_sgsh_node(tool_name, unique_id, channels_required, 
+						channels_provided);
+	try_add_sgsh_node();
 	
 	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		if (self_pid == chosen_mb->initiator_pid) { /* Round end. */
@@ -298,7 +305,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 			}
 		}
 		if (should_transmit_mb) {
-			assert(self_node.index >= 0); /* Node is added. */
 			set_dispatcher();
 			memcpy(buf, chosen_mb, chosen_mb->total_size);
 			write(self_dispatcher.fd_direction, buf, 
