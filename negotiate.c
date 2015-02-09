@@ -14,6 +14,7 @@
 #define OP_QUIT 2
 #define OP_EXISTS 3
 #define OP_CREATE 4
+#define OP_NOOP 5
 
 /* TODO: message block size vs page size check before write. */
 
@@ -181,7 +182,7 @@ static int try_add_sgsh_edge() {
 		}
 		return OP_EXISTS;
 	}
-	return OP_ERROR;
+	return OP_NOOP;
 }
 
 /* Add node to message block. Copy the node using offset-based
