@@ -54,9 +54,23 @@ struct sgsh_negotiation {
 				memory allocation. */
 };
 
+/* Memory organisation of message block.
+ * Because message block will be passed around process address spaces, 
+ * any pointers should point to slots internal to the message block. 
+ * Therefore a message block allocation (structure sgsh_negotiation) 
+ * contains related structure instances such as the node and edge 
+ * arrays organised as follows:
+ *
+ * struct sgsh_negotiation
+ * struct sgsh_node (array)
+ * ... (x n_nodes) 
+ * struct sgsh_edge (array)
+ * ... (x n_edges) 
+ */
+
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
-static struct sgsh_node self_node;
-static struct dispatcher_node self_dispatcher;
+static struct sgsh_node self_node; /* The sgsh node that models this tool. */
+static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 
 
 /* Reallocate message block to fit new node coming in. */
@@ -178,6 +192,7 @@ static int try_add_sgsh_edge() {
 			chosen_mb->n_edges++;
 			DPRINTF("Sgsh graph now has %d edges.\n", 
 							chosen_mb->n_edges);
+			chosen_mb->serial_no++;
 			return OP_SUCCESS;
 		}
 		return OP_EXISTS;
@@ -203,6 +218,7 @@ static int try_add_sgsh_node() {
 					self_node.name, self_dispatcher.index);
 		chosen_mb->n_nodes++;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
+		chosen_mb->serial_no++;
 		return OP_SUCCESS;
 	}
 	return OP_EXISTS;
@@ -223,22 +239,32 @@ static void fill_sgsh_node(const char *tool_name, int unique_id,
  * and substitute the chosen if so.
  * If the arrived message block is younger discard it and don't
  * forward it.
- * Implcitly, if the arrived is the chosen, do nothing.
+ * If the arrived is the chosen, try to add the edge.
  */
 static int compete_message_block(struct sgsh_negotiation *fresh_mb, 
-						int *should_transmit_mb) {
-        if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
+			int *should_transmit_mb, int *updated_mb_serial_no) {
+        *should_transmit_mb = 1; /* Default value. */
+	*updated_mb_serial_no = 0; /* Default value. */
+        if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
 		free(chosen_mb); /* Heil compact allocation. */
 		chosen_mb = fresh_mb;
                 if (try_add_sgsh_node() == OP_ERROR)
 			return OP_ERROR; /* Double realloc: one for node, */
                 if (try_add_sgsh_edge() == OP_ERROR)
 			return OP_ERROR; /* one for edge. */
+		*updated_mb_serial_no = 1; /*Substituting chosen_mb is an update.*/
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free(fresh_mb);
-                should_transmit_mb = 0;
-	} else
+                *should_transmit_mb = 0;
+	} else {
+		if (fresh_mb->serial_no > chosen_mb->serial_no) {
+			*updated_mb_serial_no = 1;
+			free(chosen_mb);
+			chosen_mb = fresh_mb;
+		} else 
+			free(fresh_mb);
                 if (try_add_sgsh_edge() == OP_ERROR) return OP_ERROR;
+	}
 	return OP_SUCCESS;
 }
 
@@ -385,6 +411,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	int negotiation_round = 0;
 	int done_negotiating = 0;
 	int should_transmit_mb = 1;
+	int updated_mb_serial_no = 1;
 	pid_t self_pid = getpid();
 	int buf_size = getpagesize();
 	char buf[buf_size];
@@ -416,10 +443,12 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		if (self_pid == chosen_mb->initiator_pid) { /* Round end. */
 			negotiation_round++;
-			if (negotiation_round == 3) {
+			if ((negotiation_round == 3) && 
+			    (!updated_mb_serial_no)) {
 				/* Placeholder: run algorithm. */
 				chosen_mb->state_flag = 
 						PROT_STATE_NEGOTIATION_END;
+				chosen_mb->serial_no++;
 				done_negotiating = 1;
 				DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
 			}
@@ -434,8 +463,8 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 		if (done_negotiating) break; /* Did spread the word,now leave.*/
 		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
 			return PROT_STATE_ERROR;
-		if (compete_message_block(fresh_mb, &should_transmit_mb) == 
-								OP_ERROR);
+		if (compete_message_block(fresh_mb, &should_transmit_mb,
+					&updated_mb_serial_no) == OP_ERROR)
 			return PROT_STATE_ERROR;
 	}
 	return chosen_mb->state_flag;
