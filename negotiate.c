@@ -36,8 +36,8 @@ struct sgsh_node {
         char name[100];
         int requires_channels; /* Input channels it can take. */
         int provides_channels; /* Output channels it can provide. */
-	int sgsh_in;   /* Takes input from other tool(s) in sgsh graph. */
-	int sgsh_out;  /* Provides output to other tool(s) in sgsh graph. */
+	int sgsh_in;   /* Takes input from other tool(s) on sgsh graph. */
+	int sgsh_out;  /* Provides output to other tool(s) on sgsh graph. */
 };
 
 /* The message block structure that provides the vehicle for negotiation. */
@@ -76,24 +76,69 @@ static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 
+/* Reallocate array to edge pointers. */
+static int reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, 
+						int n_elements) {
+	void **p = realloc(*edge_array, sizeof(struct sgsh_edge *) * n_elements);
+	if (!p) {
+		err(1, "Memory reallocation for edge failed.\n");
+		return OP_ERROR;
+	} else
+		*edge_array = (struct sgsh_edge **)p;
+	return OP_SUCCESS;
+}
+
+/* Lookup this tool's edges and store pointers to them in order
+ * to allow the allocation of connections.
+ */
+static int lookup_sgsh_edges(struct sgsh_edge **edges_incoming, 
+				int *n_edges_incoming, 
+				struct sgsh_edge **edges_outgoing,
+				int *n_edges_outgoing) {
+	int self_index = self_dispatcher.index;
+	int n_edges = chosen_mb->n_edges;
+	int i;
+	for (i = 0; i < n_edges; i++) {
+		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
+		if (edge->from == self_index) {
+			(*n_edges_outgoing)++;
+			if (reallocate_edge_pointer_array(&edges_outgoing, 
+					*n_edges_outgoing) == OP_ERROR)
+				return OP_ERROR;
+		}
+		if (edge->to == self_index) {
+			(*n_edges_incoming)++;
+			if (reallocate_edge_pointer_array(&edges_incoming, 
+					*n_edges_incoming) == OP_ERROR)
+				return OP_ERROR;
+		}
+	}
+	return OP_SUCCESS;
+}
+
 /* Look for a solution to the graph's path requirements.
  * Allocate pipes to connect the nodes on the graph.
  */
 static int allocate_io_connections(int *input_fds, int *n_input_fds, 
 					int *output_fds, int *n_output_fds) {
-	struct sgsh_edge *self_edges_incoming = NULL;
+	struct sgsh_edge **self_edges_incoming = NULL;
 	int n_self_edges_incoming = 0;
-	struct sgsh_edge *self_edges_outgoing = NULL;
+	struct sgsh_edge **self_edges_outgoing = NULL;
 	int n_self_edges_outgoing = 0;
-	lookup_sgsh_edges(self_edges_incoming, &n_self_edges_incoming,
-				self_edges_outgoing, &n_self_edges_outgoing);
-	if ((n_self_edges_incoming != self_node->requires_channels) ||
-	    (n_self_deges_outgoing != self_node->provides_channels))
-		return OP_ERROR;
-	
-	
-}
 
+	lookup_sgsh_edges(self_edges_incoming, &n_self_edges_incoming, 
+				self_edges_outgoing, &n_self_edges_outgoing);
+	if ((n_self_edges_incoming != self_node.requires_channels) ||
+	    (n_self_edges_outgoing != self_node.provides_channels)) {
+		err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
+		self_node.pid, self_node.requires_channels, 
+		n_self_edges_incoming, self_node.provides_channels, 
+		n_self_edges_outgoing);
+		return OP_ERROR;
+	}
+	/* allocate_fds(); */
+	return OP_SUCCESS;
+} /* Ability to set min and max in requires/provides_channels. */
 
 /* Reallocate message block to fit new node coming in. */
 static int realloc_mb_new_node() {
@@ -243,6 +288,7 @@ static int try_add_sgsh_node() {
 		chosen_mb->serial_no++;
 		return OP_SUCCESS;
 	}
+	self_dispatcher.index = i;
 	return OP_EXISTS;
 }
 
@@ -419,14 +465,14 @@ static int get_environment_vars() {
  * The function's return value signifies success or failure of the
  * negotiation phase.
  */
-int sgsh_negotiate(const char *tool_name, /* Input. */
+int sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
 						provide. */
                                      /* Output: to fill. */
-                    int **input_fds,  /* Input file descriptors. */
+                    int *input_fds,  /* Input file descriptors. */
                     int *n_input_fds, /* Number of input file descriptors. */
-                    int **output_fds, /* Output file descriptors. */
+                    int *output_fds, /* Output file descriptors. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
 	int negotiation_round = 0;
