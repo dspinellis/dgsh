@@ -32,7 +32,7 @@ struct sgsh_edge {
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
-        int unique_id; 
+        pid_t pid; 
         char name[100];
         int requires_channels; /* Input channels it can take. */
         int provides_channels; /* Output channels it can provide. */
@@ -229,7 +229,7 @@ static int try_add_sgsh_node() {
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++)
-		if (chosen_mb->node_array[i].unique_id == self_node.unique_id) 
+		if (chosen_mb->node_array[i].pid == self_node.pid) 
 			break;
 	if (i == n_nodes) {
 		if (realloc_mb_new_node() == OP_ERROR) return OP_ERROR;
@@ -247,14 +247,14 @@ static int try_add_sgsh_node() {
 }
 
 /* A constructor-like function for struct sgsh_node. */
-static void fill_sgsh_node(const char *tool_name, int unique_id,
+static void fill_sgsh_node(const char *tool_name, pid_t pid,
 				int requires_channels, int provides_channels) {
-	self_node.unique_id = unique_id;
+	self_node.pid = pid;
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 	self_node.requires_channels = requires_channels;
 	self_node.provides_channels = provides_channels;
 	DPRINTF("Sgsh node for tool %s with unique id %d created.\n", 
-						tool_name, unique_id);
+						tool_name, pid);
 }
 
 /* Check if the arrived message block preexists our chosen one
@@ -420,14 +420,13 @@ static int get_environment_vars() {
  * negotiation phase.
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
-		    int unique_id, /* For multiple appearances of same tool. */ 
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can 
 						provide. */
                                      /* Output: to fill. */
-                    int *input_fds,  /* Input file descriptors. */
+                    int **input_fds,  /* Input file descriptors. */
                     int *n_input_fds, /* Number of input file descriptors. */
-                    int *output_fds, /* Output file descriptors. */
+                    int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
 	int negotiation_round = 0;
@@ -457,7 +456,7 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 			return PROT_STATE_ERROR;
 		chosen_mb = fresh_mb;
 	}
-	fill_sgsh_node(tool_name, unique_id, channels_required, 
+	fill_sgsh_node(tool_name, self_pid, channels_required, 
 						channels_provided);
 	if (try_add_sgsh_node() == OP_ERROR) return PROT_STATE_ERROR;
 	if (try_add_sgsh_edge() == OP_ERROR) return PROT_STATE_ERROR;
