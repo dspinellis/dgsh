@@ -61,16 +61,38 @@ struct sgsh_negotiation {
  * contains related structure instances such as the node and edge 
  * arrays organised as follows:
  *
- * struct sgsh_negotiation
- * struct sgsh_node (array)
- * ... (x n_nodes) 
- * struct sgsh_edge (array)
- * ... (x n_edges) 
+ *--------------------------|
+ * struct sgsh_negotiation  |
+ * --                       |
+ * struct sgsh_node (array) |
+ * ... (x n_nodes)          |
+ * --                       |
+ * struct sgsh_edge (array) |
+ * ... (x n_edges)          |
+ *--------------------------|
  */
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
+
+/* Look for a solution to the graph's path requirements.
+ * Allocate pipes to connect the nodes on the graph.
+ */
+static int allocate_io_connections(int *input_fds, int *n_input_fds, 
+					int *output_fds, int *n_output_fds) {
+	struct sgsh_edge *self_edges_incoming = NULL;
+	int n_self_edges_incoming = 0;
+	struct sgsh_edge *self_edges_outgoing = NULL;
+	int n_self_edges_outgoing = 0;
+	lookup_sgsh_edges(self_edges_incoming, &n_self_edges_incoming,
+				self_edges_outgoing, &n_self_edges_outgoing);
+	if ((n_self_edges_incoming != self_node->requires_channels) ||
+	    (n_self_deges_outgoing != self_node->provides_channels))
+		return OP_ERROR;
+	
+	
+}
 
 
 /* Reallocate message block to fit new node coming in. */
@@ -445,7 +467,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 			negotiation_round++;
 			if ((negotiation_round == 3) && 
 			    (!updated_mb_serial_no)) {
-				/* Placeholder: run algorithm. */
 				chosen_mb->state_flag = 
 						PROT_STATE_NEGOTIATION_END;
 				chosen_mb->serial_no++;
@@ -467,6 +488,9 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 					&updated_mb_serial_no) == OP_ERROR)
 			return PROT_STATE_ERROR;
 	}
+	if (allocate_io_connections(input_fds, n_input_fds, output_fds, 
+						n_output_fds) == OP_ERROR)
+		return PROT_STATE_ERROR;
 	return chosen_mb->state_flag;
 }
 
