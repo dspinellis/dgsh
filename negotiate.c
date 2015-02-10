@@ -95,7 +95,7 @@ static int lookup_sgsh_edges(struct sgsh_edge **edges_incoming,
 				int *n_edges_incoming, 
 				struct sgsh_edge **edges_outgoing,
 				int *n_edges_outgoing) {
-	int self_index = self_dispatcher.index;
+	int self_index = self_dispatcher.index; /* This tool's node index. */
 	int n_edges = chosen_mb->n_edges;
 	int i;
 	for (i = 0; i < n_edges; i++) {
@@ -116,8 +116,8 @@ static int lookup_sgsh_edges(struct sgsh_edge **edges_incoming,
 	return OP_SUCCESS;
 }
 
-/* Look for a solution to the graph's path requirements.
- * Allocate pipes to connect the nodes on the graph.
+/* Look for a solution to the graph's path requirements for this tool.
+ * Allocate pipes to connect this node to other nodes on the graph.
  */
 static int allocate_io_connections(int *input_fds, int *n_input_fds, 
 					int *output_fds, int *n_output_fds) {
@@ -140,6 +140,37 @@ static int allocate_io_connections(int *input_fds, int *n_input_fds,
 	return OP_SUCCESS;
 } /* Ability to set min and max in requires/provides_channels. */
 
+/* Copy the dispatcher static object that identifies the node
+ * in the message block node array and shows the write point of
+ * the send operation. This is a deep copy for simplicity. */
+static void set_dispatcher() {
+	chosen_mb->origin.index = self_dispatcher.index;
+	assert(self_dispatcher.index >= 0); /* Node is added to the graph. */
+	chosen_mb->origin.fd_direction = self_dispatcher.fd_direction;
+}
+
+/* Write message block to buffer. */
+static void write_mb(char *buf, int buf_size) {
+	assert(chosen_mb->total_size <= buf_size);
+	set_dispatcher();
+	memcpy(buf, chosen_mb, chosen_mb->total_size);
+	write(self_dispatcher.fd_direction, buf, chosen_mb->total_size);
+	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
+}
+
+/* Check whether negotiation phase should end. */
+static void check_negotiation_round(int *negotiation_round, 
+					int updated_mb_serial_no) {
+	if (self_node.pid == chosen_mb->initiator_pid) { /* Round end? */
+		(*negotiation_round)++;
+		if ((*negotiation_round == 3) && (!updated_mb_serial_no)) {
+			chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+			chosen_mb->serial_no++;
+			DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
+		}
+	}
+}
+
 /* Reallocate message block to fit new node coming in. */
 static int realloc_mb_new_node() {
 	int new_size = chosen_mb->total_size + sizeof(struct sgsh_node);
@@ -159,23 +190,16 @@ static int realloc_mb_new_node() {
 	} else {
 		chosen_mb = (struct sgsh_negotiation *)p;
 		chosen_mb->total_size = new_size;
-		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1]; /* 
-						* Node instances go after
-						* the message block instance. */
+
+		/* Node instances go after the message block instance. */
+		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1];
 		DPRINTF("Reallocated memory (%d -> %d) to message block to fit new node.\n", old_size, new_size);
+
+		/* Edge instances go after the node instances. */
 		chosen_mb->edge_array = (struct sgsh_edge *)&chosen_mb->node_array[chosen_mb->n_nodes + 1]; /* New node has not been added yet. */
 		memcpy(chosen_mb->edge_array, edge_array_store, edges_size);
 	}
 	return OP_SUCCESS;
-}
-
-/* Copy the dispatcher static object that identifies the node
- * in the message block node array and shows the write point of
- * the send operation. This is a deep copy for simplicity. */
-static void set_dispatcher() {
-	chosen_mb->origin.index = self_dispatcher.index;
-	assert(self_dispatcher.index >= 0); /* Node is added to the graph. */
-	chosen_mb->origin.fd_direction = self_dispatcher.fd_direction;
 }
 
 /* Lookup an edge in the sgsh graph. */
@@ -195,15 +219,15 @@ static int lookup_sgsh_edge(struct sgsh_edge *e) {
 static int fill_sgsh_edge(struct sgsh_edge *e) {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
-	for (i = 0; n_nodes; i++)
+	for (i = 0; n_nodes; i++) /* Check dispatcher node exists. */
 		if (i == chosen_mb->origin.index) break;
 	if (i == n_nodes) {
 		err(1, "Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
 		return OP_ERROR;
 	}
 	if (chosen_mb->origin.fd_direction == STDIN_FILENO) {
-	/* MB sent from stdin, so sender is the destination of the edge.
-	 * Self should be sgsh-active on output side.Self's current fd is stdin 
+	/* MB sent from stdin, so dispatcher is the destination of the edge.
+	 * Self should be sgsh-active on output side. Self's current fd is stdin
 	 * if self is sgsh-active on input side or output side otherwise. 
 	 * Self (the recipient) is the source of the edge. */
 		e->to = chosen_mb->origin.index; 
@@ -235,10 +259,13 @@ static int realloc_mb_new_edge() {
 	} else {
 		chosen_mb = (struct sgsh_negotiation *)p;
 		chosen_mb->total_size = new_size;
-		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1]; /* 
-						* Node instances go after
-						* the message block instance. */
+
+		/* Node instances go after the message block instance. */
+		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1]; 
+
+		/* Edge instances go after the node instances. */
 		chosen_mb->edge_array = (struct sgsh_edge *)&chosen_mb->node_array[chosen_mb->n_nodes];
+
 		DPRINTF("Reallocated memory (%d -> %d) to message block to fit new edge.\n", old_size, new_size);
 	}
 	return OP_SUCCESS;
@@ -274,8 +301,7 @@ static int try_add_sgsh_node() {
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++)
-		if (chosen_mb->node_array[i].pid == self_node.pid) 
-			break;
+		if (chosen_mb->node_array[i].pid == self_node.pid) break;
 	if (i == n_nodes) {
 		if (realloc_mb_new_node() == OP_ERROR) return OP_ERROR;
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
@@ -299,8 +325,7 @@ static void fill_sgsh_node(const char *tool_name, pid_t pid,
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 	self_node.requires_channels = requires_channels;
 	self_node.provides_channels = provides_channels;
-	DPRINTF("Sgsh node for tool %s with unique id %d created.\n", 
-						tool_name, pid);
+	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
 }
 
 /* Check if the arrived message block preexists our chosen one
@@ -322,7 +347,7 @@ static int compete_message_block(struct sgsh_negotiation *fresh_mb,
 			return OP_ERROR; /* one for edge. */
 		*updated_mb_serial_no = 1; /*Substituting chosen_mb is an update.*/
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
-		free(fresh_mb);
+		free(fresh_mb); /* Discard MB just read. */
                 *should_transmit_mb = 0;
 	} else {
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
@@ -348,17 +373,18 @@ static void point_io_direction(int current_direction) {
 
 /* Allocate memory for message_block and copy from buffer. */
 static void alloc_copy_mb(struct sgsh_negotiation *mb, char *buf, 
-							int bytes_read) {
+						int bytes_read, int buf_size) {
+	assert(bytes_read == mb->total_size);
+	assert(bytes_read <= buf_size);
 	mb = (struct sgsh_negotiation *)malloc(bytes_read);
 	memcpy(mb, buf, bytes_read);
-	assert(bytes_read == mb->total_size);
 }
 
 /* The actual call to read in the message block.
  * If the call does not succeed or does not signal retry we have
  * to quit operation.
  */
-static int call_read_pass_fail(int fd, char *buf, int buf_size, 
+static int call_read(int fd, char *buf, int buf_size, 
 				int *fd_side, /* Mark (input or output) fd. */
 				int *bytes_read, 
 				int *error_code) {
@@ -387,10 +413,10 @@ static int try_read_message_block(char *buf, int buf_size,
 					struct sgsh_negotiation *fresh_mb) {
 	int bytes_read, error_code = -EAGAIN, stdin_side = 0, stdout_size = 0;
 	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
-		if ((call_read_pass_fail(STDIN_FILENO, buf, buf_size, 
-			&stdin_side, &bytes_read, &error_code) == OP_QUIT) ||
-		    (call_read_pass_fail(STDOUT_FILENO, buf, buf_size, 
-			&stdout_size, &bytes_read, &error_code) == OP_QUIT))
+		if ((call_read(STDIN_FILENO, buf, buf_size, &stdin_side, 
+					&bytes_read, &error_code) == OP_QUIT) ||
+		    (call_read(STDOUT_FILENO, buf, buf_size, &stdout_size, 
+					&bytes_read, &error_code) == OP_QUIT))
 			break;
 	}
 	if (bytes_read == -1) {  /* Read failed. */
@@ -400,7 +426,7 @@ static int try_read_message_block(char *buf, int buf_size,
 						error_code);
 		return error_code;
 	} else {  /* Read succeeded. */
-		alloc_copy_mb(fresh_mb, buf, bytes_read);
+		alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size);
 		point_io_direction(stdin_side);
 		DPRINTF("Read succeeded: %d bytes read from %s.\n", bytes_read,
 			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
@@ -456,7 +482,7 @@ static int get_environment_vars() {
 }
 
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in
- * peer-to-peer negotiation. A message block is circulated among tools
+ * peer-to-peer negotiation. A message block (MB) is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in 
  * place, an algorithm runs that tries to find a solution that satisfies
  * all requirements. If a solution is found, pipes are allocated and
@@ -476,67 +502,58 @@ int sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int *n_output_fds) { /* Number of output file 
 						descriptors. */
 	int negotiation_round = 0;
-	int done_negotiating = 0;
 	int should_transmit_mb = 1;
 	int updated_mb_serial_no = 1;
-	pid_t self_pid = getpid();
-	int buf_size = getpagesize();
+	pid_t self_pid = getpid(); /* Get tool's pid */
+	int buf_size = getpagesize(); /* Make buffer page-wide. */
 	char buf[buf_size];
-	struct sgsh_negotiation *fresh_mb = NULL;
-	
+	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 	memset(buf, 0, buf_size); /* Clear buffer used to read/write messages.*/
-	DPRINTF("Tool %s with pid %d entered sgsh_negotiation.\n", tool_name,
+	DPRINTF("Tool %s with pid %d entered sgsh negotiation.\n", tool_name,
 							(int)self_pid);
+	
+	/* Get environment variables. */
 	if (get_environment_vars() == OP_ERROR) {
-		err(1, "Failed to extract SGSH_IN, SGSH_OUT \
-			environment variables.");
+		err(1, "Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PROT_STATE_ERROR;
 	}
-        if ((self_node.sgsh_out) && (!self_node.sgsh_in)) { /* Negotiation starter. */
+	
+	/* Start negotiation. */
+        if ((self_node.sgsh_out) && (!self_node.sgsh_in)) { 
                 if (construct_message_block(self_pid) == OP_ERROR) 
 			return PROT_STATE_ERROR;
                 self_dispatcher.fd_direction = STDOUT_FILENO;
-        } else {
+        } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
 		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
 			return PROT_STATE_ERROR;
 		chosen_mb = fresh_mb;
 	}
+	
+	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required, 
 						channels_provided);
 	if (try_add_sgsh_node() == OP_ERROR) return PROT_STATE_ERROR;
 	if (try_add_sgsh_edge() == OP_ERROR) return PROT_STATE_ERROR;
 	
+	/* Perform negotiation rounds. */
 	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
-		if (self_pid == chosen_mb->initiator_pid) { /* Round end. */
-			negotiation_round++;
-			if ((negotiation_round == 3) && 
-			    (!updated_mb_serial_no)) {
-				chosen_mb->state_flag = 
-						PROT_STATE_NEGOTIATION_END;
-				chosen_mb->serial_no++;
-				done_negotiating = 1;
-				DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
-			}
-		}
-		if (should_transmit_mb) {
-			set_dispatcher();
-			memcpy(buf, chosen_mb, chosen_mb->total_size);
-			write(self_dispatcher.fd_direction, buf, 
-						chosen_mb->total_size);
-			DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
-		}
-		if (done_negotiating) break; /* Did spread the word,now leave.*/
+		check_negotiation_round(&negotiation_round, 
+					updated_mb_serial_no);
+		if (should_transmit_mb) write_mb(buf, buf_size);
+		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) 
+			break; /* Did spread the word,now leave.*/
 		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
 			return PROT_STATE_ERROR;
 		if (compete_message_block(fresh_mb, &should_transmit_mb,
 					&updated_mb_serial_no) == OP_ERROR)
 			return PROT_STATE_ERROR;
 	}
+
+	/* Solve problem and allocate pipes. */
 	if (allocate_io_connections(input_fds, n_input_fds, output_fds, 
 						n_output_fds) == OP_ERROR)
 		return PROT_STATE_ERROR;
-	return chosen_mb->state_flag;
-}
 
+	return chosen_mb->state_flag;
 }
