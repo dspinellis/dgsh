@@ -539,14 +539,4 @@ int sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	return chosen_mb->state_flag;
 }
 
-/* If negotiation is successful, tools configure input and output 
- * according to the provided file descriptors and then they call
- * sgsh_run() to signal that they have set their input/output and
- * are ready for execution (or that they failed) by setting PROT_STATE_RUN
- * or PROT_STATE_ERROR. An algorithm
- * verifies that all tools completed this stage too successfully 
- * and the function returns success or failure.
- */
-int sgsh_run() {
-	return PROT_STATE_RUN;
 }

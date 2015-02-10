@@ -23,13 +23,3 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int *output_fds, /* Output file descriptors. */
                     int *n_output_fds); /* Number of output file descriptors. */
 
-/* If negotiation is successful, tools configure input and output 
- * according to the provided file descriptors and then they call
- * sgsh_run() to signal that they have set their input/output and
- * are ready for execution (or that they failed) by setting STATE_RUN. 
- * An algorithm
- * verifies that all tools completed this stage too successfully 
- * and the function returns success or failure.
- */
-int sgsh_run();
-
