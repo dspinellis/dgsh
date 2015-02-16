@@ -44,6 +44,7 @@ struct sgsh_node {
 
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
+	double version; /* Protocol version. */
         struct sgsh_node *node_array;
         int n_nodes;
 	struct sgsh_edge *edge_array;
@@ -64,15 +65,13 @@ struct sgsh_negotiation {
  * contains related structure instances such as the node and edge 
  * arrays organised as follows:
  *
- *--------------------------|
- * struct sgsh_negotiation  |
- * --                       |
- * struct sgsh_node (array) |
- * ... (x n_nodes)          |
- * --                       |
- * struct sgsh_edge (array) |
- * ... (x n_edges)          |
- *--------------------------|
+ * struct sgsh_negotiation  
+ * --                       
+ * struct sgsh_node (array) 
+ * ... (x n_nodes)          
+ * --                       
+ * struct sgsh_edge (array) 
+ * ... (x n_edges)          
  */
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
@@ -164,14 +163,15 @@ set_dispatcher() {
 }
 
 /* Write message block to buffer. */
-static void
+static int
 write_mb(char *buf, int buf_size)
 {
-	assert(chosen_mb->total_size <= buf_size);
+	if (chosen_mb->total_size > buf_size) return OP_ERROR;
 	set_dispatcher();
 	memcpy(buf, chosen_mb, chosen_mb->total_size);
 	write(self_dispatcher.fd_direction, buf, chosen_mb->total_size);
 	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
+	return OP_SUCCESS;
 }
 
 /* Check whether negotiation phase should end. */
@@ -272,7 +272,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 		e->to = self_dispatcher.index;
 	}
 	return OP_SUCCESS;
-} /* Assert or return error? Return error. */
+}
 
 /* Reallocate message block to fit new edge coming in. */
 static int
@@ -413,14 +413,22 @@ point_io_direction(int current_direction)
 }
 
 /* Allocate memory for message_block and copy from buffer. */
-static void
+static int
 alloc_copy_mb(struct sgsh_negotiation *mb, char *buf, int bytes_read, 
 							int buf_size)
 {
-	assert(bytes_read == mb->total_size);
-	assert(bytes_read <= buf_size);
+	if (bytes_read != mb->total_size) {
+		err(1, "Read %d bytes of message block, expected to read %d.",
+			bytes_read, (int)mb->total_size);
+		return OP_ERROR;
+	}
+	if (bytes_read > buf_size) {
+		err(1, "Read %d bytes of message block, but buffer can hold up to %d.", bytes_read, buf_size);
+		return OP_ERROR;
+	}
 	mb = (struct sgsh_negotiation *)malloc(bytes_read);
 	memcpy(mb, buf, bytes_read);
+	return OP_SUCCESS;
 }
 
 /** 
@@ -478,7 +486,8 @@ try_read_message_block(char *buf, int buf_size,
 						error_code);
 		return error_code;
 	} else {  /* Read succeeded. */
-		alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size);
+		if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == 
+		    OP_ERROR) return OP_ERROR;
 		point_io_direction(stdin_side);
 		DPRINTF("Read succeeded: %d bytes read from %s.\n", bytes_read,
 			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
@@ -497,6 +506,7 @@ construct_message_block(pid_t self_pid)
 		err(1, "Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
+	chosen_mb->version = 1.0;
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
 	chosen_mb->initiator_pid = self_pid;
@@ -561,6 +571,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int *n_input_fds, /* Number of input file descriptors. */
                     int *output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
+		    /* magic_no? */
 {
 	int negotiation_round = 0;
 	int should_transmit_mb = 1;
@@ -600,7 +611,9 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		check_negotiation_round(&negotiation_round, 
 					updated_mb_serial_no);
-		if (should_transmit_mb) write_mb(buf, buf_size);
+		if (should_transmit_mb) 
+			if (write_mb(buf, buf_size) == OP_ERROR) 
+				return OP_ERROR;
 		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) 
 			break; /* Did spread the word,now leave.*/
 		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
