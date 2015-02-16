@@ -1,3 +1,8 @@
+/* TODO: 
+ * 1. Clean up.
+ * 2. read/write in three pieces (MB, nodes, edges)."
+ */
+
 /* Placeholder: LICENSE. */
 
 #include <assert.h> /* assert() */
@@ -53,28 +58,20 @@ struct sgsh_negotiation {
         int state_flag;
         int serial_no;
 	struct dispatcher_node origin;
-	size_t total_size; /* Compact allocation that includes sgsh_node
-				memory allocation. */
 };
 
 /**
  * Memory organisation of message block.
- * Because message block will be passed around process address spaces, 
- * any pointers should point to slots internal to the message block. 
- * Therefore a message block allocation (structure sgsh_negotiation) 
- * contains related structure instances such as the node and edge 
- * arrays organised as follows:
- *
- * struct sgsh_negotiation  
- * --                       
- * struct sgsh_node (array) 
- * ... (x n_nodes)          
- * --                       
- * struct sgsh_edge (array) 
- * ... (x n_edges)          
+ * Message block will be passed around process address spaces.
+ * Message block contains a number of scalar fields and two pointers
+ * to an array of sgsh nodes and edges respectively.
+ * To pass the message block along with nodes and edges, three writes
+ * in this order take place.
  */
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
+static struct sgsh_node *nodes; /* Nodes on the sgsh negotiation graph. */
+static struct sgsh_node *edges; /* Edges on the sgsh negotiation graph. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 
@@ -166,10 +163,35 @@ set_dispatcher() {
 static int
 write_mb(char *buf, int buf_size)
 {
-	if (chosen_mb->total_size > buf_size) return OP_ERROR;
+	int mb_size = sizeof(struct sgsh_negotiation);
+	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
+	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
+	struct sgsh_node *p_nodes = chosen_mb->node_array;
+	struct sgsh_node *p_edges = chosen_mb->edge_array;
+	if ((nodes_size > buf_size) || (edges_size > buf_size))
+		return OP_ERROR;
 	set_dispatcher();
-	memcpy(buf, chosen_mb, chosen_mb->total_size);
-	write(self_dispatcher.fd_direction, buf, chosen_mb->total_size);
+
+	/** 
+	 * Prepare and perform message block transmission. 
+	 * Formally invalidate pointers to nodes and edges
+	 * to avoid accidents.
+	 */
+	chosen_mb->node_array = NULL;
+	chosen_mb->edge_array = NULL;
+	memcpy(buf, chosen_mb, mb_size);
+	write(self_dispatcher.fd_direction, buf, mb_size);
+
+	/* Transmit nodes. */
+	memcpy(buf, p_nodes, nodes_size);
+	write(self_dispatcher.fd_direction, buf, nodes_size);
+
+	/* Transmit edges. */
+	memcpy(buf, p_edges, edges_size);
+	write(self_dispatcher.fd_direction, buf, edges_size);
+
+	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes */
+	chosen_mb->edge_array = p_edges; /* and edges. */
 	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
@@ -190,33 +212,21 @@ check_negotiation_round(int *negotiation_round, int updated_mb_serial_no)
 
 /* Reallocate message block to fit new node coming in. */
 static int
-realloc_mb_new_node()
+add_node(struct sgsh_node *node)
 {
-	int new_size = chosen_mb->total_size + sizeof(struct sgsh_node);
-	int old_size = chosen_mb->total_size;
-
-	/* Make room for new node. Copy-move edge array. */
-	int n_edges = chosen_mb->n_edges;
-	int edges_size = sizeof(struct sgsh_edge) * chosen_mb->n_edges;
-	struct sgsh_edge edge_array_store[n_edges];
-	memcpy(edge_array_store, chosen_mb->edge_array, edges_size);
-
-	void *p = realloc(chosen_mb, new_size);
+	int n_nodes = chosen_mb->n_nodes;
+	void *p = realloc(chosen_mb->node_array, n_nodes);
 	if (!p) {
-		err(1, "Message block reallocation for adding a new node \
-			failed.\n");
+		err(1, "Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
 	} else {
-		chosen_mb = (struct sgsh_negotiation *)p;
-		chosen_mb->total_size = new_size;
-
-		/* Node instances go after the message block instance. */
-		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1];
-		DPRINTF("Reallocated memory (%d -> %d) to message block to fit new node.\n", old_size, new_size);
-
-		/* Edge instances go after the node instances. */
-		chosen_mb->edge_array = (struct sgsh_edge *)&chosen_mb->node_array[chosen_mb->n_nodes + 1]; /* New node has not been added yet. */
-		memcpy(chosen_mb->edge_array, edge_array_store, edges_size);
+		chosen_mb->n_nodes = (struct sgsh_node *)p;
+		memcpy(&chosen_mb->node_array[n_nodes], node, 
+					sizeof(struct sgsh_node));
+		self_dispatcher.index = n_nodes;
+		DPRINTF("Added node %s indexed in position %d in sgsh graph.\n",
+					node->name, self_dispatcher.index);
+		chosen_mb->n_nodes++;
 	}
 	return OP_SUCCESS;
 }
@@ -274,27 +284,22 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	return OP_SUCCESS;
 }
 
-/* Reallocate message block to fit new edge coming in. */
+/* Add new edge coming in. */
 static int
-realloc_mb_new_edge()
+add_edge(struct sgsh_edge *e)
 {
-	int new_size = chosen_mb->total_size + sizeof(struct sgsh_edge);
-	int old_size = chosen_mb->total_size;
-	void *p = realloc(chosen_mb, new_size);
+	int n_edges = chosen_mb->n_edges;
+	void *p = realloc(chosen_mb->edge_array, n_edges);
 	if (!p) {
-		err(1, "Message block reallocation for adding a new edge failed.\n");
+		err(1, "Edge array expansion for adding a new edge failed.\n");
 		return OP_ERROR;
 	} else {
-		chosen_mb = (struct sgsh_negotiation *)p;
-		chosen_mb->total_size = new_size;
-
-		/* Node instances go after the message block instance. */
-		chosen_mb->node_array = (struct sgsh_node *)&chosen_mb[1]; 
-
-		/* Edge instances go after the node instances. */
-		chosen_mb->edge_array = (struct sgsh_edge *)&chosen_mb->node_array[chosen_mb->n_nodes];
-
-		DPRINTF("Reallocated memory (%d -> %d) to message block to fit new edge.\n", old_size, new_size);
+		chosen_mb->edge_array = (struct sgsh_edge *)p;
+		memcpy(&chosen_mb->edge_array[n_edges], edge,
+						sizeof(struct sgsh_edge));
+		DPRINTF("Added edge (%d -> %d) in sgsh graph.\n",
+					edge->from, edge->to);
+		chosen_mb->n_edges++;
 	}
 	return OP_SUCCESS;
 }
@@ -307,16 +312,10 @@ try_add_sgsh_edge()
 		struct sgsh_edge new_edge;
 		fill_sgsh_edge(&new_edge);
 		if (lookup_sgsh_edge(&new_edge) == OP_CREATE) {
-			int n_edges = chosen_mb->n_edges;
-			if (realloc_mb_new_edge() == OP_ERROR) return OP_ERROR;
-			memcpy(&chosen_mb->edge_array[n_edges], &new_edge, 
-						sizeof(struct sgsh_edge));
-			DPRINTF("Added edge (%d -> %d) in sgsh graph.\n",
-					new_edge.from, new_edge.to);
-			chosen_mb->n_edges++;
+			if (add_edge() == OP_ERROR) return OP_ERROR;
 			DPRINTF("Sgsh graph now has %d edges.\n", 
 							chosen_mb->n_edges);
-			chosen_mb->serial_no++;
+			chosen_mb->serial_no++; /* Message block updated. */
 			return OP_SUCCESS;
 		}
 		return OP_EXISTS;
@@ -331,18 +330,11 @@ try_add_sgsh_edge()
 static int
 try_add_sgsh_node()
 {
-	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++)
 		if (chosen_mb->node_array[i].pid == self_node.pid) break;
 	if (i == n_nodes) {
-		if (realloc_mb_new_node() == OP_ERROR) return OP_ERROR;
-		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
-					sizeof(struct sgsh_node));
-		self_dispatcher.index = n_nodes;
-		DPRINTF("Added node %s indexed in position %d in sgsh graph.\n",
-					self_node.name, self_dispatcher.index);
-		chosen_mb->n_nodes++;
+		if (add_node() == OP_ERROR) return OP_ERROR;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		chosen_mb->serial_no++;
 		return OP_SUCCESS;
@@ -363,6 +355,15 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
 	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
 }
 
+/* Deallocate message block together with nodes and edges. */
+static void 
+free_mb(struct sgsh_negotiation *mb)
+{
+	free(mb->node_array);
+	free(mb->edge_array);
+	free(mb);
+}
+
 /** 
  * Check if the arrived message block preexists our chosen one
  * and substitute the chosen if so.
@@ -377,7 +378,7 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
         *should_transmit_mb = 1; /* Default value. */
 	*updated_mb_serial_no = 0; /* Default value. */
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
-		free(chosen_mb); /* Heil compact allocation. */
+		free_mb(chosen_mb); 
 		chosen_mb = fresh_mb;
                 if (try_add_sgsh_node() == OP_ERROR)
 			return OP_ERROR; /* Double realloc: one for node, */
@@ -385,15 +386,15 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			return OP_ERROR; /* one for edge. */
 		*updated_mb_serial_no = 1; /*Substituting chosen_mb is an update.*/
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
-		free(fresh_mb); /* Discard MB just read. */
+		free_mb(fresh_mb); /* Discard MB just read. */
                 *should_transmit_mb = 0;
 	} else {
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
 			*updated_mb_serial_no = 1;
-			free(chosen_mb);
+			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 		} else 
-			free(fresh_mb);
+			free_mb(fresh_mb);
                 if (try_add_sgsh_edge() == OP_ERROR) return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -412,12 +413,9 @@ point_io_direction(int current_direction)
 			self_dispatcher.fd_direction = STDIN_FILENO;
 }
 
-/* Allocate memory for message_block and copy from buffer. */
 static int
-alloc_copy_mb(struct sgsh_negotiation *mb, char *buf, int bytes_read, 
-							int buf_size)
-{
-	if (bytes_read != mb->total_size) {
+check_read(int bytes_read, int buf_size, int expected_read_size) {
+	if (bytes_read != expected_read_size) {
 		err(1, "Read %d bytes of message block, expected to read %d.",
 			bytes_read, (int)mb->total_size);
 		return OP_ERROR;
@@ -426,8 +424,45 @@ alloc_copy_mb(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 		err(1, "Read %d bytes of message block, but buffer can hold up to %d.", bytes_read, buf_size);
 		return OP_ERROR;
 	}
-	mb = (struct sgsh_negotiation *)malloc(bytes_read);
-	memcpy(mb, buf, bytes_read);
+	return OP_SUCCESS;
+}
+
+/* Allocate memory for message_block edges and copy from buffer. */
+static int
+alloc_copy_edges(struct sgsh_negotiation *mb, char *buf, int bytes_read,
+								int buf_size)
+{
+	int expected_read_size = sizeof(struct sgsh_edge) * mb->n_edges;
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR) 
+		return OP_ERROR;
+	mb->edge_array = (struct sgsh_node *)malloc(bytes_read);
+	memcpy(mb->edge_array, buf, bytes_read);
+	return OP_SUCCESS;
+}
+
+/* Allocate memory for message_block nodes and copy from buffer. */
+static int
+alloc_copy_nodes(struct sgsh_negotiation *mb, char *buf, int bytes_read,
+								int buf_size)
+{
+	int expected_read_size = sizeof(struct sgsh_node) * mb->n_nodes;
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR) 
+		return OP_ERROR;
+	mb->node_array = (struct sgsh_node *)malloc(bytes_read);
+	memcpy(mb->node_array, buf, bytes_read);
+	return OP_SUCCESS;
+}
+
+/* Allocate memory for core message_block and copy from buffer. */
+static int
+alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read, 
+							int buf_size)
+{
+	int expected_read_size = sizeof(struct sgsh_negotiation);
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR) 
+		return OP_ERROR;
+	*mb = (struct sgsh_negotiation *)malloc(bytes_read);
+	memcpy(*mb, buf, bytes_read);
 	return OP_SUCCESS;
 }
 
@@ -465,33 +500,55 @@ call_read(int fd, char *buf, int buf_size,
  * Returns the fd to write the message block if need be transmitted.
  */
 static int
-try_read_message_block(char *buf, int buf_size,
-					struct sgsh_negotiation *fresh_mb)
+try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 {
-	int bytes_read;
 	int error_code = -EAGAIN;
-	int  stdin_side = 0;
-	int stdout_size = 0;
+	int stdout_side = 0; /* Placeholder: stdin suffices. */
 	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
-		if ((call_read(STDIN_FILENO, buf, buf_size, &stdin_side, 
-					&bytes_read, &error_code) == OP_QUIT) ||
+		if ((call_read(STDIN_FILENO, buf, buf_size, stdin_side,
+					bytes_read, &error_code) == OP_QUIT) ||
 		    (call_read(STDOUT_FILENO, buf, buf_size, &stdout_size, 
-					&bytes_read, &error_code) == OP_QUIT))
+					bytes_read, &error_code) == OP_QUIT))
 			break;
 	}
-	if (bytes_read == -1) {  /* Read failed. */
-	 	err(1, "Reading from ");
-		(stdin_side) ? err(1, "stdin ") : err(1, "stdout ");
-		err(1, "file descriptor failed with error code %d.\n", 
-						error_code);
+	if (*bytes_read == -1) {  /* Read failed. */
+	 	err(1, "Reading from %s fd failed with error code %d.", 
+			(stdin_side) ? err(1, "stdin ") : err(1, "stdout "), 
+								error_code);
 		return error_code;
-	} else {  /* Read succeeded. */
-		if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == 
-		    OP_ERROR) return OP_ERROR;
-		point_io_direction(stdin_side);
-		DPRINTF("Read succeeded: %d bytes read from %s.\n", bytes_read,
+	} else  /* Read succeeded. */
+		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
 			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
-	}
+	return OP_SUCCESS;
+}
+
+static int
+try_read_message_block(char *buf, int buf_size,
+					struct sgsh_negotiation **fresh_mb)
+{
+	int bytes_read = 0;
+	int stdin_side = 0;
+	int stdout_size = 0;
+	int error_code = 0;
+
+	/* Try read core message block: struct negotiation state fields. */
+	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
+		return OP_ERROR;
+	point_io_direction(stdin_side);
+
+	/* Try read sgsh negotiation graph nodes. */
+	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
+		return OP_ERROR;
+		
+	/* Try read sgsh negotiation graph edges. */
+	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+	if (alloc_copy_edges(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
+		return OP_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -514,7 +571,6 @@ construct_message_block(pid_t self_pid)
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin.index = -1;
 	chosen_mb->origin.fd_direction = -1;
-	chosen_mb->total_size = memory_allocation_size;
 	DPRINTF("Message block created by pid %d.\n", (int)self_pid);
 	return OP_SUCCESS;
 }
@@ -596,7 +652,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                 self_dispatcher.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
-		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
+		if (try_read_message_block(buf, buf_size, &fresh_mb) == 
+								OP_ERROR)
 			return PROT_STATE_ERROR;
 		chosen_mb = fresh_mb;
 	}
@@ -604,29 +661,47 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required, 
 						channels_provided);
-	if (try_add_sgsh_node() == OP_ERROR) return PROT_STATE_ERROR;
-	if (try_add_sgsh_edge() == OP_ERROR) return PROT_STATE_ERROR;
+	if (try_add_sgsh_node() == OP_ERROR) {
+		chosen_mb->state_flag = PROT_STATE_ERROR;
+		goto exit;
+	}
+	if (try_add_sgsh_edge() == OP_ERROR) {
+		chosen_mb->state_flag = PROT_STATE_ERROR;
+		goto exit;
+	}
 	
 	/* Perform negotiation rounds. */
 	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		check_negotiation_round(&negotiation_round, 
 					updated_mb_serial_no);
-		if (should_transmit_mb) 
-			if (write_mb(buf, buf_size) == OP_ERROR) 
-				return OP_ERROR;
-		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) 
-			break; /* Did spread the word,now leave.*/
-		if (try_read_message_block(buf, buf_size, fresh_mb) == OP_ERROR)
-			return PROT_STATE_ERROR;
+		if (should_transmit_mb) {
+			if (write_mb(buf, buf_size) == OP_ERROR) {
+				chosen_mb->state_flag = PROT_STATE_ERROR;
+				goto exit;
+			}
+		}
+		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END)
+			break; /* Did spread the word, now leave. */
+		if (try_read_message_block(buf, buf_size, &fresh_mb) == 
+								OP_ERROR) {
+			chosen_mb->state_flag = PROT_STATE_ERROR;
+			goto exit;
+		}
 		if (compete_message_block(fresh_mb, &should_transmit_mb,
-					&updated_mb_serial_no) == OP_ERROR)
-			return PROT_STATE_ERROR;
+					&updated_mb_serial_no) == OP_ERROR) {
+			chosen_mb->state_flag = PROT_STATE_ERROR;
+			goto exit;
+		}
 	}
 
 	/* Solve problem and allocate pipes. */
 	if (allocate_io_connections(input_fds, n_input_fds, output_fds, 
-						n_output_fds) == OP_ERROR)
-		return PROT_STATE_ERROR;
+						n_output_fds) == OP_ERROR) {
+		chosen_mb->state_flag = PROT_STATE_ERROR;
+		goto exit;
+	}
 
+exit:
+	free_mb(chosen_mb);
 	return chosen_mb->state_flag;
 }
