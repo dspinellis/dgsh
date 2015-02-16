@@ -1,6 +1,9 @@
 /* TODO: 
- * 1. Clean up.
- * 2. read/write in three pieces (MB, nodes, edges)."
+ * 1. Debug.
+ * 2. Better abstraction of alloc_copy_* and try_read_message_block()?."
+ * 3. Algorithm implementation (central).
+ * 4. Fd allocation (p2p).
+ * 5. Unit testing.
  */
 
 /* Placeholder: LICENSE. */
