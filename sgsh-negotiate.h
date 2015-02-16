@@ -18,8 +18,8 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int channels_provided, /* How many output channels can 
 						provide. */
                                      /* Output: to fill. */
-                    int *input_fds,  /* Input file descriptors. */
+                    int **input_fds,  /* Input file descriptors. */
                     int *n_input_fds, /* Number of input file descriptors. */
-                    int *output_fds, /* Output file descriptors. */
+                    int **output_fds, /* Output file descriptors. */
                     int *n_output_fds); /* Number of output file descriptors. */
 

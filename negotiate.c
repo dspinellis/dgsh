@@ -128,7 +128,7 @@ lookup_sgsh_edges(struct sgsh_edge **edges_incoming,
  * Allocate pipes to connect this node to other nodes on the graph.
  */
 static int
-allocate_io_connections(int *input_fds, int *n_input_fds, int *output_fds, 
+allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
 							int *n_output_fds)
 {
 	struct sgsh_edge **self_edges_incoming = NULL;
@@ -567,9 +567,9 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int channels_provided, /* How many output channels can 
 						provide. */
                                      /* Output: to fill. */
-                    int *input_fds,  /* Input file descriptors. */
+                    int **input_fds,  /* Input file descriptors. */
                     int *n_input_fds, /* Number of input file descriptors. */
-                    int *output_fds, /* Output file descriptors. */
+                    int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
 		    /* magic_no? */
 {
