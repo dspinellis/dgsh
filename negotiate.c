@@ -1,7 +1,7 @@
 /* TODO: 
- * 1. Debug.
- * 2. Better abstraction of alloc_copy_* and try_read_message_block()?."
- * 3. Algorithm implementation (central).
+ * 3. Algorithm implementation (central): this means that for each node
+ *    the indexes of nodes that provide input to that node and the indexes of
+ *    nodes that provide output to that node are stored.
  * 4. Fd allocation (p2p).
  * 5. Unit testing.
  */
@@ -26,7 +26,6 @@
 #define OP_CREATE 4
 #define OP_NOOP 5
 
-/* TODO: message block size vs page size check before write. */
 
 /* Identifies the node and node's fd that sent the message block. */
 struct dispatcher_node {
@@ -42,7 +41,8 @@ struct sgsh_edge {
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
-        pid_t pid; 
+        pid_t pid;
+	int index; /* Position in message block's node array. */
         char name[100];
         int requires_channels; /* Input channels it can take. */
         int provides_channels; /* Output channels it can provide. */
@@ -95,23 +95,22 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
  * to allow the allocation of connections.
  */
 static int 
-lookup_sgsh_edges(struct sgsh_edge **edges_incoming, 
-				int *n_edges_incoming, 
-				struct sgsh_edge **edges_outgoing,
-				int *n_edges_outgoing)
+lookup_sgsh_edges(int node_index, struct sgsh_edge **edges_incoming,
+						int *n_edges_incoming,
+					struct sgsh_edge **edges_outgoing,
+						int *n_edges_outgoing)
 {
-	int self_index = self_dispatcher.index; /* This tool's node index. */
 	int n_edges = chosen_mb->n_edges;
 	int i;
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
-		if (edge->from == self_index) {
+		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(&edges_outgoing, 
 					*n_edges_outgoing) == OP_ERROR)
 				return OP_ERROR;
 		}
-		if (edge->to == self_index) {
+		if (edge->to == node_index) {
 			(*n_edges_incoming)++;
 			if (reallocate_edge_pointer_array(&edges_incoming, 
 					*n_edges_incoming) == OP_ERROR)
@@ -129,22 +128,38 @@ static int
 allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
 							int *n_output_fds)
 {
+	/* allocate_fds(); */
+	return OP_SUCCESS;
+}
+
+/**
+ * This function implements the algorithm that tries to satisfy reported 
+ * I/O constraints of tools on an sgsh graph.
+ */
+static int
+solve_sgsh_graph() {
 	struct sgsh_edge **self_edges_incoming = NULL;
 	int n_self_edges_incoming = 0;
 	struct sgsh_edge **self_edges_outgoing = NULL;
 	int n_self_edges_outgoing = 0;
+	int i;
+	int n_nodes = chosen_mb->n_nodes;
 
-	lookup_sgsh_edges(self_edges_incoming, &n_self_edges_incoming, 
-				self_edges_outgoing, &n_self_edges_outgoing);
-	if ((n_self_edges_incoming != self_node.requires_channels) ||
-	    (n_self_edges_outgoing != self_node.provides_channels)) {
-		err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
-		self_node.pid, self_node.requires_channels, 
-		n_self_edges_incoming, self_node.provides_channels, 
-		n_self_edges_outgoing);
-		return OP_ERROR;
+	/* Check constraints for each node on the sgsh graph. */
+	for (i = 0; i < n_nodes; i++) {
+		int node_index = chosen_mb->node_array[i].index;
+		lookup_sgsh_edges(node_index, self_edges_incoming, 
+				&n_self_edges_incoming, self_edges_outgoing, 
+				&n_self_edges_outgoing);
+		if ((n_self_edges_incoming != self_node.requires_channels) ||
+	    	    (n_self_edges_outgoing != self_node.provides_channels)) {
+			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
+			self_node.pid, self_node.requires_channels, 
+			n_self_edges_incoming, self_node.provides_channels, 
+			n_self_edges_outgoing);
+			return OP_ERROR;
+		}
 	}
-	/* allocate_fds(); */
 	return OP_SUCCESS;
 }
 
@@ -228,6 +243,7 @@ add_node()
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
 					sizeof(struct sgsh_node));
 		self_dispatcher.index = n_nodes;
+		self_node.index = n_nodes;
 		DPRINTF("Added node %s indexed in position %d on sgsh graph.\n",
 					self_node.name, self_dispatcher.index);
 		chosen_mb->n_nodes++;
@@ -339,13 +355,11 @@ try_add_sgsh_node()
 	for (i = 0; i < n_nodes; i++)
 		if (chosen_mb->node_array[i].pid == self_node.pid) break;
 	if (i == n_nodes) {
-		
 		if (add_node() == OP_ERROR) return OP_ERROR;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		chosen_mb->serial_no++;
 		return OP_SUCCESS;
 	}
-	self_dispatcher.index = i;
 	return OP_EXISTS;
 }
 
@@ -358,6 +372,7 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 	self_node.requires_channels = requires_channels;
 	self_node.provides_channels = provides_channels;
+	self_node.index = -1; /* Will be filled in when added to the graph. */
 	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
 }
 
@@ -688,8 +703,16 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 				goto exit;
 			}
 		}
-		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END)
-			break; /* Did spread the word, now leave. */
+		/**
+		 * Did spread the word, now try to solve the I/O
+		 * constraint problem, and leave negotiation. */
+		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+			if (solve_sgsh_graph() == OP_ERROR) {
+				chosen_mb->state_flag = PROT_STATE_ERROR;
+				goto exit;
+			}
+			break;
+		}
 		if (try_read_message_block(buf, buf_size, &fresh_mb) == 
 								OP_ERROR) {
 			chosen_mb->state_flag = PROT_STATE_ERROR;
@@ -702,7 +725,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 	}
 
-	/* Solve problem and allocate pipes. */
+	/* Allocate pipes if a solution to the problem has been found. */
 	if (allocate_io_connections(input_fds, n_input_fds, output_fds, 
 						n_output_fds) == OP_ERROR) {
 		chosen_mb->state_flag = PROT_STATE_ERROR;
