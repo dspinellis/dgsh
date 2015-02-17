@@ -73,8 +73,6 @@ struct sgsh_negotiation {
  */
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
-static struct sgsh_node *nodes; /* Nodes on the sgsh negotiation graph. */
-static struct sgsh_node *edges; /* Edges on the sgsh negotiation graph. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 
@@ -170,15 +168,18 @@ write_mb(char *buf, int buf_size)
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
-	struct sgsh_node *p_edges = chosen_mb->edge_array;
-	if ((nodes_size > buf_size) || (edges_size > buf_size))
+	struct sgsh_edge *p_edges = chosen_mb->edge_array;
+	if ((nodes_size > buf_size) || (edges_size > buf_size)) {
+		err(1, "%s size exceeds buffer size.\n", 
+			(nodes_size > buf_size) ? "Nodes" : "Edges");
 		return OP_ERROR;
+	}
 	set_dispatcher();
 
 	/** 
 	 * Prepare and perform message block transmission. 
 	 * Formally invalidate pointers to nodes and edges
-	 * to avoid accidents.
+	 * to avoid accidents on the receiver's side.
 	 */
 	chosen_mb->node_array = NULL;
 	chosen_mb->edge_array = NULL;
@@ -215,7 +216,7 @@ check_negotiation_round(int *negotiation_round, int updated_mb_serial_no)
 
 /* Reallocate message block to fit new node coming in. */
 static int
-add_node(struct sgsh_node *node)
+add_node()
 {
 	int n_nodes = chosen_mb->n_nodes;
 	void *p = realloc(chosen_mb->node_array, n_nodes);
@@ -223,12 +224,12 @@ add_node(struct sgsh_node *node)
 		err(1, "Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
 	} else {
-		chosen_mb->n_nodes = (struct sgsh_node *)p;
-		memcpy(&chosen_mb->node_array[n_nodes], node, 
+		chosen_mb->node_array = (struct sgsh_node *)p;
+		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
 					sizeof(struct sgsh_node));
 		self_dispatcher.index = n_nodes;
-		DPRINTF("Added node %s indexed in position %d in sgsh graph.\n",
-					node->name, self_dispatcher.index);
+		DPRINTF("Added node %s indexed in position %d on sgsh graph.\n",
+					self_node.name, self_dispatcher.index);
 		chosen_mb->n_nodes++;
 	}
 	return OP_SUCCESS;
@@ -289,7 +290,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 
 /* Add new edge coming in. */
 static int
-add_edge(struct sgsh_edge *e)
+add_edge(struct sgsh_edge *edge)
 {
 	int n_edges = chosen_mb->n_edges;
 	void *p = realloc(chosen_mb->edge_array, n_edges);
@@ -315,7 +316,7 @@ try_add_sgsh_edge()
 		struct sgsh_edge new_edge;
 		fill_sgsh_edge(&new_edge);
 		if (lookup_sgsh_edge(&new_edge) == OP_CREATE) {
-			if (add_edge() == OP_ERROR) return OP_ERROR;
+			if (add_edge(&new_edge) == OP_ERROR) return OP_ERROR;
 			DPRINTF("Sgsh graph now has %d edges.\n", 
 							chosen_mb->n_edges);
 			chosen_mb->serial_no++; /* Message block updated. */
@@ -333,10 +334,12 @@ try_add_sgsh_edge()
 static int
 try_add_sgsh_node()
 {
+	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++)
 		if (chosen_mb->node_array[i].pid == self_node.pid) break;
 	if (i == n_nodes) {
+		
 		if (add_node() == OP_ERROR) return OP_ERROR;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		chosen_mb->serial_no++;
@@ -419,8 +422,8 @@ point_io_direction(int current_direction)
 static int
 check_read(int bytes_read, int buf_size, int expected_read_size) {
 	if (bytes_read != expected_read_size) {
-		err(1, "Read %d bytes of message block, expected to read %d.",
-			bytes_read, (int)mb->total_size);
+		err(1, "Read %d bytes of message block, expected to read %d.\n",
+			bytes_read, expected_read_size);
 		return OP_ERROR;
 	}
 	if (bytes_read > buf_size) {
@@ -438,7 +441,7 @@ alloc_copy_edges(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 	int expected_read_size = sizeof(struct sgsh_edge) * mb->n_edges;
 	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR) 
 		return OP_ERROR;
-	mb->edge_array = (struct sgsh_node *)malloc(bytes_read);
+	mb->edge_array = (struct sgsh_edge *)malloc(bytes_read);
 	memcpy(mb->edge_array, buf, bytes_read);
 	return OP_SUCCESS;
 }
@@ -491,6 +494,32 @@ call_read(int fd, char *buf, int buf_size,
 	}
 	return OP_SUCCESS;
 }
+/**
+ * Try to read a chunk of data from either side (stdin or stdout).
+ * This function is agnostic as to what it is reading.
+ * Its job is to manage a read operation.
+ */
+static int
+try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
+{
+	int error_code = -EAGAIN;
+	int stdout_side = 0; /* Placeholder: stdin suffices. */
+	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
+		if ((call_read(STDIN_FILENO, buf, buf_size, stdin_side,
+					bytes_read, &error_code) == OP_QUIT) ||
+		    (call_read(STDOUT_FILENO, buf, buf_size, &stdout_side, 
+					bytes_read, &error_code) == OP_QUIT))
+			break;
+	}
+	if (*bytes_read == -1) {  /* Read failed. */
+	 	err(1, "Reading from %s fd failed with error code %d.", 
+			(stdin_side) ? "stdin " : "stdout ", error_code);
+		return error_code;
+	} else  /* Read succeeded. */
+		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
+			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
+	return OP_SUCCESS;
+}
 
 /**
  * Read in circulated message block from either direction,
@@ -503,35 +532,11 @@ call_read(int fd, char *buf, int buf_size,
  * Returns the fd to write the message block if need be transmitted.
  */
 static int
-try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
-{
-	int error_code = -EAGAIN;
-	int stdout_side = 0; /* Placeholder: stdin suffices. */
-	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
-		if ((call_read(STDIN_FILENO, buf, buf_size, stdin_side,
-					bytes_read, &error_code) == OP_QUIT) ||
-		    (call_read(STDOUT_FILENO, buf, buf_size, &stdout_size, 
-					bytes_read, &error_code) == OP_QUIT))
-			break;
-	}
-	if (*bytes_read == -1) {  /* Read failed. */
-	 	err(1, "Reading from %s fd failed with error code %d.", 
-			(stdin_side) ? err(1, "stdin ") : err(1, "stdout "), 
-								error_code);
-		return error_code;
-	} else  /* Read succeeded. */
-		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
-			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
-	return OP_SUCCESS;
-}
-
-static int
 try_read_message_block(char *buf, int buf_size,
 					struct sgsh_negotiation **fresh_mb)
 {
 	int bytes_read = 0;
 	int stdin_side = 0;
-	int stdout_size = 0;
 	int error_code = 0;
 
 	/* Try read core message block: struct negotiation state fields. */
