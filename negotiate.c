@@ -63,6 +63,15 @@ struct sgsh_negotiation {
 	struct dispatcher_node origin;
 };
 
+/* Holds a node's connections. It contains a piece of the solution. */
+struct sgsh_node_connections {
+	int node_index; /* The subject of the connections. For verification. */
+	int *nodes_incoming; /* Indexes of nodes that provide input. */
+	int n_nodes_incoming;
+	int *nodes_outgoing; /* Indexes of nodes that receive output. */
+	int n_nodes_outgoing;
+};
+
 /**
  * Memory organisation of message block.
  * Message block will be passed around process address spaces.
@@ -76,6 +85,7 @@ static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
 static int mb_is_updated; /* Boolean value that signals an update to the mb. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
+static struct sgsh_node_connections *graph_solution;
 
 /* Reallocate array to edge pointers. */
 static int 
@@ -133,36 +143,101 @@ allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 	return OP_SUCCESS;
 }
 
+/* Free the sgsh graph's solution in face of an error. */
+static void
+free_graph_solution(int node_index) {
+	int i;
+	for (i = 0; i <= node_index; i++) {
+		free(graph_solution[i].nodes_incoming);
+		free(graph_solution[i].nodes_outgoing);
+	}
+	free(graph_solution);
+}
+
+/* Setup incoming and outgoing connections for a node. */
+static int
+setup_io_connections(struct sgsh_node_connections *nc, int node_index, 
+			struct sgsh_edge *edges_incoming, int n_edges_incoming,
+			struct sgsh_edge *edges_outgoing, int n_edges_outgoing)
+{
+	int i;
+	nc->node_index = node_index;
+
+	/* Setup incoming connections. */
+	nc->nodes_incoming = (int *)malloc(sizeof(int) * 
+						n_edges_incoming);
+	if (!nc->nodes_incoming) {
+		err(1, "Memory allocation for node's index %d incoming connections failed.\n", node_index);
+		return OP_ERROR;
+	}
+	nc->n_nodes_incoming = n_edges_incoming;
+	for (i = 0; i < n_edges_incoming; i++) {
+		assert(edges_incoming[i].to == node_index);
+		nc->nodes_incoming[i] = edges_incoming[i].from;
+	}
+
+	/* Setup outgoing connections. */
+	nc->nodes_outgoing = (int *)malloc(sizeof(int) * 
+						n_edges_outgoing);
+	if (!nc->nodes_outgoing) {
+		err(1, "Memory allocation for node's index %d outgoing connections failed.\n", node_index);
+		return OP_ERROR;
+	}
+	nc->n_nodes_outgoing = n_edges_outgoing;
+	for (i = 0; i < n_edges_outgoing; i++) {
+		assert(edges_outgoing[i].from == node_index);
+		nc->nodes_outgoing[i] = edges_outgoing[i].from;
+	}
+	return OP_SUCCESS;
+}
+
 /**
  * This function implements the algorithm that tries to satisfy reported 
  * I/O constraints of tools on an sgsh graph.
  */
 static int
 solve_sgsh_graph() {
-	struct sgsh_edge **self_edges_incoming = NULL;
-	int n_self_edges_incoming = 0;
-	struct sgsh_edge **self_edges_outgoing = NULL;
-	int n_self_edges_outgoing = 0;
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
-
+	int exit_state = OP_SUCCESS;
+	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
+			sizeof(struct sgsh_node_connections) * n_nodes);
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
+		struct sgsh_edge *edges_incoming = NULL;
+		int n_edges_incoming = 0;
+		struct sgsh_edge *edges_outgoing = NULL;
+		int n_edges_outgoing = 0;
 		int node_index = chosen_mb->node_array[i].index;
-		lookup_sgsh_edges(node_index, self_edges_incoming, 
-				&n_self_edges_incoming, self_edges_outgoing, 
-				&n_self_edges_outgoing);
-		if ((n_self_edges_incoming != self_node.requires_channels) ||
-	    	    (n_self_edges_outgoing != self_node.provides_channels)) {
+		if (lookup_sgsh_edges(node_index, &edges_incoming,
+				&n_edges_incoming, &edges_outgoing, 
+				&n_edges_outgoing) == OP_ERROR)
+			exit_state = OP_ERROR;
+		if ((n_edges_incoming != self_node.requires_channels) ||
+	    	    (n_edges_outgoing != self_node.provides_channels)) {
 			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
-			self_node.pid, self_node.requires_channels, 
-			n_self_edges_incoming, self_node.provides_channels, 
-			n_self_edges_outgoing);
-			return OP_ERROR;
+			self_node.pid, self_node.requires_channels,
+			n_edges_incoming, self_node.provides_channels,
+			n_edges_outgoing);
+			exit_state = OP_ERROR;
+		}
+		struct sgsh_node_connections node_connections;
+		if (setup_io_connections(&node_connections, node_index,
+					edges_incoming, n_edges_incoming,
+					edges_outgoing, n_edges_outgoing) ==
+								OP_ERROR)
+			exit_state = OP_ERROR;
+		memcpy(&graph_solution[node_index], &node_connections,
+					sizeof(struct sgsh_node_connections));
+		free(edges_incoming);
+		free(edges_outgoing);
+		if (exit_state == OP_ERROR) {
+			free_graph_solution(node_index);
+			break;
 		}
 	}
-	return OP_SUCCESS;
-}
+	return exit_state;
+} /* memory deallocation when in error state? */
 
 /** 
  * Copy the dispatcher static object that identifies the node
