@@ -1,7 +1,5 @@
 /* TODO: 
- * 3. Algorithm implementation (central): this means that for each node
- *    the indexes of nodes that provide input to that node and the indexes of
- *    nodes that provide output to that node are stored.
+ * 3.5 Pass around the sgsh graph's solution.
  * 4. Fd allocation (p2p).
  * 5. Unit testing.
  */
