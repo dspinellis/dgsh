@@ -241,6 +241,42 @@ solve_sgsh_graph() {
 	return exit_state;
 } /* memory deallocation when in error state? */
 
+static int
+write_graph_solution(char *buf, int buf_size) {
+	int i;
+	int n_nodes = chosen_mb->n_nodes;
+	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
+								n_nodes;
+	if (graph_solution_size > buf_size) {
+		err(1, "Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
+		return OP_ERROR;
+	}
+
+	/* Transmit node connection structures. */
+	memcpy(buf, graph_solution, graph_solution_size);
+	write(self_dispatcher.fd_direction, buf, graph_solution_size);
+	/* We haven't invalidated pointers to arrays of node indices. */
+
+	for (i = 0; i < n_nodes; i++) {
+		struct sgsh_node_connections *nc = &graph_solution[i];
+		int in_nodes_size = sizeof(int) * nc->n_nodes_incoming;
+		int out_nodes_size = sizeof(int) * nc->n_nodes_outgoing;
+		if ((in_nodes_size > buf_size) || (out_nodes_size > buf_size)) {
+			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_nodes_size, out_nodes_size, buf_size);
+			return OP_ERROR;
+		}
+
+		/* Transmit a node's incoming connections. */
+		memcpy(buf, nc->nodes_incoming, in_nodes_size);
+		write(self_dispatcher.fd_direction, buf, in_nodes_size);
+
+		/* Transmit a node's outgoing connections. */
+		memcpy(buf, nc->nodes_outgoing, out_nodes_size);
+		write(self_dispatcher.fd_direction, buf, out_nodes_size);
+	}
+	return OP_SUCCESS;
+}
+
 /** 
  * Copy the dispatcher static object that identifies the node
  * in the message block node array and shows the write point of
@@ -282,13 +318,18 @@ write_mb(char *buf, int buf_size)
 	/* Transmit nodes. */
 	memcpy(buf, p_nodes, nodes_size);
 	write(self_dispatcher.fd_direction, buf, nodes_size);
+	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes. */
 
-	/* Transmit edges. */
-	memcpy(buf, p_edges, edges_size);
-	write(self_dispatcher.fd_direction, buf, edges_size);
+	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
+		/* Transmit edges. */
+		memcpy(buf, p_edges, edges_size);
+		write(self_dispatcher.fd_direction, buf, edges_size);
+		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
+	} else if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+		/* Transmit solution. */
+		write_graph_solution(buf, buf_size);
+	}
 
-	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes */
-	chosen_mb->edge_array = p_edges; /* and edges. */
 	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
