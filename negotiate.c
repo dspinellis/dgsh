@@ -297,14 +297,13 @@ write_mb(char *buf, int buf_size)
 static void
 check_negotiation_round(int *negotiation_round)
 {
-	if (self_node.pid == chosen_mb->initiator_pid) { /* Round end? */
+	if (self_node.pid == chosen_mb->initiator_pid) /* For debugging. */
 		(*negotiation_round)++;
-		if ((*negotiation_round == 3) && (!mb_is_updated)) {
-			chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
-			chosen_mb->serial_no++;
-			mb_is_updated = 1;
-			DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
-		}
+	if (!mb_is_updated) { /* If nothing has changes since the last time: */
+		chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+		chosen_mb->serial_no++;
+		mb_is_updated = 1;
+		DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
 	}
 }
 
