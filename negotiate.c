@@ -129,18 +129,6 @@ lookup_sgsh_edges(int node_index, struct sgsh_edge **edges_incoming,
 	return OP_SUCCESS;
 }
 
-/**
- * Look for a solution to the graph's path requirements for this tool.
- * Allocate pipes to connect this node to other nodes on the graph.
- */
-static int
-allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
-							int *n_output_fds)
-{
-	/* allocate_fds(); */
-	return OP_SUCCESS;
-}
-
 /* Free the sgsh graph's solution in face of an error. */
 static void
 free_graph_solution(int node_index) {
@@ -152,40 +140,56 @@ free_graph_solution(int node_index) {
 	free(graph_solution);
 }
 
+/**
+ * Look for a solution to the graph's path requirements for this tool.
+ * Allocate pipes to connect this node to other nodes on the graph.
+ */
+static int
+allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
+							int *n_output_fds)
+{
+	/* allocate_fds(); */
+	free_graph_solution(chosen_mb->n_nodes); /* if error */
+	return OP_SUCCESS;
+}
+
+/**
+ * Setup a node's connections of specific type:
+ * in (0) or out (1).
+ */
+static int
+setup_connection(int **nc_nodes, int *n_nc_nodes, int type,
+			int node_index, struct sgsh_edge *edges, int n_edges)
+{
+	int i;
+	*nc_nodes = (int *)malloc(sizeof(int) * n_edges);
+	if (!*nc_nodes) {
+		err(1, "Memory allocation for node's index %d %s connections failed.\n", node_index, (type) ? "outgoing" : "incoming");
+		return OP_ERROR;
+	}
+	*n_nc_nodes = n_edges;
+	for (i = 0; i < n_edges; i++) {
+		assert(edges[i].to == node_index);
+		(*nc_nodes)[i] = edges[i].from;
+	}
+	return OP_SUCCESS;
+}
+
 /* Setup incoming and outgoing connections for a node. */
 static int
 setup_io_connections(struct sgsh_node_connections *nc, int node_index, 
 			struct sgsh_edge *edges_incoming, int n_edges_incoming,
 			struct sgsh_edge *edges_outgoing, int n_edges_outgoing)
 {
-	int i;
 	nc->node_index = node_index;
 
-	/* Setup incoming connections. */
-	nc->nodes_incoming = (int *)malloc(sizeof(int) * 
-						n_edges_incoming);
-	if (!nc->nodes_incoming) {
-		err(1, "Memory allocation for node's index %d incoming connections failed.\n", node_index);
+	/* Setup incoming and outgoing connections. */
+	if ((setup_connection(&nc->nodes_incoming, &nc->n_nodes_incoming, 0, 
+			node_index, edges_incoming, n_edges_incoming)) ||
+	   (setup_connection(&nc->nodes_outgoing, &nc->n_nodes_outgoing, 1, 
+			node_index, edges_outgoing, n_edges_outgoing)) ==
+								OP_ERROR)
 		return OP_ERROR;
-	}
-	nc->n_nodes_incoming = n_edges_incoming;
-	for (i = 0; i < n_edges_incoming; i++) {
-		assert(edges_incoming[i].to == node_index);
-		nc->nodes_incoming[i] = edges_incoming[i].from;
-	}
-
-	/* Setup outgoing connections. */
-	nc->nodes_outgoing = (int *)malloc(sizeof(int) * 
-						n_edges_outgoing);
-	if (!nc->nodes_outgoing) {
-		err(1, "Memory allocation for node's index %d outgoing connections failed.\n", node_index);
-		return OP_ERROR;
-	}
-	nc->n_nodes_outgoing = n_edges_outgoing;
-	for (i = 0; i < n_edges_outgoing; i++) {
-		assert(edges_outgoing[i].from == node_index);
-		nc->nodes_outgoing[i] = edges_outgoing[i].from;
-	}
 	return OP_SUCCESS;
 }
 
@@ -806,6 +810,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		chosen_mb->state_flag = PROT_STATE_ERROR;
 		goto exit;
 	}
+	free_graph_solution(chosen_mb->n_nodes);
 
 exit:
 	free_mb(chosen_mb);
