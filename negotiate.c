@@ -153,6 +153,17 @@ allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 	return OP_SUCCESS;
 }
 
+static int
+alloc_node_connections(int **nc_nodes, int n_nodes, int type, int node_index)
+{
+	*nc_nodes = (int *)malloc(sizeof(int) * n_nodes);
+	if (!*nc_nodes) {
+		err(1, "Memory allocation for node's index %d %s connections failed.\n", node_index, (type) ? "outgoing" : "incoming");
+		return OP_ERROR;
+	}
+	return OP_SUCCESS;
+}
+
 /**
  * Setup a node's connections of specific type:
  * in (0) or out (1).
@@ -162,11 +173,8 @@ setup_connection(int **nc_nodes, int *n_nc_nodes, int type,
 			int node_index, struct sgsh_edge *edges, int n_edges)
 {
 	int i;
-	*nc_nodes = (int *)malloc(sizeof(int) * n_edges);
-	if (!*nc_nodes) {
-		err(1, "Memory allocation for node's index %d %s connections failed.\n", node_index, (type) ? "outgoing" : "incoming");
-		return OP_ERROR;
-	}
+	if (alloc_node_connections(nc_nodes, n_edges, type, node_index) == 
+						OP_ERROR) return OP_ERROR;
 	*n_nc_nodes = n_edges;
 	for (i = 0; i < n_edges; i++) {
 		assert(edges[i].to == node_index);
@@ -202,8 +210,14 @@ solve_sgsh_graph() {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int exit_state = OP_SUCCESS;
+	int graph_solution_size = sizeof(struct sgsh_negotiation) * n_nodes;
 	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
-			sizeof(struct sgsh_node_connections) * n_nodes);
+							graph_solution_size);
+	if (!graph_solution) {
+		err(1, "Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		return OP_ERROR;
+	}
+
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_edge *edges_incoming = NULL;
@@ -657,6 +671,65 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 	return OP_SUCCESS;
 }
 
+/* Try read solution to the sgsh negotiation graph. */
+static int
+read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
+{
+	int i;
+	int stdin_side = 0;
+	int stdout_side = 0;
+	int bytes_read = 0;
+	int error_code = OP_SUCCESS;
+	int n_nodes = fresh_mb->n_nodes;
+	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
+								n_nodes;
+	if (graph_solution_size > buf_size) {
+		err(1, "Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
+		return OP_ERROR;
+	}
+	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
+			sizeof(struct sgsh_node_connections) * n_nodes);
+	if (!graph_solution) {
+		err(1, "Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		return OP_ERROR;
+	}
+
+	/* Read node connection structures of the solution. */
+	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+	if (graph_solution_size != bytes_read) return OP_ERROR;
+	else memcpy(graph_solution, buf, bytes_read);
+
+	for (i = 0; i < n_nodes; i++) {
+		struct sgsh_node_connections *nc = &graph_solution[i];
+		int in_nodes_size = sizeof(int) * nc->n_nodes_incoming;
+		int out_nodes_size = sizeof(int) * nc->n_nodes_outgoing;
+		if ((in_nodes_size > buf_size) || (out_nodes_size > buf_size)) {
+			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_nodes_size, out_nodes_size, buf_size);
+			return OP_ERROR;
+		}
+
+		/* Read a node's incoming connections. */
+		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+		if (in_nodes_size != bytes_read) return OP_ERROR;
+		if (alloc_node_connections(&nc->nodes_incoming, 
+			nc->n_nodes_incoming, 0, i) == OP_ERROR)
+			return OP_ERROR;
+		memcpy(nc->nodes_incoming, buf, buf_size);
+
+		/* Read a node's outgoing connections. */
+		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdout_side)) != OP_SUCCESS) return error_code;
+		if (out_nodes_size != bytes_read) return OP_ERROR;
+		if (alloc_node_connections(&nc->nodes_outgoing, 
+			nc->n_nodes_outgoing, 0, i) == OP_ERROR)
+			return OP_ERROR;
+		memcpy(nc->nodes_outgoing, buf, buf_size);
+	}
+	return OP_SUCCESS;
+}
+
 /**
  * Read in circulated message block from either direction,
  * that is, input or output side. This capability
@@ -689,10 +762,21 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 		
 	/* Try read sgsh negotiation graph edges. */
-	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
+		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
-	if (alloc_copy_edges(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
-		return OP_ERROR;
+		if (alloc_copy_edges(*fresh_mb, buf, bytes_read, buf_size) == 
+						OP_ERROR) return OP_ERROR;
+	} else if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+		/** 
+		 * Try read solution. If fresh_mb is not the chosen_mb
+		 * we knew so far, it will become the chosen, because
+		 * negotiation has ended and there is a solution 
+		 * accompanying it.
+                 */
+		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
+			return OP_ERROR;
+	}
 	return OP_SUCCESS;
 }
 
