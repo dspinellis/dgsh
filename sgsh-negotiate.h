@@ -1,6 +1,6 @@
 #define PROT_STATE_NEGOTIATION 1
 #define PROT_STATE_NEGOTIATION_END 2
-#define PROT_STATE_RUN 3
+#define PROT_STATE_SOLUTION_SHARE 3
 #define PROT_STATE_ERROR 4
 
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in

@@ -129,7 +129,10 @@ lookup_sgsh_edges(int node_index, struct sgsh_edge **edges_incoming,
 	return OP_SUCCESS;
 }
 
-/* Free the sgsh graph's solution in face of an error. */
+/**
+ * Free the sgsh graph's solution in face of an error.
+ * node_index: the last node we setup conenctions before error.
+ */
 static void
 free_graph_solution(int node_index) {
 	int i;
@@ -339,7 +342,7 @@ write_mb(char *buf, int buf_size)
 		memcpy(buf, p_edges, edges_size);
 		write(self_dispatcher.fd_direction, buf, edges_size);
 		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
-	} else if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
 		write_graph_solution(buf, buf_size);
 	}
@@ -348,17 +351,19 @@ write_mb(char *buf, int buf_size)
 	return OP_SUCCESS;
 }
 
-/* Check whether negotiation phase should end. */
+/* If negotiation is still going, Check whether it should end. */
 static void
 check_negotiation_round(int *negotiation_round)
 {
-	if (self_node.pid == chosen_mb->initiator_pid) /* For debugging. */
-		(*negotiation_round)++;
-	if (!mb_is_updated) { /* If nothing has changes since the last time: */
-		chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
-		chosen_mb->serial_no++;
-		mb_is_updated = 1;
-		DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
+	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
+		if (self_node.pid == chosen_mb->initiator_pid) /* Debug. */
+			(*negotiation_round)++;
+		if (!mb_is_updated) { /* If state same as last time: */
+			chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+			chosen_mb->serial_no++;
+			mb_is_updated = 1;
+			DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
+		}
 	}
 }
 
@@ -767,7 +772,7 @@ try_read_message_block(char *buf, int buf_size,
 			&stdin_side)) != OP_SUCCESS) return error_code;
 		if (alloc_copy_edges(*fresh_mb, buf, bytes_read, buf_size) == 
 						OP_ERROR) return OP_ERROR;
-	} else if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/** 
 		 * Try read solution. If fresh_mb is not the chosen_mb
 		 * we knew so far, it will become the chosen, because
@@ -898,29 +903,39 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	}
 	
 	/* Perform negotiation rounds. */
-	while (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
+	while (1) {
 		check_negotiation_round(&negotiation_round);
-		if (should_transmit_mb) {
-			if (write_mb(buf, buf_size) == OP_ERROR) {
-				chosen_mb->state_flag = PROT_STATE_ERROR;
-				goto exit;
-			}
-		}
 		/**
-		 * Did spread the word, now try to solve the I/O
-		 * constraint problem, and leave negotiation. */
+		 * If all I/O constraints have been contributed,
+		 * try to solve the I/O constraint problem, 
+		 * then spread the word, and leave negotiation.
+		 */
 		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
 			if (solve_sgsh_graph() == OP_ERROR) {
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
 			}
-			break;
+			chosen_mb->state_flag = PROT_STATE_SOLUTION_SHARE;
 		}
+
+		/* Write message block et al. */
+		if (should_transmit_mb) {
+			if (write_mb(buf, buf_size) == OP_ERROR) {
+				chosen_mb->state_flag = PROT_STATE_ERROR;
+				goto exit;
+			}
+			if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
+				break;
+		}
+
+		/* Read message block et al. */
 		if (try_read_message_block(buf, buf_size, &fresh_mb) == 
 								OP_ERROR) {
 			chosen_mb->state_flag = PROT_STATE_ERROR;
 			goto exit;
 		}
+
+		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) == 
 								OP_ERROR) {
 			chosen_mb->state_flag = PROT_STATE_ERROR;
