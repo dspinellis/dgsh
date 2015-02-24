@@ -258,6 +258,16 @@ solve_sgsh_graph() {
 	return exit_state;
 } /* memory deallocation when in error state? */
 
+/* Transmit file descriptors that will pipe this
+ * tool's output to another tool.
+ */
+static int
+alloc_write_output_fds()
+{
+	return OP_SUCCESS;
+}
+
+/* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static int
 write_graph_solution(char *buf, int buf_size) {
 	int i;
@@ -344,7 +354,9 @@ write_mb(char *buf, int buf_size)
 		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
-		write_graph_solution(buf, buf_size);
+		if (write_graph_solution(buf, buf_size) == OP_ERROR)
+			return OP_ERROR;
+		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
 	}
 
 	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
@@ -676,6 +688,13 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 	return OP_SUCCESS;
 }
 
+/* Read file descriptors piping input from another tool in the sgsh graph. */
+static int
+read_input_fds()
+{
+	return OP_SUCCESS;
+}
+
 /* Try read solution to the sgsh negotiation graph. */
 static int
 read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
@@ -781,6 +800,7 @@ try_read_message_block(char *buf, int buf_size,
                  */
 		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
 			return OP_ERROR;
+		if (read_input_fds() == OP_ERROR) return OP_ERROR;
 	}
 	return OP_SUCCESS;
 }
