@@ -1,7 +1,14 @@
 /* TODO: 
- * 3.5 Pass around the sgsh graph's solution.
- * 4. Fd allocation (p2p).
+ * 4. Fd allocation/writing and reading (p2p).
  * 5. Unit testing.
+ * Thinking aloud:
+ * - I/O constraint satisfaction is more complex than what is
+ * currently implemented,
+ * - watch out when a tool should exit the negotiation loop: it has to have
+ * gathered all input pipes required. How many rounds could this take at the
+ * worst case?
+ * - set up field "instances" of struct sgsh_edge throughout the code.
+ * 
  */
 
 /* Placeholder: LICENSE. */
@@ -35,6 +42,7 @@ struct dispatcher_node {
 struct sgsh_edge {
 	int from; /* Index of node on the graph where data comes from (out). */
 	int to; /* Index of node on the graph that receives the data (in). */
+	int instances; /* Number of instances of an edge. */
 };
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
@@ -99,6 +107,27 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
 	return OP_SUCCESS;
 }
 
+/**
+ *
+ */
+static int
+match_constraint(int edge_pair_node_index, int *yet_free_channels_of_this_node,
+		struct sgsh_edge **edges, int n_edges, int edge_incoming)
+{
+	int channel_constraint;
+	if (edge_incoming) /* Outgoing for the pair node of the edge. */
+		channel_constraint = chosen_mb->node_array[edge_pair_node_index].channels_provided;
+	else
+		channel_constraint = chosen_mb->node_array[edge_pair_node_index].channels_required;
+	if (*yet_free_channels_of_this_node >= channel_constraint) {
+		*yet_free_channels_of_this_node -= channel_constraint;
+	else /* Start over and try to find solution. */
+		if (try_compromise(edge_pair_node_index, 
+				yet_free_channels_of_this_node, 
+				edges, n_edges) == OP_ERROR) return OP_ERROR;
+	return OP_SUCCESS;
+}
+
 /** 
  * Lookup this tool's edges and store pointers to them in order
  * to allow the allocation of connections.
@@ -110,16 +139,24 @@ lookup_sgsh_edges(int node_index, struct sgsh_edge **edges_incoming,
 						int *n_edges_outgoing)
 {
 	int n_edges = chosen_mb->n_edges;
+	int free_in_edges = self_node.requires_channels;
+	int free_out_edges = self_node.provides_channels;
 	int i;
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
 		if (edge->from == node_index) {
+			if (match_constraint(edge->to, &free_out_edges, 
+				edges_outgoing, *n_edges_outgoing, 0) == OP_ERROR)
+				return OP_ERROR;
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(&edges_outgoing, 
 					*n_edges_outgoing) == OP_ERROR)
 				return OP_ERROR;
 		}
 		if (edge->to == node_index) {
+			if (match_constraint(edge->from, &free_in_edges, 
+				edges_incoming, *n_edges_incoming, 1) == OP_ERROR)
+				return OP_ERROR;
 			(*n_edges_incoming)++;
 			if (reallocate_edge_pointer_array(&edges_incoming, 
 					*n_edges_incoming) == OP_ERROR)
@@ -144,15 +181,13 @@ free_graph_solution(int node_index) {
 }
 
 /**
- * Look for a solution to the graph's path requirements for this tool.
- * Allocate pipes to connect this node to other nodes on the graph.
+ * Present the pipes to connect this node to other nodes on the graph.
  */
 static int
-allocate_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
+establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
 							int *n_output_fds)
 {
-	/* allocate_fds(); */
-	free_graph_solution(chosen_mb->n_nodes); /* if error */
+	/* Constructor-like assignment. */
 	return OP_SUCCESS;
 }
 
@@ -232,6 +267,7 @@ solve_sgsh_graph() {
 				&n_edges_incoming, &edges_outgoing, 
 				&n_edges_outgoing) == OP_ERROR)
 			exit_state = OP_ERROR;
+		/* Requires attention. */
 		if ((n_edges_incoming != self_node.requires_channels) ||
 	    	    (n_edges_outgoing != self_node.provides_channels)) {
 			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
@@ -264,6 +300,16 @@ solve_sgsh_graph() {
 static int
 alloc_write_output_fds()
 {
+	struct sgsh_node_connections *this_nc = 
+					&graph_solution[self_node.index];
+	int i;
+	for (i = 0; i < this_nc->n_nodes_outgoing; i++) {
+		sendmsg(destination_sock_fd, msg, flags);
+// In msg you hide the message you want to send.
+// How do we know who to ping? Socket pairs have been established by the shell.
+//this_nc->nodes_outgoing[i]
+	}
+	free_graph_solution(chosen_mb->n_nodes); /* if error */
 	return OP_SUCCESS;
 }
 
@@ -963,8 +1009,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 	}
 
-	/* Allocate pipes if a solution to the problem has been found. */
-	if (allocate_io_connections(input_fds, n_input_fds, output_fds, 
+	if (establish_io_connections(input_fds, n_input_fds, output_fds, 
 						n_output_fds) == OP_ERROR) {
 		chosen_mb->state_flag = PROT_STATE_ERROR;
 		goto exit;
