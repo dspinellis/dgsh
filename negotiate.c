@@ -8,6 +8,7 @@
  * gathered all input pipes required. How many rounds could this take at the
  * worst case?
  * - set up field "instances" of struct sgsh_edge throughout the code.
+ * - assert edge constraint, i.e. channels required, provided, is rational.
  * 
  */
 
@@ -111,20 +112,124 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
  *
  */
 static int
-match_constraint(int edge_pair_node_index, int *yet_free_channels_of_this_node,
-		struct sgsh_edge **edges, int n_edges, int edge_incoming)
+allocate_edge_instances(struct sgsh_edge **edges, int n_edges,
+					int this_node_channels,
+					int is_edge_incoming,
+					int n_edges_unlimited_constraint,
+					int instances_to_each_unlimited,
+					int remaining_free_channels,
+					int total_instances)
 {
-	int channel_constraint;
-	if (edge_incoming) /* Outgoing for the pair node of the edge. */
-		channel_constraint = chosen_mb->node_array[edge_pair_node_index].channels_provided;
-	else
-		channel_constraint = chosen_mb->node_array[edge_pair_node_index].channels_required;
-	if (*yet_free_channels_of_this_node >= channel_constraint) {
-		*yet_free_channels_of_this_node -= channel_constraint;
-	else /* Start over and try to find solution. */
-		if (try_compromise(edge_pair_node_index, 
-				yet_free_channels_of_this_node, 
-				edges, n_edges) == OP_ERROR) return OP_ERROR;
+	int i;
+	int count_channels = 0;
+	int *edge_instances;
+	for (i = 0; i < n_edges; i++) {
+		/* Outgoing for the pair node of the edge. */
+		if (is_edge_incoming) {
+			edge_instances = &chosen_mb->node_array[edges[i]]->instances;
+			edge_constraint = chosen_mb->node_array[edges[i]]->from.channels_provided;
+		else {
+			edge_instances = &chosen_mb->node_array[edges[i]]->instances;
+			edge_constraint = chosen_mb->node_array[edges[i]]->to.channels_required;
+		}
+		if (edge_constraint == -1) {
+			*edge_instances = instances_to_each_unlimited;
+			if (remaining_free_channels > 0) {
+				*edge_instances++;
+				remaining_free_channels--;
+			}
+		} else
+			*edge_instances = edge_constraint;
+		count_channels += *edge_instances; 
+	}
+
+	/* Verify that the solution and distribution of channels check out. */
+	if (this_node_channels == -1) assert(total_instances == count_channels);
+	else assert(this_node_channels == total_instances == count_channels);
+
+	return OP_SUCCESS;
+}
+
+/**
+ *
+ */
+static int
+eval_constraints(int this_node_channels, int total_edge_constraints,
+					int *n_edges_unlimited_constraint,
+					int *instances_to_each_unlimited,
+					int *remaining_free_channels,
+					int *instances)
+{
+	if (this_node_channels == -1) { /* Unlimited capacity. */
+		*instances = total_edge_constraints;
+		if (n_edges_unlimited_constraint > 0) { /* (* 5): arbitrary. */
+			*instances_to_each_unlimited = 5;
+			*instances += n_edges_unlimited_constraint * 
+						instances_to_each_unlimited;
+			
+	} else {
+		if (this_node_channels < total_edge_constraints + 
+						n_edges_unlimited_constraint)
+			return OP_ERROR;
+		else if (this_node_channels == total_edge_constraints + 
+						n_edges_unlimited_constraint) {
+			*instances_to_each_unlimited = 1;
+			*instances = this_node_channels;
+		} else { /* Dispense the remaining channels to edges that
+			  * can take unlimited capacity.
+			  */
+			*instances_to_each_unlimited = (this_node_channels -
+							total_edge_constraints)/
+						n_edges_unlimited_constraint;
+			*remaining_free_channels = (this_node_channels -
+							total_edge_constraints)%
+						n_edges_unlimited_constraint;
+			*instances = this_node_channels;
+		}
+	}
+	return OP_SUCCESS;
+}
+
+/**
+ *
+ */
+static int
+satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
+						int n_edges, int is_edge_incoming)
+{
+	int i;
+	int total_edge_constraints;
+	int n_edges_unlimited_constraint = 0;
+	int instances_to_each_unlimited = 0;
+	int remaining_free_channels = 0;
+	int instances;
+
+	/* Aggregate the constraints for the node's channel. */
+	for (i = 0; i < n_edges; i++) {
+		int edge_constraint;
+		if (is_edge_incoming) /* Outgoing for the pair node of the edge.*/
+			edge_constraint = chosen_mb->node_array[edges[i]]->from.channels_provided;
+		else
+			edge_constraint = chosen_mb->node_array[edges[i]]->to.channels_required;
+		if (edge_constraint != -1) 
+			total_edge_constraints += edge_constraint;
+		else
+			n_edges_unlimited_constraint += 1;
+	}
+
+	/* Try to find solution to the channel. */
+	if (eval_constraints(this_node_channels, total_edge_constraints,
+			&n_edges_unlimited_constraint,
+			&instances_to_each_unlimited, &remaining_free_channels,
+						&instances) == OP_ERROR)
+		return OP_ERROR;
+
+	/* Allocate the total number of instances to each edge. */
+	if (allocate_edge_instances(edges, n_edges, this_node_channels, 
+			is_edge_incoming, n_edges_unlimited_constraint,
+			instances_to_each_unlimited, remaining_free_channels, 
+						instances) == OP_ERROR)
+		return OP_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -133,36 +238,43 @@ match_constraint(int edge_pair_node_index, int *yet_free_channels_of_this_node,
  * to allow the allocation of connections.
  */
 static int 
-lookup_sgsh_edges(int node_index, struct sgsh_edge **edges_incoming,
+dry_match_io_constraints(int node_index, struct sgsh_edge **edges_incoming,
 						int *n_edges_incoming,
 					struct sgsh_edge **edges_outgoing,
 						int *n_edges_outgoing)
 {
 	int n_edges = chosen_mb->n_edges;
-	int free_in_edges = self_node.requires_channels;
-	int free_out_edges = self_node.provides_channels;
+	int n_free_in_channels = self_node.requires_channels;
+	int n_free_out_channels = self_node.provides_channels;
 	int i;
+	
+	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
 		if (edge->from == node_index) {
-			if (match_constraint(edge->to, &free_out_edges, 
-				edges_outgoing, *n_edges_outgoing, 0) == OP_ERROR)
-				return OP_ERROR;
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(&edges_outgoing, 
 					*n_edges_outgoing) == OP_ERROR)
 				return OP_ERROR;
+			edges_outgoing[*n_edges_outgoing - 1] = edge->to;
 		}
 		if (edge->to == node_index) {
-			if (match_constraint(edge->from, &free_in_edges, 
-				edges_incoming, *n_edges_incoming, 1) == OP_ERROR)
-				return OP_ERROR;
 			(*n_edges_incoming)++;
 			if (reallocate_edge_pointer_array(&edges_incoming, 
 					*n_edges_incoming) == OP_ERROR)
 				return OP_ERROR;
+			edges_incoming[*n_edges_incoming - 1] = edge->from;
 		}
 	}
+
+	/* Try satisfy the input/output constraints collectively. */
+	if (satisfy_io_constraints(&n_free_out_channels, edges_outgoing, 
+						*n_edges_outgoing, 0) == OP_ERROR)
+				return OP_ERROR;
+	if (satisfy_io_constraints(&n_free_in_channels, edges_incoming, 
+						*n_edges_incoming, 1) == OP_ERROR)
+				return OP_ERROR;
+
 	return OP_SUCCESS;
 }
 
@@ -263,7 +375,7 @@ solve_sgsh_graph() {
 		struct sgsh_edge *edges_outgoing = NULL;
 		int n_edges_outgoing = 0;
 		int node_index = chosen_mb->node_array[i].index;
-		if (lookup_sgsh_edges(node_index, &edges_incoming,
+		if (dry_match_io_constraints(node_index, &edges_incoming,
 				&n_edges_incoming, &edges_outgoing, 
 				&n_edges_outgoing) == OP_ERROR)
 			exit_state = OP_ERROR;
