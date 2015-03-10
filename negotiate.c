@@ -9,6 +9,8 @@
  * worst case?
  * - set up field "instances" of struct sgsh_edge throughout the code.
  * - assert edge constraint, i.e. channels required, provided, is rational.
+ * - the negotiation loop termination should change to when a tool has
+ * completed writing its output fds and reading its input fds.
  * 
  */
 
@@ -109,10 +111,11 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
 }
 
 /**
- *
+ * Assign a node's incoming and outgoing edge instances according to
+ * satisfied constraints (see dry_match_constraints()). 
  */
 static int
-allocate_edge_instances(struct sgsh_edge **edges, int n_edges,
+assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 					int this_node_channels,
 					int is_edge_incoming,
 					int n_edges_unlimited_constraint,
@@ -123,19 +126,22 @@ allocate_edge_instances(struct sgsh_edge **edges, int n_edges,
 	int i;
 	int count_channels = 0;
 	int *edge_instances;
+	int edge_constraint = 0;
+
 	for (i = 0; i < n_edges; i++) {
+		/* Instances needed for flexible constraints (-1). */
+		edge_instances = &edges[i]->instances;
+
 		/* Outgoing for the pair node of the edge. */
-		if (is_edge_incoming) {
-			edge_instances = &chosen_mb->node_array[edges[i]]->instances;
-			edge_constraint = chosen_mb->node_array[edges[i]]->from.channels_provided;
-		else {
-			edge_instances = &chosen_mb->node_array[edges[i]]->instances;
-			edge_constraint = chosen_mb->node_array[edges[i]]->to.channels_required;
-		}
+		if (is_edge_incoming)
+			edge_constraint = chosen_mb->node_array[edges[i]->from].provides_channels;
+		else
+			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
+
 		if (edge_constraint == -1) {
 			*edge_instances = instances_to_each_unlimited;
 			if (remaining_free_channels > 0) {
-				*edge_instances++;
+				(*edge_instances)++;
 				remaining_free_channels--;
 			}
 		} else
@@ -145,13 +151,16 @@ allocate_edge_instances(struct sgsh_edge **edges, int n_edges,
 
 	/* Verify that the solution and distribution of channels check out. */
 	if (this_node_channels == -1) assert(total_instances == count_channels);
-	else assert(this_node_channels == total_instances == count_channels);
-
+	else {
+		assert(this_node_channels == total_instances);
+		assert(total_instances == count_channels);
+	}
 	return OP_SUCCESS;
 }
 
 /**
- *
+ * Evaluate a node's channel constraint against the pair nodes'
+ * corresponding channel constraints.
  */
 static int
 eval_constraints(int this_node_channels, int total_edge_constraints,
@@ -164,15 +173,15 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 		*instances = total_edge_constraints;
 		if (n_edges_unlimited_constraint > 0) { /* (* 5): arbitrary. */
 			*instances_to_each_unlimited = 5;
-			*instances += n_edges_unlimited_constraint * 
-						instances_to_each_unlimited;
-			
+			*instances += (*n_edges_unlimited_constraint) * 
+						(*instances_to_each_unlimited);
+		}	
 	} else {
 		if (this_node_channels < total_edge_constraints + 
-						n_edges_unlimited_constraint)
+						(*n_edges_unlimited_constraint))
 			return OP_ERROR;
 		else if (this_node_channels == total_edge_constraints + 
-						n_edges_unlimited_constraint) {
+						(*n_edges_unlimited_constraint)) {
 			*instances_to_each_unlimited = 1;
 			*instances = this_node_channels;
 		} else { /* Dispense the remaining channels to edges that
@@ -180,10 +189,10 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 			  */
 			*instances_to_each_unlimited = (this_node_channels -
 							total_edge_constraints)/
-						n_edges_unlimited_constraint;
+						(*n_edges_unlimited_constraint);
 			*remaining_free_channels = (this_node_channels -
 							total_edge_constraints)%
-						n_edges_unlimited_constraint;
+						(*n_edges_unlimited_constraint);
 			*instances = this_node_channels;
 		}
 	}
@@ -191,7 +200,11 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 }
 
 /**
- *
+ * Gather the constraints on a node's input or output channel
+ * and then try to find a solution that respects both the node's
+ * channel constraint and the pair nodes' corresponding channel constraints.
+ * If a solution is found, allocate edge instances to each edge that
+ * includes the node's channel (has to do with the flexible constraint).
  */
 static int
 satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
@@ -208,9 +221,9 @@ satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
 	for (i = 0; i < n_edges; i++) {
 		int edge_constraint;
 		if (is_edge_incoming) /* Outgoing for the pair node of the edge.*/
-			edge_constraint = chosen_mb->node_array[edges[i]]->from.channels_provided;
+			edge_constraint = chosen_mb->node_array[edges[i]->from].provides_channels;
 		else
-			edge_constraint = chosen_mb->node_array[edges[i]]->to.channels_required;
+			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
 		if (edge_constraint != -1) 
 			total_edge_constraints += edge_constraint;
 		else
@@ -224,8 +237,11 @@ satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
 						&instances) == OP_ERROR)
 		return OP_ERROR;
 
-	/* Allocate the total number of instances to each edge. */
-	if (allocate_edge_instances(edges, n_edges, this_node_channels, 
+	/* Assign the total number of instances to each edge. 
+	 * This is necessary to turn any flexible constraints into
+	 * edge instances.
+	 */
+	if (assign_edge_instances(edges, n_edges, this_node_channels, 
 			is_edge_incoming, n_edges_unlimited_constraint,
 			instances_to_each_unlimited, remaining_free_channels, 
 						instances) == OP_ERROR)
@@ -235,7 +251,9 @@ satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
 
 /** 
  * Lookup this tool's edges and store pointers to them in order
- * to allow the allocation of connections.
+ * to then allow the evaluation of constraints for node's at node_index
+ * input and output channels.
+ * 
  */
 static int 
 dry_match_io_constraints(int node_index, struct sgsh_edge **edges_incoming,
@@ -256,22 +274,22 @@ dry_match_io_constraints(int node_index, struct sgsh_edge **edges_incoming,
 			if (reallocate_edge_pointer_array(&edges_outgoing, 
 					*n_edges_outgoing) == OP_ERROR)
 				return OP_ERROR;
-			edges_outgoing[*n_edges_outgoing - 1] = edge->to;
+			edges_outgoing[*n_edges_outgoing - 1] = edge;
 		}
 		if (edge->to == node_index) {
 			(*n_edges_incoming)++;
 			if (reallocate_edge_pointer_array(&edges_incoming, 
 					*n_edges_incoming) == OP_ERROR)
 				return OP_ERROR;
-			edges_incoming[*n_edges_incoming - 1] = edge->from;
+			edges_incoming[*n_edges_incoming - 1] = edge;
 		}
 	}
 
 	/* Try satisfy the input/output constraints collectively. */
-	if (satisfy_io_constraints(&n_free_out_channels, edges_outgoing, 
+	if (satisfy_io_constraints(n_free_out_channels, edges_outgoing, 
 						*n_edges_outgoing, 0) == OP_ERROR)
 				return OP_ERROR;
-	if (satisfy_io_constraints(&n_free_in_channels, edges_incoming, 
+	if (satisfy_io_constraints(n_free_in_channels, edges_incoming, 
 						*n_edges_incoming, 1) == OP_ERROR)
 				return OP_ERROR;
 
@@ -303,6 +321,10 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 	return OP_SUCCESS;
 }
 
+/**
+ * Allocate node indexes to store a node's (at node_index)
+ * node outgoing or incoming connections (nc_nodes).
+ */
 static int
 alloc_node_connections(int **nc_nodes, int n_nodes, int type, int node_index)
 {
@@ -327,8 +349,13 @@ setup_connection(int **nc_nodes, int *n_nc_nodes, int type,
 						OP_ERROR) return OP_ERROR;
 	*n_nc_nodes = n_edges;
 	for (i = 0; i < n_edges; i++) {
-		assert(edges[i].to == node_index);
-		(*nc_nodes)[i] = edges[i].from;
+		if (type) { /* Outgoing edges. */
+			assert(edges[i].from == node_index);
+			(*nc_nodes)[i] = edges[i].to;
+		} else {    /* Incoming edges. */
+			assert(edges[i].to == node_index);
+			(*nc_nodes)[i] = edges[i].from;
+		}
 	}
 	return OP_SUCCESS;
 }
@@ -370,25 +397,28 @@ solve_sgsh_graph() {
 
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
+		struct sgsh_node_connections node_connections;
 		struct sgsh_edge *edges_incoming = NULL;
 		int n_edges_incoming = 0;
 		struct sgsh_edge *edges_outgoing = NULL;
 		int n_edges_outgoing = 0;
 		int node_index = chosen_mb->node_array[i].index;
+
+		/* Find and store pointers to node's at node_index edges.
+		 * Try to solve the I/O channel constraint problem.
+		 * Assign instances to each edge.
+		 */
 		if (dry_match_io_constraints(node_index, &edges_incoming,
 				&n_edges_incoming, &edges_outgoing, 
-				&n_edges_outgoing) == OP_ERROR)
-			exit_state = OP_ERROR;
-		/* Requires attention. */
-		if ((n_edges_incoming != self_node.requires_channels) ||
-	    	    (n_edges_outgoing != self_node.provides_channels)) {
+				&n_edges_outgoing) == OP_ERROR) {
 			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
-			self_node.pid, self_node.requires_channels,
-			n_edges_incoming, self_node.provides_channels,
-			n_edges_outgoing);
+				self_node.pid, self_node.requires_channels,
+				n_edges_incoming, self_node.provides_channels,
+				n_edges_outgoing);
 			exit_state = OP_ERROR;
 		}
-		struct sgsh_node_connections node_connections;
+
+		/* Setup the I/O connections of node at node_index. */
 		if (setup_io_connections(&node_connections, node_index,
 					edges_incoming, n_edges_incoming,
 					edges_outgoing, n_edges_outgoing) ==
@@ -414,13 +444,13 @@ alloc_write_output_fds()
 {
 	struct sgsh_node_connections *this_nc = 
 					&graph_solution[self_node.index];
-	int i;
-	for (i = 0; i < this_nc->n_nodes_outgoing; i++) {
-		sendmsg(destination_sock_fd, msg, flags);
+//	int i;
+//	for (i = 0; i < this_nc->n_nodes_outgoing; i++) {
+//		sendmsg(destination_sock_fd, msg, flags);
 // In msg you hide the message you want to send.
 // How do we know who to ping? Socket pairs have been established by the shell.
 //this_nc->nodes_outgoing[i]
-	}
+//	}
 	free_graph_solution(chosen_mb->n_nodes); /* if error */
 	return OP_SUCCESS;
 }
