@@ -493,6 +493,7 @@ alloc_write_output_fds()
 
 			/* Send the message. */
 			if (sendmsg(get_next_sd(total_sd_descriptors), &msg, 0) < 0) {
+				err(1, "sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
@@ -929,7 +930,44 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 static int
 read_input_fds()
 {
-	return OP_SUCCESS;
+	/** 
+	 * A node's connections are located at the same position
+         * as the node in the node array.
+	 */
+	struct sgsh_node_connections *this_nc = 
+					&graph_solution[self_node.index];
+	assert(this_nc->node_index == self_node.index);
+	int i;
+	int total_sd_descriptors = 0;
+	int re = OP_SUCCESS;
+
+	for (i = 0; i < this_nc->n_edges_incoming; i++) {
+		int k;
+		/**
+		 * Due to channel constraint flexibility, each edge can have more
+		 * than one instances.
+		 */
+		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
+			struct msghdr msg;
+			int read_fd;
+			memset(&msg, 0, sizeof(struct msghdr));
+
+			msg.msg_control = (char *)&read_fd;
+			msg.msg_controllen = sizeof(read_fd);
+			close(read_fd);
+
+			DPRINTF("Waiting to receive pipe fd.\n");
+			if (recvmsg(get_next_sd(total_sd_descriptors), &msg, 0) < 0) {
+				err(1, "revcmsg() failed.\n");
+				re = OP_ERROR;
+				break;
+			}
+			total_sd_descriptors++;
+		}
+		if (re == OP_ERROR) break;
+	}
+	if (re == OP_ERROR) free_graph_solution(chosen_mb->n_nodes);
+	return re;
 }
 
 /* Try read solution to the sgsh negotiation graph. */
