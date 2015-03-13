@@ -22,6 +22,7 @@
 #include <stdio.h> /* fprintf() in DPRINTF() */
 #include <stdlib.h> /* getenv(), errno */
 #include <string.h> /* memcpy() */
+#include <sys/socket.h> /* sendmsg() */
 #include <unistd.h> /* getpid(), getpagesize(), 
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
@@ -433,6 +434,17 @@ solve_sgsh_graph() {
 	return exit_state;
 } /* memory deallocation when in error state? */
 
+/* Return the appropriate socket descriptor to use. */
+static int
+get_next_sd(int counted_sd_descriptors)
+{
+	switch (counted_sd_descriptors) {
+		case 1: return 1; /* STDOUT fd: OK to use. */
+		case 2: return 3; /* STDERR fd: We shouldn't use. */
+		default: return counted_sd_descriptors + 1;
+	}
+}
+
 /* Transmit file descriptors that will pipe this
  * tool's output to another tool.
  */
@@ -446,21 +458,50 @@ alloc_write_output_fds()
 	struct sgsh_node_connections *this_nc = 
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
-
-
 	int i;
-	for (i = 0; i < this_nc->n_edges_outgoing; i++)
-		// Instances per edge?
-		// Create pipe.
-		// Send fd.
+	int total_sd_descriptors = 0;
+	int re = OP_SUCCESS;
 
-//		sendmsg(destination_sock_fd, msg, flags);
-// In msg you hide the message you want to send.
-// How do we know who to ping? Socket pairs have been established by the shell.
-//this_nc->nodes_outgoing[i]
-//	}
-	free_graph_solution(chosen_mb->n_nodes); /* if error */
-	return OP_SUCCESS;
+	/**
+	 * Create a pipe for each instance of each outgoing edge connection.
+	 * Inject the pipe read side in the control data.
+	 * Send each pipe fd as a message to a socket descriptor that has been
+	 * set up by the shell to support the sgsh negotiation phase.
+	 * We use the following convention for selecting the socket descriptor
+	 * to send the message to: 1, 3, 4, 5, 6, 7, ... are the socket descriptors
+	 * we send to (in this order).
+	 */
+	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
+		int k;
+		/**
+		 * Due to channel constraint flexibility, each edge can have more
+		 * than one instances.
+		 */
+		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++) {
+			struct msghdr msg;
+			int fd[2];
+			memset(&msg, 0, sizeof(struct msghdr));
+
+			/* Create pipe, inject the read side to the msg control
+			 * data and close the read side to let the recipient
+			 * process handle it.
+			 */
+			pipe(fd);
+			msg.msg_control = (char *)&fd[0];
+			msg.msg_controllen = sizeof(fd[0]);
+			close(fd[0]);
+
+			/* Send the message. */
+			if (sendmsg(get_next_sd(total_sd_descriptors), &msg, 0) < 0) {
+				re = OP_ERROR;
+				break;
+			}
+			total_sd_descriptors++;
+		}
+		if (re == OP_ERROR) break;
+	}
+	if (re == OP_ERROR) free_graph_solution(chosen_mb->n_nodes);
+	return re;
 }
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
