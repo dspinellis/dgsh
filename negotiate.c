@@ -75,10 +75,10 @@ struct sgsh_negotiation {
 /* Holds a node's connections. It contains a piece of the solution. */
 struct sgsh_node_connections {
 	int node_index; /* The subject of the connections. For verification. */
-	int *nodes_incoming; /* Indexes of nodes that provide input. */
-	int n_nodes_incoming;
-	int *nodes_outgoing; /* Indexes of nodes that receive output. */
-	int n_nodes_outgoing;
+	struct sgsh_edge *edges_incoming; /* Array of edges through which other nodes provide input to node at node_index. */
+	int n_edges_incoming;
+	struct sgsh_edge *edges_outgoing; /* Array of edges through which a node provides output to other nodes. */
+	int n_edges_outgoing;
 };
 
 /**
@@ -95,6 +95,58 @@ static int mb_is_updated; /* Boolean value that signals an update to the mb. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 static struct sgsh_node_connections *graph_solution;
+
+/**
+ * Allocate node indexes to store a node's (at node_index)
+ * node outgoing or incoming connections (nc_edges).
+ */
+static int
+alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
+								int node_index)
+{
+       *nc_edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) * 
+								nc_n_edges);
+       if (!*nc_edges) {
+               err(1, "Memory allocation for node's index %d %s connections \
+failed.\n", node_index, (type) ? "incoming" : "outgoing");
+		
+               return OP_ERROR;
+       }
+       return OP_SUCCESS;
+}
+
+/**
+ * Copy the array of pointers to edges that go to or leave from a node
+ * (i.e. its incoming or outgoing connections) to a self-contained compact
+ * array of edges for easy transmission and receipt in one piece.
+ */
+static int
+make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges, 
+			struct sgsh_edge **p_edges)
+{
+	int i;
+	int array_size = sizeof(struct sgsh_edge) * nc_n_edges;
+	*nc_edges = (struct sgsh_edge *)malloc(array_size);
+	if (!(*nc_edges)) {
+		err(1, "Memory allocation of size %d for edge array failed.\n",
+								array_size);
+		return OP_ERROR;
+	}
+
+	/**
+	 * Copy the edges of interest to the node-specific edge array that contains
+         * its connections.
+	 */
+	for (i = 0; i < nc_n_edges; i++) {
+		/**
+		 * Dereference to reach the array base, make i hops of size
+		 * sizeof(struct sgsh_edge), and point to that memory block.
+		 */
+		memcpy(&(*nc_edges)[i], p_edges[i], sizeof(struct sgsh_edge));
+	}
+
+	return OP_SUCCESS;
+}
 
 /* Reallocate array to edge pointers. */
 static int 
@@ -256,9 +308,9 @@ satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
  * 
  */
 static int 
-dry_match_io_constraints(int node_index, struct sgsh_edge **edges_incoming,
+dry_match_io_constraints(int node_index, struct sgsh_edge ***edges_incoming,
 						int *n_edges_incoming,
-					struct sgsh_edge **edges_outgoing,
+					struct sgsh_edge ***edges_outgoing,
 						int *n_edges_outgoing)
 {
 	int n_edges = chosen_mb->n_edges;
@@ -271,25 +323,25 @@ dry_match_io_constraints(int node_index, struct sgsh_edge **edges_incoming,
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
 		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
-			if (reallocate_edge_pointer_array(&edges_outgoing, 
+			if (reallocate_edge_pointer_array(edges_outgoing, 
 					*n_edges_outgoing) == OP_ERROR)
 				return OP_ERROR;
-			edges_outgoing[*n_edges_outgoing - 1] = edge;
+			(*edges_outgoing)[*n_edges_outgoing - 1] = edge;
 		}
 		if (edge->to == node_index) {
 			(*n_edges_incoming)++;
-			if (reallocate_edge_pointer_array(&edges_incoming, 
+			if (reallocate_edge_pointer_array(edges_incoming, 
 					*n_edges_incoming) == OP_ERROR)
 				return OP_ERROR;
-			edges_incoming[*n_edges_incoming - 1] = edge;
+			(*edges_incoming)[*n_edges_incoming - 1] = edge;
 		}
 	}
 
 	/* Try satisfy the input/output constraints collectively. */
-	if (satisfy_io_constraints(n_free_out_channels, edges_outgoing, 
+	if (satisfy_io_constraints(n_free_out_channels, *edges_outgoing, 
 						*n_edges_outgoing, 0) == OP_ERROR)
 				return OP_ERROR;
-	if (satisfy_io_constraints(n_free_in_channels, edges_incoming, 
+	if (satisfy_io_constraints(n_free_in_channels, *edges_incoming, 
 						*n_edges_incoming, 1) == OP_ERROR)
 				return OP_ERROR;
 
@@ -304,8 +356,8 @@ static void
 free_graph_solution(int node_index) {
 	int i;
 	for (i = 0; i <= node_index; i++) {
-		free(graph_solution[i].nodes_incoming);
-		free(graph_solution[i].nodes_outgoing);
+		free(graph_solution[i].edges_incoming);
+		free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
 }
@@ -318,63 +370,6 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 							int *n_output_fds)
 {
 	/* Constructor-like assignment. */
-	return OP_SUCCESS;
-}
-
-/**
- * Allocate node indexes to store a node's (at node_index)
- * node outgoing or incoming connections (nc_nodes).
- */
-static int
-alloc_node_connections(int **nc_nodes, int n_nodes, int type, int node_index)
-{
-	*nc_nodes = (int *)malloc(sizeof(int) * n_nodes);
-	if (!*nc_nodes) {
-		err(1, "Memory allocation for node's index %d %s connections failed.\n", node_index, (type) ? "outgoing" : "incoming");
-		return OP_ERROR;
-	}
-	return OP_SUCCESS;
-}
-
-/**
- * Setup a node's connections of specific type:
- * in (0) or out (1).
- */
-static int
-setup_connection(int **nc_nodes, int *n_nc_nodes, int type,
-			int node_index, struct sgsh_edge *edges, int n_edges)
-{
-	int i;
-	if (alloc_node_connections(nc_nodes, n_edges, type, node_index) == 
-						OP_ERROR) return OP_ERROR;
-	*n_nc_nodes = n_edges;
-	for (i = 0; i < n_edges; i++) {
-		if (type) { /* Outgoing edges. */
-			assert(edges[i].from == node_index);
-			(*nc_nodes)[i] = edges[i].to;
-		} else {    /* Incoming edges. */
-			assert(edges[i].to == node_index);
-			(*nc_nodes)[i] = edges[i].from;
-		}
-	}
-	return OP_SUCCESS;
-}
-
-/* Setup incoming and outgoing connections for a node. */
-static int
-setup_io_connections(struct sgsh_node_connections *nc, int node_index, 
-			struct sgsh_edge *edges_incoming, int n_edges_incoming,
-			struct sgsh_edge *edges_outgoing, int n_edges_outgoing)
-{
-	nc->node_index = node_index;
-
-	/* Setup incoming and outgoing connections. */
-	if ((setup_connection(&nc->nodes_incoming, &nc->n_nodes_incoming, 0, 
-			node_index, edges_incoming, n_edges_incoming)) ||
-	   (setup_connection(&nc->nodes_outgoing, &nc->n_nodes_outgoing, 1, 
-			node_index, edges_outgoing, n_edges_outgoing)) ==
-								OP_ERROR)
-		return OP_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -397,37 +392,39 @@ solve_sgsh_graph() {
 
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
-		struct sgsh_node_connections node_connections;
-		struct sgsh_edge *edges_incoming = NULL;
-		int n_edges_incoming = 0;
-		struct sgsh_edge *edges_outgoing = NULL;
-		int n_edges_outgoing = 0;
+		struct sgsh_node_connections *nc = &graph_solution[i];
+		struct sgsh_edge ***edges_incoming;
+		int *n_edges_incoming = &nc->n_edges_incoming;
+		struct sgsh_edge ***edges_outgoing;
+		int *n_edges_outgoing = &nc->n_edges_outgoing;
 		int node_index = chosen_mb->node_array[i].index;
 
 		/* Find and store pointers to node's at node_index edges.
 		 * Try to solve the I/O channel constraint problem.
 		 * Assign instances to each edge.
 		 */
-		if (dry_match_io_constraints(node_index, &edges_incoming,
-				&n_edges_incoming, &edges_outgoing, 
-				&n_edges_outgoing) == OP_ERROR) {
+		if (dry_match_io_constraints(node_index, edges_incoming,
+				n_edges_incoming, edges_outgoing, 
+				n_edges_outgoing) == OP_ERROR) {
 			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
 				self_node.pid, self_node.requires_channels,
-				n_edges_incoming, self_node.provides_channels,
-				n_edges_outgoing);
+				*n_edges_incoming, self_node.provides_channels,
+				*n_edges_outgoing);
 			exit_state = OP_ERROR;
 		}
 
-		/* Setup the I/O connections of node at node_index. */
-		if (setup_io_connections(&node_connections, node_index,
-					edges_incoming, n_edges_incoming,
-					edges_outgoing, n_edges_outgoing) ==
-								OP_ERROR)
+		/**
+		 * Substitute pointers to edges with proper edge structures (copies)
+		 * to facilitate transmission and receipt in one piece.
+		 */
+		if ((make_compact_edge_array(&nc->edges_incoming, *n_edges_incoming,
+						*edges_incoming) == OP_ERROR) ||
+		    (make_compact_edge_array(&nc->edges_outgoing, *n_edges_outgoing,
+						*edges_outgoing) == OP_ERROR))
 			exit_state = OP_ERROR;
-		memcpy(&graph_solution[node_index], &node_connections,
-					sizeof(struct sgsh_node_connections));
-		free(edges_incoming);
-		free(edges_outgoing);
+
+		free(*edges_incoming);
+		free(*edges_outgoing);
 		if (exit_state == OP_ERROR) {
 			free_graph_solution(node_index);
 			break;
@@ -442,10 +439,21 @@ solve_sgsh_graph() {
 static int
 alloc_write_output_fds()
 {
+	/** 
+	 * A node's connections are located at the same position
+         * as the node in the node array.
+	 */
 	struct sgsh_node_connections *this_nc = 
 					&graph_solution[self_node.index];
-//	int i;
-//	for (i = 0; i < this_nc->n_nodes_outgoing; i++) {
+	assert(this_nc->node_index == self_node.index);
+
+
+	int i;
+	for (i = 0; i < this_nc->n_edges_outgoing; i++)
+		// Instances per edge?
+		// Create pipe.
+		// Send fd.
+
 //		sendmsg(destination_sock_fd, msg, flags);
 // In msg you hide the message you want to send.
 // How do we know who to ping? Socket pairs have been established by the shell.
@@ -474,20 +482,20 @@ write_graph_solution(char *buf, int buf_size) {
 
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
-		int in_nodes_size = sizeof(int) * nc->n_nodes_incoming;
-		int out_nodes_size = sizeof(int) * nc->n_nodes_outgoing;
-		if ((in_nodes_size > buf_size) || (out_nodes_size > buf_size)) {
-			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_nodes_size, out_nodes_size, buf_size);
+		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
+		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
+		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
+			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
 
 		/* Transmit a node's incoming connections. */
-		memcpy(buf, nc->nodes_incoming, in_nodes_size);
-		write(self_dispatcher.fd_direction, buf, in_nodes_size);
+		memcpy(buf, nc->edges_incoming, in_edges_size);
+		write(self_dispatcher.fd_direction, buf, in_edges_size);
 
 		/* Transmit a node's outgoing connections. */
-		memcpy(buf, nc->nodes_outgoing, out_nodes_size);
-		write(self_dispatcher.fd_direction, buf, out_nodes_size);
+		memcpy(buf, nc->edges_outgoing, out_edges_size);
+		write(self_dispatcher.fd_direction, buf, out_edges_size);
 	}
 	return OP_SUCCESS;
 }
@@ -914,30 +922,30 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
-		int in_nodes_size = sizeof(int) * nc->n_nodes_incoming;
-		int out_nodes_size = sizeof(int) * nc->n_nodes_outgoing;
-		if ((in_nodes_size > buf_size) || (out_nodes_size > buf_size)) {
-			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_nodes_size, out_nodes_size, buf_size);
+		int in_edges_size = sizeof(int) * nc->n_edges_incoming;
+		int out_edges_size = sizeof(int) * nc->n_edges_outgoing;
+		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
+			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
 
 		/* Read a node's incoming connections. */
-		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
 			&stdin_side)) != OP_SUCCESS) return error_code;
-		if (in_nodes_size != bytes_read) return OP_ERROR;
-		if (alloc_node_connections(&nc->nodes_incoming, 
-			nc->n_nodes_incoming, 0, i) == OP_ERROR)
+		if (in_edges_size != bytes_read) return OP_ERROR;
+		if (alloc_node_connections(&nc->edges_incoming, 
+			nc->n_edges_incoming, 0, i) == OP_ERROR)
 			return OP_ERROR;
-		memcpy(nc->nodes_incoming, buf, buf_size);
+		memcpy(nc->edges_incoming, buf, buf_size);
 
 		/* Read a node's outgoing connections. */
 		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdout_side)) != OP_SUCCESS) return error_code;
-		if (out_nodes_size != bytes_read) return OP_ERROR;
-		if (alloc_node_connections(&nc->nodes_outgoing, 
-			nc->n_nodes_outgoing, 0, i) == OP_ERROR)
+		if (out_edges_size != bytes_read) return OP_ERROR;
+		if (alloc_node_connections(&nc->edges_outgoing, 
+			nc->n_edges_outgoing, 1, i) == OP_ERROR)
 			return OP_ERROR;
-		memcpy(nc->nodes_outgoing, buf, buf_size);
+		memcpy(nc->edges_outgoing, buf, buf_size);
 	}
 	return OP_SUCCESS;
 }
