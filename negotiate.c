@@ -82,6 +82,14 @@ struct sgsh_node_connections {
 	int n_edges_outgoing;
 };
 
+/* The output of the negotiation process. */
+struct sgsh_node_pipe_fds {
+	int *input_fds;
+	int n_input_fds;
+	int *output_fds;
+	int n_output_fds;
+};
+
 /**
  * Memory organisation of message block.
  * Message block will be passed around process address spaces.
@@ -96,6 +104,7 @@ static int mb_is_updated; /* Boolean value that signals an update to the mb. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
 static struct sgsh_node_connections *graph_solution;
+static struct sgsh_node_pipe_fds self_pipe_fds;
 
 /**
  * Allocate node indexes to store a node's (at node_index)
@@ -364,14 +373,27 @@ free_graph_solution(int node_index) {
 }
 
 /**
- * Present the pipes to connect this node to other nodes on the graph.
+ * Assign the pipes to the data structures that will carry them back to the tool.
+ * The tool is responsible for freeing the memory allocated to these data
+ * structures.
  */
 static int
 establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds, 
 							int *n_output_fds)
 {
-	/* Constructor-like assignment. */
-	return OP_SUCCESS;
+	int re = OP_SUCCESS;
+
+	*input_fds = (int *)malloc(sizeof(int) * self_pipe_fds.n_input_fds);
+	if (*input_fds == NULL) re = OP_ERROR;					
+	*output_fds = (int *)malloc(sizeof(int) * self_pipe_fds.n_output_fds);
+	if (*output_fds == NULL) re = OP_ERROR;					
+
+	*n_input_fds = self_pipe_fds.n_input_fds;
+	memcpy(*input_fds, self_pipe_fds.input_fds, sizeof(int) * (*n_input_fds));
+	*n_output_fds = self_pipe_fds.n_output_fds;
+	memcpy(*output_fds, self_pipe_fds.output_fds, sizeof(int) * (*n_output_fds));
+
+	return re;
 }
 
 /**
@@ -459,8 +481,19 @@ alloc_write_output_fds()
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
 	int i;
-	int total_sd_descriptors = 0;
+	int count_sd_descriptors = 1; /* Streamline with get_next_sd(). */
+	int total_edge_instances = 0;
 	int re = OP_SUCCESS;
+
+	/* To preallocate the memory needed for storing pipe fds. */
+	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
+		int k;
+		self_pipe_fds.n_output_fds = 0; /* For safety. */
+		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++)
+			self_pipe_fds.n_output_fds++;
+	}
+	self_pipe_fds.output_fds = (int *)malloc(sizeof(int) * 
+						self_pipe_fds.n_output_fds);
 
 	/**
 	 * Create a pipe for each instance of each outgoing edge connection.
@@ -492,16 +525,22 @@ alloc_write_output_fds()
 			close(fd[0]);
 
 			/* Send the message. */
-			if (sendmsg(get_next_sd(total_sd_descriptors), &msg, 0) < 0) {
+			if (sendmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
 				err(1, "sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
-			total_sd_descriptors++;
+
+			self_pipe_fds.output_fds[total_edge_instances] = fd[1];
+			total_edge_instances++;
 		}
+		count_sd_descriptors++;
 		if (re == OP_ERROR) break;
 	}
-	if (re == OP_ERROR) free_graph_solution(chosen_mb->n_nodes);
+	if (re == OP_ERROR) {
+		free_graph_solution(chosen_mb->n_nodes);
+		free(self_pipe_fds.output_fds);
+	}
 	return re;
 }
 
@@ -938,8 +977,19 @@ read_input_fds()
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
 	int i;
-	int total_sd_descriptors = 0;
+	int count_sd_descriptors = 1; /* Streamline with get_next_sd(). */
+	int total_edge_instances = 0;
 	int re = OP_SUCCESS;
+
+	/* To preallocate the memory needed for storing pipe fds. */
+	for (i = 0; i < this_nc->n_edges_incoming; i++) {
+		int k;
+		self_pipe_fds.n_input_fds = 0; /* For safety. */
+		for (k = 0; k < this_nc->edges_incoming[i].instances; k++)
+			self_pipe_fds.n_input_fds++;
+	}
+	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) * 
+						self_pipe_fds.n_input_fds);
 
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
 		int k;
@@ -954,19 +1004,23 @@ read_input_fds()
 
 			msg.msg_control = (char *)&read_fd;
 			msg.msg_controllen = sizeof(read_fd);
-			close(read_fd);
 
 			DPRINTF("Waiting to receive pipe fd.\n");
-			if (recvmsg(get_next_sd(total_sd_descriptors), &msg, 0) < 0) {
+			if (recvmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
 				err(1, "revcmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
-			total_sd_descriptors++;
+			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
+			total_edge_instances++;
 		}
+		count_sd_descriptors++;
 		if (re == OP_ERROR) break;
 	}
-	if (re == OP_ERROR) free_graph_solution(chosen_mb->n_nodes);
+	if (re == OP_ERROR) {
+		free_graph_solution(chosen_mb->n_nodes);
+		free(self_pipe_fds.input_fds);
+	}
 	return re;
 }
 
