@@ -1,16 +1,10 @@
 /* TODO: 
- * 4. Fd allocation/writing and reading (p2p).
  * 5. Unit testing.
  * Thinking aloud:
- * - I/O constraint satisfaction is more complex than what is
- * currently implemented,
  * - watch out when a tool should exit the negotiation loop: it has to have
  * gathered all input pipes required. How many rounds could this take at the
  * worst case?
- * - set up field "instances" of struct sgsh_edge throughout the code.
  * - assert edge constraint, i.e. channels required, provided, is rational.
- * - the negotiation loop termination should change to when a tool has
- * completed writing its output fds and reading its input fds.
  * 
  */
 
