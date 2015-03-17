@@ -1,5 +1,6 @@
 #include <check.h> /* Check unit test framework API. */
-#include "../../sgsh_negotiate.h"
+#include <stdlib.h> /* EXIT_SUCCESS, EXIT_FAILURE */
+#include "../src/sgsh-negotiate.h"
 
 START_TEST(test_negotiate_api)
 {

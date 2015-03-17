@@ -63,6 +63,14 @@ test-tee: sgsh-tee charcount test-tee.sh
 test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
 	./test-merge-sum.sh
 
+test-negotiate:
+	cp sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/src/
+	cd test/negotiate && \
+	autoreconf --install && \
+	./configure && \
+	$(MAKE) && \
+	$(MAKE) check
+
 test-kvstore: test-kvstore.sh
 	# Make versions that will exercise the buffers
 	$(MAKE) clean
