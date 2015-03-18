@@ -1183,6 +1183,32 @@ get_environment_vars()
 }
 
 /**
+ * Verify tool's I/O channel requirements are sane.
+ * We might need some upper barrier for requirements too,
+ * such as, not more than 100 or 1000.
+ */
+static int
+validate_input(int channels_required, int channels_provided, const char *tool_name)
+{
+	if ((channels_required < -1) || (channels_provided < -1)) {
+		err(0, "I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d", 
+			tool_name, channels_required, channels_provided);
+		return PROT_STATE_ERROR;
+	}
+	if ((channels_required == 0) || (channels_provided == 0)) {
+		err(0, "I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d", 
+			tool_name, channels_required, channels_provided);
+		return PROT_STATE_ERROR;
+	}
+	if ((channels_required > 1000) || (channels_provided > 1000)) {
+		err(0, "I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d", 
+			tool_name, channels_required, channels_provided);
+		return OP_ERROR;
+	}
+	return OP_SUCCESS;
+}
+
+/**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in 
@@ -1215,6 +1241,10 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	DPRINTF("Tool %s with pid %d entered sgsh negotiation.\n", tool_name,
 							(int)self_pid);
 	
+	if (validate_input(channels_required, channels_provided, tool_name) 
+								== OP_ERROR)
+		return PROT_STATE_ERROR;
+
 	if (get_environment_vars() == OP_ERROR) {
 		err(1, "Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PROT_STATE_ERROR;
