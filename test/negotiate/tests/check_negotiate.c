@@ -2,6 +2,9 @@
 #include <stdlib.h> /* EXIT_SUCCESS, EXIT_FAILURE */
 #include "../src/sgsh-negotiate.h"
 
+/* Defined in ../src/negotiate.c */
+#define OP_ERROR 1
+
 START_TEST(test_negotiate_api)
 {
 	int *input_fds;
@@ -10,6 +13,7 @@ START_TEST(test_negotiate_api)
 	int n_output_fds;
 	ck_assert_int_eq(sgsh_negotiate("test", 0, 0, &input_fds, &n_input_fds, 
 				&output_fds, &n_output_fds), PROT_STATE_ERROR);
+	ck_assert_int_eq(validate_input(0, 0, "test"), OP_ERROR); 
 }
 END_TEST
 

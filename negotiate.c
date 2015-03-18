@@ -1187,18 +1187,18 @@ get_environment_vars()
  * We might need some upper barrier for requirements too,
  * such as, not more than 100 or 1000.
  */
-static int
+STATIC int
 validate_input(int channels_required, int channels_provided, const char *tool_name)
 {
 	if ((channels_required < -1) || (channels_provided < -1)) {
 		err(0, "I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
-		return PROT_STATE_ERROR;
+		return OP_ERROR;
 	}
 	if ((channels_required == 0) || (channels_provided == 0)) {
 		err(0, "I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
-		return PROT_STATE_ERROR;
+		return OP_ERROR;
 	}
 	if ((channels_required > 1000) || (channels_provided > 1000)) {
 		err(0, "I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d", 

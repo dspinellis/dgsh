@@ -3,6 +3,12 @@
 #define PROT_STATE_SOLUTION_SHARE 3
 #define PROT_STATE_ERROR 4
 
+#ifdef UNIT_TESTING
+#define STATIC 
+#else
+#define STATIC static
+#endif
+
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in 
@@ -23,3 +29,6 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds); /* Number of output file descriptors. */
 
+#ifdef UNIT_TESTING
+int validate_input(int channels_required, int channels_provided, const char *tool_name);
+#endif

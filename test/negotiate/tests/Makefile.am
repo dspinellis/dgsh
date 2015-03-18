@@ -1,5 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
+AM_CFLAGS = -DUNIT_TESTING
 TESTS = check_negotiate
 check_PROGRAMS = check_negotiate
 check_negotiate_SOURCES = check_negotiate.c $(top_builddir)/src/sgsh-negotiate.h
