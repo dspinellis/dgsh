@@ -35,12 +35,16 @@ struct dispatcher_node {
 	int fd_direction;
 };
 
+#ifndef UNIT_TESTING
+
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
 	int from; /* Index of node on the graph where data comes from (out). */
 	int to; /* Index of node on the graph that receives the data (in). */
 	int instances; /* Number of instances of an edge. */
 };
+
+#endif
 
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
@@ -103,19 +107,36 @@ static struct sgsh_node_pipe_fds self_pipe_fds;
  * Allocate node indexes to store a node's (at node_index)
  * node outgoing or incoming connections (nc_edges).
  */
-static int
+STATIC int
 alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
 								int node_index)
 {
-       *nc_edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) * 
+	if (!nc_edges) {
+		DPRINTF("Double pointer to node connection edges is NULL.\n");
+		return OP_ERROR;
+	}
+	if (nc_n_edges <= 0) {
+		DPRINTF("Number of node connection edges to allocate is non-positive number.\n");
+		return OP_ERROR;
+	}
+	if (node_index < 0) {
+		DPRINTF("Index of node whose connections will be allocated is negative number.\n");
+		return OP_ERROR;
+	}
+	if ((type > 1) || (type < 0)) {
+		DPRINTF("Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
+		return OP_ERROR;
+	}
+
+	*nc_edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) * 
 								nc_n_edges);
-       if (!*nc_edges) {
-               DPRINTF("Memory allocation for node's index %d %s connections \
+	if (!*nc_edges) {
+		DPRINTF("Memory allocation for node's index %d %s connections \
 failed.\n", node_index, (type) ? "incoming" : "outgoing");
 		
-               return OP_ERROR;
-       }
-       return OP_SUCCESS;
+		return OP_ERROR;
+	}
+	return OP_SUCCESS;
 }
 
 /**

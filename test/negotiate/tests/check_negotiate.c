@@ -6,6 +6,19 @@
 #define OP_SUCCESS 0
 #define OP_ERROR 1
 
+START_TEST(test_alloc_node_connections)
+{
+	struct sgsh_edge *test;
+	ck_assert_int_eq(alloc_node_connections(NULL, 2, 1, 2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, 0, 1, 2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, -1, 1, 2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, 1, 2, 2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, 1, -1, 2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, 1, 1, -2), OP_ERROR);
+	ck_assert_int_eq(alloc_node_connections(&test, 1, 1, 2), OP_SUCCESS);
+}
+END_TEST
+
 START_TEST(test_validate_input)
 {
 	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
@@ -38,6 +51,7 @@ suite_negotiate(void)
 {
 	Suite *s = suite_create("Negotiate");
 	TCase *tc_core = tcase_create("Core");
+	tcase_add_test(tc_core, test_alloc_node_connections);
 	tcase_add_test(tc_core, test_validate_input);
 	tcase_add_test(tc_core, test_negotiate_api);
 	suite_add_tcase(s, tc_core);
