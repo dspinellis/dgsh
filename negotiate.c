@@ -1189,12 +1189,16 @@ get_environment_vars()
 STATIC int
 validate_input(int channels_required, int channels_provided, const char *tool_name)
 {
+	if (!tool_name) {
+		DPRINTF("NULL pointer provided as tool name.\n");
+		return OP_ERROR;
+	}
 	if ((channels_required < -1) || (channels_provided < -1)) {
 		DPRINTF("I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
-	if ((channels_required == 0) || (channels_provided == 0)) {
+	if ((channels_required == 0) && (channels_provided == 0)) {
 		DPRINTF("I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;

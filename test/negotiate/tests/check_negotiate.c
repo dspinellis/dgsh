@@ -3,7 +3,23 @@
 #include "../src/sgsh-negotiate.h"
 
 /* Defined in ../src/negotiate.c */
+#define OP_SUCCESS 0
 #define OP_ERROR 1
+
+START_TEST(test_validate_input)
+{
+	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
+	ck_assert_int_eq(validate_input(0, 0, "test"), OP_ERROR); 
+	ck_assert_int_eq(validate_input(0, 1, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(1, 0, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(-1, -1, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(-2, -1, "test"), OP_ERROR); 
+	ck_assert_int_eq(validate_input(-1, -2, "test"), OP_ERROR); 
+	ck_assert_int_eq(validate_input(1000, 1000, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(1000, 1001, "test"), OP_ERROR); 
+	ck_assert_int_eq(validate_input(1001, 1000, "test"), OP_ERROR); 
+}
+END_TEST
 
 START_TEST(test_negotiate_api)
 {
@@ -22,6 +38,7 @@ suite_negotiate(void)
 {
 	Suite *s = suite_create("Negotiate");
 	TCase *tc_core = tcase_create("Core");
+	tcase_add_test(tc_core, test_validate_input);
 	tcase_add_test(tc_core, test_negotiate_api);
 	suite_add_tcase(s, tc_core);
 	return s;
