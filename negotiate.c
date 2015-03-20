@@ -11,7 +11,6 @@
 /* Placeholder: LICENSE. */
 
 #include <assert.h> /* assert() */
-#include <err.h> /* err() */
 #include <errno.h> /* EAGAIN */
 #include <stdio.h> /* fprintf() in DPRINTF() */
 #include <stdlib.h> /* getenv(), errno */
@@ -111,7 +110,7 @@ alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
        *nc_edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) * 
 								nc_n_edges);
        if (!*nc_edges) {
-               err(1, "Memory allocation for node's index %d %s connections \
+               DPRINTF("Memory allocation for node's index %d %s connections \
 failed.\n", node_index, (type) ? "incoming" : "outgoing");
 		
                return OP_ERROR;
@@ -132,7 +131,7 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 	int array_size = sizeof(struct sgsh_edge) * nc_n_edges;
 	*nc_edges = (struct sgsh_edge *)malloc(array_size);
 	if (!(*nc_edges)) {
-		err(1, "Memory allocation of size %d for edge array failed.\n",
+		DPRINTF("Memory allocation of size %d for edge array failed.\n",
 								array_size);
 		return OP_ERROR;
 	}
@@ -159,7 +158,7 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
 {
 	void **p = realloc(*edge_array, sizeof(struct sgsh_edge *) * n_elements);
 	if (!p) {
-		err(1, "Memory reallocation for edge failed.\n");
+		DPRINTF("Memory reallocation for edge failed.\n");
 		return OP_ERROR;
 	} else
 		*edge_array = (struct sgsh_edge **)p;
@@ -403,7 +402,7 @@ solve_sgsh_graph() {
 	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
 							graph_solution_size);
 	if (!graph_solution) {
-		err(1, "Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
 		return OP_ERROR;
 	}
 
@@ -423,7 +422,7 @@ solve_sgsh_graph() {
 		if (dry_match_io_constraints(node_index, edges_incoming,
 				n_edges_incoming, edges_outgoing, 
 				n_edges_outgoing) == OP_ERROR) {
-			err(1, "Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
+			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
 				self_node.pid, self_node.requires_channels,
 				*n_edges_incoming, self_node.provides_channels,
 				*n_edges_outgoing);
@@ -520,7 +519,7 @@ alloc_write_output_fds()
 
 			/* Send the message. */
 			if (sendmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
-				err(1, "sendmsg() failed.\n");
+				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
@@ -546,7 +545,7 @@ write_graph_solution(char *buf, int buf_size) {
 	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
 								n_nodes;
 	if (graph_solution_size > buf_size) {
-		err(1, "Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
+		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
 
@@ -560,7 +559,7 @@ write_graph_solution(char *buf, int buf_size) {
 		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
 		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
-			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
 
@@ -597,7 +596,7 @@ write_mb(char *buf, int buf_size)
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
 	struct sgsh_edge *p_edges = chosen_mb->edge_array;
 	if ((nodes_size > buf_size) || (edges_size > buf_size)) {
-		err(1, "%s size exceeds buffer size.\n", 
+		DPRINTF("%s size exceeds buffer size.\n", 
 			(nodes_size > buf_size) ? "Nodes" : "Edges");
 		return OP_ERROR;
 	}
@@ -657,7 +656,7 @@ add_node()
 	int n_nodes = chosen_mb->n_nodes;
 	void *p = realloc(chosen_mb->node_array, n_nodes);
 	if (!p) {
-		err(1, "Node array expansion for adding a new node failed.\n");
+		DPRINTF("Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->node_array = (struct sgsh_node *)p;
@@ -697,7 +696,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	for (i = 0; n_nodes; i++) /* Check dispatcher node exists. */
 		if (i == chosen_mb->origin.index) break;
 	if (i == n_nodes) {
-		err(1, "Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
+		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
 		return OP_ERROR;
 	}
 	if (chosen_mb->origin.fd_direction == STDIN_FILENO) {
@@ -732,7 +731,7 @@ add_edge(struct sgsh_edge *edge)
 	int n_edges = chosen_mb->n_edges;
 	void *p = realloc(chosen_mb->edge_array, n_edges);
 	if (!p) {
-		err(1, "Edge array expansion for adding a new edge failed.\n");
+		DPRINTF("Edge array expansion for adding a new edge failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->edge_array = (struct sgsh_edge *)p;
@@ -860,12 +859,12 @@ point_io_direction(int current_direction)
 static int
 check_read(int bytes_read, int buf_size, int expected_read_size) {
 	if (bytes_read != expected_read_size) {
-		err(1, "Read %d bytes of message block, expected to read %d.\n",
+		DPRINTF("Read %d bytes of message block, expected to read %d.\n",
 			bytes_read, expected_read_size);
 		return OP_ERROR;
 	}
 	if (bytes_read > buf_size) {
-		err(1, "Read %d bytes of message block, but buffer can hold up to %d.", bytes_read, buf_size);
+		DPRINTF("Read %d bytes of message block, but buffer can hold up to %d.", bytes_read, buf_size);
 		return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -950,7 +949,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 			break;
 	}
 	if (*bytes_read == -1) {  /* Read failed. */
-	 	err(1, "Reading from %s fd failed with error code %d.", 
+	 	DPRINTF("Reading from %s fd failed with error code %d.", 
 			(stdin_side) ? "stdin " : "stdout ", error_code);
 		return error_code;
 	} else  /* Read succeeded. */
@@ -1001,7 +1000,7 @@ read_input_fds()
 
 			DPRINTF("Waiting to receive pipe fd.\n");
 			if (recvmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
-				err(1, "revcmsg() failed.\n");
+				DPRINTF("revcmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
@@ -1031,13 +1030,13 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
 								n_nodes;
 	if (graph_solution_size > buf_size) {
-		err(1, "Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
+		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
 	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
 			sizeof(struct sgsh_node_connections) * n_nodes);
 	if (!graph_solution) {
-		err(1, "Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
 		return OP_ERROR;
 	}
 
@@ -1052,7 +1051,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		int in_edges_size = sizeof(int) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(int) * nc->n_edges_outgoing;
 		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
-			err(1, "Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
 
@@ -1136,7 +1135,7 @@ construct_message_block(pid_t self_pid)
 	chosen_mb = (struct sgsh_negotiation *)malloc(
 				memory_allocation_size);
 	if (!chosen_mb) {
-		err(1, "Memory allocation of message block failed.");
+		DPRINTF("Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
 	chosen_mb->version = 1.0;
@@ -1157,7 +1156,7 @@ get_env_var(const char *env_var,int *value)
 {
 	char *string_value = getenv(env_var);
 	if (!string_value) {
-		err(1, "Getting environment variable %s failed.\n", env_var);
+		DPRINTF("Getting environment variable %s failed.\n", env_var);
 		return OP_ERROR;
 	} else
 		DPRINTF("getenv() returned string value %s.\n", string_value);
@@ -1191,17 +1190,17 @@ STATIC int
 validate_input(int channels_required, int channels_provided, const char *tool_name)
 {
 	if ((channels_required < -1) || (channels_provided < -1)) {
-		err(0, "I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d", 
+		DPRINTF("I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
 	if ((channels_required == 0) || (channels_provided == 0)) {
-		err(0, "I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d", 
+		DPRINTF("I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
 	if ((channels_required > 1000) || (channels_provided > 1000)) {
-		err(0, "I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d", 
+		DPRINTF("I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d", 
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
@@ -1246,7 +1245,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		return PROT_STATE_ERROR;
 
 	if (get_environment_vars() == OP_ERROR) {
-		err(1, "Failed to extract SGSH_IN, SGSH_OUT environment variables.");
+		DPRINTF("Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PROT_STATE_ERROR;
 	}
 	
