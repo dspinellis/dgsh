@@ -21,14 +21,6 @@
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
 #include "sgsh.h" /* DPRINTF() */
 
-#define OP_SUCCESS 0
-#define OP_ERROR 1
-#define OP_QUIT 2
-#define OP_EXISTS 3
-#define OP_CREATE 4
-#define OP_NOOP 5
-
-
 /* Identifies the node and node's fd that sent the message block. */
 struct dispatcher_node {
 	int index;
@@ -36,6 +28,13 @@ struct dispatcher_node {
 };
 
 #ifndef UNIT_TESTING
+
+#define OP_SUCCESS 0
+#define OP_ERROR 1
+#define OP_QUIT 2
+#define OP_EXISTS 3
+#define OP_CREATE 4
+#define OP_NOOP 5
 
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
@@ -144,12 +143,26 @@ failed.\n", node_index, (type) ? "incoming" : "outgoing");
  * (i.e. its incoming or outgoing connections) to a self-contained compact
  * array of edges for easy transmission and receipt in one piece.
  */
-static int
+STATIC int
 make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges, 
 			struct sgsh_edge **p_edges)
 {
 	int i;
 	int array_size = sizeof(struct sgsh_edge) * nc_n_edges;
+
+	if (nc_n_edges <= 0) {
+		DPRINTF("Size identifier to be used in malloc() is non-positive number: %d.\n", nc_n_edges);
+		return OP_ERROR;
+	}
+	if (nc_edges == NULL) {
+		DPRINTF("Compact edge array to put edges (connections) is NULL.\n");
+		return OP_ERROR;
+	}
+	if (p_edges == NULL) {
+		DPRINTF("Pointer to edge array is NULL.\n");
+		return OP_ERROR;
+	}
+
 	*nc_edges = (struct sgsh_edge *)malloc(array_size);
 	if (!(*nc_edges)) {
 		DPRINTF("Memory allocation of size %d for edge array failed.\n",
@@ -162,6 +175,10 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
          * its connections.
 	 */
 	for (i = 0; i < nc_n_edges; i++) {
+		if (p_edges[i] == NULL) {
+			DPRINTF("Pointer to edge array contains NULL pointer.\n");
+			return OP_ERROR;
+		}
 		/**
 		 * Dereference to reach the array base, make i hops of size
 		 * sizeof(struct sgsh_edge), and point to that memory block.
@@ -173,10 +190,17 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 }
 
 /* Reallocate array to edge pointers. */
-static int 
-reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, 
-						int n_elements)
+STATIC int
+reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 {
+	if ((edge_array == NULL) || (*edge_array == NULL)) {
+		DPRINTF("Edge array is NULL pointer.\n");
+		return OP_ERROR;
+	}
+	if (n_elements <= 0) {
+		DPRINTF("Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
+		return OP_ERROR;
+	}
 	void **p = realloc(*edge_array, sizeof(struct sgsh_edge *) * n_elements);
 	if (!p) {
 		DPRINTF("Memory reallocation for edge failed.\n");
@@ -190,7 +214,7 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array,
  * Assign a node's incoming and outgoing edge instances according to
  * satisfied constraints (see dry_match_constraints()). 
  */
-static int
+STATIC int
 assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 					int this_node_channels,
 					int is_edge_incoming,
@@ -203,6 +227,11 @@ assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 	int count_channels = 0;
 	int *edge_instances;
 	int edge_constraint = 0;
+
+	if (edges == NULL) {
+		DPRINTF("Edge array is NULL pointer.\n");
+		return OP_ERROR;
+	}
 
 	for (i = 0; i < n_edges; i++) {
 		/* Instances needed for flexible constraints (-1). */
