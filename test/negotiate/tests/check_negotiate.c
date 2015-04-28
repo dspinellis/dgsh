@@ -15,6 +15,7 @@ setup(void)
 	int i;
 	for (i = 0; i < n_edges; i++)
 		pointers_to_edges[i] = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) * n_edges);	
+	pointers_to_edges
 }
 
 void
@@ -29,7 +30,70 @@ retire(void)
 
 START_TEST(test_assign_edge_instances)
 {
-	ck_assert_int_eq(assign_edge_instances(NULL, n_edges, 2, 1, 0, 0, 2, 5), OP_ERROR);
+	/* First argument. */
+	ck_assert_int_eq(assign_edge_instances(NULL, n_edges, 3, 1, 0, 0, 0, 3), OP_ERROR);
+	struct sgsh_edge *p = pointers_to_edges[0];
+	pointers_to_edges[0] = NULL;
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, 3), OP_ERROR);
+	pointers_to_edges[0] = p;
+	/* Second argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, -1, -2, 1, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, -7, -2, 1, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, 1001, -2, 1, 0, 0, 0, 3), OP_ERROR);
+	/* Third argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, -2, 1, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, -6, 1, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 1001, 1, 0, 0, 0, 3), OP_ERROR);
+	/* Fourth argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, -1, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 2, 0, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1001, 0, 0, 0, 3), OP_ERROR);
+	/* Fifth argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, -2, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, -11, 0, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 1001, 0, 0, 3), OP_ERROR);
+	/* Sixth argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, -1, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, -10, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 6, 0, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 13, 0, 3), OP_ERROR);
+	/* Fifth-Sixth argument. */
+	/*   Positive number of unlimited edges, non-positive instances. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 1, 0, 0, 3), OP_ERROR);
+	/*   Non-positive number of unlimited edges, positive instances. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 1, 0, 3), OP_ERROR);
+	/* Seventh argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, -2, 3), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 1001, 3), OP_ERROR);
+	/*   No channel should remain free when unlimited do not exist. */
+	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, 3), OP_ERROR);
+	/* Eighth argument. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, -1), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, -5), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, 1001), OP_ERROR);
+	/* Composite checks. */
+	/*   No unlimited with remaining instances. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 2, 3), OP_ERROR);
+	/*   Channels don't match total instances. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 0, 1, 0, 0, 0, 4), OP_ERROR);
+	/*   Unlimited with no instances. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 1, 0, 2, 3), OP_ERROR);
+	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 2, 1, 1, 3), OP_ERROR);
+	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 2, 1, 2, 3), OP_ERROR);
+	/*   (n_edges-unlimited) + (`unlimited * instances` + remaining) = channels = total_instances fails. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 1, 3, 0, 3), OP_ERROR);
+	/* n_edges - unlimited >= 0 fails. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 4, 1, 4, 1, 0, 4), OP_ERROR);
+	/* n_edges <= this_node_channels fails. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 0, 1, 0, 0, 0, 0), OP_ERROR);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 3, 1, 0, 0, 0, 3), OP_SUCCESS);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 8, 1, 2, 3, 1, 8), OP_SUCCESS);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, 7, 1, 2, 3, 0, 7), OP_SUCCESS);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, -1, 1, 0, 0, 0, 3), OP_SUCCESS);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, -1, 1, 2, 5, 0, 11), OP_SUCCESS);
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_edges, -1, 1, 2, 5, 3, 14), OP_SUCCESS);
 }
 END_TEST
 

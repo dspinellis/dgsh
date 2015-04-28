@@ -3,6 +3,6 @@
 TESTS = check_negotiate
 check_PROGRAMS = check_negotiate
 check_negotiate_SOURCES = check_negotiate.c $(top_builddir)/src/sgsh-negotiate.h
-check_negotiate_CFLAGS = @CHECK_CFLAGS@ -DUNIT_TESTING
+check_negotiate_CFLAGS = @CHECK_CFLAGS@ -DUNIT_TESTING -DDEBUG
 check_negotiate_LDADD = $(top_builddir)/src/libnegotiate.la @CHECK_LIBS@
 

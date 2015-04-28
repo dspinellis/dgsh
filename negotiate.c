@@ -228,12 +228,27 @@ assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 	int *edge_instances;
 	int edge_constraint = 0;
 
-	if (edges == NULL) {
-		DPRINTF("Edge array is NULL pointer.\n");
-		return OP_ERROR;
-	}
+/* It is assertions that we need, not if conditions and return statements. */
+	assert(edges != NULL);
+	assert(n_edges >= 0 && n_edges <= 1000);
+	assert(this_node_channels >= -1 && this_node_channels <= 1000);
+	assert(is_edge_incoming == 0 || is_edge_incoming == 1);
+	assert(n_edges_unlimited_constraint >= 0 && n_edges_unlimited_constraint <= 1000);
+	assert(instances_to_each_unlimited >= 0 && instances_to_each_unlimited <= 5);
+	assert(remaining_free_channels >= 0 && remaining_free_channels <= 4);
+	assert(total_instances >= 0 && total_instances <= 1000);
+	assert(n_edges_unlimited_constraint == 0 && instances_to_each_unlimited ==0 && remaining_free_channels == 0);
+	assert(n_edges_unlimited_constraint > 0 && instances_to_each_unlimited > 0);
+	assert(n_edges >= n_edges_unlimited_constraint);
+	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
+               remaining_free_channels + (n_edges - 
+               n_edges_unlimited_constraint) == this_node_channels);
+	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
+	assert(n_edges <= this_node_channels);
 
 	for (i = 0; i < n_edges; i++) {
+		assert(edges[i] != NULL);
+
 		/* Instances needed for flexible constraints (-1). */
 		edge_instances = &edges[i]->instances;
 
@@ -255,11 +270,10 @@ assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 	}
 
 	/* Verify that the solution and distribution of channels check out. */
-	if (this_node_channels == -1) assert(total_instances == count_channels);
-	else {
-		assert(this_node_channels == total_instances);
-		assert(total_instances == count_channels);
-	}
+	assert(this_node_channels == -1 ||
+	       this_node_channels == total_instances);
+	assert(total_instances == count_channels);
+
 	return OP_SUCCESS;
 }
 
