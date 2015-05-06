@@ -211,17 +211,18 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 }
 
 /**
- * Assign a node's incoming and outgoing edge instances according to
+ * For a specific node assign incoming and outgoing edge instances according to
  * satisfied constraints (see dry_match_constraints()). 
  */
 STATIC int
-assign_edge_instances(struct sgsh_edge **edges, int n_edges,
-					int this_node_channels,
-					int is_edge_incoming,
-					int n_edges_unlimited_constraint,
-					int instances_to_each_unlimited,
-					int remaining_free_channels,
-					int total_instances)
+assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgoing edges  */
+		      int n_edges,               /* The number of them (see above) */
+		      int this_node_channels,    /* The node's I or O channel constraint */
+		      int is_edge_incoming,      /* Edges are either the incoming or the outgoing ones */
+		      int n_edges_unlimited_constraint, /* Of n_edges, the number of edges with unlimited channel constraint */
+		      int instances_to_each_unlimited,  /* Edge instances allocated to each unlimited constraint  */
+		      int remaining_free_channels,      /* The residual after dividing the above to the edges having unlimited constraint */
+		      int total_instances)       /*   */
 {
 	int i;
 	int count_channels = 0;
@@ -233,23 +234,31 @@ assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 	assert(n_edges >= 0 && n_edges <= 1000);
 	assert(this_node_channels >= -1 && this_node_channels <= 1000);
 	assert(is_edge_incoming == 0 || is_edge_incoming == 1);
-	assert(n_edges_unlimited_constraint >= 0 && n_edges_unlimited_constraint <= 1000);
-	assert(instances_to_each_unlimited >= 0 && instances_to_each_unlimited <= 5);
+	assert(n_edges_unlimited_constraint >= 0 && 
+		n_edges_unlimited_constraint <= 1000);
+	assert(instances_to_each_unlimited >= 0 && 
+		instances_to_each_unlimited <= 5);
 	assert(remaining_free_channels >= 0 && remaining_free_channels <= 4);
 	assert(total_instances >= 0 && total_instances <= 1000);
-	assert(n_edges_unlimited_constraint == 0 && instances_to_each_unlimited ==0 && remaining_free_channels == 0);
-	assert(n_edges_unlimited_constraint > 0 && instances_to_each_unlimited > 0);
+	assert(n_edges_unlimited_constraint == 0 && 
+	       instances_to_each_unlimited ==0 && remaining_free_channels == 0);
+	assert(n_edges_unlimited_constraint > 0 && 
+			instances_to_each_unlimited > 0);
 	assert(n_edges >= n_edges_unlimited_constraint);
 	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
                remaining_free_channels + (n_edges - 
                n_edges_unlimited_constraint) == this_node_channels);
-	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
+	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = 
+					channels = total_instances fails. */
 	assert(n_edges <= this_node_channels);
+	assert(this_node_channels == -1 ||
+	       this_node_channels == total_instances);
 
 	for (i = 0; i < n_edges; i++) {
 		assert(edges[i] != NULL);
 
 		/* Instances needed for flexible constraints (-1). */
+                /** Where is edge_instances initialised? */
 		edge_instances = &edges[i]->instances;
 
 		/* Outgoing for the pair node of the edge. */
@@ -270,9 +279,10 @@ assign_edge_instances(struct sgsh_edge **edges, int n_edges,
 	}
 
 	/* Verify that the solution and distribution of channels check out. */
-	assert(this_node_channels == -1 ||
-	       this_node_channels == total_instances);
-	assert(total_instances == count_channels);
+	if (total_instances != count_channels) {
+		DPRINTF("Flexible assignment of edges corrupted. Expected %d edges, assigned %d", total_instances, count_channels);
+		return OP_ERROR;
+	}
 
 	return OP_SUCCESS;
 }
@@ -326,8 +336,10 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
  * includes the node's channel (has to do with the flexible constraint).
  */
 static int
-satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
-						int n_edges, int is_edge_incoming)
+satisfy_io_constraints(int this_node_channels,   /* A node's required or provided channels; its constraint. */
+                       struct sgsh_edge **edges, /* Gathered pointers to edges that come to or leave from a node. */
+		       int n_edges,              /* Number of edges (see above). */
+                       int is_edge_incoming)     /* Incoming or outgoing edges. */
 {
 	int i;
 	int total_edge_constraints;
@@ -374,11 +386,12 @@ satisfy_io_constraints(int this_node_channels, struct sgsh_edge **edges,
  * input and output channels.
  * 
  */
-static int 
-dry_match_io_constraints(int node_index, struct sgsh_edge ***edges_incoming,
-						int *n_edges_incoming,
-					struct sgsh_edge ***edges_outgoing,
-						int *n_edges_outgoing)
+static int
+dry_match_io_constraints(int node_index,                     /* Identifies the node we are currently setting up. */
+			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). */
+			 int *n_edges_incoming,              /* Number of incoming edges (see above). */
+			 struct sgsh_edge ***edges_outgoing, /* The node's outgoing edges (uninitialised). */
+			 int *n_edges_outgoing)              /* The number of outgoing edges (See above). */
 {
 	int n_edges = chosen_mb->n_edges;
 	int n_free_in_channels = self_node.requires_channels;
