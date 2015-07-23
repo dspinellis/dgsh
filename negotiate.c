@@ -224,9 +224,10 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 		      int remaining_free_channels,      /* The residual after dividing the above to the edges having unlimited constraint */
 		      int total_instances)       /*   */
 {
+	DPRINTF("assign_edge_instances() in");
 	int i;
 	int count_channels = 0;
-	int *edge_instances;
+	int *edge_instances = NULL;
 	int edge_constraint = 0;
 
 /* It is assertions that we need, not if conditions and return statements. */
@@ -240,10 +241,10 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 		instances_to_each_unlimited <= 5);
 	assert(remaining_free_channels >= 0 && remaining_free_channels <= 4);
 	assert(total_instances >= 0 && total_instances <= 1000);
-	assert(n_edges_unlimited_constraint == 0 && 
-	       instances_to_each_unlimited ==0 && remaining_free_channels == 0);
-	assert(n_edges_unlimited_constraint > 0 && 
-			instances_to_each_unlimited > 0);
+	assert((n_edges_unlimited_constraint == 0 && 
+	          instances_to_each_unlimited == 0 && remaining_free_channels == 0) ||
+	       (n_edges_unlimited_constraint > 0 && 
+			instances_to_each_unlimited > 0));
 	assert(n_edges >= n_edges_unlimited_constraint);
 	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
                remaining_free_channels + (n_edges - 
@@ -262,9 +263,10 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 		edge_instances = &edges[i]->instances;
 
 		/* Outgoing for the pair node of the edge. */
-		if (is_edge_incoming)
+		if (is_edge_incoming) {
 			edge_constraint = chosen_mb->node_array[edges[i]->from].provides_channels;
-		else
+			DPRINTF("edge constraint for node %d is %d", edges[i]->from, edge_constraint);
+		} else
 			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
 
 		if (edge_constraint == -1) {
@@ -273,11 +275,11 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 				(*edge_instances)++;
 				remaining_free_channels--;
 			}
-		} else
-			*edge_instances = edge_constraint;
+		}
 		count_channels += *edge_instances; 
 	}
 
+	DPRINTF("assign_edge_instances() out");
 	/* Verify that the solution and distribution of channels check out. */
 	if (total_instances != count_channels) {
 		DPRINTF("Flexible assignment of edges corrupted. Expected %d edges, assigned %d", total_instances, count_channels);

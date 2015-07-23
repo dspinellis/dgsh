@@ -1,3 +1,6 @@
+#ifndef SGSH_NEGOTIATE_H
+#define SGSH_NEGOTIATE_H
+
 #define PROT_STATE_NEGOTIATION 1
 #define PROT_STATE_NEGOTIATION_END 2
 #define PROT_STATE_SOLUTION_SHARE 3
@@ -51,4 +54,6 @@ int alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type
 int make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges, struct sgsh_edge **p_edges);
 int reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements);
 int assign_edge_instances(struct sgsh_edge **edges, int n_edges, int this_node_channels, int is_edge_incoming, int n_edges_unlimited_constraint, int instances_to_each_unlimited, int remaining_free_channels, int total_instances);
+#endif
+
 #endif
