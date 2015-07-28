@@ -105,11 +105,16 @@ retire(void)
 
 START_TEST(test_assign_edge_instances)
 {
-	/*   No channel should remain free when unlimited do not exist. */
+	/*   No flexible. */
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 0, 0, 0, 2), OP_SUCCESS);
-	/* Composite checks. */
-	/*   No unlimited with remaining instances. asserted */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 0, 0, 2, 3), OP_ERROR);
+	/*   Flexible with standard instances. */
+        chosen_mb->node_array[0].provides_channels = -1;
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 1, 1, 0, 2), OP_SUCCESS);
+        /* Flexible with extra instances, but no remaining. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 1, 5, 0, 6), OP_SUCCESS);
+        /* Flexible with extra instances, including remaining. */
+	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 7, 1, 1, 5, 1, 7), OP_SUCCESS);
+
 	/*   Channels don't match total instances. */
 	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 0, 0, 0, 4), OP_ERROR);
 	/*   Unlimited with no instances. */

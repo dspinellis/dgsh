@@ -248,18 +248,19 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 	assert(n_edges >= n_edges_unlimited_constraint);
 	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
                remaining_free_channels + (n_edges - 
-               n_edges_unlimited_constraint) == this_node_channels);
+               n_edges_unlimited_constraint) == total_instances);
 	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = 
 					channels = total_instances fails. */
-	assert(n_edges <= this_node_channels);
+	assert(n_edges <= total_instances);
 	assert(this_node_channels == -1 ||
 	       this_node_channels == total_instances);
 
 	for (i = 0; i < n_edges; i++) {
 		assert(edges[i] != NULL);
 
-		/* Instances needed for flexible constraints (-1). */
-                /** Where is edge_instances initialised? */
+		/* Instances of an edge needed to satisfy a pair node's flexible
+                 * constraint (-1). Instances are set here.
+                 */
 		edge_instances = &edges[i]->instances;
 
 		/* Outgoing for the pair node of the edge. */
@@ -276,7 +277,8 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 				remaining_free_channels--;
 			}
 		}
-		count_channels += *edge_instances; 
+		count_channels += *edge_instances;
+                DPRINTF("count_channels: %d, edge_instances: %d", count_channels, *edge_instances);
 	}
 
 	DPRINTF("assign_edge_instances() out");
@@ -316,15 +318,21 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 			*instances_to_each_unlimited = 1;
 			*instances = this_node_channels;
 		} else { /* Dispense the remaining channels to edges that
-			  * can take unlimited capacity.
+			  * can take unlimited capacity, if such exist.
 			  */
-			*instances_to_each_unlimited = (this_node_channels -
-							total_edge_constraints)/
+			if (*n_edges_unlimited_constraint > 0) {
+				*instances_to_each_unlimited = 
+				(this_node_channels - total_edge_constraints) /
 						(*n_edges_unlimited_constraint);
-			*remaining_free_channels = (this_node_channels -
-							total_edge_constraints)%
+				*remaining_free_channels =
+				(this_node_channels - total_edge_constraints) %
 						(*n_edges_unlimited_constraint);
-			*instances = this_node_channels;
+				*instances = this_node_channels;
+			} else {
+				*instances_to_each_unlimited = 0;
+				*remaining_free_channels = 0;
+				*instances = total_edge_constraints;
+			}
 		}
 	}
 	return OP_SUCCESS;
@@ -374,11 +382,13 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 	 * This is necessary to turn any flexible constraints into
 	 * edge instances.
 	 */
-	if (assign_edge_instances(edges, n_edges, this_node_channels, 
+	if (n_edges_unlimited_constraint > 0) {
+		if (assign_edge_instances(edges, n_edges, this_node_channels, 
 			is_edge_incoming, n_edges_unlimited_constraint,
 			instances_to_each_unlimited, remaining_free_channels, 
 						instances) == OP_ERROR)
-		return OP_ERROR;
+			return OP_ERROR;
+	}
 	return OP_SUCCESS;
 }
 
@@ -800,6 +810,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 			self_dispatcher.fd_direction == STDIN_FILENO);
 		e->to = self_dispatcher.index;
 	}
+        DPRINTF("New sgsh edge with %d instances.", e->instances);
 	return OP_SUCCESS;
 }
 
