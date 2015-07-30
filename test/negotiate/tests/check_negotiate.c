@@ -12,6 +12,8 @@ int n_ptedges;
 int n_nodes;
 int n_edges;
 
+int *args;
+
 void
 setup(void)
 {
@@ -88,6 +90,12 @@ setup(void)
 		pointers_to_edges[i]->to = 3; // the node.
 		pointers_to_edges[i]->instances = 1;
         }
+
+        /* test_eval_constraints */
+        args = (int *)malloc(sizeof(int) * 3);
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
 }
 
 void
@@ -101,7 +109,82 @@ retire(void)
         free(nodes);
         free(edges);
         free(chosen_mb);
+
+        free(args);
 }
+
+START_TEST(test_eval_constraints)
+{
+	/* 0 flexible constraints. */
+	ck_assert_int_eq(eval_constraints(2, 3, 0, &args[0], &args[1],
+                                                              &args[2]), OP_ERROR);
+	ck_assert_int_eq(eval_constraints(2, 2, 0, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 0);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 2);
+
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(3, 2, 0, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 0);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 2);
+
+	/* Pair nodes have flexible constraints; the test node has fixed. */
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(2, 2, 1, &args[0], &args[1],
+                                                              &args[2]), OP_ERROR);
+	ck_assert_int_eq(eval_constraints(2, 1, 1, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 1);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 2);
+
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(3, 1, 1, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 2);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 3);
+
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(5, 2, 2, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 1);
+	ck_assert_int_eq(args[1], 1);
+	ck_assert_int_eq(args[2], 5); // remaining free channels included
+
+	/* The test node has flexible constraints; the pair nodes have fixed. */
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(-1, 2, 0, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 0);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 2);
+
+	/* The test node has flexible constraints; so do the pair nodes. */
+        args[0] = -1;
+        args[1] = -1;
+        args[2] = -1;
+	ck_assert_int_eq(eval_constraints(-1, 2, 3, &args[0], &args[1],
+                                                              &args[2]), OP_SUCCESS);
+	ck_assert_int_eq(args[0], 5);
+	ck_assert_int_eq(args[1], 0);
+	ck_assert_int_eq(args[2], 17);
+
+}
+END_TEST
 
 START_TEST(test_assign_edge_instances)
 {
@@ -115,26 +198,6 @@ START_TEST(test_assign_edge_instances)
         /* Flexible with extra instances, including remaining. */
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 7, 1, 1, 5, 1, 7), OP_SUCCESS);
 
-	/*   Channels don't match total instances. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 0, 0, 0, 4), OP_ERROR);
-	/*   Unlimited with no instances. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 1, 0, 2, 3), OP_ERROR);
-	/*   (n_ptedges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 2, 1, 1, 3), OP_ERROR);
-	/*   (n_ptedges-unlimited) + (unlimited * instances + `remaining`) = channels = total_instances fails. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 2, 1, 2, 3), OP_ERROR);
-	/*   (n_ptedges-unlimited) + (`unlimited * instances` + remaining) = channels = total_instances fails. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 1, 3, 0, 3), OP_ERROR);
-	/* n_ptedges - unlimited >= 0 fails. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 4, 1, 4, 1, 0, 4), OP_ERROR);
-	/* n_ptedges <= this_node_channels fails. */
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 0, 1, 0, 0, 0, 0), OP_ERROR);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 3, 1, 0, 0, 0, 3), OP_SUCCESS);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 8, 1, 2, 3, 1, 8), OP_SUCCESS);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 7, 1, 2, 3, 0, 7), OP_SUCCESS);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 0, 0, 0, 3), OP_SUCCESS);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 2, 5, 0, 11), OP_SUCCESS);
-	//ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 2, 5, 3, 14), OP_SUCCESS);
 }
 END_TEST
 
@@ -215,6 +278,7 @@ suite_negotiate(void)
 	Suite *s = suite_create("Negotiate");
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, retire);
+	tcase_add_test(tc_core, test_eval_constraints);
 	tcase_add_test(tc_core, test_assign_edge_instances);
 	tcase_add_test(tc_core, test_reallocate_edge_pointer_array);
 	tcase_add_test(tc_core, test_make_compact_edge_array);

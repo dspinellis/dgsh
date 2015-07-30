@@ -297,7 +297,7 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
  */
 static int
 eval_constraints(int this_node_channels, int total_edge_constraints,
-					int *n_edges_unlimited_constraint,
+					int n_edges_unlimited_constraint, 
 					int *instances_to_each_unlimited,
 					int *remaining_free_channels,
 					int *instances)
@@ -306,27 +306,36 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 		*instances = total_edge_constraints;
 		if (n_edges_unlimited_constraint > 0) { /* (* 5): arbitrary. */
 			*instances_to_each_unlimited = 5;
-			*instances += (*n_edges_unlimited_constraint) * 
+			*remaining_free_channels = 0;
+			*instances += n_edges_unlimited_constraint * 
 						(*instances_to_each_unlimited);
+		} else {
+			*instances_to_each_unlimited = 0;
+			*remaining_free_channels = 0;
 		}	
 	} else {
 		if (this_node_channels < total_edge_constraints + 
-						(*n_edges_unlimited_constraint))
+						n_edges_unlimited_constraint)
 			return OP_ERROR;
 		else if (this_node_channels == total_edge_constraints + 
-						(*n_edges_unlimited_constraint)) {
-			*instances_to_each_unlimited = 1;
+						n_edges_unlimited_constraint) {
+			if (n_edges_unlimited_constraint > 0)
+				*instances_to_each_unlimited = 1;
+                        else
+				*instances_to_each_unlimited = 0;
+			*remaining_free_channels = 0;
 			*instances = this_node_channels;
 		} else { /* Dispense the remaining channels to edges that
 			  * can take unlimited capacity, if such exist.
 			  */
-			if (*n_edges_unlimited_constraint > 0) {
+			if (n_edges_unlimited_constraint > 0) {
 				*instances_to_each_unlimited = 
 				(this_node_channels - total_edge_constraints) /
-						(*n_edges_unlimited_constraint);
+						n_edges_unlimited_constraint;
 				*remaining_free_channels =
 				(this_node_channels - total_edge_constraints) %
-						(*n_edges_unlimited_constraint);
+						n_edges_unlimited_constraint;
+                                /* remaining_free_channels included */
 				*instances = this_node_channels;
 			} else {
 				*instances_to_each_unlimited = 0;
@@ -373,7 +382,7 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 
 	/* Try to find solution to the channel. */
 	if (eval_constraints(this_node_channels, total_edge_constraints,
-			&n_edges_unlimited_constraint,
+			n_edges_unlimited_constraint,
 			&instances_to_each_unlimited, &remaining_free_channels,
 						&instances) == OP_ERROR)
 		return OP_ERROR;
