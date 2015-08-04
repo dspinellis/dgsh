@@ -17,6 +17,7 @@ int *args;
 void
 setup(void)
 {
+        
 	n_nodes = 4;
         nodes = (struct sgsh_node *)malloc(sizeof(struct sgsh_node) * n_nodes);
         nodes[0].pid = 100;
@@ -112,6 +113,44 @@ retire(void)
 
         free(args);
 }
+
+START_TEST(test_satisfy_io_constraints)
+{
+        /* To be concise, when changing the first argument that mirrors
+         * the channel constraint of the node under evaluation, we should
+         * also change it in the node array, but it does not matter since it
+         * is the pair nodes that we are interested in.
+         */
+
+        /* Fixed constraint both sides, just satisfy. */
+	ck_assert_int_eq(satisfy_io_constraints(2, pointers_to_edges, 2, 1),
+									OP_SUCCESS);
+        /* Fixed constraint both sides, inadequate. */
+	ck_assert_int_eq(satisfy_io_constraints(1, pointers_to_edges, 2, 1),
+									OP_ERROR);
+        /* Fixed constraint bith sides, plenty. */
+	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
+									OP_SUCCESS);
+        /* Fixed constraint node, flexible pair, just one. */
+        chosen_mb->node_array[0].provides_channels = -1;
+	ck_assert_int_eq(satisfy_io_constraints(2, pointers_to_edges, 2, 1),
+									OP_SUCCESS);
+        /* Fixed constraint node, flexible pair, inadequate. */
+        chosen_mb->node_array[0].provides_channels = -1;
+	ck_assert_int_eq(satisfy_io_constraints(1, pointers_to_edges, 2, 1),
+									OP_ERROR);
+        /* Expand the semantics of remaining_free_channels to fixed constraints
+           as in this case. */  
+        /* Fixed constraint node, flexible pair, plenty. */
+        chosen_mb->node_array[0].provides_channels = -1;
+	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
+									OP_SUCCESS);
+        /* Flexible constraint both sides */
+        chosen_mb->node_array[0].provides_channels = -1;
+	ck_assert_int_eq(satisfy_io_constraints(-1, pointers_to_edges, 2, 1),
+									OP_SUCCESS);
+}
+END_TEST
 
 START_TEST(test_eval_constraints)
 {
@@ -278,6 +317,7 @@ suite_negotiate(void)
 	Suite *s = suite_create("Negotiate");
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, retire);
+	tcase_add_test(tc_core, test_satisfy_io_constraints);
 	tcase_add_test(tc_core, test_eval_constraints);
 	tcase_add_test(tc_core, test_assign_edge_instances);
 	tcase_add_test(tc_core, test_reallocate_edge_pointer_array);

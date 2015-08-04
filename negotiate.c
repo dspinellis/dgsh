@@ -344,6 +344,7 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 			}
 		}
 	}
+        DPRINTF("eval_constraints(): this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d, instances_to_each_unlimited: %d, remaining_free_channels: %d, instances %d.\n", this_node_channels, total_edge_constraints, n_edges_unlimited_constraint, *instances_to_each_unlimited, *remaining_free_channels, *instances);
 	return OP_SUCCESS;
 }
 
@@ -361,7 +362,7 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
                        int is_edge_incoming)     /* Incoming or outgoing edges. */
 {
 	int i;
-	int total_edge_constraints;
+	int total_edge_constraints = 0;
 	int n_edges_unlimited_constraint = 0;
 	int instances_to_each_unlimited = 0;
 	int remaining_free_channels = 0;
@@ -375,10 +376,11 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 		else
 			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
 		if (edge_constraint != -1) 
-			total_edge_constraints += edge_constraint;
+			total_edge_constraints += 1;
 		else
 			n_edges_unlimited_constraint += 1;
 	}
+        DPRINTF("satisfy_io_constraints(): this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d.\n", this_node_channels, total_edge_constraints, n_edges_unlimited_constraint);
 
 	/* Try to find solution to the channel. */
 	if (eval_constraints(this_node_channels, total_edge_constraints,
