@@ -14,6 +14,11 @@ int n_edges;
 
 int *args;
 
+int *input_fds;
+int n_input_fds;
+int *output_fds;
+int n_output_fds;
+
 void
 setup(void)
 {
@@ -97,6 +102,16 @@ setup(void)
         args[0] = -1;
         args[1] = -1;
         args[2] = -1;
+
+	/* fill in self_node */
+	memcpy(&self_node, &nodes[3], sizeof(struct sgsh_node));
+	/* fill in self_pipe_fds */
+	self_pipe_fds.n_input_fds = 2;
+	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) *
+						self_pipe_fds.n_input_fds);
+	self_pipe_fds.input_fds[0] = 0;
+	self_pipe_fds.input_fds[0] = 3;
+	self_pipe_fds.n_output_fds = 0;
 }
 
 void
@@ -112,7 +127,50 @@ retire(void)
         free(chosen_mb);
 
         free(args);
+	if (n_input_fds > 0)
+		free(input_fds);
+	if (n_output_fds > 0)
+		free(output_fds);
 }
+
+START_TEST(test_establish_io_connections)
+{
+	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
+					&output_fds, &n_output_fds), OP_SUCCESS);
+}
+END_TEST
+
+struct sgsh_edge **edges_in;
+int n_edges_in;
+struct sgsh_edge **edges_out;
+int n_edges_out;
+
+void
+retire_dmic(void)
+{
+	retire();
+	if (n_edges_in)
+		free(edges_in);
+	if (n_edges_out)
+		free(edges_out);
+}
+
+START_TEST(test_dry_match_io_constraints)
+{
+        /* A normal case. */
+	n_edges_in = 0;
+	n_edges_out = 0;
+	ck_assert_int_eq(dry_match_io_constraints(3, &edges_in, &n_edges_in,
+						     &edges_out, &n_edges_out),
+									OP_SUCCESS);
+	/* Because evrything is taken care of under the function's feet with
+	 * data residing in sgsh's data structures, there is nothing to check.
+	 * Everything is unitialised, except for the node index. This is filled in
+	 * internally, and is tested through an assertion.
+	 */
+
+}
+END_TEST
 
 START_TEST(test_satisfy_io_constraints)
 {
@@ -243,10 +301,6 @@ END_TEST
 START_TEST(test_reallocate_edge_pointer_array)
 {
 	ck_assert_int_eq(reallocate_edge_pointer_array(NULL, 1), OP_ERROR);
-	struct sgsh_edge **p = pointers_to_edges;
-	pointers_to_edges = NULL;
-	ck_assert_int_eq(reallocate_edge_pointer_array(&pointers_to_edges, n_ptedges + 1), OP_ERROR);
-	pointers_to_edges = p;
 	ck_assert_int_eq(reallocate_edge_pointer_array(&pointers_to_edges, -2), OP_ERROR);
 	ck_assert_int_eq(reallocate_edge_pointer_array(&pointers_to_edges, 0), OP_ERROR);
 	/* Not incresing the value of n_ptedges to not perplex freeing 
@@ -315,6 +369,17 @@ Suite *
 suite_negotiate(void)
 {
 	Suite *s = suite_create("Negotiate");
+
+	TCase *tc_eic = tcase_create("establish_io_connections");
+	tcase_add_checked_fixture(tc_eic, setup, retire);
+	tcase_add_test(tc_eic, test_establish_io_connections);
+	suite_add_tcase(s, tc_eic);
+
+	TCase *tc_dmic = tcase_create("dry_match_io_constraints");
+	tcase_add_checked_fixture(tc_dmic, setup, retire_dmic);
+	tcase_add_test(tc_dmic, test_dry_match_io_constraints);
+	suite_add_tcase(s, tc_dmic);
+
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, retire);
 	tcase_add_test(tc_core, test_satisfy_io_constraints);
@@ -334,7 +399,7 @@ main(void) {
 	int number_failed;
 	Suite *s = suite_negotiate();
 	SRunner *sr = srunner_create(s);
-	srunner_run_all(sr, CK_NORMAL);
+	srunner_run_all(sr, CK_VERBOSE);
 	number_failed = srunner_ntests_failed(sr);
 	srunner_free(sr);
 	return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

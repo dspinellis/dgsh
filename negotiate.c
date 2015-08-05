@@ -193,7 +193,7 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 STATIC int
 reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 {
-	if ((edge_array == NULL) || (*edge_array == NULL)) {
+	if (edge_array == NULL) {
 		DPRINTF("Edge array is NULL pointer.\n");
 		return OP_ERROR;
 	}
@@ -420,7 +420,9 @@ dry_match_io_constraints(int node_index,                     /* Identifies the n
 	int n_free_in_channels = self_node.requires_channels;
 	int n_free_out_channels = self_node.provides_channels;
 	int i;
-	
+
+	assert(node_index < chosen_mb->n_nodes);
+
 	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
@@ -439,13 +441,16 @@ dry_match_io_constraints(int node_index,                     /* Identifies the n
 			(*edges_incoming)[*n_edges_incoming - 1] = edge;
 		}
 	}
+	DPRINTF("%s(): Node at index %d has %d outgoing edges and %d incoming.",
+				__func__, node_index, *n_edges_outgoing,
+				*n_edges_incoming);
 
 	/* Try satisfy the input/output constraints collectively. */
 	if (satisfy_io_constraints(n_free_out_channels, *edges_outgoing, 
-						*n_edges_outgoing, 0) == OP_ERROR)
+					*n_edges_outgoing, 0) == OP_ERROR)
 				return OP_ERROR;
 	if (satisfy_io_constraints(n_free_in_channels, *edges_incoming, 
-						*n_edges_incoming, 1) == OP_ERROR)
+					*n_edges_incoming, 1) == OP_ERROR)
 				return OP_ERROR;
 
 	return OP_SUCCESS;
@@ -454,10 +459,12 @@ dry_match_io_constraints(int node_index,                     /* Identifies the n
 /**
  * Free the sgsh graph's solution in face of an error.
  * node_index: the last node we setup conenctions before error.
+ * Note: no unit tests.
  */
 static void
 free_graph_solution(int node_index) {
 	int i;
+	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
 		free(graph_solution[i].edges_incoming);
 		free(graph_solution[i].edges_outgoing);
@@ -476,15 +483,22 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 {
 	int re = OP_SUCCESS;
 
-	*input_fds = (int *)malloc(sizeof(int) * self_pipe_fds.n_input_fds);
-	if (*input_fds == NULL) re = OP_ERROR;					
-	*output_fds = (int *)malloc(sizeof(int) * self_pipe_fds.n_output_fds);
-	if (*output_fds == NULL) re = OP_ERROR;					
-
 	*n_input_fds = self_pipe_fds.n_input_fds;
-	memcpy(*input_fds, self_pipe_fds.input_fds, sizeof(int) * (*n_input_fds));
+	assert(*n_input_fds >= 0);
+	if (*n_input_fds > 0) {
+		*input_fds = (int *)malloc(sizeof(int) * (*n_input_fds));
+		if (*input_fds == NULL) re = OP_ERROR;
+		memcpy(*input_fds, self_pipe_fds.input_fds,
+					sizeof(int) * (*n_input_fds));
+	}
 	*n_output_fds = self_pipe_fds.n_output_fds;
-	memcpy(*output_fds, self_pipe_fds.output_fds, sizeof(int) * (*n_output_fds));
+	assert(*n_output_fds >= 0);
+	if (*n_output_fds > 0) {
+		*output_fds = (int *)malloc(sizeof(int) * (*n_output_fds));
+		if (*output_fds == NULL) re = OP_ERROR;
+		memcpy(*output_fds, self_pipe_fds.output_fds,
+					sizeof(int) * (*n_output_fds));
+	}
 
 	return re;
 }
@@ -509,9 +523,11 @@ solve_sgsh_graph() {
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
-		struct sgsh_edge ***edges_incoming;
+		struct sgsh_edge **edges_incoming;
+		nc->n_edges_incoming = 0;
 		int *n_edges_incoming = &nc->n_edges_incoming;
-		struct sgsh_edge ***edges_outgoing;
+		struct sgsh_edge **edges_outgoing;
+		nc->n_edges_outgoing = 0;
 		int *n_edges_outgoing = &nc->n_edges_outgoing;
 		int node_index = chosen_mb->node_array[i].index;
 
@@ -519,8 +535,8 @@ solve_sgsh_graph() {
 		 * Try to solve the I/O channel constraint problem.
 		 * Assign instances to each edge.
 		 */
-		if (dry_match_io_constraints(node_index, edges_incoming,
-				n_edges_incoming, edges_outgoing, 
+		if (dry_match_io_constraints(node_index, &edges_incoming,
+				n_edges_incoming, &edges_outgoing, 
 				n_edges_outgoing) == OP_ERROR) {
 			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
 				self_node.pid, self_node.requires_channels,
@@ -534,13 +550,13 @@ solve_sgsh_graph() {
 		 * to facilitate transmission and receipt in one piece.
 		 */
 		if ((make_compact_edge_array(&nc->edges_incoming, *n_edges_incoming,
-						*edges_incoming) == OP_ERROR) ||
+						edges_incoming) == OP_ERROR) ||
 		    (make_compact_edge_array(&nc->edges_outgoing, *n_edges_outgoing,
-						*edges_outgoing) == OP_ERROR))
+						edges_outgoing) == OP_ERROR))
 			exit_state = OP_ERROR;
 
-		free(*edges_incoming);
-		free(*edges_outgoing);
+		free(edges_incoming);
+		free(edges_outgoing);
 		if (exit_state == OP_ERROR) {
 			free_graph_solution(node_index);
 			break;
