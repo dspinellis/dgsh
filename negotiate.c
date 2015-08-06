@@ -459,17 +459,19 @@ dry_match_io_constraints(int node_index,                     /* Identifies the n
 /**
  * Free the sgsh graph's solution in face of an error.
  * node_index: the last node we setup conenctions before error.
- * Note: no unit tests.
  */
-static void
+static int
 free_graph_solution(int node_index) {
+	DPRINTF("%s", __func__);
 	int i;
 	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
+		DPRINTF("%d", i);
 		free(graph_solution[i].edges_incoming);
 		free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
+	return OP_SUCCESS;
 }
 
 /**
