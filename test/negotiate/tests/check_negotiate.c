@@ -595,17 +595,12 @@ suite_solve(void)
 }
 
 Suite *
-suite_negotiate(void)
+suite_broadcast(void)
 {
-	Suite *s = suite_create("Negotiate");
+	Suite *s = suite_create("Broadcast");
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, retire);
-	tcase_add_test(tc_core, test_satisfy_io_constraints);
-	tcase_add_test(tc_core, test_eval_constraints);
-	tcase_add_test(tc_core, test_assign_edge_instances);
-	tcase_add_test(tc_core, test_reallocate_edge_pointer_array);
-	tcase_add_test(tc_core, test_make_compact_edge_array);
 	tcase_add_test(tc_core, test_validate_input);
 	tcase_add_test(tc_core, test_negotiate_api);
 	suite_add_tcase(s, tc_core);
@@ -635,14 +630,14 @@ run_suite_solve(void) {
 }
 
 int
-run_suite_negotiate(void) {
-	Suite *s = suite_negotiate();
+run_suite_broadcast(void) {
+	Suite *s = suite_broadcast();
 	return run_suite(s);
 }
 
 int main() {
 	int failed_neg, failed_sol, failed_con;
-	failed_neg = run_suite_negotiate();
+	failed_neg = run_suite_broadcast();
 	failed_sol = run_suite_solve();
 	failed_con = run_suite_connect();
 	return (failed_neg && failed_sol && failed_con) ? EXIT_SUCCESS : EXIT_FAILURE;
