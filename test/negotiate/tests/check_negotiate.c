@@ -61,23 +61,23 @@ setup(void)
         edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) *n_edges);
         edges[0].from = 2;
         edges[0].to = 0;
-        edges[0].instances = 1;
+        edges[0].instances = 0;
 
         edges[1].from = 2;
         edges[1].to = 1;
-        edges[1].instances = 1;
+        edges[1].instances = 0;
 
         edges[2].from = 1;
         edges[2].to = 0;
-        edges[2].instances = 1;
+        edges[2].instances = 0;
 
         edges[3].from = 1;
         edges[3].to = 3;
-        edges[3].instances = 1;
+        edges[3].instances = 0;
 
         edges[4].from = 0;
         edges[4].to = 3;
-        edges[4].instances = 1;
+        edges[4].instances = 0;
 
         double sgsh_version = 0.1;
         chosen_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
@@ -94,7 +94,7 @@ setup(void)
 		pointers_to_edges[i] = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge));	
 		pointers_to_edges[i]->from = i;
 		pointers_to_edges[i]->to = 3; // the node.
-		pointers_to_edges[i]->instances = 1;
+		pointers_to_edges[i]->instances = 0;
         }
 
         /* test_eval_constraints */
@@ -103,6 +103,7 @@ setup(void)
         args[1] = -1;
         args[2] = -1;
 
+	/* establish_io_connections */
 	/* fill in self_node */
 	memcpy(&self_node, &nodes[3], sizeof(struct sgsh_node));
 	/* fill in self_pipe_fds */
@@ -135,6 +136,67 @@ retire(void)
 		free(output_fds);
 }
 
+START_TEST(test_solve_sgsh_graph)
+{
+        /* A normal case with fixed, tight constraints. */
+	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
+	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[0].instances, 1);
+	ck_assert_int_eq(graph_solution[0].edges_outgoing[0].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 1);
+	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 1);
+	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire();
+
+	/* An impossible case. */
+	setup();
+	chosen_mb->node_array[3].requires_channels = 1;
+	ck_assert_int_eq(solve_sgsh_graph(), OP_ERROR);
+	retire();
+
+	/* Relaxing our target node's constraint. */
+	setup();
+	chosen_mb->node_array[3].requires_channels = -1;
+	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
+	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
+	/* Pair edges still have tight constraints. */
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[0].instances, 1);
+	ck_assert_int_eq(graph_solution[0].edges_outgoing[0].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 1);
+	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 1);
+	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
+	free_graph_solution(chosen_mb->n_nodes - 1);	
+	retire();
+
+	/* Relaxing also pair nodes' constraints. */
+	setup();
+	chosen_mb->node_array[3].requires_channels = -1;
+	chosen_mb->node_array[0].provides_channels = -1;
+	chosen_mb->node_array[1].provides_channels = -1;
+	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
+	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 5);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[0].instances, 5);
+	ck_assert_int_eq(graph_solution[0].edges_outgoing[0].instances, 5);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 5);
+	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 5);
+	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
+	/* Collateral impact. Node 1 (flex) -> Node 0 (tight) */
+	ck_assert_int_eq(chosen_mb->edge_array[2].instances, 1);
+	ck_assert_int_eq(graph_solution[1].edges_outgoing[0].instances, 1);
+	free_graph_solution(chosen_mb->n_nodes - 1);
+}
+END_TEST
+
 void
 setup_gs(void)
 {
@@ -146,10 +208,8 @@ setup_gs(void)
 	graph_solution[0].n_edges_incoming = 2;
 	graph_solution[0].edges_incoming = (struct sgsh_edge *)malloc(
 		sizeof(struct sgsh_edge) * graph_solution[0].n_edges_incoming);
-	DPRINTF("test_free %lx, %lx", graph_solution[0].edges_incoming, &chosen_mb->edge_array[0]);
 	memcpy(&graph_solution[0].edges_incoming[0], &chosen_mb->edge_array[0],
 					sizeof(struct sgsh_edge));
-	DPRINTF("test_free");
 	memcpy(&graph_solution[0].edges_incoming[1], &chosen_mb->edge_array[2],
 					sizeof(struct sgsh_edge));
 	graph_solution[0].n_edges_outgoing = 1;
@@ -158,7 +218,6 @@ setup_gs(void)
 	memcpy(&graph_solution[0].edges_outgoing[0], &chosen_mb->edge_array[4],
 					sizeof(struct sgsh_edge));
 
-	DPRINTF("test_free");
 	graph_solution[1].node_index = 1;
 	graph_solution[1].n_edges_incoming = 1;
 	graph_solution[1].edges_incoming = (struct sgsh_edge *)malloc(
@@ -173,7 +232,6 @@ setup_gs(void)
 	memcpy(&graph_solution[1].edges_outgoing[1], &chosen_mb->edge_array[3],
 					sizeof(struct sgsh_edge));
 
-	DPRINTF("test_free");
 	graph_solution[2].node_index = 2;
 	graph_solution[2].n_edges_incoming = 0;
 	graph_solution[2].edges_incoming = NULL;
@@ -185,7 +243,6 @@ setup_gs(void)
 	memcpy(&graph_solution[2].edges_outgoing[1], &chosen_mb->edge_array[1],
 					sizeof(struct sgsh_edge));
 
-	DPRINTF("test_free");
 	graph_solution[3].node_index = 3;
 	graph_solution[3].n_edges_incoming = 2;
 	graph_solution[3].edges_incoming = (struct sgsh_edge *)malloc(
@@ -201,14 +258,16 @@ setup_gs(void)
 
 START_TEST(test_free_graph_solution)
 {
-	DPRINTF("test_free_graph_solution");
 	ck_assert_int_eq(free_graph_solution(3), OP_SUCCESS);
+	/* Invalid node indexes, the function's argument, are checked by assertion. */
 }
 END_TEST
 
 
 START_TEST(test_establish_io_connections)
 {
+	/* Should be in the solution propagation test suite. */
+	/* The test case contains an arrangement of 0 fds and another of >0 fds. */
 	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
 					&output_fds, &n_output_fds), OP_SUCCESS);
 }
@@ -231,18 +290,50 @@ retire_dmic(void)
 
 START_TEST(test_dry_match_io_constraints)
 {
-        /* A normal case. */
+        /* A normal case with fixed, tight constraints. */
 	n_edges_in = 0;
 	n_edges_out = 0;
-	ck_assert_int_eq(dry_match_io_constraints(3, &edges_in, &n_edges_in,
-						     &edges_out, &n_edges_out),
-									OP_SUCCESS);
-	/* Because evrything is taken care of under the function's feet with
-	 * data residing in sgsh's data structures, there is nothing to check.
-	 * Everything is unitialised, except for the node index. This is filled in
-	 * internally, and is tested through an assertion.
-	 */
+	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
+			&edges_in, &n_edges_in,&edges_out, &n_edges_out), OP_SUCCESS);
+        /* Hard coded. Observe the topology of the prototype solution in setup(). */
+	ck_assert_int_eq(n_edges_in, 2);
+	ck_assert_int_eq(n_edges_out, 0);
 
+	/* An impossible case. */
+	n_edges_in = 0;
+	n_edges_out = 0;
+	chosen_mb->node_array[3].requires_channels = 1;
+	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
+			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_ERROR);
+	ck_assert_int_eq(n_edges_in, 2);
+	ck_assert_int_eq(n_edges_out, 0);
+
+	/* Relaxing our target node's constraint. */
+	n_edges_in = 0;
+	n_edges_out = 0;
+	chosen_mb->node_array[3].requires_channels = -1;
+	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
+			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_SUCCESS);
+	ck_assert_int_eq(n_edges_in, 2);
+	ck_assert_int_eq(n_edges_out, 0);
+	/* Pair edges still have tight constraints. */
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
+	retire_dmic();
+
+	/* Relaxing also pair nodes' constraints. Need to reset the testbed. */
+	setup();
+	n_edges_in = 0;
+	n_edges_out = 0;
+	chosen_mb->node_array[3].requires_channels = -1;
+	chosen_mb->node_array[0].provides_channels = -1;
+	chosen_mb->node_array[1].provides_channels = -1;
+	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
+			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_SUCCESS);
+	ck_assert_int_eq(n_edges_in, 2);
+	ck_assert_int_eq(n_edges_out, 0);
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 5);
 }
 END_TEST
 
@@ -271,13 +362,20 @@ START_TEST(test_satisfy_io_constraints)
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(satisfy_io_constraints(1, pointers_to_edges, 2, 1),
 									OP_ERROR);
+	retire();
+
         /* Expand the semantics of remaining_free_channels to fixed constraints
            as in this case. */  
         /* Fixed constraint node, flexible pair, plenty. */
+	setup();
         chosen_mb->node_array[0].provides_channels = -1;
+	DPRINTF("3.1: %d", chosen_mb->node_array[0].provides_channels);
 	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
 									OP_SUCCESS);
+	retire();
+
         /* Flexible constraint both sides */
+	setup();
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(satisfy_io_constraints(-1, pointers_to_edges, 2, 1),
 									OP_SUCCESS);
@@ -361,12 +459,22 @@ START_TEST(test_assign_edge_instances)
 {
 	/*   No flexible. */
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 0, 0, 0, 2), OP_SUCCESS);
+
 	/*   Flexible with standard instances. */
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 1, 1, 0, 2), OP_SUCCESS);
+	retire();
+
         /* Flexible with extra instances, but no remaining. */
+	setup();
+        chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 1, 5, 0, 6), OP_SUCCESS);
+	retire();
+
         /* Flexible with extra instances, including remaining. */
+	setup();
+        chosen_mb->node_array[0].provides_channels = -1;
+        chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 7, 1, 1, 5, 1, 7), OP_SUCCESS);
 
 }
@@ -443,6 +551,11 @@ Suite *
 suite_negotiate(void)
 {
 	Suite *s = suite_create("Negotiate");
+
+	TCase *tc_ssg = tcase_create("solve_sgsh_graph");
+	tcase_add_checked_fixture(tc_ssg, setup, retire);
+	tcase_add_test(tc_ssg, test_solve_sgsh_graph);
+	suite_add_tcase(s, tc_ssg);
 
 	TCase *tc_fgs = tcase_create("free_graph_solution");
 	tcase_add_checked_fixture(tc_fgs, setup_gs, retire);

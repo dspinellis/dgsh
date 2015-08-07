@@ -184,6 +184,9 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 		 * sizeof(struct sgsh_edge), and point to that memory block.
 		 */
 		memcpy(&(*nc_edges)[i], p_edges[i], sizeof(struct sgsh_edge));
+		DPRINTF("%s():Copied edge %d -> %d (%d) at index %d.",
+				__func__, p_edges[i]->from, p_edges[i]->to,
+				p_edges[i]->instances, i);
 	}
 
 	return OP_SUCCESS;
@@ -193,6 +196,7 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 STATIC int
 reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 {
+	void **p = NULL;
 	if (edge_array == NULL) {
 		DPRINTF("Edge array is NULL pointer.\n");
 		return OP_ERROR;
@@ -200,8 +204,10 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 	if (n_elements <= 0) {
 		DPRINTF("Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
 		return OP_ERROR;
-	}
-	void **p = realloc(*edge_array, sizeof(struct sgsh_edge *) * n_elements);
+	} else if (n_elements == 1)
+		p = malloc(sizeof(struct sgsh_edge *) * n_elements);
+	else	
+		p = realloc(*edge_array,sizeof(struct sgsh_edge *) * n_elements);
 	if (!p) {
 		DPRINTF("Memory reallocation for edge failed.\n");
 		return OP_ERROR;
@@ -221,13 +227,12 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 		      int is_edge_incoming,      /* Edges are either the incoming or the outgoing ones */
 		      int n_edges_unlimited_constraint, /* Of n_edges, the number of edges with unlimited channel constraint */
 		      int instances_to_each_unlimited,  /* Edge instances allocated to each unlimited constraint  */
-		      int remaining_free_channels,      /* The residual after dividing the above to the edges having unlimited constraint */
+		      int remaining_free_instances,      /* The residual after dividing the above to the edges having unlimited constraint */
 		      int total_instances)       /*   */
 {
-	DPRINTF("assign_edge_instances() in");
 	int i;
 	int count_channels = 0;
-	int *edge_instances = NULL;
+	int edge_instances = 0;
 	int edge_constraint = 0;
 
 /* It is assertions that we need, not if conditions and return statements. */
@@ -239,49 +244,50 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 		n_edges_unlimited_constraint <= 1000);
 	assert(instances_to_each_unlimited >= 0 && 
 		instances_to_each_unlimited <= 5);
-	assert(remaining_free_channels >= 0 && remaining_free_channels <= 4);
+	assert(remaining_free_instances >= 0 && remaining_free_instances <= 4);
 	assert(total_instances >= 0 && total_instances <= 1000);
 	assert((n_edges_unlimited_constraint == 0 && 
-	          instances_to_each_unlimited == 0 && remaining_free_channels == 0) ||
+	          instances_to_each_unlimited == 0 && remaining_free_instances == 0) ||
 	       (n_edges_unlimited_constraint > 0 && 
 			instances_to_each_unlimited > 0));
 	assert(n_edges >= n_edges_unlimited_constraint);
 	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
-               remaining_free_channels + (n_edges - 
+               remaining_free_instances + (n_edges - 
                n_edges_unlimited_constraint) == total_instances);
 	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = 
 					channels = total_instances fails. */
 	assert(n_edges <= total_instances);
-	assert(this_node_channels == -1 ||
-	       this_node_channels == total_instances);
 
 	for (i = 0; i < n_edges; i++) {
 		assert(edges[i] != NULL);
 
-		/* Instances of an edge needed to satisfy a pair node's flexible
-                 * constraint (-1). Instances are set here.
-                 */
-		edge_instances = &edges[i]->instances;
-
 		/* Outgoing for the pair node of the edge. */
 		if (is_edge_incoming) {
 			edge_constraint = chosen_mb->node_array[edges[i]->from].provides_channels;
-			DPRINTF("edge constraint for node %d is %d", edges[i]->from, edge_constraint);
 		} else
 			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
 
 		if (edge_constraint == -1) {
-			*edge_instances = instances_to_each_unlimited;
-			if (remaining_free_channels > 0) {
-				(*edge_instances)++;
-				remaining_free_channels--;
+			edge_instances = instances_to_each_unlimited;
+			/* One-side eval: problematic */
+			if (remaining_free_instances > 0) {
+				edge_instances++;
+				remaining_free_instances--;
 			}
-		}
-		count_channels += *edge_instances;
-                DPRINTF("count_channels: %d, edge_instances: %d", count_channels, *edge_instances);
+		} else
+			edge_instances = 1;
+
+		if (edges[i]->instances > 0) { /* already set by the pair node */
+			DPRINTF("%s(): %d recorded vs %d computed instances.", __func__, edges[i]->instances, edge_instances);
+			assert(edges[i]->instances == edge_instances);
+		} else
+			edges[i]->instances = edge_instances;
+
+		count_channels += edge_instances;
+                DPRINTF("%s():count_channels: %d, edge_instances: %d assigned to edge at index %d", 
+				__func__, count_channels, edge_instances, i);
 	}
 
-	DPRINTF("assign_edge_instances() out");
 	/* Verify that the solution and distribution of channels check out. */
 	if (total_instances != count_channels) {
 		DPRINTF("Flexible assignment of edges corrupted. Expected %d edges, assigned %d", total_instances, count_channels);
@@ -299,31 +305,35 @@ static int
 eval_constraints(int this_node_channels, int total_edge_constraints,
 					int n_edges_unlimited_constraint, 
 					int *instances_to_each_unlimited,
-					int *remaining_free_channels,
-					int *instances)
+					int *remaining_free_instances,
+					int *instances) /* A node's total edge
+							 * instances for 
+							 * channel.
+							 */
 {
 	if (this_node_channels == -1) { /* Unlimited capacity. */
 		*instances = total_edge_constraints;
 		if (n_edges_unlimited_constraint > 0) { /* (* 5): arbitrary. */
 			*instances_to_each_unlimited = 5;
-			*remaining_free_channels = 0;
+			*remaining_free_instances = 0;
 			*instances += n_edges_unlimited_constraint * 
 						(*instances_to_each_unlimited);
 		} else {
 			*instances_to_each_unlimited = 0;
-			*remaining_free_channels = 0;
+			*remaining_free_instances = 0;
 		}	
 	} else {
 		if (this_node_channels < total_edge_constraints + 
-						n_edges_unlimited_constraint)
+						n_edges_unlimited_constraint) {
+			DPRINTF("%s(): Impossible to satisfy constraint %d given %d fixed and %d flexible connections to pair nodes.", __func__, this_node_channels, total_edge_constraints, n_edges_unlimited_constraint);
 			return OP_ERROR;
-		else if (this_node_channels == total_edge_constraints + 
+		} else if (this_node_channels == total_edge_constraints + 
 						n_edges_unlimited_constraint) {
 			if (n_edges_unlimited_constraint > 0)
 				*instances_to_each_unlimited = 1;
                         else
 				*instances_to_each_unlimited = 0;
-			*remaining_free_channels = 0;
+			*remaining_free_instances = 0;
 			*instances = this_node_channels;
 		} else { /* Dispense the remaining channels to edges that
 			  * can take unlimited capacity, if such exist.
@@ -332,19 +342,19 @@ eval_constraints(int this_node_channels, int total_edge_constraints,
 				*instances_to_each_unlimited = 
 				(this_node_channels - total_edge_constraints) /
 						n_edges_unlimited_constraint;
-				*remaining_free_channels =
+				*remaining_free_instances =
 				(this_node_channels - total_edge_constraints) %
 						n_edges_unlimited_constraint;
-                                /* remaining_free_channels included */
+                                /* remaining_free_instances included */
 				*instances = this_node_channels;
 			} else {
 				*instances_to_each_unlimited = 0;
-				*remaining_free_channels = 0;
+				*remaining_free_instances = 0;
 				*instances = total_edge_constraints;
 			}
 		}
 	}
-        DPRINTF("eval_constraints(): this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d, instances_to_each_unlimited: %d, remaining_free_channels: %d, instances %d.\n", this_node_channels, total_edge_constraints, n_edges_unlimited_constraint, *instances_to_each_unlimited, *remaining_free_channels, *instances);
+        DPRINTF("%s(): this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d, instances_to_each_unlimited: %d, remaining_free_instances: %d, instances %d.\n", __func__, this_node_channels, total_edge_constraints, n_edges_unlimited_constraint, *instances_to_each_unlimited, *remaining_free_instances, *instances);
 	return OP_SUCCESS;
 }
 
@@ -365,8 +375,8 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 	int total_edge_constraints = 0;
 	int n_edges_unlimited_constraint = 0;
 	int instances_to_each_unlimited = 0;
-	int remaining_free_channels = 0;
-	int instances;
+	int remaining_free_instances = 0;
+	int instances = 0;
 
 	/* Aggregate the constraints for the node's channel. */
 	for (i = 0; i < n_edges; i++) {
@@ -385,18 +395,18 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 	/* Try to find solution to the channel. */
 	if (eval_constraints(this_node_channels, total_edge_constraints,
 			n_edges_unlimited_constraint,
-			&instances_to_each_unlimited, &remaining_free_channels,
+			&instances_to_each_unlimited, &remaining_free_instances,
 						&instances) == OP_ERROR)
 		return OP_ERROR;
 
 	/* Assign the total number of instances to each edge. 
-	 * This is necessary to turn any flexible constraints into
-	 * edge instances.
+	 * This is necessary to optimize arrangement of edges and
+	 * satisfaction of constraints.
 	 */
-	if (n_edges_unlimited_constraint > 0) {
+	if (edges) {
 		if (assign_edge_instances(edges, n_edges, this_node_channels, 
 			is_edge_incoming, n_edges_unlimited_constraint,
-			instances_to_each_unlimited, remaining_free_channels, 
+			instances_to_each_unlimited, remaining_free_instances, 
 						instances) == OP_ERROR)
 			return OP_ERROR;
 	}
@@ -410,21 +420,23 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
  * 
  */
 static int
-dry_match_io_constraints(int node_index,                     /* Identifies the node we are currently setting up. */
+dry_match_io_constraints(struct sgsh_node *current,          /* Identifies the node we are currently setting up. */
 			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). */
 			 int *n_edges_incoming,              /* Number of incoming edges (see above). */
 			 struct sgsh_edge ***edges_outgoing, /* The node's outgoing edges (uninitialised). */
 			 int *n_edges_outgoing)              /* The number of outgoing edges (See above). */
 {
 	int n_edges = chosen_mb->n_edges;
-	int n_free_in_channels = self_node.requires_channels;
-	int n_free_out_channels = self_node.provides_channels;
+	int n_free_in_channels = current->requires_channels;
+	int n_free_out_channels = current->provides_channels;
+	int node_index = current->index;
 	int i;
 
 	assert(node_index < chosen_mb->n_nodes);
 
 	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
+		DPRINTF("%s(): edge at index %d.", __func__, i);
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
 		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
@@ -462,17 +474,87 @@ dry_match_io_constraints(int node_index,                     /* Identifies the n
  */
 static int
 free_graph_solution(int node_index) {
-	DPRINTF("%s", __func__);
 	int i;
 	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
-		DPRINTF("%d", i);
 		free(graph_solution[i].edges_incoming);
 		free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
+	DPRINTF("%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
 	return OP_SUCCESS;
 }
+
+/**
+ * This function implements the algorithm that tries to satisfy reported 
+ * I/O constraints of tools on an sgsh graph.
+ */
+static int
+solve_sgsh_graph() {
+	int i;
+	int n_nodes = chosen_mb->n_nodes;
+	int exit_state = OP_SUCCESS;
+	int graph_solution_size = sizeof(struct sgsh_negotiation) * n_nodes;
+	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
+							graph_solution_size);
+	if (!graph_solution) {
+		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		return OP_ERROR;
+	}
+
+	/* Check constraints for each node on the sgsh graph. */
+	for (i = 0; i < n_nodes; i++) {
+		DPRINTF("%s(): node at index %d.", __func__, i);
+		struct sgsh_node_connections *nc = &graph_solution[i];
+		memset(nc, 0, sizeof(struct sgsh_node_connections));
+		struct sgsh_edge **edges_incoming;
+		//nc->n_edges_incoming = 0;
+		//nc->edges_incoming = NULL;
+		int *n_edges_incoming = &nc->n_edges_incoming;
+		struct sgsh_edge **edges_outgoing;
+		//nc->n_edges_outgoing = 0;
+		//nc->edges_outgoing = NULL;
+		int *n_edges_outgoing = &nc->n_edges_outgoing;
+		struct sgsh_node *current = &chosen_mb->node_array[i];
+		int node_index = current->index;
+
+		/* Find and store pointers to node's at node_index edges.
+		 * Try to solve the I/O channel constraint problem.
+		 * Assign instances to each edge.
+		 */
+		if (dry_match_io_constraints(current, &edges_incoming,
+				n_edges_incoming, &edges_outgoing, 
+				n_edges_outgoing) == OP_ERROR) {
+			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", current->name,
+				current->pid, current->requires_channels,
+				*n_edges_incoming, current->provides_channels,
+				*n_edges_outgoing);
+			exit_state = OP_ERROR;
+		}
+
+		/**
+		 * Substitute pointers to edges with proper edge structures (copies)
+		 * to facilitate transmission and receipt in one piece.
+		 */
+		if (*n_edges_incoming > 0) {
+			if (make_compact_edge_array(&nc->edges_incoming,
+				*n_edges_incoming, edges_incoming) == OP_ERROR)
+				exit_state = OP_ERROR;
+			free(edges_incoming);
+		}
+		if (*n_edges_outgoing > 0) {
+			if (make_compact_edge_array(&nc->edges_outgoing,
+				*n_edges_outgoing, edges_outgoing) == OP_ERROR)
+				exit_state = OP_ERROR;
+			free(edges_outgoing);
+		}
+		if (exit_state == OP_ERROR) {
+			free_graph_solution(node_index);
+			break;
+		}
+	}
+	return exit_state;
+} /* memory deallocation when in error state? */
 
 /**
  * Assign the pipes to the data structures that will carry them back to the tool.
@@ -504,68 +586,6 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 
 	return re;
 }
-
-/**
- * This function implements the algorithm that tries to satisfy reported 
- * I/O constraints of tools on an sgsh graph.
- */
-static int
-solve_sgsh_graph() {
-	int i;
-	int n_nodes = chosen_mb->n_nodes;
-	int exit_state = OP_SUCCESS;
-	int graph_solution_size = sizeof(struct sgsh_negotiation) * n_nodes;
-	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
-							graph_solution_size);
-	if (!graph_solution) {
-		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
-		return OP_ERROR;
-	}
-
-	/* Check constraints for each node on the sgsh graph. */
-	for (i = 0; i < n_nodes; i++) {
-		struct sgsh_node_connections *nc = &graph_solution[i];
-		struct sgsh_edge **edges_incoming;
-		nc->n_edges_incoming = 0;
-		int *n_edges_incoming = &nc->n_edges_incoming;
-		struct sgsh_edge **edges_outgoing;
-		nc->n_edges_outgoing = 0;
-		int *n_edges_outgoing = &nc->n_edges_outgoing;
-		int node_index = chosen_mb->node_array[i].index;
-
-		/* Find and store pointers to node's at node_index edges.
-		 * Try to solve the I/O channel constraint problem.
-		 * Assign instances to each edge.
-		 */
-		if (dry_match_io_constraints(node_index, &edges_incoming,
-				n_edges_incoming, &edges_outgoing, 
-				n_edges_outgoing) == OP_ERROR) {
-			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n", self_node.name,
-				self_node.pid, self_node.requires_channels,
-				*n_edges_incoming, self_node.provides_channels,
-				*n_edges_outgoing);
-			exit_state = OP_ERROR;
-		}
-
-		/**
-		 * Substitute pointers to edges with proper edge structures (copies)
-		 * to facilitate transmission and receipt in one piece.
-		 */
-		if ((make_compact_edge_array(&nc->edges_incoming, *n_edges_incoming,
-						edges_incoming) == OP_ERROR) ||
-		    (make_compact_edge_array(&nc->edges_outgoing, *n_edges_outgoing,
-						edges_outgoing) == OP_ERROR))
-			exit_state = OP_ERROR;
-
-		free(edges_incoming);
-		free(edges_outgoing);
-		if (exit_state == OP_ERROR) {
-			free_graph_solution(node_index);
-			break;
-		}
-	}
-	return exit_state;
-} /* memory deallocation when in error state? */
 
 /* Return the appropriate socket descriptor to use. */
 static int
@@ -649,7 +669,7 @@ alloc_write_output_fds()
 		if (re == OP_ERROR) break;
 	}
 	if (re == OP_ERROR) {
-		free_graph_solution(chosen_mb->n_nodes);
+		free_graph_solution(chosen_mb->n_nodes - 1);
 		free(self_pipe_fds.output_fds);
 	}
 	return re;
@@ -839,6 +859,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 			self_dispatcher.fd_direction == STDIN_FILENO);
 		e->to = self_dispatcher.index;
 	}
+	e->instances = 0;
         DPRINTF("New sgsh edge with %d instances.", e->instances);
 	return OP_SUCCESS;
 }
@@ -1130,7 +1151,7 @@ read_input_fds()
 		if (re == OP_ERROR) break;
 	}
 	if (re == OP_ERROR) {
-		free_graph_solution(chosen_mb->n_nodes);
+		free_graph_solution(chosen_mb->n_nodes - 1);
 		free(self_pipe_fds.input_fds);
 	}
 	return re;
@@ -1443,7 +1464,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		chosen_mb->state_flag = PROT_STATE_ERROR;
 		goto exit;
 	}
-	free_graph_solution(chosen_mb->n_nodes);
+	free_graph_solution(chosen_mb->n_nodes - 1);
 
 exit:
 	free_mb(chosen_mb);
