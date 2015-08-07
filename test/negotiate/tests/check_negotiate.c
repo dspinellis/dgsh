@@ -548,9 +548,23 @@ START_TEST(test_negotiate_api)
 END_TEST
 
 Suite *
-suite_negotiate(void)
+suite_connect(void)
 {
-	Suite *s = suite_create("Negotiate");
+	Suite *s = suite_create("Connect");
+
+	TCase *tc_eic = tcase_create("establish_io_connections");
+	tcase_add_checked_fixture(tc_eic, setup, retire);
+	tcase_add_test(tc_eic, test_establish_io_connections);
+	tcase_add_test(tc_eic, test_alloc_node_connections);
+	suite_add_tcase(s, tc_eic);
+
+	return s;
+}
+
+Suite *
+suite_solve(void)
+{
+	Suite *s = suite_create("Solve");
 
 	TCase *tc_ssg = tcase_create("solve_sgsh_graph");
 	tcase_add_checked_fixture(tc_ssg, setup, retire);
@@ -562,15 +576,28 @@ suite_negotiate(void)
 	tcase_add_test(tc_fgs, test_free_graph_solution);
 	suite_add_tcase(s, tc_fgs);
 
-	TCase *tc_eic = tcase_create("establish_io_connections");
-	tcase_add_checked_fixture(tc_eic, setup, retire);
-	tcase_add_test(tc_eic, test_establish_io_connections);
-	suite_add_tcase(s, tc_eic);
-
 	TCase *tc_dmic = tcase_create("dry_match_io_constraints");
 	tcase_add_checked_fixture(tc_dmic, setup, retire_dmic);
 	tcase_add_test(tc_dmic, test_dry_match_io_constraints);
 	suite_add_tcase(s, tc_dmic);
+
+	/* Unsure whether to break one by one. */
+	TCase *tc_core = tcase_create("solution_functions");
+	tcase_add_checked_fixture(tc_core, setup, retire);
+	tcase_add_test(tc_core, test_satisfy_io_constraints);
+	tcase_add_test(tc_core, test_eval_constraints);
+	tcase_add_test(tc_core, test_assign_edge_instances);
+	tcase_add_test(tc_core, test_reallocate_edge_pointer_array);
+	tcase_add_test(tc_core, test_make_compact_edge_array);
+	suite_add_tcase(s, tc_core);
+
+	return s;
+}
+
+Suite *
+suite_negotiate(void)
+{
+	Suite *s = suite_create("Negotiate");
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, retire);
@@ -579,20 +606,44 @@ suite_negotiate(void)
 	tcase_add_test(tc_core, test_assign_edge_instances);
 	tcase_add_test(tc_core, test_reallocate_edge_pointer_array);
 	tcase_add_test(tc_core, test_make_compact_edge_array);
-	tcase_add_test(tc_core, test_alloc_node_connections);
 	tcase_add_test(tc_core, test_validate_input);
 	tcase_add_test(tc_core, test_negotiate_api);
 	suite_add_tcase(s, tc_core);
+
 	return s;
 }
 
-int
-main(void) {
+int run_suite(Suite *s) {
 	int number_failed;
-	Suite *s = suite_negotiate();
 	SRunner *sr = srunner_create(s);
 	srunner_run_all(sr, CK_VERBOSE);
 	number_failed = srunner_ntests_failed(sr);
 	srunner_free(sr);
-	return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+	return (number_failed == 0) ? 1 : 0;
+}
+
+int
+run_suite_connect(void) {
+	Suite *s = suite_connect();
+	return run_suite(s);
+}
+
+int
+run_suite_solve(void) {
+	Suite *s = suite_solve();
+	return run_suite(s);
+}
+
+int
+run_suite_negotiate(void) {
+	Suite *s = suite_negotiate();
+	return run_suite(s);
+}
+
+int main() {
+	int failed_neg, failed_sol, failed_con;
+	failed_neg = run_suite_negotiate();
+	failed_sol = run_suite_solve();
+	failed_con = run_suite_connect();
+	return (failed_neg && failed_sol && failed_con) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
