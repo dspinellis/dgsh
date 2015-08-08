@@ -111,6 +111,11 @@ setup(void)
 	self_dispatcher.index = 3;
 	self_dispatcher.fd_direction = 0; /* The input side */
 	
+	/* check_negotiation_round() */
+	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
+	chosen_mb->initiator_pid = 103; /* Node 3 */
+	mb_is_updated = 0;
+	chosen_mb->serial_no = 0;
 }
 
 /* establish_io_connections() */
@@ -574,6 +579,64 @@ START_TEST(test_alloc_node_connections)
 	ck_assert_int_eq(alloc_node_connections(&test, 1, -1, 2), OP_ERROR);
 	ck_assert_int_eq(alloc_node_connections(&test, 1, 1, -2), OP_ERROR);
 	ck_assert_int_eq(alloc_node_connections(&test, 1, 1, 2), OP_SUCCESS);
+}
+END_TEST
+
+START_TEST(test_check_negotiation_round)
+{
+	/* End of negotiation rounds */
+	int negotiation_round = 0;
+	check_negotiation_round(&negotiation_round);
+	ck_assert_int_eq(negotiation_round, 1);
+	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 1);
+	retire();
+
+	/* Continue negotiation rounds, but don't update the counter */
+	setup();
+	chosen_mb->initiator_pid = 100; /* Node at index 0 */
+	negotiation_round = 0;
+	mb_is_updated = 1;
+	check_negotiation_round(&negotiation_round);
+	ck_assert_int_eq(negotiation_round, 0);
+	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 0);
+	ck_assert_int_eq(mb_is_updated, 1);
+
+	/* Don't update negotiation rounds, message block not updated */
+	setup();
+	chosen_mb->initiator_pid = 100; /* Node at index 0 */
+	negotiation_round = 0;
+	check_negotiation_round(&negotiation_round);
+	ck_assert_int_eq(negotiation_round, 0);
+	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 1);
+	retire();
+
+	/* Don't update and continue negotiation rounds. */
+	setup();
+	negotiation_round = 0;
+	mb_is_updated = 1;
+	check_negotiation_round(&negotiation_round);
+	ck_assert_int_eq(negotiation_round, 1);
+	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 0);
+	ck_assert_int_eq(mb_is_updated, 1);
+	retire();
+
+	/* Negotiation has ended. */
+	setup();
+	negotiation_round = 0;
+	chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+	check_negotiation_round(&negotiation_round);
+	ck_assert_int_eq(negotiation_round, 0);
+	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->serial_no, 0);
+	ck_assert_int_eq(mb_is_updated, 0);
+	retire();
+
 }
 END_TEST
 

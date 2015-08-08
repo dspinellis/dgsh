@@ -805,7 +805,7 @@ check_negotiation_round(int *negotiation_round)
 			chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = 1;
-			DPRINTF("Negotiation protocol state change: end of negotiation phase.\n");
+			DPRINTF("%s(): Negotiation protocol state change: end of negotiation phase.\n", __func__);
 		}
 	}
 }
