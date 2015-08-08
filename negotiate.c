@@ -742,6 +742,9 @@ set_dispatcher() {
 	chosen_mb->origin.index = self_dispatcher.index;
 	assert(self_dispatcher.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin.fd_direction = self_dispatcher.fd_direction;
+	DPRINTF("%s(): message block origin set to %d writing on the %s side",
+			__func__, chosen_mb->origin.index,
+		(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
 }
 
 /* Write message block to buffer. */

@@ -107,6 +107,9 @@ setup(void)
 	/* fill in self_node */
 	memcpy(&self_node, &nodes[3], sizeof(struct sgsh_node));
 
+	/* set_dispatcher() */
+	self_dispatcher.index = 3;
+	self_dispatcher.fd_direction = 0; /* The input side */
 	
 }
 
@@ -533,6 +536,17 @@ START_TEST(test_alloc_write_output_fds)
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	free(self_pipe_fds.output_fds);
 
+	/* Incomplete testing since socket descriptors have not yet been setup.
+	 * This will hapeen through the shell.
+	 */
+}
+END_TEST
+
+START_TEST(test_set_dispatcher)
+{
+	set_dispatcher();
+	ck_assert_int_eq(chosen_mb->origin.index, 3);
+	ck_assert_int_eq(chosen_mb->origin.fd_direction, 0); /* The input side */
 }
 END_TEST
 
@@ -603,6 +617,7 @@ suite_connect(void)
 	tcase_add_checked_fixture(tc_anc, setup, retire);
 	tcase_add_test(tc_anc, test_alloc_node_connections);
 	tcase_add_test(tc_anc, test_get_next_sd);
+	tcase_add_test(tc_anc, test_set_dispatcher);
 	suite_add_tcase(s, tc_anc);
 
 	TCase *tc_awo = tcase_create("alloc_write_output_fds");
