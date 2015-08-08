@@ -508,6 +508,20 @@ START_TEST(test_make_compact_edge_array)
 }
 END_TEST
 
+START_TEST(test_get_next_sd)
+{
+	ck_assert_int_eq(get_next_sd(0, 0), 0);
+	ck_assert_int_eq(get_next_sd(0, 1), 3);
+	ck_assert_int_eq(get_next_sd(0, 2), 4);
+	ck_assert_int_eq(get_next_sd(0, 3), 5);
+	
+	ck_assert_int_eq(get_next_sd(1, 1), 1);
+	ck_assert_int_eq(get_next_sd(1, 2), 3);
+	ck_assert_int_eq(get_next_sd(1, 3), 4);
+	ck_assert_int_eq(get_next_sd(1, 4), 5);
+}
+END_TEST
+
 START_TEST(test_alloc_node_connections)
 {
 	struct sgsh_edge *test;
@@ -556,6 +570,7 @@ suite_connect(void)
 	tcase_add_checked_fixture(tc_eic, setup, retire);
 	tcase_add_test(tc_eic, test_establish_io_connections);
 	tcase_add_test(tc_eic, test_alloc_node_connections);
+	tcase_add_test(tc_eic, test_get_next_sd);
 	suite_add_tcase(s, tc_eic);
 
 	return s;

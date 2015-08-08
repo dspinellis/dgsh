@@ -587,14 +587,30 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 	return re;
 }
 
-/* Return the appropriate socket descriptor to use. */
+/* Return the appropriate socket descriptor to use. 
+ * io_channel: 0:IN ; 1: OUT
+ */
 static int
-get_next_sd(int counted_sd_descriptors)
+get_next_sd(int io_channel, int sd_descriptor)
 {
-	switch (counted_sd_descriptors) {
-		case 1: return 1; /* STDOUT fd: OK to use. */
-		case 2: return 3; /* STDERR fd: We shouldn't use. */
-		default: return counted_sd_descriptors + 1;
+	DPRINTF("%s(): %s channel, %d socket descriptor.", __func__,
+			(io_channel == 1) ? "output" : "input", sd_descriptor);
+	assert(io_channel == 0 || io_channel == 1);
+	assert((io_channel == 0 && sd_descriptor >= 0) ||
+	       (io_channel == 1 && sd_descriptor >= 1));
+	if (io_channel == 1) {  /* Output */
+		switch (sd_descriptor) {
+			case 1: return 1; /* STDOUT fd: OK for output */
+			case 2: return 3; /* STDERR fd: We shouldn't use. */
+			default: return sd_descriptor + 1; 
+		}
+	} else { /* Input */
+		switch (sd_descriptor) {
+			case 0: return 0; /* STDIN fd: OK to use. */
+			case 1: return 3; /* STDOUT fd: can't use for input */
+			case 2: return 4; /* STDERR fd: We shouldn't use. */
+			default: return sd_descriptor + 2;
+		}
 	}
 }
 
@@ -655,8 +671,9 @@ alloc_write_output_fds()
 			msg.msg_controllen = sizeof(fd[0]);
 			close(fd[0]);
 
-			/* Send the message. */
-			if (sendmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
+			/* Send the message. DEFINE OUTPUT=1*/
+			if (sendmsg(get_next_sd(count_sd_descriptors, 1),
+								&msg, 0) < 0) {
 				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
@@ -1110,7 +1127,7 @@ read_input_fds()
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
 	int i;
-	int count_sd_descriptors = 1; /* Streamline with get_next_sd(). */
+	int count_sd_descriptors = 0; /* Streamline with get_next_sd(). */
 	int total_edge_instances = 0;
 	int re = OP_SUCCESS;
 
@@ -1139,7 +1156,9 @@ read_input_fds()
 			msg.msg_controllen = sizeof(read_fd);
 
 			DPRINTF("Waiting to receive pipe fd.\n");
-			if (recvmsg(get_next_sd(count_sd_descriptors), &msg, 0) < 0) {
+			/* Define INPUT=0 */
+			if (recvmsg(get_next_sd(count_sd_descriptors, 0),
+								&msg, 0) < 0) {
 				DPRINTF("revcmsg() failed.\n");
 				re = OP_ERROR;
 				break;
