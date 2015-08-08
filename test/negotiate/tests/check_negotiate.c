@@ -106,6 +106,14 @@ setup(void)
 	/* establish_io_connections */
 	/* fill in self_node */
 	memcpy(&self_node, &nodes[3], sizeof(struct sgsh_node));
+
+	
+}
+
+/* establish_io_connections() */
+void
+setup_pipe_fds(void)
+{
 	/* fill in self_pipe_fds */
 	self_pipe_fds.n_input_fds = 2;
 	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) *
@@ -113,8 +121,6 @@ setup(void)
 	self_pipe_fds.input_fds[0] = 0;
 	self_pipe_fds.input_fds[0] = 3;
 	self_pipe_fds.n_output_fds = 0;
-
-	
 }
 
 void
@@ -130,6 +136,12 @@ retire(void)
         free(chosen_mb);
 
         free(args);
+}
+
+/* establish_io_connections() */
+void
+retire_pipe_fds(void)
+{
 	if (n_input_fds > 0)
 		free(input_fds);
 	if (n_output_fds > 0)
@@ -369,7 +381,6 @@ START_TEST(test_satisfy_io_constraints)
         /* Fixed constraint node, flexible pair, plenty. */
 	setup();
         chosen_mb->node_array[0].provides_channels = -1;
-	DPRINTF("3.1: %d", chosen_mb->node_array[0].provides_channels);
 	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
 									OP_SUCCESS);
 	retire();
@@ -508,6 +519,23 @@ START_TEST(test_make_compact_edge_array)
 }
 END_TEST
 
+START_TEST(test_alloc_write_output_fds)
+{
+	/* 0 outgoing edges for node 3, so no action really. */
+	ck_assert_int_eq(alloc_write_output_fds(), OP_SUCCESS);
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire();
+
+	/* Switch to node 2 that has 2 outgoing edges. */
+	setup_gs();
+	memcpy(&self_node, &nodes[2], sizeof(struct sgsh_node));
+	ck_assert_int_eq(alloc_write_output_fds(), OP_SUCCESS);
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	free(self_pipe_fds.output_fds);
+
+}
+END_TEST
+
 START_TEST(test_get_next_sd)
 {
 	ck_assert_int_eq(get_next_sd(0, 0), 0);
@@ -567,11 +595,20 @@ suite_connect(void)
 	Suite *s = suite_create("Connect");
 
 	TCase *tc_eic = tcase_create("establish_io_connections");
-	tcase_add_checked_fixture(tc_eic, setup, retire);
+	tcase_add_checked_fixture(tc_eic, setup_pipe_fds, retire_pipe_fds);
 	tcase_add_test(tc_eic, test_establish_io_connections);
-	tcase_add_test(tc_eic, test_alloc_node_connections);
-	tcase_add_test(tc_eic, test_get_next_sd);
 	suite_add_tcase(s, tc_eic);
+
+	TCase *tc_anc = tcase_create("alloc_node_connections");
+	tcase_add_checked_fixture(tc_anc, setup, retire);
+	tcase_add_test(tc_anc, test_alloc_node_connections);
+	tcase_add_test(tc_anc, test_get_next_sd);
+	suite_add_tcase(s, tc_anc);
+
+	TCase *tc_awo = tcase_create("alloc_write_output_fds");
+	tcase_add_checked_fixture(tc_awo, setup_gs, retire);
+	tcase_add_test(tc_awo, test_alloc_write_output_fds);
+	suite_add_tcase(s, tc_awo);
 
 	return s;
 }

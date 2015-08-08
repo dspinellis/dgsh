@@ -626,6 +626,8 @@ alloc_write_output_fds()
 	 */
 	struct sgsh_node_connections *this_nc = 
 					&graph_solution[self_node.index];
+	DPRINTF("%s(): for node at index %d with %d outgoing edges.", __func__, 
+				self_node.index, this_nc->n_edges_outgoing);
 	assert(this_nc->node_index == self_node.index);
 	int i;
 	int count_sd_descriptors = 1; /* Streamline with get_next_sd(). */
@@ -639,7 +641,8 @@ alloc_write_output_fds()
 		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++)
 			self_pipe_fds.n_output_fds++;
 	}
-	self_pipe_fds.output_fds = (int *)malloc(sizeof(int) * 
+	if (this_nc->n_edges_outgoing > 0)
+		self_pipe_fds.output_fds = (int *)malloc(sizeof(int) * 
 						self_pipe_fds.n_output_fds);
 
 	/**
@@ -648,8 +651,8 @@ alloc_write_output_fds()
 	 * Send each pipe fd as a message to a socket descriptor that has been
 	 * set up by the shell to support the sgsh negotiation phase.
 	 * We use the following convention for selecting the socket descriptor
-	 * to send the message to: 1, 3, 4, 5, 6, 7, ... are the socket descriptors
-	 * we send to (in this order).
+	 * to send the message to: 1, 3, 4, 5, 6, 7, ... are the socket
+	 * descriptors we send to (in this order).
 	 */
 	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
 		int k;
