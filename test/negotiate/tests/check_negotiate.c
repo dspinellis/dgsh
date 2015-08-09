@@ -639,6 +639,16 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_lookup_sgsh_edge)
+{
+	struct sgsh_edge new;
+	new.from = 2;
+	new.to = 3;
+	ck_assert_int_eq(lookup_sgsh_edge(&new), OP_CREATE);
+	ck_assert_int_eq(lookup_sgsh_edge(&chosen_mb->edge_array[4]), OP_EXISTS);
+}
+END_TEST
+
 START_TEST(test_add_node)
 {
 	struct sgsh_node new;
@@ -746,14 +756,11 @@ suite_broadcast(void)
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, NULL);
+	tcase_add_test(tc_core, test_lookup_sgsh_edge);
 	tcase_add_test(tc_core, test_add_node);
+	tcase_add_test(tc_core, test_validate_input);
+	tcase_add_test(tc_core, test_negotiate_api);
 	suite_add_tcase(s, tc_core);
-	
-	TCase *tc_in = tcase_create("In");
-	tcase_add_checked_fixture(tc_in, setup, retire);
-	tcase_add_test(tc_in, test_validate_input);
-	tcase_add_test(tc_in, test_negotiate_api);
-	suite_add_tcase(s, tc_in);
 
 	return s;
 }
