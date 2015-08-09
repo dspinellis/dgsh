@@ -22,7 +22,6 @@ int n_output_fds;
 void
 setup(void)
 {
-        
 	n_nodes = 4;
         nodes = (struct sgsh_node *)malloc(sizeof(struct sgsh_node) * n_nodes);
         nodes[0].pid = 100;
@@ -109,7 +108,7 @@ setup(void)
 
 	/* set_dispatcher() */
 	self_dispatcher.index = 3;
-	self_dispatcher.fd_direction = 0; /* The input side */
+	self_dispatcher.fd_direction = 0; /* The input side or actual fd? Check! */
 	
 	/* check_negotiation_round() */
 	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
@@ -640,6 +639,21 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_add_node)
+{
+	struct sgsh_node new;
+	new.pid = 104;
+	memcpy(new.name, "proc4", 6);
+	new.requires_channels = 1;
+	new.provides_channels = 1;
+	memcpy(&self_node, &new, sizeof(struct sgsh_node));
+	ck_assert_int_eq(add_node(), OP_SUCCESS);
+	ck_assert_int_eq(chosen_mb->n_nodes, 5);
+	ck_assert_int_eq(self_dispatcher.index, 4);
+	ck_assert_int_eq(self_node.index, 4);
+}
+END_TEST
+
 START_TEST(test_validate_input)
 {
 	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
@@ -683,6 +697,7 @@ suite_connect(void)
 	tcase_add_test(tc_anc, test_set_dispatcher);
 	suite_add_tcase(s, tc_anc);
 
+	/* Need to also simulate sendmsg; make sure it works. */
 	TCase *tc_awo = tcase_create("alloc_write_output_fds");
 	tcase_add_checked_fixture(tc_awo, setup_gs, retire);
 	tcase_add_test(tc_awo, test_alloc_write_output_fds);
@@ -730,10 +745,15 @@ suite_broadcast(void)
 	Suite *s = suite_create("Broadcast");
 
 	TCase *tc_core = tcase_create("Core");
-	tcase_add_checked_fixture(tc_core, setup, retire);
-	tcase_add_test(tc_core, test_validate_input);
-	tcase_add_test(tc_core, test_negotiate_api);
+	tcase_add_checked_fixture(tc_core, setup, NULL);
+	tcase_add_test(tc_core, test_add_node);
 	suite_add_tcase(s, tc_core);
+	
+	TCase *tc_in = tcase_create("In");
+	tcase_add_checked_fixture(tc_in, setup, retire);
+	tcase_add_test(tc_in, test_validate_input);
+	tcase_add_test(tc_in, test_negotiate_api);
+	suite_add_tcase(s, tc_in);
 
 	return s;
 }

@@ -815,7 +815,8 @@ static int
 add_node()
 {
 	int n_nodes = chosen_mb->n_nodes;
-	void *p = realloc(chosen_mb->node_array, n_nodes);
+	void *p = realloc(chosen_mb->node_array,
+		sizeof(struct sgsh_node) * (n_nodes + 1));
 	if (!p) {
 		DPRINTF("Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
@@ -825,8 +826,8 @@ add_node()
 					sizeof(struct sgsh_node));
 		self_dispatcher.index = n_nodes;
 		self_node.index = n_nodes;
-		DPRINTF("Added node %s indexed in position %d on sgsh graph.\n",
-					self_node.name, self_dispatcher.index);
+		DPRINTF("%s(): Added node %s in position %d on sgsh graph.\n",
+				__func__, self_node.name, self_dispatcher.index);
 		chosen_mb->n_nodes++;
 	}
 	return OP_SUCCESS;
@@ -892,7 +893,8 @@ static int
 add_edge(struct sgsh_edge *edge)
 {
 	int n_edges = chosen_mb->n_edges;
-	void *p = realloc(chosen_mb->edge_array, n_edges);
+	void *p = realloc(chosen_mb->edge_array,
+			sizeof(struct sgsh_edge) * (n_edges + 1));
 	if (!p) {
 		DPRINTF("Edge array expansion for adding a new edge failed.\n");
 		return OP_ERROR;
