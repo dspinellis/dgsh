@@ -855,7 +855,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
-	for (i = 0; n_nodes; i++) /* Check dispatcher node exists. */
+	for (i = 0; i < n_nodes; i++) /* Check dispatcher node exists. */
 		if (i == chosen_mb->origin.index) break;
 	if (i == n_nodes) {
 		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
@@ -869,7 +869,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	 * Self (the recipient) is the source of the edge. 
          */
 		e->to = chosen_mb->origin.index; 
-		assert(self_node.sgsh_out); 
+		assert(self_node.sgsh_out == 1); 
 		assert((self_node.sgsh_in && 
 			self_dispatcher.fd_direction == STDIN_FILENO) ||
 			self_dispatcher.fd_direction == STDOUT_FILENO);
@@ -877,7 +877,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	} else if (chosen_mb->origin.fd_direction == STDOUT_FILENO) { 
 		/* Similarly. */
 		e->from = chosen_mb->origin.index;
-		assert(self_node.sgsh_in);
+		assert(self_node.sgsh_in == 1);
 		assert((self_node.sgsh_out && 
 			self_dispatcher.fd_direction == STDOUT_FILENO) ||
 			self_dispatcher.fd_direction == STDIN_FILENO);

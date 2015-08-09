@@ -85,7 +85,7 @@ setup(void)
         chosen_mb->n_nodes = n_nodes;
         chosen_mb->edge_array = edges;
         chosen_mb->n_edges = n_edges;
-        
+
         n_ptedges = 2;
 	pointers_to_edges = (struct sgsh_edge **)malloc(sizeof(struct sgsh_edge *) *n_ptedges);
 	int i;
@@ -639,6 +639,32 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_fill_sgsh_edge)
+{
+	struct sgsh_edge new;
+	/* STDIN -> STDOUT */
+	/* Better in a setup function. */ 
+	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin.index = 0;
+	/* self_dispatcher should also be set; it is set in setup */
+	ck_assert_int_eq(fill_sgsh_edge(&new), OP_SUCCESS);
+	
+	/* Impossible case. No such origin. */
+	chosen_mb->origin.index = 7;
+	ck_assert_int_eq(fill_sgsh_edge(&new), OP_ERROR);
+	
+	/* STDOUT -> STDIN */
+	chosen_mb->origin.fd_direction = STDIN_FILENO;   
+	chosen_mb->origin.index = 3;
+	memcpy(&self_node, &nodes[0], sizeof(struct sgsh_node));
+	self_dispatcher.fd_direction = STDOUT_FILENO;   
+	self_dispatcher.index = 0;
+	/* self_dispatcher should also be set; it is set in setup */
+	ck_assert_int_eq(fill_sgsh_edge(&new), OP_SUCCESS);
+	
+}
+END_TEST
+
 START_TEST(test_lookup_sgsh_edge)
 {
 	struct sgsh_edge new;
@@ -756,6 +782,7 @@ suite_broadcast(void)
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, NULL);
+	tcase_add_test(tc_core, test_fill_sgsh_edge);
 	tcase_add_test(tc_core, test_lookup_sgsh_edge);
 	tcase_add_test(tc_core, test_add_node);
 	tcase_add_test(tc_core, test_validate_input);
