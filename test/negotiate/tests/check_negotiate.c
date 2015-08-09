@@ -639,6 +639,17 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_add_edge)
+{
+	struct sgsh_edge new;
+	new.from = 2;
+	new.to = 3;
+	new.instances = 0;
+	ck_assert_int_eq(add_edge(&new), OP_SUCCESS);
+	ck_assert_int_eq(chosen_mb->n_edges, 6);
+}
+END_TEST
+
 START_TEST(test_fill_sgsh_edge)
 {
 	struct sgsh_edge new;
@@ -782,6 +793,7 @@ suite_broadcast(void)
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup, NULL);
+	tcase_add_test(tc_core, test_add_edge);
 	tcase_add_test(tc_core, test_fill_sgsh_edge);
 	tcase_add_test(tc_core, test_lookup_sgsh_edge);
 	tcase_add_test(tc_core, test_add_node);
