@@ -840,8 +840,11 @@ lookup_sgsh_edge(struct sgsh_edge *e)
 	int i;
 	for (i = 0; i < chosen_mb->n_edges; i++) {
 		if ((chosen_mb->edge_array[i].from == e->from) &&
-		    (chosen_mb->edge_array[i].to == e->to))
+		    (chosen_mb->edge_array[i].to == e->to)) {
+			DPRINTF("%s(): Edge %d to %d exists.", __func__,
+								e->from, e->to);
 			return OP_EXISTS;
+		}
 	}
 	return OP_CREATE;
 }

@@ -639,6 +639,50 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_try_add_sgsh_edge)
+{
+	/* Better in a setup function. */ 
+	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin.index = 0;
+	/* self_dispatcher should also be set; it is set in setup */
+	ck_assert_int_eq(try_add_sgsh_edge(), OP_EXISTS);
+
+	/* New edge: from new node to existing */
+	struct sgsh_node new;
+	new.index = 4;
+	new.pid = 104;
+	memcpy(new.name, "proc4", 6);
+	new.requires_channels = 1;
+	new.provides_channels = 1;
+	new.sgsh_in = 1;
+        new.sgsh_out = 1;
+	/* Better in a setup function. */ 
+	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin.index = new.index;
+	/* self_dispatcher should also be set; it is set in setup */
+	memcpy(&self_node, &new, sizeof(struct sgsh_node));
+	chosen_mb->n_nodes++;
+	chosen_mb->node_array = realloc(chosen_mb->node_array,
+				sizeof(struct sgsh_node) * chosen_mb->n_nodes);
+	memcpy(&chosen_mb->node_array[chosen_mb->n_nodes - 1], &new,
+		sizeof(struct sgsh_node));
+	ck_assert_int_eq(try_add_sgsh_edge(), OP_SUCCESS);
+
+	/* New edge: from existing to new node */
+	/* Better in a setup function. */ 
+	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin.index = 0;
+	/* self_dispatcher should also be set; it is set in setup */
+	self_dispatcher.index = new.index;
+	self_dispatcher.fd_direction = STDIN_FILENO;
+	ck_assert_int_eq(try_add_sgsh_edge(), OP_SUCCESS);
+
+	/* NOOP: message block created just now */
+	chosen_mb->origin.index = -1;
+	ck_assert_int_eq(try_add_sgsh_edge(), OP_NOOP);
+}
+END_TEST
+
 START_TEST(test_add_edge)
 {
 	struct sgsh_edge new;
@@ -792,7 +836,9 @@ suite_broadcast(void)
 	Suite *s = suite_create("Broadcast");
 
 	TCase *tc_core = tcase_create("Core");
+	/* Why no retire()? */
 	tcase_add_checked_fixture(tc_core, setup, NULL);
+	tcase_add_test(tc_core, test_try_add_sgsh_edge);
 	tcase_add_test(tc_core, test_add_edge);
 	tcase_add_test(tc_core, test_fill_sgsh_edge);
 	tcase_add_test(tc_core, test_lookup_sgsh_edge);
