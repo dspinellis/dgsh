@@ -624,6 +624,7 @@ alloc_write_output_fds()
 	 * A node's connections are located at the same position
          * as the node in the node array.
 	 */
+	DPRINTF("%s", __func__);
 	struct sgsh_node_connections *this_nc = 
 					&graph_solution[self_node.index];
 	DPRINTF("%s(): for node at index %d with %d outgoing edges.", __func__, 
