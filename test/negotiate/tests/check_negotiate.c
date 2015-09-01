@@ -927,6 +927,11 @@ END_TEST
 START_TEST(test_try_add_sgsh_node)
 {
 	ck_assert_int_eq(try_add_sgsh_node(), OP_EXISTS);
+	ck_assert_int_eq(chosen_mb->n_nodes, 4);
+	ck_assert_int_eq(chosen_mb->serial_no, 0);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(self_dispatcher.index, 0);
+	ck_assert_int_eq(self_node.index, 3);
 
 	struct sgsh_node new;
 	new.pid = 104;
