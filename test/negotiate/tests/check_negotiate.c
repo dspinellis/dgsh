@@ -262,6 +262,14 @@ setup_test_try_add_sgsh_node(void)
 }
 
 void
+setup_test_fill_sgsh_node(void)
+{
+	/* setup_self_node() requires setup_chosen_mb() */
+	setup_chosen_mb();
+	setup_self_node();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -924,6 +932,17 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_fill_sgsh_node)
+{
+	fill_sgsh_node("test", 1003, 1, 1);
+	ck_assert_int_eq(strcmp(self_node.name, "test"), 0);
+	ck_assert_int_eq(self_node.pid, 1003);
+	ck_assert_int_eq(self_node.requires_channels, 1);
+	ck_assert_int_eq(self_node.provides_channels, 1);
+	ck_assert_int_eq(self_node.index, -1);
+}
+END_TEST
+
 START_TEST(test_try_add_sgsh_node)
 {
 	ck_assert_int_eq(try_add_sgsh_node(), OP_EXISTS);
@@ -1179,6 +1198,11 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_fsn = tcase_create("fill sgsh node");
+	tcase_add_checked_fixture(tc_fsn, setup_test_fill_sgsh_node, NULL);
+	tcase_add_test(tc_fsn, test_fill_sgsh_node);
+	suite_add_tcase(s, tc_fsn);
 
 	TCase *tc_tasn = tcase_create("try add sgsh node");
 	tcase_add_checked_fixture(tc_tasn, setup_test_try_add_sgsh_node,
