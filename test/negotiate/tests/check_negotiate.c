@@ -270,6 +270,12 @@ setup_test_fill_sgsh_node(void)
 }
 
 void
+setup_test_free_mb(void)
+{
+	setup_chosen_mb();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -932,6 +938,12 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_free_mb)
+{
+	free_mb(chosen_mb);
+}
+END_TEST
+
 START_TEST(test_fill_sgsh_node)
 {
 	fill_sgsh_node("test", 1003, 1, 1);
@@ -1198,6 +1210,11 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_fm = tcase_create("free message block");
+	tcase_add_checked_fixture(tc_fm, setup_test_free_mb, NULL);
+	tcase_add_test(tc_fm, test_free_mb);
+	suite_add_tcase(s, tc_fm);
 
 	TCase *tc_fsn = tcase_create("fill sgsh node");
 	tcase_add_checked_fixture(tc_fsn, setup_test_fill_sgsh_node, NULL);
