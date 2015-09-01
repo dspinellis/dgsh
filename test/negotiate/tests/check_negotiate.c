@@ -255,6 +255,13 @@ setup_test_try_add_sgsh_edge(void)
 }
 
 void
+setup_test_try_add_sgsh_node(void)
+{
+	setup_chosen_mb();
+	setup_self_node();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -401,6 +408,12 @@ retire_test_add_edge(void)
 
 void
 retire_test_try_add_sgsh_edge(void)
+{
+	retire_chosen_mb();
+}
+
+void
+retire_test_try_add_sgsh_node(void)
 {
 	retire_chosen_mb();
 }
@@ -852,6 +865,7 @@ START_TEST(test_alloc_node_connections)
 }
 END_TEST
 
+/* orphan test case. */
 START_TEST(test_check_negotiation_round)
 {
 	/* End of negotiation rounds */
@@ -906,6 +920,26 @@ START_TEST(test_check_negotiation_round)
 	ck_assert_int_eq(chosen_mb->serial_no, 0);
 	ck_assert_int_eq(mb_is_updated, 0);
 	retire();
+
+}
+END_TEST
+
+START_TEST(test_try_add_sgsh_node)
+{
+	ck_assert_int_eq(try_add_sgsh_node(), OP_EXISTS);
+
+	struct sgsh_node new;
+	new.pid = 104;
+	memcpy(new.name, "proc4", 6);
+	new.requires_channels = 1;
+	new.provides_channels = 1;
+	memcpy(&self_node, &new, sizeof(struct sgsh_node));
+	ck_assert_int_eq(try_add_sgsh_node(), OP_SUCCESS);
+	ck_assert_int_eq(chosen_mb->n_nodes, 5);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 1);
+	ck_assert_int_eq(self_dispatcher.index, 4);
+	ck_assert_int_eq(self_node.index, 4);
 
 }
 END_TEST
@@ -1140,6 +1174,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_tasn = tcase_create("try add sgsh node");
+	tcase_add_checked_fixture(tc_tasn, setup_test_try_add_sgsh_node,
+					   retire_test_try_add_sgsh_node);
+	tcase_add_test(tc_tasn, test_try_add_sgsh_node);
+	suite_add_tcase(s, tc_tasn);
 
 	TCase *tc_tase = tcase_create("try add sgsh edge");
 	tcase_add_checked_fixture(tc_tase, setup_test_try_add_sgsh_edge,
