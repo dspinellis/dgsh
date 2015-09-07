@@ -382,6 +382,12 @@ setup_test_point_io_direction(void)
 }
 
 void
+setup_test_check_read(void)
+{
+	
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -557,6 +563,12 @@ retire_test_compete_message_block(void)
 
 void
 retire_test_point_io_direction(void)
+{
+	
+}
+
+void
+retire_test_check_read(void)
 {
 	
 }
@@ -1067,6 +1079,14 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_check_read)
+{
+	ck_assert_int_eq(check_read(512, 1024, 256), OP_ERROR);
+	ck_assert_int_eq(check_read(512, 256, 512), OP_ERROR);
+	ck_assert_int_eq(check_read(512, 1024, 512), OP_SUCCESS);
+}
+END_TEST
+
 START_TEST(test_point_io_direction)
 {
 	point_io_direction(STDOUT_FILENO);
@@ -1413,6 +1433,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_cr = tcase_create("check read");
+	tcase_add_checked_fixture(tc_cr, setup_test_check_read,
+					  retire_test_check_read);
+	tcase_add_test(tc_cr, test_check_read);
+	suite_add_tcase(s, tc_cr);
 
 	TCase *tc_pid = tcase_create("point io direction");
 	tcase_add_checked_fixture(tc_pid, setup_test_point_io_direction,
