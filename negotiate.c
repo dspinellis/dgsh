@@ -1021,6 +1021,9 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 static void
 point_io_direction(int current_direction)
 {
+	assert((current_direction == STDOUT_FILENO && self_node.sgsh_in) ||
+	       (current_direction == STDIN_FILENO && self_node.sgsh_out));
+
 	if ((current_direction == STDIN_FILENO) && (self_node.sgsh_out))
 			self_node_io_side.fd_direction = STDOUT_FILENO;
 	else if ((current_direction == STDOUT_FILENO) && (self_node.sgsh_in))

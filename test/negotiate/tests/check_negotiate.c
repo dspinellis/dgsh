@@ -374,6 +374,14 @@ setup_test_compete_message_block(void)
 }
 
 void
+setup_test_point_io_direction(void)
+{
+	setup_chosen_mb();
+	setup_self_node();
+	setup_self_node_io_side();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -541,13 +549,16 @@ retire_test_try_add_sgsh_node(void)
 void
 retire_test_compete_message_block(void)
 {
-	DPRINTF("%s()", __func__);
 	if (exit_state == 1) {
-		DPRINTF("%s() 1", __func__);
 		retire_fresh_mb();
-		DPRINTF("%s() 2", __func__);
 		exit_state = 0;
 	} else retire_chosen_mb();
+}
+
+void
+retire_test_point_io_direction(void)
+{
+	
 }
 
 void
@@ -1056,6 +1067,18 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_point_io_direction)
+{
+	point_io_direction(STDOUT_FILENO);
+	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
+
+	memcpy(&self_node, &chosen_mb->node_array[2], sizeof(struct sgsh_node));
+	point_io_direction(STDIN_FILENO);
+	ck_assert_int_eq(self_node_io_side.fd_direction, STDOUT_FILENO);
+	
+}
+END_TEST
+
 START_TEST(test_compete_message_block)
 {
 	int should_transmit_mb = -1;
@@ -1390,6 +1413,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_pid = tcase_create("point io direction");
+	tcase_add_checked_fixture(tc_pid, setup_test_point_io_direction,
+					  retire_test_point_io_direction);
+	tcase_add_test(tc_pid, test_point_io_direction);
+	suite_add_tcase(s, tc_pid);
 
 	TCase *tc_cmb = tcase_create("compete message block");
 	tcase_add_checked_fixture(tc_cmb, setup_test_compete_message_block,
