@@ -22,7 +22,7 @@
 #include "sgsh.h" /* DPRINTF() */
 
 /* Identifies the node and node's fd that sent the message block. */
-struct dispatcher_node {
+struct node_io_side {
 	int index;
 	int fd_direction;
 };
@@ -66,7 +66,7 @@ struct sgsh_negotiation {
 	pid_t initiator_pid;
         int state_flag;
         int serial_no;
-	struct dispatcher_node origin;
+	struct node_io_side origin;
 };
 
 /* Holds a node's connections. It contains a piece of the solution. */
@@ -98,7 +98,7 @@ struct sgsh_node_pipe_fds {
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
 static int mb_is_updated; /* Boolean value that signals an update to the mb. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
-static struct dispatcher_node self_dispatcher; /* Dispatch info for this tool.*/
+static struct node_io_side self_node_io_side; /* Dispatch info for this tool.*/
 static struct sgsh_node_connections *graph_solution;
 static struct sgsh_node_pipe_fds self_pipe_fds;
 
@@ -709,7 +709,7 @@ write_graph_solution(char *buf, int buf_size) {
 
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
-	write(self_dispatcher.fd_direction, buf, graph_solution_size);
+	write(self_node_io_side.fd_direction, buf, graph_solution_size);
 	/* We haven't invalidated pointers to arrays of node indices. */
 
 	for (i = 0; i < n_nodes; i++) {
@@ -723,11 +723,11 @@ write_graph_solution(char *buf, int buf_size) {
 
 		/* Transmit a node's incoming connections. */
 		memcpy(buf, nc->edges_incoming, in_edges_size);
-		write(self_dispatcher.fd_direction, buf, in_edges_size);
+		write(self_node_io_side.fd_direction, buf, in_edges_size);
 
 		/* Transmit a node's outgoing connections. */
 		memcpy(buf, nc->edges_outgoing, out_edges_size);
-		write(self_dispatcher.fd_direction, buf, out_edges_size);
+		write(self_node_io_side.fd_direction, buf, out_edges_size);
 	}
 	return OP_SUCCESS;
 }
@@ -739,9 +739,9 @@ write_graph_solution(char *buf, int buf_size) {
  */
 static void
 set_dispatcher() {
-	chosen_mb->origin.index = self_dispatcher.index;
-	assert(self_dispatcher.index >= 0); /* Node is added to the graph. */
-	chosen_mb->origin.fd_direction = self_dispatcher.fd_direction;
+	chosen_mb->origin.index = self_node_io_side.index;
+	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
+	chosen_mb->origin.fd_direction = self_node_io_side.fd_direction;
 	DPRINTF("%s(): message block origin set to %d writing on the %s side",
 			__func__, chosen_mb->origin.index,
 		(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
@@ -771,17 +771,17 @@ write_mb(char *buf, int buf_size)
 	chosen_mb->node_array = NULL;
 	chosen_mb->edge_array = NULL;
 	memcpy(buf, chosen_mb, mb_size);
-	write(self_dispatcher.fd_direction, buf, mb_size);
+	write(self_node_io_side.fd_direction, buf, mb_size);
 
 	/* Transmit nodes. */
 	memcpy(buf, p_nodes, nodes_size);
-	write(self_dispatcher.fd_direction, buf, nodes_size);
+	write(self_node_io_side.fd_direction, buf, nodes_size);
 	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes. */
 
 	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		/* Transmit edges. */
 		memcpy(buf, p_edges, edges_size);
-		write(self_dispatcher.fd_direction, buf, edges_size);
+		write(self_node_io_side.fd_direction, buf, edges_size);
 		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
@@ -790,7 +790,7 @@ write_mb(char *buf, int buf_size)
 		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
 	}
 
-	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_dispatcher.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -824,10 +824,10 @@ add_node()
 		chosen_mb->node_array = (struct sgsh_node *)p;
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
 					sizeof(struct sgsh_node));
-		self_dispatcher.index = n_nodes;
+		self_node_io_side.index = n_nodes;
 		self_node.index = n_nodes;
 		DPRINTF("%s(): Added node %s in position %d on sgsh graph.\n",
-				__func__, self_node.name, self_dispatcher.index);
+				__func__, self_node.name, self_node_io_side.index);
 		chosen_mb->n_nodes++;
 	}
 	return OP_SUCCESS;
@@ -874,20 +874,21 @@ fill_sgsh_edge(struct sgsh_edge *e)
 		e->to = chosen_mb->origin.index; 
 		assert(self_node.sgsh_out == 1); 
 		assert((self_node.sgsh_in && 
-			self_dispatcher.fd_direction == STDIN_FILENO) ||
-			self_dispatcher.fd_direction == STDOUT_FILENO);
-		e->from = self_dispatcher.index; 
+			self_node_io_side.fd_direction == STDIN_FILENO) ||
+			self_node_io_side.fd_direction == STDOUT_FILENO);
+		e->from = self_node_io_side.index; 
 	} else if (chosen_mb->origin.fd_direction == STDOUT_FILENO) { 
 		/* Similarly. */
 		e->from = chosen_mb->origin.index;
 		assert(self_node.sgsh_in == 1);
 		assert((self_node.sgsh_out && 
-			self_dispatcher.fd_direction == STDOUT_FILENO) ||
-			self_dispatcher.fd_direction == STDIN_FILENO);
-		e->to = self_dispatcher.index;
+			self_node_io_side.fd_direction == STDOUT_FILENO) ||
+			self_node_io_side.fd_direction == STDIN_FILENO);
+		e->to = self_node_io_side.index;
 	}
 	e->instances = 0;
         DPRINTF("New sgsh edge with %d instances.", e->instances);
+        DPRINTF("From %d to %d.", e->from, e->to);
 	return OP_SUCCESS;
 }
 
@@ -1004,8 +1005,10 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			mb_is_updated = 1;
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
-		} else /* serial_no of the mb has not changed in the interim. */
+		} else { /* serial_no of the mb has not changed in the interim. */
 			free_mb(fresh_mb);
+                	*should_transmit_mb = 0;
+		}
                 if (try_add_sgsh_edge() == OP_ERROR) return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -1019,9 +1022,9 @@ static void
 point_io_direction(int current_direction)
 {
 	if ((current_direction == STDIN_FILENO) && (self_node.sgsh_out))
-			self_dispatcher.fd_direction = STDOUT_FILENO;
+			self_node_io_side.fd_direction = STDOUT_FILENO;
 	else if ((current_direction == STDOUT_FILENO) && (self_node.sgsh_in))
-			self_dispatcher.fd_direction = STDIN_FILENO;
+			self_node_io_side.fd_direction = STDIN_FILENO;
 }
 
 static int
@@ -1122,7 +1125,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 		return error_code;
 	} else  /* Read succeeded. */
 		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
-			(self_dispatcher.fd_direction) ? "stdout" : "stdin");
+			(self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1423,11 +1426,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		return PROT_STATE_ERROR;
 	}
 	
-	/* Start negotiation. */
+	/* Start negotiation. Is this enough? */
         if ((self_node.sgsh_out) && (!self_node.sgsh_in)) { 
                 if (construct_message_block(self_pid) == OP_ERROR) 
 			return PROT_STATE_ERROR;
-                self_dispatcher.fd_direction = STDOUT_FILENO;
+                self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
 		if (try_read_message_block(buf, buf_size, &fresh_mb) == 

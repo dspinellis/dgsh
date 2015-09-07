@@ -4,6 +4,7 @@
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
 
+struct sgsh_negotiation *fresh_mb;
 struct sgsh_edge *compact_edges;
 struct sgsh_edge **pointers_to_edges;
 int n_ptedges;
@@ -20,10 +21,97 @@ int n_output_fds;
  * exit_state is the control variable for following the correct 
  * sequence of actions.
  */
-exit_state = 0;
+int exit_state = 0;
 
 void
 setup_chosen_mb(void)
+{
+	struct sgsh_node *nodes;
+	struct sgsh_edge *edges;
+	int n_nodes;
+	int n_edges;
+	n_nodes = 4;
+        nodes = (struct sgsh_node *)malloc(sizeof(struct sgsh_node) * n_nodes);
+        nodes[0].pid = 100;
+	nodes[0].index = 0;
+        strcpy(nodes[0].name, "proc0");
+        nodes[0].requires_channels = 2;
+	nodes[0].provides_channels = 1;
+	nodes[0].sgsh_in = 1;
+        nodes[0].sgsh_out = 1;
+
+        nodes[1].pid = 101;
+	nodes[1].index = 1;
+        strcpy(nodes[1].name, "proc1");
+        nodes[1].requires_channels = 1;
+	nodes[1].provides_channels = 2;
+	nodes[1].sgsh_in = 1;
+        nodes[1].sgsh_out = 1;
+
+	/* sgsh OUT and not IN = initiator node.
+         * This node could start the negotiation.
+         * Fix.
+	 */
+        nodes[2].pid = 102;
+	nodes[2].index = 2;
+        strcpy(nodes[2].name, "proc2");
+        nodes[2].requires_channels = 0;
+	nodes[2].provides_channels = 2;
+	nodes[2].sgsh_in = 0;
+        nodes[2].sgsh_out = 1;
+
+	/* sgsh IN and not OUT = termination node.
+         * This node couldn't start the negotiation.
+         * Fix.
+	 */
+        nodes[3].pid = 103;
+	nodes[3].index = 3;
+        strcpy(nodes[3].name, "proc3");
+        nodes[3].requires_channels = 2;
+	nodes[3].provides_channels = 0;
+	nodes[3].sgsh_in = 1;
+        nodes[3].sgsh_out = 0;
+
+        n_edges = 5;
+        edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) *n_edges);
+        edges[0].from = 2;
+        edges[0].to = 0;
+        edges[0].instances = 0;
+
+        edges[1].from = 2;
+        edges[1].to = 1;
+        edges[1].instances = 0;
+
+        edges[2].from = 1;
+        edges[2].to = 0;
+        edges[2].instances = 0;
+
+        edges[3].from = 1;
+        edges[3].to = 3;
+        edges[3].instances = 0;
+
+        edges[4].from = 0;
+        edges[4].to = 3;
+        edges[4].instances = 0;
+
+        double sgsh_version = 0.1;
+        chosen_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
+        chosen_mb->version = sgsh_version;
+        chosen_mb->node_array = nodes;
+        chosen_mb->n_nodes = n_nodes;
+        chosen_mb->edge_array = edges;
+        chosen_mb->n_edges = n_edges;
+
+	/* check_negotiation_round() */
+	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
+	chosen_mb->initiator_pid = 103; /* Node 3 */
+	mb_is_updated = 0;
+	chosen_mb->serial_no = 0;
+}
+
+/* Identical to chosen_mb except for the initiator field. */
+void
+setup_fresh_mb(void)
 {
 	struct sgsh_node *nodes;
 	struct sgsh_edge *edges;
@@ -86,18 +174,20 @@ setup_chosen_mb(void)
         edges[4].instances = 0;
 
         double sgsh_version = 0.1;
-        chosen_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
-        chosen_mb->version = sgsh_version;
-        chosen_mb->node_array = nodes;
-        chosen_mb->n_nodes = n_nodes;
-        chosen_mb->edge_array = edges;
-        chosen_mb->n_edges = n_edges;
+        fresh_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
+        fresh_mb->version = sgsh_version;
+        fresh_mb->node_array = nodes;
+        fresh_mb->n_nodes = n_nodes;
+        fresh_mb->edge_array = edges;
+        fresh_mb->n_edges = n_edges;
 
 	/* check_negotiation_round() */
-	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
-	chosen_mb->initiator_pid = 103; /* Node 3 */
+	fresh_mb->state_flag = PROT_STATE_NEGOTIATION;
+	fresh_mb->initiator_pid = 102; /* Node 2 */
 	mb_is_updated = 0;
-	chosen_mb->serial_no = 0;
+	fresh_mb->serial_no = 0;
+	fresh_mb->origin.index = 2;
+	fresh_mb->origin.fd_direction = STDOUT_FILENO;
 }
 
 void
@@ -121,11 +211,10 @@ setup_self_node(void)
 }
 
 void
-setup_self_dispatcher(void)
+setup_self_node_io_side(void)
 {
-	/* set_dispatcher() */
-	self_dispatcher.index = 3;
-	self_dispatcher.fd_direction = 0; /* The input side or actual fd? Check! */
+	self_node_io_side.index = 3;
+	self_node_io_side.fd_direction = 0;
 }
 
 /* establish_io_connections() */
@@ -213,7 +302,7 @@ setup(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
-	setup_self_dispatcher();
+	setup_self_node_io_side();
 	setup_pipe_fds();
 	setup_graph_solution();
 }
@@ -223,7 +312,7 @@ setup_test_add_node(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
-	setup_self_dispatcher();
+	setup_self_node_io_side();
 }
 
 void
@@ -237,7 +326,7 @@ setup_test_fill_sgsh_edge(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
-	setup_self_dispatcher();
+	setup_self_node_io_side();
 }
 
 void
@@ -251,7 +340,7 @@ setup_test_try_add_sgsh_edge(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
-	setup_self_dispatcher();
+	setup_self_node_io_side();
 }
 
 void
@@ -273,6 +362,15 @@ void
 setup_test_free_mb(void)
 {
 	setup_chosen_mb();
+}
+
+void
+setup_test_compete_message_block(void)
+{
+	setup_chosen_mb();
+	setup_fresh_mb();
+	setup_self_node();
+	setup_self_node_io_side();
 }
 
 void
@@ -345,7 +443,7 @@ void
 setup_test_set_dispatcher(void)
 {
 	setup_chosen_mb();
-	setup_self_dispatcher();
+	setup_self_node_io_side();
 }
 
 void
@@ -369,6 +467,14 @@ retire_chosen_mb(void)
         free(chosen_mb->node_array);
         free(chosen_mb->edge_array);
         free(chosen_mb);
+}
+
+void
+retire_fresh_mb(void)
+{
+        free(fresh_mb->node_array);
+        free(fresh_mb->edge_array);
+        free(fresh_mb);
 }
 
 /* establish_io_connections() */
@@ -430,6 +536,18 @@ void
 retire_test_try_add_sgsh_node(void)
 {
 	retire_chosen_mb();
+}
+
+void
+retire_test_compete_message_block(void)
+{
+	DPRINTF("%s()", __func__);
+	if (exit_state == 1) {
+		DPRINTF("%s() 1", __func__);
+		retire_fresh_mb();
+		DPRINTF("%s() 2", __func__);
+		exit_state = 0;
+	} else retire_chosen_mb();
 }
 
 void
@@ -938,6 +1056,68 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_compete_message_block)
+{
+	int should_transmit_mb = -1;
+	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
+	/* set_dispatcher() */
+	self_node_io_side.index = 3;
+	self_node_io_side.fd_direction = STDIN_FILENO;
+	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
+								OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, 1);
+	ck_assert_int_eq(mb_is_updated, 1);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	exit_state = 1;
+	retire_test_compete_message_block();
+
+	setup_test_compete_message_block();
+	should_transmit_mb = -1;
+	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
+	/* set_dispatcher() */
+	self_node_io_side.index = 3;
+	self_node_io_side.fd_direction = STDIN_FILENO;
+	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
+	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
+								OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, 0);
+	ck_assert_int_eq(mb_is_updated, 0);
+	retire_test_compete_message_block();
+
+	setup_test_compete_message_block();
+	should_transmit_mb = -1;
+	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
+	/* set_dispatcher() */
+	self_node_io_side.index = 3;
+	self_node_io_side.fd_direction = STDIN_FILENO;
+	fresh_mb->initiator_pid = 103; /* Draw */
+	fresh_mb->serial_no = 1; /* fresh_mb prevails */
+	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
+								OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, 1);
+	ck_assert_int_eq(mb_is_updated, 1);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	exit_state = 1;
+	retire_test_compete_message_block();
+
+	setup_test_compete_message_block();
+	should_transmit_mb = -1;
+	memcpy(&self_node, &chosen_mb->node_array[0], sizeof(struct sgsh_node));
+	/* set_dispatcher() */
+	self_node_io_side.index = 0;
+	self_node_io_side.fd_direction = STDOUT_FILENO;
+	chosen_mb->origin.index = 3;
+	chosen_mb->origin.fd_direction = STDIN_FILENO;
+	fresh_mb->initiator_pid = 103; /* Younger than chosen_mb. */
+	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
+	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
+								OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, 0);
+	ck_assert_int_eq(mb_is_updated, 0);
+
+}
+END_TEST
+
 START_TEST(test_free_mb)
 {
 	free_mb(chosen_mb);
@@ -961,7 +1141,7 @@ START_TEST(test_try_add_sgsh_node)
 	ck_assert_int_eq(chosen_mb->n_nodes, 4);
 	ck_assert_int_eq(chosen_mb->serial_no, 0);
 	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(self_dispatcher.index, 0);
+	ck_assert_int_eq(self_node_io_side.index, 0);
 	ck_assert_int_eq(self_node.index, 3);
 
 	struct sgsh_node new;
@@ -974,7 +1154,7 @@ START_TEST(test_try_add_sgsh_node)
 	ck_assert_int_eq(chosen_mb->n_nodes, 5);
 	ck_assert_int_eq(chosen_mb->serial_no, 1);
 	ck_assert_int_eq(mb_is_updated, 1);
-	ck_assert_int_eq(self_dispatcher.index, 4);
+	ck_assert_int_eq(self_node_io_side.index, 4);
 	ck_assert_int_eq(self_node.index, 4);
 
 }
@@ -985,7 +1165,7 @@ START_TEST(test_try_add_sgsh_edge)
 	/* Better in a setup function. */ 
 	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
 	chosen_mb->origin.index = 0;
-	/* self_dispatcher should also be set; it is set in setup */
+	/* self_node_io_side should also be set; it is set in setup */
 	ck_assert_int_eq(try_add_sgsh_edge(), OP_EXISTS);
 
 	/* New edge: from new node to existing */
@@ -1000,7 +1180,7 @@ START_TEST(test_try_add_sgsh_edge)
 	/* Better in a setup function. */ 
 	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
 	chosen_mb->origin.index = new.index;
-	/* self_dispatcher should also be set; it is set in setup */
+	/* self_node_io_side should also be set; it is set in setup */
 	memcpy(&self_node, &new, sizeof(struct sgsh_node));
 	chosen_mb->n_nodes++;
 	chosen_mb->node_array = realloc(chosen_mb->node_array,
@@ -1013,9 +1193,9 @@ START_TEST(test_try_add_sgsh_edge)
 	/* Better in a setup function. */ 
 	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
 	chosen_mb->origin.index = 0;
-	/* self_dispatcher should also be set; it is set in setup */
-	self_dispatcher.index = new.index;
-	self_dispatcher.fd_direction = STDIN_FILENO;
+	/* self_node_io_side should also be set; it is set in setup */
+	self_node_io_side.index = new.index;
+	self_node_io_side.fd_direction = STDIN_FILENO;
 	ck_assert_int_eq(try_add_sgsh_edge(), OP_SUCCESS);
 
 	/* NOOP: message block created just now */
@@ -1042,7 +1222,7 @@ START_TEST(test_fill_sgsh_edge)
 	/* Better in a setup function. */ 
 	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
 	chosen_mb->origin.index = 0;
-	/* self_dispatcher should also be set; it is set in setup */
+	/* self_node_io_side should also be set; it is set in setup */
 	ck_assert_int_eq(fill_sgsh_edge(&new), OP_SUCCESS);
 	
 	/* Impossible case. No such origin. */
@@ -1053,9 +1233,9 @@ START_TEST(test_fill_sgsh_edge)
 	chosen_mb->origin.fd_direction = STDIN_FILENO;   
 	chosen_mb->origin.index = 3;
 	memcpy(&self_node, &chosen_mb->node_array[0], sizeof(struct sgsh_node));
-	self_dispatcher.fd_direction = STDOUT_FILENO;   
-	self_dispatcher.index = 0;
-	/* self_dispatcher should also be set; it is set in setup */
+	self_node_io_side.fd_direction = STDOUT_FILENO;   
+	self_node_io_side.index = 0;
+	/* self_node_io_side should also be set; it is set in setup */
 	ck_assert_int_eq(fill_sgsh_edge(&new), OP_SUCCESS);
 	
 }
@@ -1081,7 +1261,7 @@ START_TEST(test_add_node)
 	memcpy(&self_node, &new, sizeof(struct sgsh_node));
 	ck_assert_int_eq(add_node(), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->n_nodes, 5);
-	ck_assert_int_eq(self_dispatcher.index, 4);
+	ck_assert_int_eq(self_node_io_side.index, 4);
 	ck_assert_int_eq(self_node.index, 4);
 }
 END_TEST
@@ -1211,6 +1391,12 @@ suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
 
+	TCase *tc_cmb = tcase_create("compete message block");
+	tcase_add_checked_fixture(tc_cmb, setup_test_compete_message_block,
+					  retire_test_compete_message_block);
+	tcase_add_test(tc_cmb, test_compete_message_block);
+	suite_add_tcase(s, tc_cmb);
+
 	TCase *tc_fm = tcase_create("free message block");
 	tcase_add_checked_fixture(tc_fm, setup_test_free_mb, NULL);
 	tcase_add_test(tc_fm, test_free_mb);
@@ -1297,6 +1483,7 @@ run_suite_broadcast(void) {
 	return run_suite(s);
 }
 
+/* Output is not appropriate; only pass fail. */
 int main() {
 	int failed_neg, failed_sol, failed_con;
 	failed_neg = run_suite_broadcast();
