@@ -388,6 +388,12 @@ setup_test_check_read(void)
 }
 
 void
+setup_test_alloc_copy_edges(void)
+{
+	setup_fresh_mb();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -571,6 +577,12 @@ void
 retire_test_check_read(void)
 {
 	
+}
+
+void
+retire_test_alloc_copy_edges(void)
+{
+	retire_fresh_mb();
 }
 
 void
@@ -1079,6 +1091,20 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_alloc_copy_edges)
+{
+	const int size = sizeof(struct sgsh_edge) * fresh_mb->n_edges;
+	char buf[256];
+	ck_assert_int_eq(alloc_copy_edges(fresh_mb, buf, 86, 256), OP_ERROR);
+
+	char buf2[32];
+	ck_assert_int_eq(alloc_copy_edges(fresh_mb, buf, size, 32), OP_ERROR);
+
+	free(fresh_mb->edge_array);  /* to avoid memory leak */
+	ck_assert_int_eq(alloc_copy_edges(fresh_mb, buf, size, 256), OP_SUCCESS);
+}
+END_TEST
+
 START_TEST(test_check_read)
 {
 	ck_assert_int_eq(check_read(512, 1024, 256), OP_ERROR);
@@ -1433,6 +1459,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_ace = tcase_create("alloc copy edges");
+	tcase_add_checked_fixture(tc_ace, setup_test_alloc_copy_edges,
+					  retire_test_alloc_copy_edges);
+	tcase_add_test(tc_ace, test_alloc_copy_edges);
+	suite_add_tcase(s, tc_ace);
 
 	TCase *tc_cr = tcase_create("check read");
 	tcase_add_checked_fixture(tc_cr, setup_test_check_read,
