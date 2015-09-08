@@ -382,12 +382,6 @@ setup_test_point_io_direction(void)
 }
 
 void
-setup_test_check_read(void)
-{
-	
-}
-
-void
 setup_test_alloc_copy_edges(void)
 {
 	setup_fresh_mb();
@@ -395,6 +389,12 @@ setup_test_alloc_copy_edges(void)
 
 void
 setup_test_alloc_copy_nodes(void)
+{
+	setup_fresh_mb();
+}
+
+void
+setup_test_alloc_copy_mb(void)
 {
 	setup_fresh_mb();
 }
@@ -576,13 +576,7 @@ retire_test_compete_message_block(void)
 void
 retire_test_point_io_direction(void)
 {
-	
-}
-
-void
-retire_test_check_read(void)
-{
-	
+	retire_chosen_mb();
 }
 
 void
@@ -593,6 +587,12 @@ retire_test_alloc_copy_edges(void)
 
 void
 retire_test_alloc_copy_nodes(void)
+{
+	retire_fresh_mb();
+}
+
+void
+retire_test_alloc_copy_mb(void)
 {
 	retire_fresh_mb();
 }
@@ -1103,6 +1103,22 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_alloc_copy_mb)
+{
+	const int size = sizeof(struct sgsh_negotiation);
+	char buf[512];
+	struct sgsh_negotiation *mb;
+	ck_assert_int_eq(alloc_copy_mb(&mb, buf, 86, 512), OP_ERROR);
+
+	char buf2[32];
+	ck_assert_int_eq(alloc_copy_mb(&mb, buf2, size, 32), OP_ERROR);
+
+	ck_assert_int_eq(alloc_copy_mb(&mb, buf, size, 512), OP_SUCCESS);
+	free(mb);
+	DPRINTF("%s(): end", __func__);
+}
+END_TEST
+
 START_TEST(test_alloc_copy_nodes)
 {
 	const int size = sizeof(struct sgsh_node) * fresh_mb->n_nodes;
@@ -1486,6 +1502,11 @@ suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
 
+	TCase *tc_acm = tcase_create("alloc copy message block");
+	tcase_add_checked_fixture(tc_acm, NULL, NULL);
+	tcase_add_test(tc_acm, test_alloc_copy_mb);
+	suite_add_tcase(s, tc_acm);
+
 	TCase *tc_acn = tcase_create("alloc copy nodes");
 	tcase_add_checked_fixture(tc_acn, setup_test_alloc_copy_nodes,
 					  retire_test_alloc_copy_nodes);
@@ -1499,8 +1520,7 @@ suite_broadcast(void)
 	suite_add_tcase(s, tc_ace);
 
 	TCase *tc_cr = tcase_create("check read");
-	tcase_add_checked_fixture(tc_cr, setup_test_check_read,
-					  retire_test_check_read);
+	tcase_add_checked_fixture(tc_cr, NULL, NULL);
 	tcase_add_test(tc_cr, test_check_read);
 	suite_add_tcase(s, tc_cr);
 
