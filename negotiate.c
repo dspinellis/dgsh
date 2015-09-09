@@ -1095,12 +1095,18 @@ call_read(int fd, char *buf, int buf_size,
 				int *error_code)
 {
 	*error_code = 0;
+	/* This information fuels self_node_io_side. */
 	*fd_side = 0;
 	DPRINTF("Try read from %s.\n", (fd) ? "stdout" : "stdin");
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
+	DPRINTF("Raw read captured: %s", buf);
+	DPRINTF("Read operation error_code %d", *error_code);
 	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
-		*fd_side = 1; /* Mark the side where input is coming from. */
+		/* Attention! fd_side is [STDIN_FILENO, STDOUT_FILENO] or
+                 * a non-negative file descriptor?
+                 */
+		*fd_side = 1; /* Mark the side where input is coming from (!). */
 		return OP_QUIT;
 	}
 	return OP_SUCCESS;
@@ -1176,7 +1182,7 @@ read_input_fds()
 			/* Define INPUT=0 */
 			if (recvmsg(get_next_sd(count_sd_descriptors, 0),
 								&msg, 0) < 0) {
-				DPRINTF("revcmsg() failed.\n");
+				DPRINTF("recvmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}

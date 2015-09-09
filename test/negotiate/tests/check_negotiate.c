@@ -1,5 +1,7 @@
 #include <check.h> /* Check unit test framework API. */
 #include <stdlib.h> /* EXIT_SUCCESS, EXIT_FAILURE */
+#include <unistd.h> /* pipe() */
+#include <fcntl.h>  /* fcntl() */
 #include "../src/sgsh-negotiate.h"
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
@@ -394,9 +396,9 @@ setup_test_alloc_copy_nodes(void)
 }
 
 void
-setup_test_alloc_copy_mb(void)
+setup_test_try_read_chunk(void)
 {
-	setup_fresh_mb();
+	setup_self_node_io_side();
 }
 
 void
@@ -1103,6 +1105,58 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+START_TEST(test_try_read_chunk)
+{
+	/* Requires setting up of I/O multiplexing (a bash shell extension)
+	 * in order to be able to support bidirectional negotiation.
+	 * Without it we cannot test this function because it tries to read
+	 * repeatedly from stdin and then stdout until it manages.
+         * We cannot feed it; writing to stdin or stdout
+	 * ends up in the unit test file output).
+	 * The good news is that the core of this function is the call to
+	 * call read, which has been successfully tested.
+	 * Then there is variable checking to determine the exit code.
+	 */
+}
+END_TEST
+
+START_TEST(test_call_read)
+{
+	int fd[2];
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	/* Non-blocking in order to be able to try read stdin, then stdout
+	 * and again.
+	 */
+        fcntl(fd[0], F_SETFL, O_NONBLOCK);
+
+	write(fd[1], "test", 5);
+	char buf[32];
+	int fd_side = -1;
+	int bytes_read = -1;
+	int error_code = -1;
+	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
+				&error_code), OP_QUIT);
+	ck_assert_int_eq(fd_side, 1);
+	ck_assert_int_eq(bytes_read, 5);
+	ck_assert_int_eq(error_code, 0);
+
+	fd_side = -1;
+	bytes_read = -1;
+	error_code = -1;
+	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
+				&error_code), OP_SUCCESS);
+	ck_assert_int_eq(fd_side, 0);
+	ck_assert_int_eq(bytes_read, -1);
+	ck_assert_int_eq(error_code, -EAGAIN);
+	
+	close(fd[0]);
+	close(fd[1]);
+}
+END_TEST
+
 START_TEST(test_alloc_copy_mb)
 {
 	const int size = sizeof(struct sgsh_negotiation);
@@ -1115,7 +1169,6 @@ START_TEST(test_alloc_copy_mb)
 
 	ck_assert_int_eq(alloc_copy_mb(&mb, buf, size, 512), OP_SUCCESS);
 	free(mb);
-	DPRINTF("%s(): end", __func__);
 }
 END_TEST
 
@@ -1501,6 +1554,16 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_trc = tcase_create("try read chunk");
+	tcase_add_checked_fixture(tc_trc, setup_test_try_read_chunk, NULL);
+	tcase_add_test(tc_trc, test_try_read_chunk);
+	suite_add_tcase(s, tc_trc);
+
+	TCase *tc_clr = tcase_create("call read");
+	tcase_add_checked_fixture(tc_clr, NULL, NULL);
+	tcase_add_test(tc_clr, test_call_read);
+	suite_add_tcase(s, tc_clr);
 
 	TCase *tc_acm = tcase_create("alloc copy message block");
 	tcase_add_checked_fixture(tc_acm, NULL, NULL);
