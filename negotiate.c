@@ -591,7 +591,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
  * io_channel: 0:IN ; 1: OUT
  */
 static int
-get_next_sd(int io_channel, int sd_descriptor)
+get_next_sd(int sd_descriptor, int io_channel)
 {
 	DPRINTF("%s(): %s channel, %d socket descriptor.", __func__,
 			(io_channel == 1) ? "output" : "input", sd_descriptor);
@@ -1098,6 +1098,7 @@ call_read(int fd, char *buf, int buf_size,
 	/* This information fuels self_node_io_side. */
 	*fd_side = 0;
 	DPRINTF("Try read from %s.\n", (fd) ? "stdout" : "stdin");
+	DPRINTF("Try read from fd %d.\n", fd);
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
 	DPRINTF("Raw read captured: %s", buf);

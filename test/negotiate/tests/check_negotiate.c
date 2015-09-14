@@ -5,7 +5,6 @@
 #include "../src/sgsh-negotiate.h"
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
-
 struct sgsh_negotiation *fresh_mb;
 struct sgsh_edge *compact_edges;
 struct sgsh_edge **pointers_to_edges;
@@ -1020,14 +1019,14 @@ END_TEST
 START_TEST(test_get_next_sd)
 {
 	ck_assert_int_eq(get_next_sd(0, 0), 0);
-	ck_assert_int_eq(get_next_sd(0, 1), 3);
-	ck_assert_int_eq(get_next_sd(0, 2), 4);
-	ck_assert_int_eq(get_next_sd(0, 3), 5);
+	ck_assert_int_eq(get_next_sd(1, 0), 3);
+	ck_assert_int_eq(get_next_sd(2, 0), 4);
+	ck_assert_int_eq(get_next_sd(3, 0), 5);
 	
 	ck_assert_int_eq(get_next_sd(1, 1), 1);
-	ck_assert_int_eq(get_next_sd(1, 2), 3);
-	ck_assert_int_eq(get_next_sd(1, 3), 4);
-	ck_assert_int_eq(get_next_sd(1, 4), 5);
+	ck_assert_int_eq(get_next_sd(2, 1), 3);
+	ck_assert_int_eq(get_next_sd(3, 1), 4);
+	ck_assert_int_eq(get_next_sd(4, 1), 5);
 }
 END_TEST
 
@@ -1122,6 +1121,7 @@ END_TEST
 
 START_TEST(test_call_read)
 {
+	DPRINTF("%s()...", __func__);
 	int fd[2];
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
