@@ -587,33 +587,6 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 	return re;
 }
 
-/* Return the appropriate socket descriptor to use. 
- * io_channel: 0:IN ; 1: OUT
- */
-static int
-get_next_sd(int sd_descriptor, int io_channel)
-{
-	DPRINTF("%s(): %s channel, %d socket descriptor.", __func__,
-			(io_channel == 1) ? "output" : "input", sd_descriptor);
-	assert(io_channel == 0 || io_channel == 1);
-	assert((io_channel == 0 && sd_descriptor >= 0) ||
-	       (io_channel == 1 && sd_descriptor >= 1));
-	if (io_channel == 1) {  /* Output */
-		switch (sd_descriptor) {
-			case 1: return 1; /* STDOUT fd: OK for output */
-			case 2: return 3; /* STDERR fd: We shouldn't use. */
-			default: return sd_descriptor + 1; 
-		}
-	} else { /* Input */
-		switch (sd_descriptor) {
-			case 0: return 0; /* STDIN fd: OK to use. */
-			case 1: return 3; /* STDOUT fd: can't use for input */
-			case 2: return 4; /* STDERR fd: We shouldn't use. */
-			default: return sd_descriptor + 2;
-		}
-	}
-}
-
 /* Transmit file descriptors that will pipe this
  * tool's output to another tool.
  */
@@ -630,7 +603,6 @@ alloc_write_output_fds()
 				self_node.index, this_nc->n_edges_outgoing);
 	assert(this_nc->node_index == self_node.index);
 	int i;
-	int count_sd_descriptors = 1; /* Streamline with get_next_sd(). */
 	int total_edge_instances = 0;
 	int re = OP_SUCCESS;
 
@@ -674,9 +646,8 @@ alloc_write_output_fds()
 			msg.msg_controllen = sizeof(fd[0]);
 			close(fd[0]);
 
-			/* Send the message. DEFINE OUTPUT=1*/
-			if (sendmsg(get_next_sd(count_sd_descriptors, 1),
-								&msg, 0) < 0) {
+			/* Send the message. DEFINE self_node_io_side.fd_write */
+			if (sendmsg(self_node_io_side.fd_direction, &msg, 0) < 0) {
 				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
@@ -685,7 +656,6 @@ alloc_write_output_fds()
 			self_pipe_fds.output_fds[total_edge_instances] = fd[1];
 			total_edge_instances++;
 		}
-		count_sd_descriptors++;
 		if (re == OP_ERROR) break;
 	}
 	if (re == OP_ERROR) {
@@ -1151,7 +1121,6 @@ read_input_fds()
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
 	int i;
-	int count_sd_descriptors = 0; /* Streamline with get_next_sd(). */
 	int total_edge_instances = 0;
 	int re = OP_SUCCESS;
 
@@ -1164,7 +1133,7 @@ read_input_fds()
 	}
 	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) * 
 						self_pipe_fds.n_input_fds);
-
+	DPRINTF("%d incoming edges to inspect of node %d.", this_nc->n_edges_incoming, self_node.index);
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
 		int k;
 		/**
@@ -1172,6 +1141,7 @@ read_input_fds()
 		 * than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
+			DPRINTF("%d incoming edge instances to inspect.", this_nc->edges_incoming[i].instances);
 			struct msghdr msg;
 			int read_fd;
 			memset(&msg, 0, sizeof(struct msghdr));
@@ -1180,9 +1150,8 @@ read_input_fds()
 			msg.msg_controllen = sizeof(read_fd);
 
 			DPRINTF("Waiting to receive pipe fd.\n");
-			/* Define INPUT=0 */
-			if (recvmsg(get_next_sd(count_sd_descriptors, 0),
-								&msg, 0) < 0) {
+			/* Define self_node_io_side.fd_read */
+			if (recvmsg(!self_node_io_side.fd_direction,&msg, 0) < 0) {
 				DPRINTF("recvmsg() failed.\n");
 				re = OP_ERROR;
 				break;
@@ -1190,7 +1159,6 @@ read_input_fds()
 			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
 			total_edge_instances++;
 		}
-		count_sd_descriptors++;
 		if (re == OP_ERROR) break;
 	}
 	if (re == OP_ERROR) {

@@ -401,6 +401,34 @@ setup_test_try_read_chunk(void)
 }
 
 void
+setup_test_read_input_fds(void)
+{
+	setup_chosen_mb();
+	setup_graph_solution();
+	setup_self_node();
+	setup_pipe_fds();
+}
+
+void
+setup_test_read_graph_solution(void)
+{
+	setup_fresh_mb();
+	setup_chosen_mb();
+	setup_graph_solution();
+}
+
+void
+setup_test_try_read_message_block(void)
+{
+	setup_fresh_mb();
+	setup_chosen_mb();
+	setup_graph_solution();
+	setup_self_node();
+	setup_pipe_fds();
+	setup_self_node_io_side();
+}
+
+void
 setup_test_make_compact_edge_array(void)
 {
 	setup_pointers_to_edges();
@@ -530,6 +558,12 @@ retire(void)
 }
 
 void
+retire_test_construct_message_block(void)
+{
+	retire_chosen_mb();
+}
+
+void
 retire_test_add_node(void)
 {
 	retire_chosen_mb();
@@ -593,8 +627,27 @@ retire_test_alloc_copy_nodes(void)
 }
 
 void
-retire_test_alloc_copy_mb(void)
+retire_test_read_input_fds(void)
 {
+	retire_pipe_fds();
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
+retire_test_try_read_message_block(void)
+{
+	retire_pipe_fds();
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+	retire_fresh_mb();
+}
+
+void
+retire_test_read_graph_solution(void)
+{
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
 	retire_fresh_mb();
 }
 
@@ -1016,20 +1069,6 @@ START_TEST(test_set_dispatcher)
 }
 END_TEST
 
-START_TEST(test_get_next_sd)
-{
-	ck_assert_int_eq(get_next_sd(0, 0), 0);
-	ck_assert_int_eq(get_next_sd(1, 0), 3);
-	ck_assert_int_eq(get_next_sd(2, 0), 4);
-	ck_assert_int_eq(get_next_sd(3, 0), 5);
-	
-	ck_assert_int_eq(get_next_sd(1, 1), 1);
-	ck_assert_int_eq(get_next_sd(2, 1), 3);
-	ck_assert_int_eq(get_next_sd(3, 1), 4);
-	ck_assert_int_eq(get_next_sd(4, 1), 5);
-}
-END_TEST
-
 START_TEST(test_alloc_node_connections)
 {
 	struct sgsh_edge *test;
@@ -1104,6 +1143,56 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
+/* Incomplete. */
+START_TEST(test_try_read_message_block)
+{
+	/* Find a way to write to STDIN_FILENO and STDOUT_FILENO. */
+}
+END_TEST
+
+/* Incomplete. */
+START_TEST(test_read_graph_solution)
+{
+	/* Find a way to write to STDIN_FILENO and STDOUT_FILENO. */
+}
+END_TEST
+
+/* Incomplete. */
+START_TEST(test_read_input_fds)
+{
+	int sockets[2];
+	char buf[1024];
+	DPRINTF("%s()...", __func__);
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0) {
+		perror("Error opening stream socket pair. Exiting now.");
+		exit(1);
+	}
+	DPRINTF("Opened socket pair %d - %d.", sockets[0], sockets[1]);
+
+	/* We have to send data to STDIN_FILENO and STDOUT_FILENO.
+	 * This is where they listen for incoming data.
+	 */
+
+	/* Non-blocking in order to be able to try read stdin, then stdout
+	 * and again.
+	 */
+        fcntl(sockets[0], F_SETFL, O_NONBLOCK);
+        fcntl(sockets[1], F_SETFL, O_NONBLOCK);
+
+	write(sockets[1], "test", 5);
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	/* Edges have been setup with 0 instances. See setup_chosen_mb().
+	 * Edges then copied to graph_solution. See setup_graph_solution().
+	 */
+	graph_solution[1].edges_incoming[0].instances = 1;
+	
+	//ck_assert_int_eq(read_input_fds(), OP_SUCCESS);
+	//ck_assert_int_eq(read_input_fds(), OP_ERROR);
+}
+END_TEST
+
+/* Incomplete. */
 START_TEST(test_try_read_chunk)
 {
 	/* Requires setting up of I/O multiplexing (a bash shell extension)
@@ -1121,8 +1210,8 @@ END_TEST
 
 START_TEST(test_call_read)
 {
-	DPRINTF("%s()...", __func__);
 	int fd[2];
+	DPRINTF("%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
@@ -1430,6 +1519,21 @@ START_TEST(test_add_node)
 }
 END_TEST
 
+START_TEST(test_construct_message_block)
+{
+	int pid = 7;
+	ck_assert_int_eq(construct_message_block(pid), OP_SUCCESS);
+	ck_assert_int_eq(chosen_mb->version, 1.0);
+        ck_assert_int_eq(chosen_mb->node_array, 0);
+        ck_assert_int_eq(chosen_mb->n_nodes, 0);
+        ck_assert_int_eq(chosen_mb->initiator_pid, pid);
+        ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+        ck_assert_int_eq(chosen_mb->serial_no, 0);
+        ck_assert_int_eq(chosen_mb->origin.index, -1);
+        ck_assert_int_eq(chosen_mb->origin.fd_direction, -1);
+}
+END_TEST
+
 START_TEST(test_validate_input)
 {
 	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
@@ -1461,6 +1565,12 @@ suite_connect(void)
 {
 	Suite *s = suite_create("Connect");
 
+	TCase *tc_rif = tcase_create("read input fds");
+	tcase_add_checked_fixture(tc_rif, setup_test_read_input_fds,
+					  retire_test_read_input_fds);
+	tcase_add_test(tc_rif, test_read_input_fds);
+	suite_add_tcase(s, tc_rif);
+
 	TCase *tc_eic = tcase_create("establish io connections");
 	tcase_add_checked_fixture(tc_eic, setup_test_establish_io_connections,
 					  retire_test_establish_io_connections);
@@ -1471,11 +1581,6 @@ suite_connect(void)
 	tcase_add_checked_fixture(tc_anc, NULL, NULL);
 	tcase_add_test(tc_anc, test_alloc_node_connections);
 	suite_add_tcase(s, tc_anc);
-
-	TCase *tc_gns = tcase_create("get next sd");
-	tcase_add_checked_fixture(tc_gns, NULL, NULL);
-	tcase_add_test(tc_gns, test_get_next_sd);
-	suite_add_tcase(s, tc_gns);
 
 	TCase *tc_sd = tcase_create("set dispatcher");
 	tcase_add_checked_fixture(tc_sd, setup_test_set_dispatcher,
@@ -1497,6 +1602,12 @@ Suite *
 suite_solve(void)
 {
 	Suite *s = suite_create("Solve");
+
+	TCase *tc_rgs = tcase_create("read graph solution");
+	tcase_add_checked_fixture(tc_rgs, setup_test_read_graph_solution,
+					  retire_test_read_graph_solution);
+	tcase_add_test(tc_rgs, test_read_graph_solution);
+	suite_add_tcase(s, tc_rgs);
 
 	TCase *tc_ssg = tcase_create("solve sgsh graph");
 	tcase_add_checked_fixture(tc_ssg, setup_test_solve_sgsh_graph,
@@ -1554,6 +1665,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_trm = tcase_create("try read message block");
+	tcase_add_checked_fixture(tc_trm, setup_test_try_read_message_block,
+					  retire_test_try_read_message_block);
+	tcase_add_test(tc_trm, test_try_read_message_block);
+	suite_add_tcase(s, tc_trm);
 
 	TCase *tc_trc = tcase_create("try read chunk");
 	tcase_add_checked_fixture(tc_trc, setup_test_try_read_chunk, NULL);
@@ -1644,6 +1761,12 @@ suite_broadcast(void)
 					 retire_test_add_node);
 	tcase_add_test(tc_an, test_add_node);
 	suite_add_tcase(s, tc_an);
+
+	TCase *tc_cnmb = tcase_create("construct message block");
+	tcase_add_checked_fixture(tc_cnmb, NULL,
+					retire_test_construct_message_block);
+	tcase_add_test(tc_cnmb, test_construct_message_block);
+	suite_add_tcase(s, tc_cnmb);
 
 	TCase *tc_vi = tcase_create("validate input");
 	tcase_add_checked_fixture(tc_vi, NULL, NULL);
