@@ -6,6 +6,12 @@
 #define PROT_STATE_SOLUTION_SHARE 3
 #define PROT_STATE_ERROR 4
 
+#include <sys/socket.h> /* struct cmsghdr */
+union fdmsg {
+	struct cmsghdr h;
+	char buf[CMSG_SPACE(sizeof(int))];
+};
+
 #ifdef UNIT_TESTING
 #define STATIC 
 #else

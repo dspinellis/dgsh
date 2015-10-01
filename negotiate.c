@@ -5,7 +5,7 @@
  * gathered all input pipes required. How many rounds could this take at the
  * worst case?
  * - assert edge constraint, i.e. channels required, provided, is rational.
- * 
+ * - substitute DPRINTF with appropriate error reporting function in case of errors.
  */
 
 /* Placeholder: LICENSE. */
@@ -15,10 +15,10 @@
 #include <stdio.h> /* fprintf() in DPRINTF() */
 #include <stdlib.h> /* getenv(), errno */
 #include <string.h> /* memcpy() */
-#include <sys/socket.h> /* sendmsg() */
+#include <sys/socket.h> /* sendmsg(), recvmsg() */
 #include <unistd.h> /* getpid(), getpagesize(), 
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
-#include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run() */
+#include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh.h" /* DPRINTF() */
 
 /* Identifies the node and node's fd that sent the message block. */
@@ -1065,19 +1065,16 @@ call_read(int fd, char *buf, int buf_size,
 				int *error_code)
 {
 	*error_code = 0;
-	/* This information fuels self_node_io_side. */
-	*fd_side = 0;
-	DPRINTF("Try read from %s.\n", (fd) ? "stdout" : "stdin");
 	DPRINTF("Try read from fd %d.\n", fd);
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
 	DPRINTF("Raw read captured: %s", buf);
 	DPRINTF("Read operation error_code %d", *error_code);
 	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
-		/* Attention! fd_side is [STDIN_FILENO, STDOUT_FILENO] or
-                 * a non-negative file descriptor?
-                 */
-		*fd_side = 1; /* Mark the side where input is coming from (!). */
+		/* This information fuels self_node_io_side.
+		 * Mark the side where input is coming from.
+		 */
+		*fd_side = fd;
 		return OP_QUIT;
 	}
 	return OP_SUCCESS;
@@ -1088,20 +1085,31 @@ call_read(int fd, char *buf, int buf_size,
  * Its job is to manage a read operation.
  */
 static int
-try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
+try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 {
 	int error_code = -EAGAIN;
-	int stdout_side = 0; /* Placeholder: stdin suffices. */
+	/* Recheck the rationale of fd_side. */
 	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
-		if ((call_read(STDIN_FILENO, buf, buf_size, stdin_side,
+		/* Review this sequence of calls. Is this scheme robust?
+		 * e.g. input from both sides?
+		 */
+#ifdef UNIT_TESTING
+		if ((call_read(4, buf, buf_size, fd_side,
+#else
+		if ((call_read(STDIN_FILENO, buf, buf_size, fd_side,
+#endif
 					bytes_read, &error_code) == OP_QUIT) ||
-		    (call_read(STDOUT_FILENO, buf, buf_size, &stdout_side, 
+#ifdef UNIT_TESTING
+		    (call_read(5, buf, buf_size, fd_side, 
+#else
+		    (call_read(STDOUT_FILENO, buf, buf_size, fd_side, 
+#endif
 					bytes_read, &error_code) == OP_QUIT))
 			break;
 	}
 	if (*bytes_read == -1) {  /* Read failed. */
-	 	DPRINTF("Reading from %s fd failed with error code %d.", 
-			(stdin_side) ? "stdin " : "stdout ", error_code);
+	 	DPRINTF("Reading from fd %d failed with error code %d.", 
+			*fd_side, error_code);
 		return error_code;
 	} else  /* Read succeeded. */
 		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
@@ -1113,6 +1121,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *stdin_side)
 static int
 read_input_fds()
 {
+	DPRINTF("%s() pid %d", __func__, (int)getpid());
 	/** 
 	 * A node's connections are located at the same position
          * as the node in the node array.
@@ -1141,21 +1150,59 @@ read_input_fds()
 		 * than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
-			DPRINTF("%d incoming edge instances to inspect.", this_nc->edges_incoming[i].instances);
-			struct msghdr msg;
 			int read_fd;
-			memset(&msg, 0, sizeof(struct msghdr));
+			int count;
+			char ping;
+			struct msghdr msg;
+			struct iovec vec[1];
+			union fdmsg cmsg;
+			struct cmsghdr *h;
+			char buffer[256];
 
-			msg.msg_control = (char *)&read_fd;
-			msg.msg_controllen = sizeof(read_fd);
+			DPRINTF("%d incoming edge instances to inspect.", this_nc->edges_incoming[i].instances);
+			vec[0].iov_base = &ping;
+			vec[0].iov_len = 1;
 
-			DPRINTF("Waiting to receive pipe fd.\n");
+			msg.msg_iov = vec;
+			msg.msg_iovlen = 1;
+			msg.msg_name = NULL;
+			msg.msg_namelen = 0;
+			msg.msg_control = cmsg.buf;
+			msg.msg_controllen = sizeof(union fdmsg);
+			msg.msg_flags = 0;
+
+			h = CMSG_FIRSTHDR(&msg);
+			h->cmsg_level = SOL_SOCKET;
+			h->cmsg_type = SCM_RIGHTS;
+			h->cmsg_len = CMSG_LEN(sizeof(int));
+			*((int*)CMSG_DATA(h)) = -1;
+
+#ifdef UNIT_TESTING
+			close(4); /* Close the opposite endpoint. */
 			/* Define self_node_io_side.fd_read */
-			if (recvmsg(!self_node_io_side.fd_direction,&msg, 0) < 0) {
-				DPRINTF("recvmsg() failed.\n");
+			DPRINTF("Parent: waiting to receive pipe fd with recvmsg().");
+			/* Hard-coded socket fd 5. */
+			if ((count = recvmsg(5, &msg, 0)) < 0) {
+#else
+			if ((count =
+			     recvmsg(!self_node_io_side.fd_direction,&msg, 0)) < 0) {
+#endif
+				perror("recvmsg()");
 				re = OP_ERROR;
 				break;
 			}
+			h = CMSG_FIRSTHDR(&msg);
+			if (h == NULL ||
+			    h->cmsg_len != CMSG_LEN(sizeof(int)) ||
+			    h->cmsg_level != SOL_SOCKET ||
+			    h->cmsg_type != SCM_RIGHTS) {
+				perror("Incorrect value in recvmsg");
+				re = OP_ERROR;
+			}
+			read_fd = *((int*)CMSG_DATA(h));
+			DPRINTF("Parent: Received file descriptor %d.", read_fd);
+			while (read(read_fd, buffer, sizeof(buffer)) > 0)
+            			DPRINTF("Parent: reading from file: %s", buffer);
 			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
 			total_edge_instances++;
 		}

@@ -1,7 +1,8 @@
-#include <check.h> /* Check unit test framework API. */
+#include <check.h>  /* Check unit test framework API. */
 #include <stdlib.h> /* EXIT_SUCCESS, EXIT_FAILURE */
 #include <unistd.h> /* pipe() */
 #include <fcntl.h>  /* fcntl() */
+#include <err.h>    /* err(), errx() */
 #include "../src/sgsh-negotiate.h"
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
@@ -205,6 +206,7 @@ setup_pointers_to_edges(void)
         }
 }
 
+void
 setup_self_node(void)
 {
 	/* fill in self_node */
@@ -1157,42 +1159,84 @@ START_TEST(test_read_graph_solution)
 }
 END_TEST
 
-/* Incomplete. */
+/* Incomplete? */
 START_TEST(test_read_input_fds)
 {
 	int sockets[2];
 	char buf[1024];
-	DPRINTF("%s()...", __func__);
+	int fd, ping;
+	struct msghdr msg;
+	struct iovec vec[1];
+	union fdmsg cmsg;
+	struct cmsghdr *h;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0) {
+	DPRINTF("%s()...pid %d", __func__, (int)getpid());
+
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets) < 0) {
 		perror("Error opening stream socket pair. Exiting now.");
 		exit(1);
 	}
 	DPRINTF("Opened socket pair %d - %d.", sockets[0], sockets[1]);
 
-	/* We have to send data to STDIN_FILENO and STDOUT_FILENO.
-	 * This is where they listen for incoming data.
-	 */
+	fd = open("unit-test-sgsh", O_CREAT | O_WRONLY);
+	write(fd, "Unit testing sgsh...", 21);
+        close(fd);
+	fd = open("unit-test-sgsh", O_RDONLY);
+	if (fd < 0)
+		perror("Failed to open file test-sgsh for reading.");
 
-	/* Non-blocking in order to be able to try read stdin, then stdout
-	 * and again.
-	 */
-        fcntl(sockets[0], F_SETFL, O_NONBLOCK);
-        fcntl(sockets[1], F_SETFL, O_NONBLOCK);
+        int pid = fork();
+	if (pid <= 0) {
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
 
-	write(sockets[1], "test", 5);
-	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
-	/* Edges have been setup with 0 instances. See setup_chosen_mb().
-	 * Edges then copied to graph_solution. See setup_graph_solution().
-	 */
-	graph_solution[1].edges_incoming[0].instances = 1;
+		DPRINTF("Child closes socket %d.", sockets[1]);
+		close(sockets[1]);
+
+		vec[0].iov_base = &ping;
+		vec[0].iov_len = 1;
+
+		msg.msg_iov = vec;
+		msg.msg_iovlen = 1;
+		msg.msg_name = 0;
+		msg.msg_namelen = 0;
+		msg.msg_control = cmsg.buf;
+		msg.msg_controllen = sizeof(union fdmsg);
+		msg.msg_flags = 0;
+
+		h = CMSG_FIRSTHDR(&msg);
+		h->cmsg_level = SOL_SOCKET;
+		h->cmsg_type = SCM_RIGHTS;
+		h->cmsg_len = CMSG_LEN(sizeof(int));
+		*((int*)CMSG_DATA(h)) = fd;
+
+		DPRINTF("Child goes sendmsg()");
+		if((sendmsg(sockets[0], &msg, 0)) < 0){
+			perror("sendmsg()");
+			exit(EXIT_FAILURE);
+		}
+		DPRINTF("Child: closes fd %d.", fd);
+		close(fd);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+	} else {
+		memcpy(&self_node, &chosen_mb->node_array[1],
+						sizeof(struct sgsh_node));
+		/* Edges have been setup with 0 instances.
+		 * See setup_chosen_mb().
+	 	 * Edges then copied to graph_solution.
+		 * See setup_graph_solution().
+	 	 */
+		graph_solution[1].edges_incoming[0].instances = 1;
 	
-	//ck_assert_int_eq(read_input_fds(), OP_SUCCESS);
-	//ck_assert_int_eq(read_input_fds(), OP_ERROR);
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(read_input_fds(), OP_SUCCESS);
+		DPRINTF("Parent with pid %d exits.", (int)getpid()); 
+	}
+	close(sockets[0]);
+	close(sockets[1]);
 }
 END_TEST
 
-/* Incomplete. */
+/* Incomplete? */
 START_TEST(test_try_read_chunk)
 {
 	/* Requires setting up of I/O multiplexing (a bash shell extension)
@@ -1205,6 +1249,29 @@ START_TEST(test_try_read_chunk)
 	 * call read, which has been successfully tested.
 	 * Then there is variable checking to determine the exit code.
 	 */
+	int fd[2];
+	DPRINTF("%s()...", __func__);
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	/* Non-blocking in order to be able to try read stdin, then stdout
+	 * and again.
+	 */
+        fcntl(fd[0], F_SETFL, O_NONBLOCK);
+
+	/* Broken pipe error if we close the other side. */
+	//close(fd[0]);
+	write(fd[1], "test-in", 9);
+	char buf[32];
+	int fd_side = -1;
+	int bytes_read = -1;
+	ck_assert_int_eq(try_read_chunk(buf, 32, &bytes_read, &fd_side),OP_SUCCESS);
+	ck_assert_int_eq(fd_side, 4);
+	ck_assert_int_eq(bytes_read, 9);
+	
+	close(fd[0]);
+	close(fd[1]);
 }
 END_TEST
 
@@ -1228,7 +1295,7 @@ START_TEST(test_call_read)
 	int error_code = -1;
 	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
 				&error_code), OP_QUIT);
-	ck_assert_int_eq(fd_side, 1);
+	ck_assert_int_eq(fd_side, 4);
 	ck_assert_int_eq(bytes_read, 5);
 	ck_assert_int_eq(error_code, 0);
 
@@ -1237,7 +1304,8 @@ START_TEST(test_call_read)
 	error_code = -1;
 	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
 				&error_code), OP_SUCCESS);
-	ck_assert_int_eq(fd_side, 0);
+	/* No write, no side */
+	ck_assert_int_eq(fd_side, -1);
 	ck_assert_int_eq(bytes_read, -1);
 	ck_assert_int_eq(error_code, -EAGAIN);
 	
@@ -1521,16 +1589,18 @@ END_TEST
 
 START_TEST(test_construct_message_block)
 {
+	DPRINTF("%s()", __func__);
 	int pid = 7;
 	ck_assert_int_eq(construct_message_block(pid), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->version, 1.0);
-        ck_assert_int_eq(chosen_mb->node_array, 0);
+        ck_assert_int_eq((long)chosen_mb->node_array, 0);
         ck_assert_int_eq(chosen_mb->n_nodes, 0);
         ck_assert_int_eq(chosen_mb->initiator_pid, pid);
         ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
         ck_assert_int_eq(chosen_mb->serial_no, 0);
         ck_assert_int_eq(chosen_mb->origin.index, -1);
         ck_assert_int_eq(chosen_mb->origin.fd_direction, -1);
+	free(chosen_mb);
 }
 END_TEST
 
@@ -1763,8 +1833,7 @@ suite_broadcast(void)
 	suite_add_tcase(s, tc_an);
 
 	TCase *tc_cnmb = tcase_create("construct message block");
-	tcase_add_checked_fixture(tc_cnmb, NULL,
-					retire_test_construct_message_block);
+	tcase_add_checked_fixture(tc_cnmb, NULL, NULL);
 	tcase_add_test(tc_cnmb, test_construct_message_block);
 	suite_add_tcase(s, tc_cnmb);
 
