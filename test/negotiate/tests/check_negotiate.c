@@ -3,6 +3,7 @@
 #include <unistd.h> /* pipe() */
 #include <fcntl.h>  /* fcntl() */
 #include <err.h>    /* err(), errx() */
+#include <time.h>   /* nanosleep() */
 #include "../src/sgsh-negotiate.h"
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
@@ -234,9 +235,10 @@ setup_pipe_fds(void)
 }
 
 void
-setup_graph_solution(void)
+setup_graph_solution(struct sgsh_node_connections **gs)
 {
 	int i;
+	struct sgsh_node_connections *graph_solution;
 	graph_solution = (struct sgsh_node_connections *)malloc(
 			sizeof(struct sgsh_node_connections) * 
 			chosen_mb->n_nodes);
@@ -290,6 +292,7 @@ setup_graph_solution(void)
 	graph_solution[3].n_edges_outgoing = 0;
 	graph_solution[3].edges_outgoing = NULL;
 
+	*gs = graph_solution;
 }
 
 void setup_args(void)
@@ -307,7 +310,7 @@ setup(void)
 	setup_self_node();
 	setup_self_node_io_side();
 	setup_pipe_fds();
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 }
 
 void
@@ -406,7 +409,7 @@ void
 setup_test_read_input_fds(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 	setup_self_node();
 	setup_pipe_fds();
 }
@@ -416,7 +419,7 @@ setup_test_read_graph_solution(void)
 {
 	setup_fresh_mb();
 	setup_chosen_mb();
-	setup_graph_solution();
+	setup_self_node_io_side();
 }
 
 void
@@ -424,7 +427,7 @@ setup_test_try_read_message_block(void)
 {
 	setup_fresh_mb();
 	setup_chosen_mb();
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 	setup_self_node();
 	setup_pipe_fds();
 	setup_self_node_io_side();
@@ -475,14 +478,14 @@ void
 setup_test_free_graph_solution(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 }
 
 void
 setup_test_solve_sgsh_graph(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 	setup_pointers_to_edges();
 	setup_args();
 }
@@ -491,7 +494,7 @@ void
 setup_test_alloc_write_output_fds(void)
 {
 	setup_chosen_mb(); /* For setting up graph_solution. */
-	setup_graph_solution();
+	setup_graph_solution(&graph_solution);
 	setup_self_node();
 	setup_pipe_fds();
 }
@@ -532,6 +535,18 @@ retire_fresh_mb(void)
         free(fresh_mb->node_array);
         free(fresh_mb->edge_array);
         free(fresh_mb);
+}
+
+void
+retire_graph_solution(struct sgsh_node_connections *graph_solution,
+								int node_index)
+{
+	int i;
+        for (i = 0; i <= node_index; i++) {
+                free(graph_solution[i].edges_incoming);
+                free(graph_solution[i].edges_outgoing);
+        }
+        free(graph_solution);
 }
 
 /* establish_io_connections() */
@@ -648,7 +663,7 @@ retire_test_try_read_message_block(void)
 void
 retire_test_read_graph_solution(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	DPRINTF("%s()", __func__);
 	retire_chosen_mb();
 	retire_fresh_mb();
 }
@@ -1074,9 +1089,10 @@ END_TEST
 START_TEST(test_alloc_node_connections)
 {
 	struct sgsh_edge *test;
+	/* It is assumed that negative number of edges have already
+         * been checked. See e.g. read_graph_solution().
+         */
 	ck_assert_int_eq(alloc_node_connections(NULL, 2, 1, 2), OP_ERROR);
-	ck_assert_int_eq(alloc_node_connections(&test, 0, 1, 2), OP_ERROR);
-	ck_assert_int_eq(alloc_node_connections(&test, -1, 1, 2), OP_ERROR);
 	ck_assert_int_eq(alloc_node_connections(&test, 1, 2, 2), OP_ERROR);
 	ck_assert_int_eq(alloc_node_connections(&test, 1, -1, 2), OP_ERROR);
 	ck_assert_int_eq(alloc_node_connections(&test, 1, 1, -2), OP_ERROR);
@@ -1152,10 +1168,75 @@ START_TEST(test_try_read_message_block)
 }
 END_TEST
 
-/* Incomplete. */
+/* Incomplete? */
 START_TEST(test_read_graph_solution)
 {
-	/* Find a way to write to STDIN_FILENO and STDOUT_FILENO. */
+	int fd[2];
+	int fd_side = -1;
+	int bytes_read = -1;
+	int buf_size = getpagesize();
+	int pid;
+	int i;
+        int n_nodes = fresh_mb->n_nodes;
+        int graph_solution_size = sizeof(struct sgsh_node_connections) *
+                                                                n_nodes;
+	char buf[buf_size];
+	struct sgsh_node_connections *graph_solution;
+        /* 1 millisecond sleep. */
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 1000000;
+	DPRINTF("%s()", __func__);
+
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+
+	pid = fork();
+	if (pid <= 0) {
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		setup_graph_solution(&graph_solution);
+
+		close(fd[0]);
+		DPRINTF("Child writes graph solution of size %d.",
+					graph_solution_size);
+        	write(fd[1], graph_solution, graph_solution_size);
+		/* Sleep for 1 millisecond before the next operation. */
+		nanosleep(&sleep, NULL);
+
+		for (i = 0; i < chosen_mb->n_nodes; i++) {
+                	struct sgsh_node_connections *nc = &graph_solution[i];
+                	int in_edges_size = sizeof(struct sgsh_edge) *
+							nc->n_edges_incoming;
+                	int out_edges_size = sizeof(struct sgsh_edge) *
+							nc->n_edges_outgoing;
+                	if ((in_edges_size > buf_size) || 
+						(out_edges_size > buf_size)) {
+                        	DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+                        	exit(1);
+                	}
+
+			DPRINTF("Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
+                	/* Transmit a node's incoming connections. */
+                	write(fd[1], nc->edges_incoming, in_edges_size);
+			nanosleep(&sleep, NULL);
+
+			DPRINTF("Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
+                	/* Transmit a node's outgoing connections. */
+                	write(fd[1], nc->edges_outgoing, out_edges_size);
+			nanosleep(&sleep, NULL);
+        	}
+		DPRINTF("Child: closes fd %d.", fd[1]);
+		close(fd[1]);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+		retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
+	} else {
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(read_graph_solution(fresh_mb, buf, buf_size),
+								OP_SUCCESS);
+	}
 }
 END_TEST
 

@@ -114,10 +114,6 @@ alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
 		DPRINTF("Double pointer to node connection edges is NULL.\n");
 		return OP_ERROR;
 	}
-	if (nc_n_edges <= 0) {
-		DPRINTF("Number of node connection edges to allocate is non-positive number.\n");
-		return OP_ERROR;
-	}
 	if (node_index < 0) {
 		DPRINTF("Index of node whose connections will be allocated is negative number.\n");
 		return OP_ERROR;
@@ -1065,7 +1061,7 @@ call_read(int fd, char *buf, int buf_size,
 				int *error_code)
 {
 	*error_code = 0;
-	DPRINTF("Try read from fd %d.\n", fd);
+	DPRINTF("Try read from fd %d.", fd);
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1)
 		*error_code = -errno;
 	DPRINTF("Raw read captured: %s", buf);
@@ -1087,6 +1083,7 @@ call_read(int fd, char *buf, int buf_size,
 static int
 try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 {
+	DPRINTF("%s()", __func__);
 	int error_code = -EAGAIN;
 	/* Recheck the rationale of fd_side. */
 	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
@@ -1094,13 +1091,14 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 		 * e.g. input from both sides?
 		 */
 #ifdef UNIT_TESTING
+		close(5);
 		if ((call_read(4, buf, buf_size, fd_side,
 #else
 		if ((call_read(STDIN_FILENO, buf, buf_size, fd_side,
 #endif
 					bytes_read, &error_code) == OP_QUIT) ||
 #ifdef UNIT_TESTING
-		    (call_read(5, buf, buf_size, fd_side, 
+		    (call_read(4, buf, buf_size, fd_side, 
 #else
 		    (call_read(STDOUT_FILENO, buf, buf_size, fd_side, 
 #endif
@@ -1241,35 +1239,51 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 	/* Read node connection structures of the solution. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
-	if (graph_solution_size != bytes_read) return OP_ERROR;
-	else memcpy(graph_solution, buf, bytes_read);
+	if (graph_solution_size != bytes_read) {
+		DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
+						graph_solution_size, bytes_read);
+		return OP_ERROR;
+	} else memcpy(graph_solution, buf, bytes_read);
 
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
-		int in_edges_size = sizeof(int) * nc->n_edges_incoming;
-		int out_edges_size = sizeof(int) * nc->n_edges_outgoing;
+		DPRINTF("Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
+		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
+		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
 		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
 			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
 
 		/* Read a node's incoming connections. */
-		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-			&stdin_side)) != OP_SUCCESS) return error_code;
-		if (in_edges_size != bytes_read) return OP_ERROR;
-		if (alloc_node_connections(&nc->edges_incoming, 
-			nc->n_edges_incoming, 0, i) == OP_ERROR)
-			return OP_ERROR;
-		memcpy(nc->edges_incoming, buf, buf_size);
+		if (nc->n_edges_incoming > 0) {
+			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+				&stdin_side)) != OP_SUCCESS) return error_code;
+			if (in_edges_size != bytes_read) {
+				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
+						in_edges_size, bytes_read);
+				return OP_ERROR;
+			}
+			if (alloc_node_connections(&nc->edges_incoming, 
+				nc->n_edges_incoming, 0, i) == OP_ERROR)
+				return OP_ERROR;
+			memcpy(nc->edges_incoming, buf, in_edges_size);
+		}
 
 		/* Read a node's outgoing connections. */
-		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
-			&stdout_side)) != OP_SUCCESS) return error_code;
-		if (out_edges_size != bytes_read) return OP_ERROR;
-		if (alloc_node_connections(&nc->edges_outgoing, 
-			nc->n_edges_outgoing, 1, i) == OP_ERROR)
-			return OP_ERROR;
-		memcpy(nc->edges_outgoing, buf, buf_size);
+		if (nc->n_edges_outgoing) {
+			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+				&stdout_side)) != OP_SUCCESS) return error_code;
+			if (out_edges_size != bytes_read) {
+				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
+						out_edges_size, bytes_read);
+				return OP_ERROR;
+			}
+			if (alloc_node_connections(&nc->edges_outgoing, 
+				nc->n_edges_outgoing, 1, i) == OP_ERROR)
+				return OP_ERROR;
+			memcpy(nc->edges_outgoing, buf, out_edges_size);
+		}
 	}
 	return OP_SUCCESS;
 }
