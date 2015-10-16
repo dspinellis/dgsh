@@ -436,7 +436,13 @@ void
 setup_test_try_read_message_block(void)
 {
 	setup_chosen_mb();
-	setup_self_node();
+	setup_self_node_io_side();
+}
+
+void
+setup_test_write_message_block(void)
+{
+	setup_chosen_mb();
 	setup_self_node_io_side();
 }
 
@@ -660,6 +666,12 @@ retire_test_read_input_fds(void)
 
 void
 retire_test_try_read_message_block(void)
+{
+	retire_chosen_mb();
+}
+
+void
+retire_test_write_message_block(void)
 {
 	retire_chosen_mb();
 }
@@ -1234,9 +1246,70 @@ START_TEST(test_write_graph_solution)
 END_TEST
 
 /* Incomplete? */
+START_TEST(test_write_message_block)
+{
+	int fd[2];
+	int fd_side = -1;
+	int pid;
+        /* 1 millisecond sleep. */
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 1000000;
+	DPRINTF("%s()", __func__);
+
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+
+	pid = fork();
+	if (pid <= 0) {
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		struct sgsh_negotiation *test_mb = (struct sgsh_negotiation *)
+				malloc(sizeof(struct sgsh_negotiation));
+        	int mb_struct_size = sizeof(struct sgsh_negotiation);
+                int i = 0;
+
+		close(fd[1]);
+		DPRINTF("Child reads message block structure of size %d.",
+					mb_struct_size);
+        	read(fd[0], test_mb, mb_struct_size);
+        	int n_nodes = test_mb->n_nodes;
+        	int n_edges = test_mb->n_edges;
+        	int mb_nodes_size = sizeof(struct sgsh_node) * n_nodes;
+		test_mb->node_array = (struct sgsh_node *)malloc(mb_nodes_size);
+        	int mb_edges_size = sizeof(struct sgsh_edge) * n_edges;
+		test_mb->edge_array = (struct sgsh_edge *)malloc(mb_edges_size);
+
+		DPRINTF("Child reads message block node array of size %d.",
+					mb_nodes_size);
+        	read(fd[0], test_mb->node_array, mb_nodes_size);
+
+		DPRINTF("Child reads message block edge array of size %d.",
+					mb_edges_size);
+		read(fd[0], test_mb->edge_array, mb_edges_size);
+                for (i = 0; i < test_mb->n_edges; i++) {
+                        struct sgsh_edge *e = &test_mb->edge_array[i];
+                        DPRINTF("Edge from: %d, to: %d", e->from, e->to);
+                }
+
+		DPRINTF("Child: closes fd %d.", fd[0]);
+		close(fd[0]);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+		retire_mb(test_mb);
+	} else {
+		int buf_size = getpagesize();
+		char buf[buf_size];
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(write_message_block(), OP_SUCCESS);
+	}
+}
+END_TEST
+
+/* Incomplete? */
 START_TEST(test_try_read_message_block)
 {
-
 	int fd[2];
 	int fd_side = -1;
 	int pid;
@@ -1953,6 +2026,12 @@ Suite *
 suite_broadcast(void)
 {
 	Suite *s = suite_create("Broadcast");
+
+	TCase *tc_wmb = tcase_create("write message block");
+	tcase_add_checked_fixture(tc_wmb, setup_test_write_message_block,
+					  retire_test_write_message_block);
+	tcase_add_test(tc_wmb, test_write_message_block);
+	suite_add_tcase(s, tc_wmb);
 
 	TCase *tc_trm = tcase_create("try read message block");
 	tcase_add_checked_fixture(tc_trm, setup_test_try_read_message_block,

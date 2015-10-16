@@ -746,6 +746,11 @@ write_message_block()
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
 	struct sgsh_edge *p_edges = chosen_mb->edge_array;
+	/* 1 millisecond sleep. */
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 1000000;
+	
 	if ((nodes_size > buf_size) || (edges_size > buf_size)) {
 		DPRINTF("%s size exceeds buffer size.\n", 
 			(nodes_size > buf_size) ? "Nodes" : "Edges");
@@ -760,18 +765,30 @@ write_message_block()
 	 */
 	chosen_mb->node_array = NULL;
 	chosen_mb->edge_array = NULL;
-	memcpy(buf, chosen_mb, mb_size);
-	write(self_node_io_side.fd_direction, buf, mb_size);
+#ifndef UNIT_TESTING
+	write(self_node_io_side.fd_direction, chosen_mb, mb_size);
+#else
+	write(5, chosen_mb, mb_size);
+#endif
+	nanosleep(&sleep, NULL);
 
 	/* Transmit nodes. */
-	memcpy(buf, p_nodes, nodes_size);
-	write(self_node_io_side.fd_direction, buf, nodes_size);
+#ifndef UNIT_TESTING
+	write(self_node_io_side.fd_direction, p_nodes, nodes_size);
+#else
+	write(5, p_nodes, nodes_size);
+#endif
+	nanosleep(&sleep, NULL);
 	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes. */
 
 	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
 		/* Transmit edges. */
-		memcpy(buf, p_edges, edges_size);
-		write(self_node_io_side.fd_direction, buf, edges_size);
+#ifndef UNIT_TESTING
+		write(self_node_io_side.fd_direction, p_edges, edges_size);
+#else
+		write(5, p_edges, edges_size);
+#endif
+		nanosleep(&sleep, NULL);
 		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
