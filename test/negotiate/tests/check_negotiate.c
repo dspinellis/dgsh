@@ -114,7 +114,7 @@ setup_chosen_mb(void)
 
 /* Identical to chosen_mb except for the initiator field. */
 void
-setup_fresh_mb(void)
+setup_mb(struct sgsh_negotiation **mb)
 {
 	struct sgsh_node *nodes;
 	struct sgsh_edge *edges;
@@ -177,20 +177,22 @@ setup_fresh_mb(void)
         edges[4].instances = 0;
 
         double sgsh_version = 0.1;
-        fresh_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
-        fresh_mb->version = sgsh_version;
-        fresh_mb->node_array = nodes;
-        fresh_mb->n_nodes = n_nodes;
-        fresh_mb->edge_array = edges;
-        fresh_mb->n_edges = n_edges;
+        struct sgsh_negotiation *temp_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
+        temp_mb->version = sgsh_version;
+        temp_mb->node_array = nodes;
+        temp_mb->n_nodes = n_nodes;
+        temp_mb->edge_array = edges;
+        temp_mb->n_edges = n_edges;
 
 	/* check_negotiation_round() */
-	fresh_mb->state_flag = PROT_STATE_NEGOTIATION;
-	fresh_mb->initiator_pid = 102; /* Node 2 */
+	temp_mb->state_flag = PROT_STATE_NEGOTIATION;
+	temp_mb->initiator_pid = 102; /* Node 2 */
 	mb_is_updated = 0;
-	fresh_mb->serial_no = 0;
-	fresh_mb->origin.index = 2;
-	fresh_mb->origin.fd_direction = STDOUT_FILENO;
+	temp_mb->serial_no = 0;
+	temp_mb->origin.index = 2;
+	temp_mb->origin.fd_direction = STDOUT_FILENO;
+
+	*mb = temp_mb;
 }
 
 void
@@ -374,7 +376,7 @@ void
 setup_test_compete_message_block(void)
 {
 	setup_chosen_mb();
-	setup_fresh_mb();
+	setup_mb(&fresh_mb);
 	setup_self_node();
 	setup_self_node_io_side();
 }
@@ -390,13 +392,13 @@ setup_test_point_io_direction(void)
 void
 setup_test_alloc_copy_edges(void)
 {
-	setup_fresh_mb();
+	setup_mb(&fresh_mb);
 }
 
 void
 setup_test_alloc_copy_nodes(void)
 {
-	setup_fresh_mb();
+	setup_mb(&fresh_mb);
 }
 
 void
@@ -417,7 +419,7 @@ setup_test_read_input_fds(void)
 void
 setup_test_read_graph_solution(void)
 {
-	setup_fresh_mb();
+	setup_mb(&fresh_mb);
 	setup_chosen_mb();
 	setup_self_node_io_side();
 }
@@ -425,11 +427,8 @@ setup_test_read_graph_solution(void)
 void
 setup_test_try_read_message_block(void)
 {
-	setup_fresh_mb();
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
 	setup_self_node();
-	setup_pipe_fds();
 	setup_self_node_io_side();
 }
 
@@ -530,11 +529,11 @@ retire_chosen_mb(void)
 }
 
 void
-retire_fresh_mb(void)
+retire_mb(struct sgsh_negotiation *mb)
 {
-        free(fresh_mb->node_array);
-        free(fresh_mb->edge_array);
-        free(fresh_mb);
+        free(mb->node_array);
+        free(mb->edge_array);
+        free(mb);
 }
 
 void
@@ -620,7 +619,7 @@ void
 retire_test_compete_message_block(void)
 {
 	if (exit_state == 1) {
-		retire_fresh_mb();
+		retire_mb(fresh_mb);
 		exit_state = 0;
 	} else retire_chosen_mb();
 }
@@ -634,13 +633,13 @@ retire_test_point_io_direction(void)
 void
 retire_test_alloc_copy_edges(void)
 {
-	retire_fresh_mb();
+	retire_mb(fresh_mb);
 }
 
 void
 retire_test_alloc_copy_nodes(void)
 {
-	retire_fresh_mb();
+	retire_mb(fresh_mb);
 }
 
 void
@@ -654,10 +653,7 @@ retire_test_read_input_fds(void)
 void
 retire_test_try_read_message_block(void)
 {
-	retire_pipe_fds();
-	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
-	retire_fresh_mb();
 }
 
 void
@@ -665,7 +661,7 @@ retire_test_read_graph_solution(void)
 {
 	DPRINTF("%s()", __func__);
 	retire_chosen_mb();
-	retire_fresh_mb();
+	retire_mb(fresh_mb);
 }
 
 void
@@ -1161,10 +1157,69 @@ START_TEST(test_check_negotiation_round)
 }
 END_TEST
 
-/* Incomplete. */
+/* Incomplete? */
 START_TEST(test_try_read_message_block)
 {
-	/* Find a way to write to STDIN_FILENO and STDOUT_FILENO. */
+
+	int fd[2];
+	int fd_side = -1;
+	int pid;
+        /* 1 millisecond sleep. */
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 1000000;
+	DPRINTF("%s()", __func__);
+
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+
+	pid = fork();
+	if (pid <= 0) {
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		struct sgsh_negotiation *test_mb;
+		setup_mb(&test_mb);
+        	int n_nodes = test_mb->n_nodes;
+        	int n_edges = test_mb->n_edges;
+        	int mb_struct_size = sizeof(struct sgsh_negotiation);
+        	int mb_nodes_size = sizeof(struct sgsh_node) * n_nodes;
+        	int mb_edges_size = sizeof(struct sgsh_edge) * n_edges;
+                int i = 0;
+
+		close(fd[0]);
+		DPRINTF("Child writes message block structure of size %d.",
+					mb_struct_size);
+        	write(fd[1], test_mb, mb_struct_size);
+		/* Sleep for 1 millisecond before the next operation. */
+		nanosleep(&sleep, NULL);
+
+		DPRINTF("Child writes message block node array of size %d.",
+					mb_nodes_size);
+        	write(fd[1], test_mb->node_array, mb_nodes_size);
+		nanosleep(&sleep, NULL);
+
+		DPRINTF("Child writes message block edge array of size %d.",
+					mb_edges_size);
+                for (i = 0; i < test_mb->n_edges; i++) {
+                        struct sgsh_edge *e = &test_mb->edge_array[i];
+                        DPRINTF("Edge from: %d, to: %d", e->from, e->to);
+                }
+		write(fd[1], test_mb->edge_array, mb_edges_size);
+		nanosleep(&sleep, NULL);
+
+		DPRINTF("Child: closes fd %d.", fd[1]);
+		close(fd[1]);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+		retire_mb(test_mb);
+	} else {
+		int buf_size = getpagesize();
+		char buf[buf_size];
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(try_read_message_block(buf, buf_size,
+							&fresh_mb), OP_SUCCESS);
+	}
 }
 END_TEST
 
@@ -1345,10 +1400,10 @@ START_TEST(test_try_read_chunk)
 	//close(fd[0]);
 	write(fd[1], "test-in", 9);
 	char buf[32];
-	int fd_side = -1;
+	int fd_return = -1;
 	int bytes_read = -1;
-	ck_assert_int_eq(try_read_chunk(buf, 32, &bytes_read, &fd_side),OP_SUCCESS);
-	ck_assert_int_eq(fd_side, 4);
+	ck_assert_int_eq(try_read_chunk(buf, 32, &bytes_read, &fd_return),OP_SUCCESS);
+	ck_assert_int_eq(fd_return, 4);
 	ck_assert_int_eq(bytes_read, 9);
 	
 	close(fd[0]);
