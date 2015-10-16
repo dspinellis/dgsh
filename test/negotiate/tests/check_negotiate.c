@@ -425,6 +425,14 @@ setup_test_read_graph_solution(void)
 }
 
 void
+setup_test_write_graph_solution(void)
+{
+	setup_chosen_mb();
+	setup_graph_solution(&graph_solution);
+	setup_self_node_io_side();
+}
+
+void
 setup_test_try_read_message_block(void)
 {
 	setup_chosen_mb();
@@ -659,9 +667,15 @@ retire_test_try_read_message_block(void)
 void
 retire_test_read_graph_solution(void)
 {
-	DPRINTF("%s()", __func__);
 	retire_chosen_mb();
 	retire_mb(fresh_mb);
+}
+
+void
+retire_test_write_graph_solution(void)
+{
+	retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
 }
 
 void
@@ -1154,6 +1168,68 @@ START_TEST(test_check_negotiation_round)
 	ck_assert_int_eq(mb_is_updated, 0);
 	retire();
 
+}
+END_TEST
+
+/* Incomplete? */
+START_TEST(test_write_graph_solution)
+{
+	int fd[2];
+	int fd_side = -1;
+	int bytes_read = -1;
+	int buf_size = getpagesize();
+	int pid;
+	int i;
+        int n_nodes = chosen_mb->n_nodes;
+        int graph_solution_size = sizeof(struct sgsh_node_connections) *
+                                                                n_nodes;
+	char buf[buf_size];
+	struct sgsh_node_connections *graph_solution = 
+		(struct sgsh_node_connections *)malloc(graph_solution_size);
+
+	if (pipe(fd) == -1) {
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("%s()...", __func__);
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+
+	pid = fork();
+	if (pid <= 0) {
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+
+		close(fd[1]);
+		DPRINTF("Child reads graph solution of size %d.",
+					graph_solution_size);
+        	read(fd[0], graph_solution, graph_solution_size);
+
+		for (i = 0; i < chosen_mb->n_nodes; i++) {
+                	struct sgsh_node_connections *nc = &graph_solution[i];
+                	int in_edges_size = sizeof(struct sgsh_edge) *
+							nc->n_edges_incoming;
+                	int out_edges_size = sizeof(struct sgsh_edge) *
+							nc->n_edges_outgoing;
+                	if ((in_edges_size > buf_size) || 
+						(out_edges_size > buf_size)) {
+                        	DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+                        	exit(1);
+                	}
+
+			DPRINTF("Child reads incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
+                	/* Transmit a node's incoming connections. */
+                	read(fd[0], nc->edges_incoming, in_edges_size);
+
+			DPRINTF("Child reads outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
+                	/* Transmit a node's outgoing connections. */
+                	write(fd[0], nc->edges_outgoing, out_edges_size);
+        	}
+		DPRINTF("Child: closes fd %d.", fd[0]);
+		close(fd[0]);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+	} else {
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(write_graph_solution(), OP_SUCCESS);
+	}
 }
 END_TEST
 
@@ -1814,6 +1890,12 @@ suite_solve(void)
 					  retire_test_read_graph_solution);
 	tcase_add_test(tc_rgs, test_read_graph_solution);
 	suite_add_tcase(s, tc_rgs);
+
+	TCase *tc_wgs = tcase_create("write graph solution");
+	tcase_add_checked_fixture(tc_wgs, setup_test_write_graph_solution,
+					  retire_test_write_graph_solution);
+	tcase_add_test(tc_wgs, test_write_graph_solution);
+	suite_add_tcase(s, tc_wgs);
 
 	TCase *tc_ssg = tcase_create("solve sgsh graph");
 	tcase_add_checked_fixture(tc_ssg, setup_test_solve_sgsh_graph,

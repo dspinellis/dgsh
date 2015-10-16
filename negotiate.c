@@ -18,6 +18,7 @@
 #include <sys/socket.h> /* sendmsg(), recvmsg() */
 #include <unistd.h> /* getpid(), getpagesize(), 
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
+#include <time.h>   /* nanosleep() */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh.h" /* DPRINTF() */
 
@@ -663,8 +664,10 @@ alloc_write_output_fds()
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static int
-write_graph_solution(char *buf, int buf_size) {
+write_graph_solution() {
 	int i;
+	int buf_size = getpagesize();
+	char buf[buf_size];
 	int n_nodes = chosen_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
 								n_nodes;
@@ -672,10 +675,19 @@ write_graph_solution(char *buf, int buf_size) {
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
+	/* 1 millisec sleep. */
+	struct timespec sleep;
+	sleep.tv_sec = 0;
+	sleep.tv_nsec = 1000000;
 
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
+#ifndef UNIT_TESTING
 	write(self_node_io_side.fd_direction, buf, graph_solution_size);
+#else
+	write(5, buf, graph_solution_size);
+#endif
+	nanosleep(&sleep, NULL);
 	/* We haven't invalidated pointers to arrays of node indices. */
 
 	for (i = 0; i < n_nodes; i++) {
@@ -689,11 +701,21 @@ write_graph_solution(char *buf, int buf_size) {
 
 		/* Transmit a node's incoming connections. */
 		memcpy(buf, nc->edges_incoming, in_edges_size);
+#ifndef UNIT_TESTING
 		write(self_node_io_side.fd_direction, buf, in_edges_size);
+#else
+		write(5, buf, in_edges_size);
+#endif
+		nanosleep(&sleep, NULL);
 
 		/* Transmit a node's outgoing connections. */
 		memcpy(buf, nc->edges_outgoing, out_edges_size);
+#ifndef UNIT_TESTING
 		write(self_node_io_side.fd_direction, buf, out_edges_size);
+#else
+		write(5, buf, out_edges_size);
+#endif
+		nanosleep(&sleep, NULL);
 	}
 	return OP_SUCCESS;
 }
@@ -715,8 +737,10 @@ set_dispatcher() {
 
 /* Write message block to buffer. */
 static int
-write_mb(char *buf, int buf_size)
+write_message_block()
 {
+	int buf_size = getpagesize(); /* Make buffer page-wide. */
+	char buf[buf_size];
 	int mb_size = sizeof(struct sgsh_negotiation);
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
@@ -751,7 +775,7 @@ write_mb(char *buf, int buf_size)
 		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
-		if (write_graph_solution(buf, buf_size) == OP_ERROR)
+		if (write_graph_solution() == OP_ERROR)
 			return OP_ERROR;
 		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
 	}
@@ -1511,7 +1535,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 
 		/* Write message block et al. */
 		if (should_transmit_mb) {
-			if (write_mb(buf, buf_size) == OP_ERROR) {
+			if (write_message_block() == OP_ERROR) {
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
 			}
