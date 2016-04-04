@@ -1,0 +1,5 @@
+1 ls
+2 wc -l
+
+%
+socketpipe 1 2

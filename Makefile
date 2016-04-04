@@ -100,7 +100,7 @@ sgsh-merge-sum: sgsh-merge-sum.pl
 
 negotiate: negotiate.c
 	$(CC) $(CFLAGS) -c $^ -o $@
-	ar rcs libsgsh-negotiate.a $@
+	ar rcs libsgsh_negotiate.a $@
 
 charcount: charcount.sh
 	install charcount.sh charcount

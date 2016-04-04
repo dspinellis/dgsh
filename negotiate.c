@@ -1428,10 +1428,10 @@ get_env_var(const char *env_var,int *value)
 static int
 get_environment_vars()
 {
-	DPRINTF("Try to get environment variable SGSH_IN.\n");
+	DPRINTF("Try to get environment variable SGSH_IN.");
 	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR) 
 		return OP_ERROR;
-	DPRINTF("Try to get environment variable SGSH_OUT.\n");
+	DPRINTF("Try to get environment variable SGSH_OUT.");
 	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR) 
 		return OP_ERROR;
 	return OP_SUCCESS;
@@ -1497,7 +1497,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 	memset(buf, 0, buf_size); /* Clear buffer used to read/write messages.*/
-	DPRINTF("Tool %s with pid %d entered sgsh negotiation.\n", tool_name,
+	DPRINTF("Tool %s with pid %d entered sgsh negotiation.", tool_name,
 							(int)self_pid);
 	
 	if (validate_input(channels_required, channels_provided, tool_name) 
