@@ -1,7 +1,7 @@
 from subprocess import Popen, PIPE, STDOUT
 import sys
 from socket import socketpair
-from os import pipe, fork, getpid, close, execlp, dup, waitpid
+from os import pipe, fork, getpid, close, execlp, dup, waitpid, WNOHANG
 
 
 class Process:
@@ -74,12 +74,13 @@ for processPair, connector in connectorDict.iteritems():
   setupProcess(inp, 'input', connectorPair)
 
 # Activate interconnections and execute processes
-for process in Process.processes:
+pids = []
+for i, process in enumerate(Process.processes):
   print 'process %s, input channels: %d, output channels: %d' \
          % (process.command, len(process.inputConnectors), \
             len(process.outputConnectors))
-  pid = fork()
-  if pid:
+  pids.append(fork())
+  if pids[-1]:
     for index, ic in enumerate(process.inputConnectors):
       close(selectInputFileDescriptor(index))
       dup(ic[1].fileno())
@@ -93,4 +94,6 @@ for process in Process.processes:
     args = process.command.split()
     execlp(args[0], args[0], *args[1:])
 
+for pid in pids:
+  waitpid(pid, 0)
 
