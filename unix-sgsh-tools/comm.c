@@ -1,365 +1,289 @@
-/*
- * Copyright (c) 1989, 1993, 1994
- *	The Regents of the University of California.  All rights reserved.
- *
- * This code is derived from software contributed to Berkeley by
- * Case Larsen.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
+/* comm -- compare two sorted files line by line.
+   Copyright (C) 86, 90, 91, 1995-2002 Free Software Foundation, Inc.
 
-#ifndef lint
-static const char copyright[] =
-"@(#) Copyright (c) 1989, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
 
-#if 0
-#ifndef lint
-static char sccsid[] = "From: @(#)comm.c	8.4 (Berkeley) 5/4/95";
-#endif
-#endif
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
-#include <err.h>
-#include <limits.h>
-#include <locale.h>
-#include <stdint.h>
-#define _WITH_GETLINE
+/* Written by Richard Stallman and David MacKenzie. */
+
+//#include <config.h>
+#include "config.h"
+
 #include <stdio.h>
-#include <stdlib.h>   // + setenv()
-#include <string.h>
-#include <unistd.h>
-#include <wchar.h>
-#include <wctype.h>
-
-/* SGSH */
-#include <assert.h>
-/* Socket pairs. */
+#include <getopt.h>
+#include <sys/types.h>
+#include "system.h"
+#include "closeout.h"
+#include "linebuffer.h"
+#include "error.h"
+#include "hard-locale.h"
+#include "xmemcoll.h"
+/* sgsh */
+/*  Socket pairs */
 #include <sys/socket.h>
 #include <sys/un.h>
-/* FCNTL system call and flags. */
-#include <fcntl.h>
-/* Retry socket connection. */
-#define RETRY_LIMIT 10
-/* Debugging. */
+/*  Debugging */
 #include "../sgsh.h"
-/* Negotiate API. */
+/*  Negotiate API */
 #include "../sgsh-negotiate.h"
-/* Macros. */
-#define PAGE_SIZE getpagesize()
-#define BUF_SIZE PAGE_SIZE
 
-static int iflag;
-static const char *tabs[] = { "", "\t", "\t\t" };
 
-static FILE	*file(const char *, int *);
-static wchar_t	*convert(const char *);
-static void	show(FILE *, const char *, const char *, char **, size_t *);
-static void	usage(void);
+/* The official name of this program (e.g., no `g' prefix).  */
+#define PROGRAM_NAME "comm"
 
-/* sgsh. */
-static int	create_bind_listen_socket(const char *name);
-static void	non_block(int fd);
+#define AUTHORS N_ ("Richard Stallman and David MacKenzie")
+
+/* Undefine, to avoid warning about redefinition on some systems.  */
+#undef min
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
+/* The name this program was run with. */
+char *program_name;
+
+/* Nonzero if the LC_COLLATE locale is hard.  */
+static int hard_LC_COLLATE;
+
+/* If nonzero, print lines that are found only in file 1. */
+static int only_file_1;
+
+/* If nonzero, print lines that are found only in file 2. */
+static int only_file_2;
+
+/* If nonzero, print lines that are found in both files. */
+static int both;
+
+static struct option const long_options[] =
+{
+  {GETOPT_HELP_OPTION_DECL},
+  {GETOPT_VERSION_OPTION_DECL},
+  {0, 0, 0, 0}
+};
+
+
+
+void
+usage (int status)
+{
+  if (status != 0)
+    fprintf (stderr, _("Try `%s --help' for more information.\n"),
+	     program_name);
+  else
+    {
+      printf (_("\
+Usage: %s [OPTION]... LEFT_FILE RIGHT_FILE\n\
+"),
+	      program_name);
+      fputs (_("\
+Compare sorted files LEFT_FILE and RIGHT_FILE line by line.\n\
+\n\
+  -1              suppress lines unique to left file\n\
+  -2              suppress lines unique to right file\n\
+  -3              suppress lines that appear in both files\n\
+"), stdout);
+      fputs (HELP_OPTION_DESCRIPTION, stdout);
+      fputs (VERSION_OPTION_DESCRIPTION, stdout);
+      printf (_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);
+    }
+  exit (status == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+
+/* Output the line in linebuffer LINE to stream STREAM
+   provided the switches say it should be output.
+   CLASS is 1 for a line found only in file 1,
+   2 for a line only in file 2, 3 for a line in both. */
+
+static void
+writeline (const struct linebuffer *line, FILE *stream, int class)
+{
+  switch (class)
+    {
+    case 1:
+      if (!only_file_1)
+	return;
+      break;
+
+    case 2:
+      if (!only_file_2)
+	return;
+      /* Print a TAB if we are printing lines from file 1.  */
+      if (only_file_1)
+	putc ('\t', stream);
+      break;
+
+    case 3:
+      if (!both)
+	return;
+      /* Print a TAB if we are printing lines from file 1.  */
+      if (only_file_1)
+	putc ('\t', stream);
+      /* Print a TAB if we are printing lines from file 2.  */
+      if (only_file_2)
+	putc ('\t', stream);
+      break;
+    }
+
+  fwrite (line->buffer, sizeof (char), line->length, stream);
+}
+
+/* Compare INFILES[0] and INFILES[1].
+   If either is "-", use the standard input for that file.
+   Assume that each input file is sorted;
+   merge them and output the result.
+   Return 0 if successful, 1 if any errors occur. */
+
+static int
+compare_files (char **infiles)
+{
+  /* For each file, we have one linebuffer in lb1.  */
+  struct linebuffer lb1[2];
+
+  /* thisline[i] points to the linebuffer holding the next available line
+     in file i, or is NULL if there are no lines left in that file.  */
+  struct linebuffer *thisline[2];
+
+  /* istreams[i] holds the input stream for file i.  */
+  FILE *istreams[2];
+  /* ostreams[i] holds the output stream for file i.
+   * 3: 1st outputs lines only in 1st istream,
+        2nd                       2nd istream,
+        3rd               in     both istreams
+   */
+  FILE *ostreams[3];
+
+  int i, ret = 0;
+
+  putenv("SGSH_IN=1");
+  putenv("SGSH_OUT=1");
+  sgsh_negotiate("comm", 1, 1, istreams, &n_input_fds,
+                                                ostreams, &n_output_fds);
+
+  /* Initialize the storage. */
+  for (i = 0; i < 2; i++)
+    {
+      initbuffer (&lb1[i]);
+      thisline[i] = &lb1[i];
+      istreams[i] = (STREQ (infiles[i], "-") ? stdin : fopen (infiles[i], "r"));
+      if (!istreams[i])
+	{
+	  error (0, errno, "%s", infiles[i]);
+	  return 1;
+	}
+
+      thisline[i] = readline (thisline[i], istreams[i]);
+    }
+
+  while (thisline[0] || thisline[1])
+    {
+      int order;
+
+      /* Compare the next available lines of the two files.  */
+
+      if (!thisline[0])
+	order = 1;
+      else if (!thisline[1])
+	order = -1;
+      else
+	{
+	  if (HAVE_SETLOCALE && hard_LC_COLLATE)
+	    order = xmemcoll (thisline[0]->buffer, thisline[0]->length - 1,
+			      thisline[1]->buffer, thisline[1]->length - 1);
+	  else
+	    {
+	      size_t len = min (thisline[0]->length, thisline[1]->length) - 1;
+	      order = memcmp (thisline[0]->buffer, thisline[1]->buffer, len);
+	      if (order == 0)
+		order = (thisline[0]->length < thisline[1]->length
+			 ? -1
+			 : thisline[0]->length != thisline[1]->length);
+	    }
+	}
+
+      /* Output the line that is lesser. */
+      if (order == 0)
+	writeline (thisline[1], stdout, 3);
+      else if (order > 0)
+	writeline (thisline[1], stdout, 2);
+      else
+	writeline (thisline[0], stdout, 1);
+
+      /* Step the file the line came from.
+	 If the files match, step both files.  */
+      if (order >= 0)
+	thisline[1] = readline (thisline[1], istreams[1]);
+      if (order <= 0)
+	thisline[0] = readline (thisline[0], istreams[0]);
+    }
+
+  /* Free all storage and close all input streams. */
+  for (i = 0; i < 2; i++)
+    {
+      free (lb1[i].buffer);
+      if (ferror (istreams[i]) || fclose (istreams[i]) == EOF)
+	{
+	  error (0, errno, "%s", infiles[i]);
+	  ret = 1;
+	}
+    }
+  return ret;
+}
 
 int
-main(int argc, char *argv[])
+main (int argc, char **argv)
 {
-	int comp, read1, read2;
-	int ch, flag1, flag2, flag3;
-	FILE *fp[2];
-	const char *col1, *col2, *col3;
-	size_t line1len, line2len;
-	char *line1, *line2;
-	char *frmline1 = (char *)malloc(sizeof(char) * BUF_SIZE);
-	char *frmline2 = (char *)malloc(sizeof(char) * BUF_SIZE);
-	char *frmline3 = (char *)malloc(sizeof(char) * BUF_SIZE);
-	ssize_t n1, n2;
-	wchar_t *tline1, *tline2;
-	const char **p;
+  int c;
 
-	/* number of input streams [0,2] */
-	int nistreams = 0;
-	int ninputfds, noutputfds;
-	int *inputfds, *outputfds;
-	(void) setlocale(LC_ALL, "");
+  program_name = argv[0];
+  setlocale (LC_ALL, "");
+  bindtextdomain (PACKAGE, LOCALEDIR);
+  textdomain (PACKAGE);
+  hard_LC_COLLATE = hard_locale (LC_COLLATE);
 
-	putenv("SGSH_IN=1");
-	putenv("SGSH_OUT=1");
-        
-	flag1 = flag2 = flag3 = 1;
+  atexit (close_stdout);
 
-	while ((ch = getopt(argc, argv, "123i")) != -1)
-		switch(ch) {
-		case '1':
-			flag1 = 0;
-			break;
-		case '2':
-			flag2 = 0;
-			break;
-		case '3':
-			flag3 = 0;
-			break;
-		case 'i':
-			iflag = 1;
-			break;
-		case '?':
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+  only_file_1 = 1;
+  only_file_2 = 1;
+  both = 1;
 
-	if (argc != 2)
-		usage();
+  while ((c = getopt_long (argc, argv, "123", long_options, NULL)) != -1)
+    switch (c)
+      {
+      case 0:
+	break;
 
-	for (int i = 0; i < 2; i++)
-		fp[i] = file(argv[i], &nistreams);
+      case '1':
+	only_file_1 = 0;
+	break;
 
-	sgsh_negotiate("comm", nistreams, 3, &inputfds, &ninputfds, 
-						&outputfds, &noutputfds);
+      case '2':
+	only_file_2 = 0;
+	break;
 
-	/* fd -> FILE* to use the existing interface for input streams */
-	for (int i = 0; i < nistreams; i++) {
-		assert(nistreams == ninputfds);
-		if (fp[i] == stdin)
-			fp[i] = fdopen(inputfds[i], "r");
-	}
+      case '3':
+	both = 0;
+	break;
 
-	/* for each column printed, add another tab offset */
-	p = tabs;
-	col1 = col2 = col3 = NULL;
-	if (flag1)
-		col1 = *p++;
-	if (flag2)
-		col2 = *p++;
-	if (flag3)
-		col3 = *p;
+      case_GETOPT_HELP_CHAR;
 
-	line1len = line2len = 0;
-	line1 = line2 = NULL;
-	n1 = n2 = -1;
+      case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
 
-	for (read1 = read2 = 1;;) {
-		/* read next line, check for EOF */
-		if (read1) {
-			n1 = getline(&line1, &line1len, fp[0]);
-			if (n1 < 0 && ferror(fp[0]))
-				err(1, "%s", argv[0]);
-			if (n1 > 0 && line1[n1 - 1] == '\n')
-				line1[n1 - 1] = '\0';
+      default:
+	usage (EXIT_FAILURE);
+      }
 
-		}
-		if (read2) {
-			n2 = getline(&line2, &line2len, fp[1]);
-			if (n2 < 0 && ferror(fp[1]))
-				err(1, "%s", argv[1]);
-			if (n2 > 0 && line2[n2 - 1] == '\n')
-				line2[n2 - 1] = '\0';
-		}
+  if (optind + 2 != argc)
+    usage (EXIT_FAILURE);
 
-		/* if one file done, display the rest of the other file */
-		if (n1 < 0) {
-			if (n2 >= 0 && col2 != NULL)
-				show(fp[1], argv[1], col2, &line2, &line2len);
-			break;
-		}
-		if (n2 < 0) {
-			if (n1 >= 0 && col1 != NULL)
-				show(fp[0], argv[0], col1, &line1, &line1len);
-			break;
-		}
-
-		tline2 = NULL;
-		if ((tline1 = convert(line1)) != NULL)
-			tline2 = convert(line2);
-		if (tline1 == NULL || tline2 == NULL)
-			comp = strcmp(line1, line2);
-		else
-			comp = wcscoll(tline1, tline2);
-		if (tline1 != NULL)
-			free(tline1);
-		if (tline2 != NULL)
-			free(tline2);
-
-		/* lines are the same */
-		if (!comp) {
-			read1 = read2 = 1;
-			if (col3 != NULL) {
-				(void)sprintf(frmline3, "%s%s\n", col3, line1);
-				write(outputfds[2], frmline3, BUF_SIZE);
-			}
-			continue;
-		}
-
-		/* lines are different */
-		if (comp < 0) {
-			read1 = 1;
-			read2 = 0;
-			if (col1 != NULL) {
-				(void)sprintf(frmline1, "%s%s\n", col1, line1);
-				write(outputfds[0], frmline1, BUF_SIZE);
-			}
-		} else {
-			read1 = 0;
-			read2 = 1;
-			if (col2 != NULL) {
-				(void)sprintf(frmline2, "%s%s\n", col2, line2);
-				write(outputfds[1], frmline2, BUF_SIZE);
-			}
-		}
-	}
-	exit(0);
+  exit (compare_files (argv + optind) == 0
+	? EXIT_SUCCESS : EXIT_FAILURE);
 }
-
-static wchar_t *
-convert(const char *str)
-{
-	size_t n;
-	wchar_t *buf, *p;
-
-	if ((n = mbstowcs(NULL, str, 0)) == (size_t)-1)
-		return (NULL);
-	if (SIZE_MAX / sizeof(*buf) < n + 1)
-		errx(1, "conversion buffer length overflow");
-	if ((buf = malloc((n + 1) * sizeof(*buf))) == NULL)
-		err(1, "malloc");
-	if (mbstowcs(buf, str, n + 1) != n)
-		errx(1, "internal mbstowcs() error");
-
-	if (iflag) {
-		for (p = buf; *p != L'\0'; p++)
-			*p = towlower(*p);
-	}
-
-	return (buf);
-}
-
-static void
-show(FILE *fp, const char *fn, const char *offset, char **bufp, size_t *buflenp)
-{
-	ssize_t n;
-
-	do {
-		(void)printf("%s%s\n", offset, *bufp);
-		if ((n = getline(bufp, buflenp, fp)) < 0)
-			break;
-		if (n > 0 && (*bufp)[n - 1] == '\n')
-			(*bufp)[n - 1] = '\0';
-	} while (1);
-	if (ferror(fp))
-		err(1, "%s", fn);
-}
-
-static FILE *
-file(const char *name, int *nistreams)
-{
-	FILE *fp;
-
-	if (!strcmp(name, "-")) {
-		(*nistreams)++;
-		return (stdin);
-	}
-	if ((fp = fopen(name, "r")) == NULL) {
-		err(1, "%s", name);
-	}
-	return (fp);
-}
-
-static void
-usage(void)
-{
-	(void)fprintf(stderr, "usage: comm [-123i] file1 file2\n");
-	exit(1);
-}
-
-/* Create, bind, and listen to a specified socket; finally return the socket */
-static int
-create_bind_listen_socket(const char *name)
-{
-        int s;
-        socklen_t len;
-        struct sockaddr_un local;
-
-        if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-                err(1, "socket");
-
-        DPRINTF("Binding to %s", name);
-
-        local.sun_family = AF_UNIX;
-        if (strlen(name) >= sizeof(local.sun_path) - 1)
-                errx(6, "Socket name [%s] must be shorter than %d characters",
-                        name, (int)sizeof(local.sun_path));
-        strcpy(local.sun_path, name);
-        len = strlen(local.sun_path) + 1 + sizeof(local.sun_family);
-        if (bind(s, (struct sockaddr *)&local, len) == -1)
-                err(3, "Error binding socket to Unix domain address %s", name);
-
-        if (listen(s, 5) == -1)
-                err(4, "listen");
-
-        non_block(s);
-	sleep(10);
-/*
-again:
-        if (connect(s, (struct sockaddr *)&remote, len) == -1) {
-                if (retry_connection &&
-                    (errno == ENOENT || errno == ECONNREFUSED) &&
-                    counter++ < RETRY_LIMIT) {
-                        DPRINTF("Retrying connection setup");
-                        sleep(1);
-                        goto again;
-                }
-                err(2, "connect %s", name);
-        }
-//        DPRINTF("Connected");
-
-        if (write(s, &cmd, 1) == -1)
-                err(3, "write");
-//        DPRINTF("Wrote command");
-*/
-        return s;
-}
-
-/*
- * Set the specified file descriptor to operate in non-blocking
- * mode.
- * It seems that even if select returns for a specified file
- * descriptor, performing I/O to it may block depending on the
- * amount of data specified.
- * See See http://pubs.opengroup.org/onlinepubs/009695399/functions/write.html#tag_03_866
- */
-static void
-non_block(int fd)
-{
-        int flags = fcntl(fd, F_GETFL, 0);
-        if (flags < 0)
-                err(2, "Error getting flags for socket");
-        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
-                err(2, "Error setting socket to non-blocking mode");
-}
-
