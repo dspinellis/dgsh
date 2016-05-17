@@ -1,3 +1,5 @@
+ADAPTED_TOOLS_SRC_DIR="sgsh-adapted"
+
 prepare:
 	git clone git://git.savannah.gnu.org/gnulib.git
 	git clone git://git.savannah.gnu.org/coreutils.git
@@ -43,3 +45,10 @@ clean:
 	cd parallel && make clean
 	cd sed && make clean
 	cd tar && make clean
+
+dev:
+	#Only the first time uncomment the following two lines.
+	#mv coreutils/src/comm.c coreutils/src/coreutils-comm.c
+	#mv coreutils/src/Makefile coreutils/src/coreutils-Makefile
+	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/* coreutils/src/
+	cd coreutils && make && make install
