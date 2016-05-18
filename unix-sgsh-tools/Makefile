@@ -1,4 +1,4 @@
-ADAPTED_TOOLS_SRC_DIR="sgsh-adapted"
+ADAPTED_TOOLS_SRC_DIR=sgsh-adapted
 
 prepare:
 	git clone git://git.savannah.gnu.org/gnulib.git
@@ -50,5 +50,11 @@ dev:
 	#Only the first time uncomment the following two lines.
 	#mv coreutils/src/comm.c coreutils/src/coreutils-comm.c
 	#mv coreutils/src/Makefile coreutils/src/coreutils-Makefile
-	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/* coreutils/src/
-	cd coreutils && make && make install
+	##cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/* coreutils/src/
+	##cd coreutils && make && make install
+
+	#Only the first time uncomment the following two lines.
+	#mv diffutils/src/diff.c diffutils/src/diffutils-diff.c
+	#mv diffutils/src/Makefile diffutils/src/diffutils-Makefile
+	cp $(ADAPTED_TOOLS_SRC_DIR)/diffutils/* diffutils/src/
+	cd diffutils && make && make install
