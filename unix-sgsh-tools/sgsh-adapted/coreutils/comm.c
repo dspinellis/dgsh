@@ -293,8 +293,34 @@ compare_files (char **infiles)
 
   /* sgsh */
   assert(ninputfds <= 2);
-  for (i = 0; i < ninputfds; i++)
-    istreams[i] = fdopen(inputfds[i], "r");
+  if (ninputfds == 0)
+    {
+    istreams[0] = STREQ (infiles[0], "-") ? stdin : fopen (infiles[0], "r");
+    if (!istreams[0])
+      error (EXIT_FAILURE, errno, "%s", quotef (infiles[0]));
+    istreams[1] = STREQ (infiles[1], "-") ? stdin : fopen (infiles[1], "r");
+    if (!istreams[1])
+      error (EXIT_FAILURE, errno, "%s", quotef (infiles[1]));
+    }
+  else if (ninputfds == 1)
+    {
+      if (STREQ(infiles[0], "-"))
+        {
+        istreams[0] = fdopen(inputfds[0], "r");
+        istreams[1] = fopen(infiles[1], "r");
+        }
+      else
+        {
+        istreams[0] = fopen(infiles[0], "r");
+        istreams[1] = fdopen(inputfds[0], "r");
+        }
+    }
+  else
+    {
+    istreams[0] = fdopen(inputfds[0], "r");
+    istreams[1] = fdopen(inputfds[1], "r");
+    }
+
   assert(noutputfds <= 3);
   for (i = 0; i < noutputfds; i++)
     ostreams[i] = fdopen(outputfds[i], "w");
@@ -311,9 +337,6 @@ compare_files (char **infiles)
       alt[i][0] = 0;
       alt[i][1] = 0;
       alt[i][2] = 0;
-      istreams[i] = (STREQ (infiles[i], "-") ? stdin : fopen (infiles[i], "r"));
-      if (!istreams[i])
-        error (EXIT_FAILURE, errno, "%s", quotef (infiles[i]));
 
       fadvise (istreams[i], FADVISE_SEQUENTIAL);
 
