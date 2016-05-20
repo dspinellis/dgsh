@@ -49,7 +49,9 @@ clean:
 dev:
 	#Only the first time uncomment the following two lines.
 	#mv coreutils/src/comm.c coreutils/src/coreutils-comm.c
-	#mv coreutils/src/Makefile coreutils/src/coreutils-Makefile
+	#mv coreutils/src/join.c coreutils/src/coreutils-join.c
+	#mv coreutils/src/paste.c coreutils/src/coreutils-paste.c
+	#mv coreutils/src/Makefile coreutils/coreutils-Makefile
 	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/Makefile coreutils/
 	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/*.c coreutils/src/
 	cd coreutils && make && make install

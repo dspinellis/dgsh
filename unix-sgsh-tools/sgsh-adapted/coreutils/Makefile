@@ -4513,7 +4513,8 @@ src_nl_LDADD = $(LDADD)
 src_nohup_LDADD = $(LDADD)
 src_numfmt_LDADD = $(LDADD)
 src_od_LDADD = $(LDADD)
-src_paste_LDADD = $(LDADD)
+# sgsh negotiate library dependency
+src_paste_LDADD = $(LDADD) $(LIBSGSH)
 src_pathchk_LDADD = $(LDADD)
 
 # for canon_host
