@@ -51,6 +51,7 @@ dev:
 	#mv coreutils/src/comm.c coreutils/src/coreutils-comm.c
 	#mv coreutils/src/join.c coreutils/src/coreutils-join.c
 	#mv coreutils/src/paste.c coreutils/src/coreutils-paste.c
+	#mv coreutils/src/sort.c coreutils/src/coreutils-sort.c
 	#mv coreutils/src/Makefile coreutils/coreutils-Makefile
 	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/Makefile coreutils/
 	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/*.c coreutils/src/

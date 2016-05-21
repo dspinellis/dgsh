@@ -4542,8 +4542,9 @@ src_shuf_LDADD = $(LDADD)
 src_sleep_LDADD = $(LDADD) $(LIB_NANOSLEEP)
 
 # for pthread
+# sgsh negotiate library dependency
 src_sort_LDADD = $(LDADD) $(LIB_EACCESS) $(LIB_NANOSLEEP) \
-	$(LIB_CRYPTO) $(LIB_PTHREAD)
+	$(LIB_CRYPTO) $(LIB_PTHREAD) $(LIBSGSH)
 src_split_LDADD = $(LDADD) $(LIBICONV)
 
 # for nvlist_lookup_uint64_array
