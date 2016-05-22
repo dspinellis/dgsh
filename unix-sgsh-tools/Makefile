@@ -53,12 +53,18 @@ dev:
 	#mv coreutils/src/paste.c coreutils/src/coreutils-paste.c
 	#mv coreutils/src/sort.c coreutils/src/coreutils-sort.c
 	#mv coreutils/src/Makefile coreutils/coreutils-Makefile
-	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/Makefile coreutils/
-	cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/*.c coreutils/src/
-	cd coreutils && make && make install
+	#cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/Makefile coreutils/
+	#cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/*.c coreutils/src/
+	#cd coreutils && make && make install
 
 	#Only the first time uncomment the following two lines.
 	#mv diffutils/src/diff.c diffutils/src/diffutils-diff.c
 	#mv diffutils/src/Makefile diffutils/src/diffutils-Makefile
 	#cp $(ADAPTED_TOOLS_SRC_DIR)/diffutils/* diffutils/src/
 	#cd diffutils && make && make install
+
+	#Only the first time uncomment the following two lines.
+	#mv grep/src/grep.c grep/src/grep-grep.c
+	#mv grep/src/Makefile grep/src/grep-Makefile
+	cp $(ADAPTED_TOOLS_SRC_DIR)/grep/* grep/src/
+	cd grep && make && make install
