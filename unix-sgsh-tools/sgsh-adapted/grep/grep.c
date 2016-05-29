@@ -2477,14 +2477,17 @@ main (int argc, char **argv)
         suppress_errors = true;
         break;
 
+      /* sgsh: separate output stream */
       case 'v':
         out_invert = true;
         break;
 
+      /* sgsh: separate output stream */
       case 'w':
         match_words = true;
         break;
 
+      /* sgsh: separate output stream */
       case 'x':
         match_lines = true;
         break;
