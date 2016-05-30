@@ -3897,6 +3897,7 @@ sort (char *const *files, size_t nfiles, char const *output_file,
   int *outputfds;
   char sgshin[10];
   char sgshout[11];
+  int status = -1;
 
   buf.alloc = 0;
 
@@ -3907,6 +3908,10 @@ sort (char *const *files, size_t nfiles, char const *output_file,
   putenv(sgshout);
   sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
                                                           &noutputfds);
+  fprintf(stderr, "%d: sgsh_negotiate() return value is %d.\n", (int)getpid(), status);
+  fprintf(stderr, "%d: sgsh_negotiate() returned %d input fds.\n", (int)getpid(), ninputfds);
+  fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
+  fflush(stderr);
 
   assert(ninputfds == nfiles);
   assert(noutputfds == 1);

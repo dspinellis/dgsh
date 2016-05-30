@@ -11,6 +11,29 @@ class Process:
     self.command = command
     self.inputConnectors = []
     self.outputConnectors = []
+    self.fileDescriptorsInUse = []
+
+  def selectInputFileDescriptor(self):
+    fd = -1
+    if not self.fileDescriptorsInUse:
+      fd = 0
+    elif self.fileDescriptorsInUse[-1] == 0:
+      fd = 3
+    else:
+      fd = self.fileDescriptorsInUse[-1] + 1
+    self.fileDescriptorsInUse.append(fd)
+    return fd
+
+  def selectOutputFileDescriptor(self):
+    fd = -1
+    if not self.fileDescriptorsInUse:
+      fd = 1
+    elif self.fileDescriptorsInUse[-1] == 0:
+      fd = 3
+    else:
+      fd = self.fileDescriptorsInUse[-1] + 1
+    self.fileDescriptorsInUse.append(fd)
+    return fd
 
 def setupProcess(index, channel, connector):
   try:
@@ -27,14 +50,6 @@ def setupProcess(index, channel, connector):
              % (connector, processPair[0], processPair[1])
       exit(1)
 
-def selectInputFileDescriptor(index):
-  if index == 0:
-    return index
-  else:
-    return index + 2
-
-def selectOutputFileDescriptor(index):
-  return index + 1
 
 # Read specification of processes and their interconnections
 try:
@@ -74,26 +89,25 @@ for processPair, connector in connectorDict.iteritems():
   setupProcess(inp, 'input', connectorPair)
 
 # Activate interconnections and execute processes
-pids = []
-for i, process in enumerate(Process.processes):
+for process in Process.processes:
   print 'process %s, input channels: %d, output channels: %d' \
          % (process.command, len(process.inputConnectors), \
             len(process.outputConnectors))
-  pids.append(fork())
-  if pids[-1]:
-    for index, ic in enumerate(process.inputConnectors):
-      close(selectInputFileDescriptor(index))
-      dup(ic[1].fileno())
+  pid = fork()
+  if pid:
+    for ic in process.inputConnectors:
+      close(process.selectInputFileDescriptor())
+      fd = dup(ic[1].fileno())
+      print "close %d, dup %d, gives %d" % (process.fileDescriptorsInUse[-1], ic[1].fileno(), fd)
       ic[1].close()
       ic[0].close()
-    for index, oc in enumerate(process.outputConnectors):
-      close(selectOutputFileDescriptor(index))
+    for oc in process.outputConnectors:
+      close(process.selectOutputFileDescriptor())
+      print "%d <--> %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno())
       dup(oc[0].fileno())
       oc[0].close()
       oc[1].close()
     args = process.command.split()
     execlp(args[0], args[0], *args[1:])
 
-for pid in pids:
-  waitpid(pid, 0)
 

@@ -31,7 +31,7 @@
 
 #ifdef DEBUG
 /* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define DPRINTF(fmt, ...) fprintf(stderr, "%d: " fmt "\n", (int)getpid(), ##__VA_ARGS__)
 #else
 #define DPRINTF(fmt, ...)
 #endif

@@ -739,13 +739,12 @@ set_dispatcher() {
 static int
 write_message_block()
 {
+	int wsize = -1;
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
-	char buf[buf_size];
 	int mb_size = sizeof(struct sgsh_negotiation);
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
-	struct sgsh_edge *p_edges = chosen_mb->edge_array;
 	/* 1 millisecond sleep. */
 	struct timespec sleep;
 	sleep.tv_sec = 0;
@@ -764,32 +763,45 @@ write_message_block()
 	 * to avoid accidents on the receiver's side.
 	 */
 	chosen_mb->node_array = NULL;
-	chosen_mb->edge_array = NULL;
+	DPRINTF("%s(): Write message block.", __func__);
 #ifndef UNIT_TESTING
-	write(self_node_io_side.fd_direction, chosen_mb, mb_size);
+	wsize = write(self_node_io_side.fd_direction, chosen_mb, mb_size);
 #else
-	write(5, chosen_mb, mb_size);
+	wsize = write(5, chosen_mb, mb_size);
 #endif
+	if (wsize == -1) return OP_ERROR;
+	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
+
 	nanosleep(&sleep, NULL);
 
 	/* Transmit nodes. */
 #ifndef UNIT_TESTING
-	write(self_node_io_side.fd_direction, p_nodes, nodes_size);
+	wsize = write(self_node_io_side.fd_direction, p_nodes, nodes_size);
 #else
-	write(5, p_nodes, nodes_size);
+	wsize = write(5, p_nodes, nodes_size);
 #endif
+	if (wsize == -1) return OP_ERROR;
+	DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
+
 	nanosleep(&sleep, NULL);
 	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes. */
 
 	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
-		/* Transmit edges. */
+		if (chosen_mb->n_nodes > 1) {
+			/* Transmit edges. */
+			struct sgsh_edge *p_edges = chosen_mb->edge_array;
+			chosen_mb->edge_array = NULL;
 #ifndef UNIT_TESTING
-		write(self_node_io_side.fd_direction, p_edges, edges_size);
+			wsize = write(self_node_io_side.fd_direction, p_edges, edges_size);
 #else
-		write(5, p_edges, edges_size);
+			wsize = write(5, p_edges, edges_size);
 #endif
-		nanosleep(&sleep, NULL);
-		chosen_mb->edge_array = p_edges; /* Reinstate edges. */
+			if (wsize == -1) return OP_ERROR;
+			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
+
+			nanosleep(&sleep, NULL);
+			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
+		}
 	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/* Transmit solution. */
 		if (write_graph_solution() == OP_ERROR)
@@ -797,7 +809,7 @@ write_message_block()
 		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
 	}
 
-	DPRINTF("Ship message block to next node in graph from file descriptor: %s.\n", (self_node_io_side.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Shipped message block to next node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1077,6 +1089,7 @@ alloc_copy_nodes(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 		return OP_ERROR;
 	mb->node_array = (struct sgsh_node *)malloc(bytes_read);
 	memcpy(mb->node_array, buf, bytes_read);
+	DPRINTF("%s(): Node array recovered.", __func__);
 	return OP_SUCCESS;
 }
 
@@ -1350,6 +1363,7 @@ try_read_message_block(char *buf, int buf_size,
 	int stdin_side = 0;
 	int error_code = 0;
 
+	DPRINTF("%s(): Try read message block.", __func__);
 	/* Try read core message block: struct negotiation state fields. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
@@ -1357,19 +1371,28 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 	point_io_direction(stdin_side);
 
+	DPRINTF("%s(): Try read negotiation graph nodes.", __func__);
 	/* Try read sgsh negotiation graph nodes. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
 	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
 		return OP_ERROR;
 		
-	/* Try read sgsh negotiation graph edges. */
-	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
-		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
-			&stdin_side)) != OP_SUCCESS) return error_code;
-		if (alloc_copy_edges(*fresh_mb, buf, bytes_read, buf_size) == 
-						OP_ERROR) return OP_ERROR;
-	} else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
+	if ((chosen_mb && chosen_mb->state_flag == PROT_STATE_NEGOTIATION)
+	    || (*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
+		DPRINTF("%s(): Here I am again.", __func__);
+		fflush(stderr);
+        	if ((*fresh_mb)->n_nodes > 1) {
+			/* Try read sgsh negotiation graph edges. */
+			DPRINTF("%s(): Try read negotiation graph edges.", __func__);
+			if ((error_code = try_read_chunk(buf, buf_size, 
+			     &bytes_read, &stdin_side)) != OP_SUCCESS)
+				return error_code;
+			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
+			    buf_size) == OP_ERROR) return OP_ERROR;
+		}
+	} else if ((chosen_mb && chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
+		   || (*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/** 
 		 * Try read solution. If fresh_mb is not the chosen_mb
 		 * we knew so far, it will become the chosen, because
@@ -1380,6 +1403,7 @@ try_read_message_block(char *buf, int buf_size,
 			return OP_ERROR;
 		if (read_input_fds() == OP_ERROR) return OP_ERROR;
 	}
+	DPRINTF("%s(): Read message block from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1566,6 +1590,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			chosen_mb->state_flag = PROT_STATE_ERROR;
 			goto exit;
 		}
+		DPRINTF("%s(): Returned from try_read_message_block().", __func__);
 
 		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) == 

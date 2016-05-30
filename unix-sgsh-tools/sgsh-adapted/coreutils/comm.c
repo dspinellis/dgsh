@@ -282,14 +282,22 @@ compare_files (char **infiles)
   int *outputfds;
   char sgshin[10];
   char sgshout[11];
+  int status = -1;
 
   /* sgsh */
-  strcpy(sgshin, "SGSH_IN=1");
+  if (STREQ(infiles[0], "-") || STREQ(infiles[0], "-"))
+    strcpy(sgshin, "SGSH_IN=1");
+  else
+    strcpy(sgshin, "SGSH_IN=0");
   putenv(sgshin);
   strcpy(sgshout, "SGSH_OUT=1");
   putenv(sgshout);
-  sgsh_negotiate("comm", 2, 3, &inputfds, &ninputfds, &outputfds, 
+  status = sgsh_negotiate("comm", 2, 3, &inputfds, &ninputfds, &outputfds, 
                                                           &noutputfds);
+  fprintf(stderr, "%d: sgsh_negotiate() return value is %d.\n", (int)getpid(), status);
+  fprintf(stderr, "%d: sgsh_negotiate() returned %d input fds.\n", (int)getpid(), ninputfds);
+  fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
+  fflush(stderr);
 
   /* sgsh */
   assert(ninputfds <= 2);
