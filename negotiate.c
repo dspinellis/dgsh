@@ -1,5 +1,7 @@
 /* TODO: 
- * 5. Unit testing.
+ * - adapt tools that work with sgsh
+ * - integration testing
+ * - adapt the bash shell
  * Thinking aloud:
  * - watch out when a tool should exit the negotiation loop: it has to have
  * gathered all input pipes required. How many rounds could this take at the
@@ -9,7 +11,6 @@
  */
 
 /* Placeholder: LICENSE. */
-
 #include <assert.h> /* assert() */
 #include <errno.h> /* EAGAIN */
 #include <stdio.h> /* fprintf() in DPRINTF() */
@@ -248,10 +249,10 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 	       (n_edges_unlimited_constraint > 0 && 
 			instances_to_each_unlimited > 0));
 	assert(n_edges >= n_edges_unlimited_constraint);
-	assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
+	/* assert(n_edges_unlimited_constraint * instances_to_each_unlimited + 
                remaining_free_instances + (n_edges - 
                n_edges_unlimited_constraint) == total_instances);
-	/*   (n_edges-unlimited) + (unlimited * instances + `remaining`) = 
+	   (n_edges-unlimited) + (unlimited * instances + `remaining`) = 
 					channels = total_instances fails. */
 	assert(n_edges <= total_instances);
 
@@ -272,7 +273,7 @@ assign_edge_instances(struct sgsh_edge **edges,  /* The node's incoming or outgo
 				remaining_free_instances--;
 			}
 		} else
-			edge_instances = 1;
+			edge_instances = edge_constraint;
 
 		if (edges[i]->instances > 0) { /* already set by the pair node */
 			DPRINTF("%s(): %d recorded vs %d computed instances.", __func__, edges[i]->instances, edge_instances);
@@ -383,11 +384,11 @@ satisfy_io_constraints(int this_node_channels,   /* A node's required or provide
 		else
 			edge_constraint = chosen_mb->node_array[edges[i]->to].requires_channels;
 		if (edge_constraint != -1) 
-			total_edge_constraints += 1;
+			total_edge_constraints += edge_constraint;
 		else
 			n_edges_unlimited_constraint += 1;
 	}
-        DPRINTF("satisfy_io_constraints(): this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d.\n", this_node_channels, total_edge_constraints, n_edges_unlimited_constraint);
+        DPRINTF("satisfy_io_constraints(): Number of edges: %d, this_node_channels: %d, total_edge_constraints: %d, n_edges_unlimited_constraint: %d.\n", n_edges, this_node_channels, total_edge_constraints, n_edges_unlimited_constraint);
 
 	/* Try to find solution to the channel. */
 	if (eval_constraints(this_node_channels, total_edge_constraints,
@@ -433,8 +434,8 @@ dry_match_io_constraints(struct sgsh_node *current,          /* Identifies the n
 
 	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
-		DPRINTF("%s(): edge at index %d.", __func__, i);
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
+		DPRINTF("%s(): edge at index %d from %d to %d.", __func__, i, edge->from, edge->to);
 		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(edges_outgoing, 
@@ -514,6 +515,7 @@ solve_sgsh_graph() {
 		int *n_edges_outgoing = &nc->n_edges_outgoing;
 		struct sgsh_node *current = &chosen_mb->node_array[i];
 		int node_index = current->index;
+		DPRINTF("Node %s, index %d, channels required %d, channels_provided %d, sgsh_in %d, sgsh_out %d.", current->name, node_index, current->requires_channels, current->provides_channels, current->sgsh_in, current->sgsh_out);
 
 		/* Find and store pointers to node's at node_index edges.
 		 * Try to solve the I/O channel constraint problem.
@@ -730,9 +732,8 @@ set_dispatcher() {
 	chosen_mb->origin.index = self_node_io_side.index;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin.fd_direction = self_node_io_side.fd_direction;
-	DPRINTF("%s(): message block origin set to %d writing on the %s side",
-			__func__, chosen_mb->origin.index,
-		(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
+	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin.index,
+	(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
 }
 
 /* Write message block to buffer. */
@@ -818,13 +819,15 @@ static void
 check_negotiation_round(int *negotiation_round)
 {
 	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
-		if (self_node.pid == chosen_mb->initiator_pid) /* Debug. */
-			(*negotiation_round)++;
-		if (!mb_is_updated) { /* If state same as last time: */
-			chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
-			chosen_mb->serial_no++;
-			mb_is_updated = 1;
-			DPRINTF("%s(): Negotiation protocol state change: end of negotiation phase.\n", __func__);
+		if (self_node.pid == chosen_mb->initiator_pid) {
+			if (!mb_is_updated) { /* state same as last time */
+				chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+				chosen_mb->serial_no++;
+				mb_is_updated = 1;
+				DPRINTF("%s(): Negotiation protocol state change: end of negotiation phase.\n", __func__);
+				assert(*negotiation_round == 2);
+			} else
+				(*negotiation_round)++;
 		}
 	}
 }
@@ -841,10 +844,10 @@ add_node()
 		return OP_ERROR;
 	} else {
 		chosen_mb->node_array = (struct sgsh_node *)p;
+		self_node.index = n_nodes;
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node, 
 					sizeof(struct sgsh_node));
 		self_node_io_side.index = n_nodes;
-		self_node.index = n_nodes;
 		DPRINTF("%s(): Added node %s in position %d on sgsh graph.\n",
 				__func__, self_node.name, self_node_io_side.index);
 		chosen_mb->n_nodes++;
@@ -1020,15 +1023,22 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 		free_mb(fresh_mb); /* Discard MB just read. */
                 *should_transmit_mb = 0;
 	} else {
+		DPRINTF("Fresh vs chosen message block: same initiator pid.");
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
-			mb_is_updated = 1;
+			DPRINTF("Fresh vs chosen message block: serial no updated.");
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
-		} else { /* serial_no of the mb has not changed in the interim. */
-			free_mb(fresh_mb);
-                	*should_transmit_mb = 0;
+			mb_is_updated = 1;
+                	if (try_add_sgsh_edge() == OP_ERROR)
+				return OP_ERROR;
+		} else { /* serial_no of the mb has not changed 
+			  * in the interim, but we accept it to
+			  * receive the id of the dispatcher.
+			  */
+			DPRINTF("Fresh vs chosen message block: serial no not updated.");
+			free_mb(chosen_mb);
+			chosen_mb = fresh_mb;
 		}
-                if (try_add_sgsh_edge() == OP_ERROR) return OP_ERROR;
 	}
 	return OP_SUCCESS;
 }
@@ -1038,18 +1048,19 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
  * If only one is active, stay with that one.
  */
 static void
-point_io_direction(int current_direction)
+point_io_direction(int current_read_direction)
 {
-#ifndef UNIT_TESTING
-	/* We cannot use STDIN and STDOUT easily during unit testing. */
-	assert((current_direction == STDOUT_FILENO && self_node.sgsh_in) ||
-	       (current_direction == STDIN_FILENO && self_node.sgsh_out));
-#endif
-
-	if ((current_direction == STDIN_FILENO) && (self_node.sgsh_out))
+	if (current_read_direction == STDIN_FILENO) {
+		if (self_node.sgsh_out)
 			self_node_io_side.fd_direction = STDOUT_FILENO;
-	else if ((current_direction == STDOUT_FILENO) && (self_node.sgsh_in))
+		else /* sgsh out graph endpoint */
 			self_node_io_side.fd_direction = STDIN_FILENO;
+	} else if (current_read_direction == STDOUT_FILENO) {
+		if (self_node.sgsh_in)
+			self_node_io_side.fd_direction = STDIN_FILENO;
+		else /* sgsh in graph endpoint */
+			self_node_io_side.fd_direction = STDOUT_FILENO;
+	}
 }
 
 static int
@@ -1140,35 +1151,36 @@ call_read(int fd, char *buf, int buf_size,
 static int
 try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 {
+	int error_code = -EAGAIN, i = 0;
+	fd_set read_fds;
+	FD_ZERO(&read_fds);
+	FD_SET(STDIN_FILENO, &read_fds);
+	FD_SET(STDOUT_FILENO, &read_fds);
 	DPRINTF("%s()", __func__);
-	int error_code = -EAGAIN;
+	
+#ifdef UNIT_TESTING
+	close(5);
+	call_read(4, buf, buf_size, fd_side, bytes_read, &error_code);
+#else
 	/* Recheck the rationale of fd_side. */
-	while (error_code == -EAGAIN) { /* Try read from stdin, then stdout. */
-		/* Review this sequence of calls. Is this scheme robust?
-		 * e.g. input from both sides?
-		 */
-#ifdef UNIT_TESTING
-		close(5);
-		if ((call_read(4, buf, buf_size, fd_side,
-#else
-		if ((call_read(STDIN_FILENO, buf, buf_size, fd_side,
-#endif
-					bytes_read, &error_code) == OP_QUIT) ||
-#ifdef UNIT_TESTING
-		    (call_read(4, buf, buf_size, fd_side, 
-#else
-		    (call_read(STDOUT_FILENO, buf, buf_size, fd_side, 
-#endif
-					bytes_read, &error_code) == OP_QUIT))
-			break;
+	if ((error_code = select (FD_SETSIZE, &read_fds, NULL,
+				  NULL, NULL)) < 0) {
+          DPRINTF("Error: select returned %d.", error_code);
+          exit(1);
+        }
+	for (i = 0; i < FD_SETSIZE; i++) {
+		if (FD_ISSET(i, &read_fds))
+			call_read(i, buf, buf_size, fd_side,bytes_read,
+				  &error_code);
 	}
+#endif
 	if (*bytes_read == -1) {  /* Read failed. */
 	 	DPRINTF("Reading from fd %d failed with error code %d.", 
 			*fd_side, error_code);
 		return error_code;
 	} else  /* Read succeeded. */
-		DPRINTF("Read succeeded: %d bytes read from %s.\n", *bytes_read,
-			(self_node_io_side.fd_direction) ? "stdout" : "stdin");
+		DPRINTF("Read succeeded: %d bytes read from %s.\n", 
+		*bytes_read, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1380,8 +1392,6 @@ try_read_message_block(char *buf, int buf_size,
 		
 	if ((chosen_mb && chosen_mb->state_flag == PROT_STATE_NEGOTIATION)
 	    || (*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
-		DPRINTF("%s(): Here I am again.", __func__);
-		fflush(stderr);
         	if ((*fresh_mb)->n_nodes > 1) {
 			/* Try read sgsh negotiation graph edges. */
 			DPRINTF("%s(): Try read negotiation graph edges.", __func__);

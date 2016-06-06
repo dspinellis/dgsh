@@ -3904,7 +3904,8 @@ sort (char *const *files, size_t nfiles, char const *output_file,
   /* sgsh */
   strcpy(sgshin, "SGSH_IN=1");
   putenv(sgshin);
-  strcpy(sgshout, "SGSH_OUT=1");
+  if (!isatty(fileno(stdout))) strcpy(sgshout, "SGSH_OUT=1");
+  else strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
   sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
                                                           &noutputfds);
