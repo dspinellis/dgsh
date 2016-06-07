@@ -46,12 +46,15 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
 #define OP_EXISTS 3
 #define OP_CREATE 4
 #define OP_NOOP 5
+#define OP_RETRY 6
 
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
         int from; /* Index of node on the graph where data comes from (out). */
         int to; /* Index of node on the graph that receives the data (in). */
         int instances; /* Number of instances of an edge. */
+	int from_instances; /* Number of instances the origin node of an edge can provide. */
+	int to_instances; /* Number of instances the destination of an edge can require. */
 };
 
 
