@@ -657,6 +657,7 @@ node_match_constraints() {
 		///nc->edges_outgoing = NULL;
 		//int *n_edges_outgoing = &nc->n_edges_outgoing;
 		struct sgsh_node *current_node = &chosen_mb->node_array[i];
+		current_connections->node_index = current_node->index;
 		DPRINTF("Node %s, index %d, channels required %d, channels_provided %d, sgsh_in %d, sgsh_out %d.", current_node->name, current_node->index, current_node->requires_channels, current_node->provides_channels, current_node->sgsh_in, current_node->sgsh_out);
 
 		/* Find and store pointers to node's at node_index edges.
@@ -841,6 +842,7 @@ write_graph_solution() {
 	int n_nodes = chosen_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) * 
 								n_nodes;
+	int wsize = -1;
 	if (graph_solution_size > buf_size) {
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
@@ -853,10 +855,11 @@ write_graph_solution() {
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
 #ifndef UNIT_TESTING
-	write(self_node_io_side.fd_direction, buf, graph_solution_size);
+	wsize = write(self_node_io_side.fd_direction, buf, graph_solution_size);
 #else
 	write(5, buf, graph_solution_size);
 #endif
+	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 	nanosleep(&sleep, NULL);
 	/* We haven't invalidated pointers to arrays of node indices. */
 
@@ -1559,19 +1562,9 @@ try_read_message_block(char *buf, int buf_size,
 	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
 		return OP_ERROR;
 		
-	if ((chosen_mb && chosen_mb->state_flag == PROT_STATE_NEGOTIATION)
-	    || (*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
-        	if ((*fresh_mb)->n_nodes > 1) {
-			/* Try read sgsh negotiation graph edges. */
-			DPRINTF("%s(): Try read negotiation graph edges.", __func__);
-			if ((error_code = try_read_chunk(buf, buf_size, 
-			     &bytes_read, &stdin_side)) != OP_SUCCESS)
-				return error_code;
-			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
-			    buf_size) == OP_ERROR) return OP_ERROR;
-		}
-	} else if ((chosen_mb && chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
-		   || (*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
+	if ((chosen_mb && chosen_mb->state_flag ==
+					PROT_STATE_SOLUTION_SHARE) ||
+		   (*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/** 
 		 * Try read solution. If fresh_mb is not the chosen_mb
 		 * we knew so far, it will become the chosen, because
@@ -1581,6 +1574,18 @@ try_read_message_block(char *buf, int buf_size,
 		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
 			return OP_ERROR;
 		if (read_input_fds() == OP_ERROR) return OP_ERROR;
+	} else if ((chosen_mb && chosen_mb->state_flag ==
+					PROT_STATE_NEGOTIATION) ||
+	    		(*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
+        	if ((*fresh_mb)->n_nodes > 1) {
+			/* Try read sgsh negotiation graph edges. */
+			DPRINTF("%s(): Try read negotiation graph edges.", __func__);
+			if ((error_code = try_read_chunk(buf, buf_size, 
+			     &bytes_read, &stdin_side)) != OP_SUCCESS)
+				return error_code;
+			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
+			    buf_size) == OP_ERROR) return OP_ERROR;
+		}
 	}
 	DPRINTF("%s(): Read message block from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
