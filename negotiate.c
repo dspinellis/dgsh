@@ -242,7 +242,7 @@ satisfy_io_constraints(int *free_instances,
 	//int n_edge_instances_flexible = 0;
 	//int n_edge_instances_free = 0;
 	//int this_channel_instances = 0;
-	int weight = 1, modulo = 0;
+	int weight = -1, modulo = 0;
 
 	/* We can't possibly solve this situation. */
 	if (this_channel_constraint > 0)
@@ -265,8 +265,9 @@ satisfy_io_constraints(int *free_instances,
 		else
 			edges[i]->from_instances = weight + (modulo > 0);
 		if (modulo > 0) modulo--;
+        	DPRINTF("%s(): edge from %d to %d, is_edge_incoming: %d, free_instances: %d, weight: %d, modulo: %d, from_instances: %d, to_instances: %d.\n", __func__, edges[i]->from, edges[i]->to, is_edge_incoming, *free_instances, weight, modulo, edges[i]->from_instances, edges[i]->to_instances);
 	}
-        DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d, weight: %d, modulo: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances, weight, modulo);
+        DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
 	return OP_SUCCESS;
 }
 
@@ -350,41 +351,79 @@ free_graph_solution(int node_index) {
 	return OP_SUCCESS;
 }
 
+static void
+record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
+		     int to_move) {
+	if ((*diff > 0) ||
+	    (*diff < 0 && to_move > 1)) {
+		int subtract = 0;
+		if (*diff < 0) subtract = 1;
+		*index = to_move_index;
+		*diff -= to_move - subtract;
+		if (*diff > 0) *instances = to_move;
+		else *instances = -(to_move - 1);
+	}
+}
+
+static void
+record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
+			int to_move, int pair) {
+	if ((*diff > 0 && to_move < pair) ||
+	    (*diff < 0 && to_move > pair)) {
+		*index = to_move_index;
+		*instances = pair - to_move;
+		*diff -= pair - to_move;
+	}
+}	
+
 static int
 move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming) {
 	int i = 0, j = 0;
 	int indexes[n_edges];
 	int instances[n_edges];
+	/* Try move unbalanced edges first. */
+	for (i = 0; i < n_edges; i++) {
+		struct sgsh_edge *edge = edges[i];
+		int *from = &edge->from_instances;
+		int *to = &edge->to_instances;
+		if (*from == -1 || *to == -1) continue;
+		if (is_edge_incoming)
+			record_move_unbalanced(&diff, &indexes[j], i,
+					&instances[j], *to, *from);
+		else
+			record_move_unbalanced(&diff, &indexes[j], i,
+					&instances[j], *from, *to);
+		if (diff == 0) goto checkout;
+	}
+	/* Edges with flexible constraints are by default balanced. Try move. */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
 		if (is_edge_incoming) {
-			if ((diff > 0 && *to < *from) ||
-			    (diff < 0 && *to > *from)) {
-				indexes[j] = i;
-				instances[j++] = *from - *to;
-				diff -= *from - *to;
-			}	
-		} else
-			if ((diff > 0 && *from < *to) ||
-			    (diff < 0 && *from > *to)) {
-				indexes[j] = i;
-				instances[j++] = *to - *from;
-				diff -= *to - *from;
-			}
-		if (diff == 0) {
-			int k = 0;
-			for (k = 0; k < j; k++) {
-				if (is_edge_incoming)
-					edges[indexes[k]]->to_instances +=
-						instances[k];
-				else
-					edges[indexes[k]]->from_instances +=
-						instances[k];
-			}
-			return OP_SUCCESS;
+			if (*from > 0) continue;
+			record_move_flexible(&diff, &indexes[j], i,
+					&instances[j], *to);
+		} else {
+			if (*to > 0) continue;
+			record_move_flexible(&diff, &indexes[j], i,
+					&instances[j], *from);
 		}
+		if (diff == 0) goto checkout;
+	}
+
+checkout:
+	if (diff == 0) {
+		int k = 0;
+		for (k = 0; k < j; k++) {
+			if (is_edge_incoming)
+				edges[indexes[k]]->to_instances += instances[k];
+			else
+				edges[indexes[k]]->from_instances +=
+								instances[k];
+			DPRINTF("%s(): succeeded: move %d from edge %d.", __func__, instances[k], indexes[k]);
+		}
+		return OP_SUCCESS;
 	}
 	return OP_RETRY;
 }
@@ -408,44 +447,42 @@ cross_match_io_constraints(int *free_instances,
 {
 	int i;
 
-	/* Aggregate the constraints for the node's channel. */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *e = edges[i];
 		int *from = &e->from_instances;
 		int *to = &e->to_instances;
 		//int exit_state = OP_SUCCESS;
-		if (*from == *to) {
+		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
+			if (*from == -1 && *to == -1) e->instances = 5;
+			else if (*from == -1) e->instances = *to;
+			else if (*to == -1) e->instances = *from;
 			(*edges_matched)++;
-			continue;
-		} else if (*from < *to) {
-			if (is_edge_incoming) {
-				if ((this_channel_constraint == -1 ||
-				    (move(edges, n_edges, *to - *from, 1))
-							    == OP_SUCCESS)) {
-					*to = *from;
+		} else if (*from == *to) (*edges_matched)++;
+		else if (*from < *to) { /* e.g. from=1, to=3; then: */
+			if (is_edge_incoming) {         /* +2:  */
+				if (move(edges, n_edges, (*to - *from), 1)
+							== OP_SUCCESS) {
+					*to -= (*to - *from); /* -2: 3 -> 1 */
 					(*edges_matched)++;
 				}
 			} else
-				if ((this_channel_constraint == -1) ||
-				   (move(edges, n_edges, *from - *to, 0)
-							== OP_SUCCESS)) {
-					*from = *to;
+				if (move(edges, n_edges, -(*to - *from), 0)
+							== OP_SUCCESS) {
+					*from += (*to - *from);
 					(*edges_matched)++;
 				}
 		} else {
-			if (is_edge_incoming) {
-				if ((this_channel_constraint == -1) ||
-				    (move(edges, n_edges, *from - *to, 1)
-							== OP_SUCCESS)) {
-					*to = *from;
+			if (is_edge_incoming) { /* e.g. from=3, to=1 */
+				if (move(edges, n_edges, -(*from - *to), 1)
+							== OP_SUCCESS) {
+					*to += (*from - *to);
 					(*edges_matched)++;
 				}
 			} else
-				if ((this_channel_constraint == -1) ||
-				    (move(edges, n_edges, *to - *from, 0)
-							== OP_SUCCESS)) {
-					*from = *to;
+				if (move(edges, n_edges, (*from - *to), 0)
+							== OP_SUCCESS) {
+					*from -= (*from - *to);
 					(*edges_matched)++;
 				}
 		}
