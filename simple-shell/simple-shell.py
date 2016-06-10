@@ -1,6 +1,6 @@
 from subprocess import Popen, PIPE, STDOUT
 import sys
-from socket import socketpair
+from socket import socketpair, AF_UNIX, SOCK_DGRAM
 from os import pipe, fork, getpid, close, execlp, dup, waitpid, WNOHANG
 
 
@@ -77,7 +77,7 @@ for processPair, connector in connectorDict.iteritems():
   # convention: connector[0]: output, connector[1]: input
   connectorPair = [None, None]
   if connector == 'socketpipe':
-    connectorPair[0], connectorPair[1] = socketpair()
+    connectorPair[0], connectorPair[1] = socketpair(AF_UNIX, SOCK_DGRAM)
   elif connector == 'pipe':
     connectorPair[0], connectorPair[1] = pipe()
   else:

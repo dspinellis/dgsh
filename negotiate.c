@@ -751,6 +751,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		memcpy(*output_fds, self_pipe_fds.output_fds,
 					sizeof(int) * (*n_output_fds));
 	}
+	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__, (re == OP_SUCCESS ? "successful" : "failed"), *n_input_fds, *n_output_fds);
 
 	return re;
 }
@@ -802,6 +803,10 @@ alloc_write_output_fds()
 		 */
 		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++) {
 			struct msghdr msg;
+			union fdmsg cmsg;
+			struct iovec iov[1];
+			struct cmsghdr *h;
+			int ping;
 			int fd[2];
 			memset(&msg, 0, sizeof(struct msghdr));
 
@@ -810,16 +815,34 @@ alloc_write_output_fds()
 			 * process handle it.
 			 */
 			pipe(fd);
-			msg.msg_control = (char *)&fd[0];
-			msg.msg_controllen = sizeof(fd[0]);
-			close(fd[0]);
+			DPRINTF("%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
+			//msg.msg_control = (char *)&fd[0];
+			//msg.msg_controllen = sizeof(fd[0]);
+			iov[0].iov_base = &ping;
+			iov[0].iov_len = 1;
+
+			msg.msg_iov = iov;
+			msg.msg_iovlen = 1;
+			msg.msg_name = 0;
+			msg.msg_namelen = 0;
+			msg.msg_control = cmsg.buf;
+			msg.msg_controllen = sizeof(union fdmsg);
+			msg.msg_flags = 0;
+
+			h = CMSG_FIRSTHDR(&msg);
+			h->cmsg_level = SOL_SOCKET;
+			h->cmsg_type = SCM_RIGHTS;
+			h->cmsg_len = CMSG_LEN(sizeof(int));
+			*((int*)CMSG_DATA(h)) = fd[0];
 
 			/* Send the message. DEFINE self_node_io_side.fd_write */
+			DPRINTF("%s(): sendmsg: node: %d, from channel: %s (%d).", __func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output", self_node_io_side.fd_direction);
 			if (sendmsg(self_node_io_side.fd_direction, &msg, 0) < 0) {
 				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
 			}
+			close(fd[0]);
 
 			self_pipe_fds.output_fds[total_edge_instances] = fd[1];
 			total_edge_instances++;
@@ -827,6 +850,7 @@ alloc_write_output_fds()
 		if (re == OP_ERROR) break;
 	}
 	if (re == OP_ERROR) {
+		DPRINTF("%s(): OP_ERROR. Aborting.", __func__);
 		free_graph_solution(chosen_mb->n_nodes - 1);
 		free(self_pipe_fds.output_fds);
 	}
@@ -857,7 +881,7 @@ write_graph_solution() {
 #ifndef UNIT_TESTING
 	wsize = write(self_node_io_side.fd_direction, buf, graph_solution_size);
 #else
-	write(5, buf, graph_solution_size);
+	wsize = write(5, buf, graph_solution_size);
 #endif
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 	nanosleep(&sleep, NULL);
@@ -872,23 +896,29 @@ write_graph_solution() {
 			return OP_ERROR;
 		}
 
-		/* Transmit a node's incoming connections. */
-		memcpy(buf, nc->edges_incoming, in_edges_size);
+		if (nc->n_edges_incoming) {
+			/* Transmit a node's incoming connections. */
+			memcpy(buf, nc->edges_incoming, in_edges_size);
 #ifndef UNIT_TESTING
-		write(self_node_io_side.fd_direction, buf, in_edges_size);
+			wsize = write(self_node_io_side.fd_direction, buf, in_edges_size);
 #else
-		write(5, buf, in_edges_size);
+			wsize = write(5, buf, in_edges_size);
 #endif
-		nanosleep(&sleep, NULL);
+			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
+			nanosleep(&sleep, NULL);
+		}
 
-		/* Transmit a node's outgoing connections. */
-		memcpy(buf, nc->edges_outgoing, out_edges_size);
+		if (nc->n_edges_outgoing) {
+			/* Transmit a node's outgoing connections. */
+			memcpy(buf, nc->edges_outgoing, out_edges_size);
 #ifndef UNIT_TESTING
-		write(self_node_io_side.fd_direction, buf, out_edges_size);
+			wsize = write(self_node_io_side.fd_direction, buf, out_edges_size);
 #else
-		write(5, buf, out_edges_size);
+			write(5, buf, out_edges_size);
 #endif
-		nanosleep(&sleep, NULL);
+			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
+			nanosleep(&sleep, NULL);
+		}
 	}
 	return OP_SUCCESS;
 }
@@ -981,26 +1011,29 @@ write_message_block()
 		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
 	}
 
-	DPRINTF("%s(): Shipped message block to next node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
 /* If negotiation is still going, Check whether it should end. */
-static void
-check_negotiation_round(int *negotiation_round)
+static int
+check_negotiation_round()
 {
-	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
-		if (self_node.pid == chosen_mb->initiator_pid) {
-			if (!mb_is_updated) { /* state same as last time */
-				chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
-				chosen_mb->serial_no++;
-				mb_is_updated = 1;
-				DPRINTF("%s(): Negotiation protocol state change: end of negotiation phase.\n", __func__);
-				assert(*negotiation_round == 2);
-			} else
-				(*negotiation_round)++;
-		}
-	}
+	if (self_node.pid != chosen_mb->initiator_pid ||
+		mb_is_updated)
+		return chosen_mb->state_flag;
+
+	/* So, this is the initiator process and state is same as last pass */
+	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION)
+		chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+
+	else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
+		chosen_mb->state_flag = PROT_STATE_COMPLETE;
+
+	chosen_mb->serial_no++;
+	mb_is_updated = 1;
+	DPRINTF("%s(): Negotiation protocol state change: end of %s phase.\n", __func__, chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END ? "negotiation" : "solution sharing");
+	return chosen_mb->state_flag;
 }
 
 /* Reallocate message block to fit new node coming in. */
@@ -1201,8 +1234,9 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 			mb_is_updated = 1;
-                	if (try_add_sgsh_edge() == OP_ERROR)
-				return OP_ERROR;
+                	if (fresh_mb->state_flag == PROT_STATE_NEGOTIATION)
+				if (try_add_sgsh_edge() == OP_ERROR)
+					return OP_ERROR;
 		} else { /* serial_no of the mb has not changed 
 			  * in the interim, but we accept it to
 			  * receive the id of the dispatcher.
@@ -1391,12 +1425,12 @@ read_input_fds()
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
 			int read_fd;
 			int count;
-			char ping;
+			int ping;
 			struct msghdr msg;
 			struct iovec vec[1];
 			union fdmsg cmsg;
 			struct cmsghdr *h;
-			char buffer[256];
+			//char buffer[256];
 
 			DPRINTF("%d incoming edge instances to inspect.", this_nc->edges_incoming[i].instances);
 			vec[0].iov_base = &ping;
@@ -1411,9 +1445,9 @@ read_input_fds()
 			msg.msg_flags = 0;
 
 			h = CMSG_FIRSTHDR(&msg);
+			h->cmsg_len = CMSG_LEN(sizeof(int));
 			h->cmsg_level = SOL_SOCKET;
 			h->cmsg_type = SCM_RIGHTS;
-			h->cmsg_len = CMSG_LEN(sizeof(int));
 			*((int*)CMSG_DATA(h)) = -1;
 
 #ifdef UNIT_TESTING
@@ -1423,8 +1457,10 @@ read_input_fds()
 			/* Hard-coded socket fd 5. */
 			if ((count = recvmsg(5, &msg, 0)) < 0) {
 #else
-			if ((count =
-			     recvmsg(!self_node_io_side.fd_direction,&msg, 0)) < 0) {
+			DPRINTF("%s(): recvmsg: node: %d, from channel: %s.",
+				__func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output");
+			if ((count = recvmsg(self_node_io_side.fd_direction,
+							&msg, 0)) < 0) {
 #endif
 				perror("recvmsg()");
 				re = OP_ERROR;
@@ -1439,9 +1475,7 @@ read_input_fds()
 				re = OP_ERROR;
 			}
 			read_fd = *((int*)CMSG_DATA(h));
-			DPRINTF("Parent: Received file descriptor %d.", read_fd);
-			while (read(read_fd, buffer, sizeof(buffer)) > 0)
-            			DPRINTF("Parent: reading from file: %s", buffer);
+			DPRINTF("%s: Node %d received file descriptor %d.", __func__, this_nc->node_index, read_fd);
 			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
 			total_edge_instances++;
 		}
@@ -1587,7 +1621,7 @@ try_read_message_block(char *buf, int buf_size,
 			    buf_size) == OP_ERROR) return OP_ERROR;
 		}
 	}
-	DPRINTF("%s(): Read message block from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1698,7 +1732,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int *n_output_fds) /* Number of output file descriptors. */
 		    /* magic_no? */
 {
-	int negotiation_round = 0;
 	int should_transmit_mb = 1;
 	pid_t self_pid = getpid(); /* Get tool's pid */
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
@@ -1744,7 +1777,10 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	
 	/* Perform negotiation rounds. */
 	while (1) {
-		check_negotiation_round(&negotiation_round);
+
+		if (check_negotiation_round() == PROT_STATE_COMPLETE)
+			break;
+
 		/**
 		 * If all I/O constraints have been contributed,
 		 * try to solve the I/O constraint problem, 
@@ -1764,8 +1800,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
 			}
-			if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
-				break;
 		}
 
 		/* Read message block et al. */
@@ -1774,7 +1808,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			chosen_mb->state_flag = PROT_STATE_ERROR;
 			goto exit;
 		}
-		DPRINTF("%s(): Returned from try_read_message_block().", __func__);
 
 		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) == 
