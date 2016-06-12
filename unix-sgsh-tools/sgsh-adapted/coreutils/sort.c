@@ -3907,15 +3907,30 @@ sort (char *const *files, size_t nfiles, char const *output_file,
   if (!isatty(fileno(stdout))) strcpy(sgshout, "SGSH_OUT=1");
   else strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
-  sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
+  status = sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
                                                           &noutputfds);
   fprintf(stderr, "%d: sgsh_negotiate() return value is %d.\n", (int)getpid(), status);
   fprintf(stderr, "%d: sgsh_negotiate() returned %d input fds.\n", (int)getpid(), ninputfds);
   fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
   fflush(stderr);
 
+  int k = 0;
+  for (k = 0; k < ninputfds; k++) {
+    char buffer[256];
+    int rsize;
+    //printf("sort: read from input fd %d:\n", inputfds[k]);
+    if ((rsize = read(inputfds[k], buffer, sizeof(buffer))) == -1)
+      printf("sort: read from fd %d failed.", inputfds[k]);
+    else {
+      //printf("sort: read from fd %d succeeded; %d characters read.\n", inputfds[k], rsize);
+      printf("Buffer content: %s\n", buffer);
+    }
+  }
+
+  exit(1);
   assert(ninputfds == nfiles);
   assert(noutputfds == 1);
+  exit(1);
 
   while (nfiles)
     {

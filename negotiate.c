@@ -61,6 +61,12 @@ struct sgsh_node {
 	int sgsh_out;  /* Provides output to other tool(s) on sgsh graph. */
 };
 
+/* Statement to revisit a node*/
+struct block_revisit {
+	int should;
+	pid_t node_pid;
+};
+
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
 	double version; /* Protocol version. */
@@ -71,6 +77,7 @@ struct sgsh_negotiation {
 	pid_t initiator_pid;
         int state_flag;
         int serial_no;
+	struct block_revisit revisit;
 	struct node_io_side origin;
 };
 
@@ -174,8 +181,8 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 	}
 
 	/**
-	 * Copy the edges of interest to the node-specific edge array that contains
-         * its connections.
+	 * Copy the edges of interest to the node-specific edge array
+	 * that contains its connections.
 	 */
 	for (i = 0; i < nc_n_edges; i++) {
 		if (p_edges[i] == NULL) {
@@ -210,7 +217,8 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 	} else if (n_elements == 1)
 		p = malloc(sizeof(struct sgsh_edge *) * n_elements);
 	else	
-		p = realloc(*edge_array,sizeof(struct sgsh_edge *) * n_elements);
+		p = realloc(*edge_array,
+				sizeof(struct sgsh_edge *) * n_elements);
 	if (!p) {
 		DPRINTF("Memory reallocation for edge failed.\n");
 		return OP_ERROR;
@@ -237,11 +245,6 @@ satisfy_io_constraints(int *free_instances,
                        int is_edge_incoming)     /* Incoming or outgoing edges. */
 {
 	int i;
-	//int n_edges_fixed = 0;
-	//int n_edges_flexible = 0;
-	//int n_edge_instances_flexible = 0;
-	//int n_edge_instances_free = 0;
-	//int this_channel_instances = 0;
 	int weight = -1, modulo = 0;
 
 	/* We can't possibly solve this situation. */
@@ -280,10 +283,9 @@ satisfy_io_constraints(int *free_instances,
 static int
 dry_match_io_constraints(struct sgsh_node *current_node,          /* Identifies the node we are currently setting up. */
 			 struct sgsh_node_connections *current_connections,
-			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). *
-			 *int *n_edges_incoming,              * Number of incoming edges (see above). */
-			 struct sgsh_edge ***edges_outgoing) { /* The node's outgoing edges (uninitialised). */
-			 /*int *n_edges_outgoing)              * The number of outgoing edges (See above). */
+			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). */
+			 struct sgsh_edge ***edges_outgoing) /* The node's outgoing edges (uninitialised). */
+{
 	int n_edges = chosen_mb->n_edges;
 	int n_free_in_channels = current_node->requires_channels;
 	int n_free_out_channels = current_node->provides_channels;
@@ -339,7 +341,8 @@ dry_match_io_constraints(struct sgsh_node *current_node,          /* Identifies 
  * node_index: the last node we setup conenctions before error.
  */
 static int
-free_graph_solution(int node_index) {
+free_graph_solution(int node_index)
+{
 	int i;
 	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
@@ -351,12 +354,18 @@ free_graph_solution(int node_index) {
 	return OP_SUCCESS;
 }
 
+/**
+ * Add or subtract edge instances from an edge that meets a pair node's
+ * flexible constraint.
+ */
 static void
 record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
-		     int to_move) {
+		     int to_move)
+{
 	if ((*diff > 0) ||
 	    (*diff < 0 && to_move > 1)) {
 		int subtract = 0;
+		/* In subtracting at least one edge instance should remain. */
 		if (*diff < 0) subtract = 1;
 		*index = to_move_index;
 		*diff -= to_move - subtract;
@@ -365,9 +374,14 @@ record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 	}
 }
 
+/**
+ * Add or subtract edge instances from an edge that is unbalanced wrt
+ * the pair node's constraint.
+ */
 static void
 record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
-			int to_move, int pair) {
+			int to_move, int pair)
+{
 	if ((*diff > 0 && to_move < pair) ||
 	    (*diff < 0 && to_move > pair)) {
 		*index = to_move_index;
@@ -376,8 +390,15 @@ record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
 	}
 }	
 
+/**
+ * From the set of unbalanced constraints of a node wrt the pair node's
+ * constraint on a specific channel, that is, input or output,
+ * find instances to subtract or add to satisfy the constraint.
+ * If that does not work try edges where the pair has a flexible constraint.
+ */
 static int
-move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming) {
+move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
+{
 	int i = 0, j = 0;
 	int indexes[n_edges];
 	int instances[n_edges];
@@ -491,8 +512,13 @@ cross_match_io_constraints(int *free_instances,
 	return OP_SUCCESS;
 }
 
+/**
+ * For each node substitute pointers to edges with proper edge structures
+ * (copies) to facilitate transmission and receipt in one piece.
+ */
 static int
-prepare_solution() {
+prepare_solution()
+{
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int exit_state = OP_SUCCESS;
@@ -505,27 +531,15 @@ prepare_solution() {
 		struct sgsh_edge **edges_incoming =
 		       (struct sgsh_edge **)current_connections->edges_incoming;
 		current_connections->edges_incoming = NULL;
-		///nc->n_edges_incoming = 0;
-		///nc->edges_incoming = NULL;
-		//int *n_edges_incoming = &nc->n_edges_incoming;
 		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
 		struct sgsh_edge **edges_outgoing =
 		       (struct sgsh_edge **)current_connections->edges_outgoing;
 		current_connections->edges_outgoing = NULL;
-		///nc->n_edges_outgoing = 0;
-		///nc->edges_outgoing = NULL;
-		//int *n_edges_outgoing = &nc->n_edges_outgoing;
 		struct sgsh_node *current_node = &chosen_mb->node_array[i];
-		//int out_constraint = current_node->provides_channels;
-		//int in_constraint = current_node->requires_channels;
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
 		DPRINTF("%s(): Node %s, connections in: %d, connections out: %d.",__func__, current_node->name, *n_edges_incoming, *n_edges_outgoing);
 
-		/**
-		 * Substitute pointers to edges with proper edge structures
-		 * (copies) to facilitate transmission and receipt in one piece.
-		 */
 		if (*n_edges_incoming > 0) {
 			if (exit_state == OP_SUCCESS)
 				if (make_compact_edge_array(
@@ -553,7 +567,8 @@ prepare_solution() {
  * I/O constraints of tools on an sgsh graph.
  */
 static int
-cross_match_constraints() {
+cross_match_constraints()
+{
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int n_edges = chosen_mb->n_edges;
@@ -567,15 +582,9 @@ cross_match_constraints() {
 		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
 		struct sgsh_edge **edges_incoming =
 		       (struct sgsh_edge **)current_connections->edges_incoming;
-		///nc->n_edges_incoming = 0;
-		///nc->edges_incoming = NULL;
-		//int *n_edges_incoming = &nc->n_edges_incoming;
 		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
 		struct sgsh_edge **edges_outgoing =
 		       (struct sgsh_edge **)current_connections->edges_outgoing;
-		///nc->n_edges_outgoing = 0;
-		///nc->edges_outgoing = NULL;
-		//int *n_edges_outgoing = &nc->n_edges_outgoing;
 		struct sgsh_node *current_node = &chosen_mb->node_array[i];
 		int out_constraint = current_node->provides_channels;
 		int in_constraint = current_node->requires_channels;
@@ -618,7 +627,6 @@ cross_match_constraints() {
 		}
 	}
 	DPRINTF("%s(): Cross matched constraints for %d edges out of %d edges.", __func__, edges_matched / 2, n_edges);
-	//return OP_SUCCESS;
 	return (edges_matched / 2 == n_edges ? OP_SUCCESS : OP_RETRY);
 }
 
@@ -628,7 +636,8 @@ cross_match_constraints() {
  * I/O constraints of tools on an sgsh graph.
  */
 static int
-node_match_constraints() {
+node_match_constraints()
+{
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int exit_state = OP_SUCCESS;
@@ -696,7 +705,8 @@ node_match_constraints() {
  * I/O constraints of tools on an sgsh graph.
  */
 static int
-solve_sgsh_graph() {
+solve_sgsh_graph()
+{
 	int exit_state = OP_SUCCESS;
 	//int retries = 0;
 	//int max_retries = 10;
@@ -788,7 +798,7 @@ alloc_write_output_fds()
 
 	/**
 	 * Create a pipe for each instance of each outgoing edge connection.
-	 * Inject the pipe read side in the control data.
+	 * Inject the pipe read side in the cont.
 	 * Send each pipe fd as a message to a socket descriptor that has been
 	 * set up by the shell to support the sgsh negotiation phase.
 	 * We use the following convention for selecting the socket descriptor
@@ -798,8 +808,8 @@ alloc_write_output_fds()
 	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
 		int k;
 		/**
-		 * Due to channel constraint flexibility, each edge can have more
-		 * than one instances.
+		 * Due to channel constraint flexibility,
+		 * each edge can have more than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++) {
 			struct msghdr msg;
@@ -816,8 +826,6 @@ alloc_write_output_fds()
 			 */
 			pipe(fd);
 			DPRINTF("%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
-			//msg.msg_control = (char *)&fd[0];
-			//msg.msg_controllen = sizeof(fd[0]);
 			iov[0].iov_base = &ping;
 			iov[0].iov_len = 1;
 
@@ -835,9 +843,10 @@ alloc_write_output_fds()
 			h->cmsg_len = CMSG_LEN(sizeof(int));
 			*((int*)CMSG_DATA(h)) = fd[0];
 
-			/* Send the message. DEFINE self_node_io_side.fd_write */
+			/* Send the message.DEFINE self_node_io_side.fd_write */
 			DPRINTF("%s(): sendmsg: node: %d, from channel: %s (%d).", __func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output", self_node_io_side.fd_direction);
-			if (sendmsg(self_node_io_side.fd_direction, &msg, 0) < 0) {
+			if (sendmsg(self_node_io_side.fd_direction, &msg, 0)
+									< 0) {
 				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
@@ -859,7 +868,8 @@ alloc_write_output_fds()
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static int
-write_graph_solution() {
+write_graph_solution()
+{
 	int i;
 	int buf_size = getpagesize();
 	char buf[buf_size];
@@ -929,7 +939,8 @@ write_graph_solution() {
  * the send operation. This is a deep copy for simplicity. 
  */
 static void
-set_dispatcher() {
+set_dispatcher()
+{
 	chosen_mb->origin.index = self_node_io_side.index;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin.fd_direction = self_node_io_side.fd_direction;
@@ -976,19 +987,20 @@ write_message_block()
 
 	nanosleep(&sleep, NULL);
 
-	/* Transmit nodes. */
-#ifndef UNIT_TESTING
-	wsize = write(self_node_io_side.fd_direction, p_nodes, nodes_size);
-#else
-	wsize = write(5, p_nodes, nodes_size);
-#endif
-	if (wsize == -1) return OP_ERROR;
-	DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
-
-	nanosleep(&sleep, NULL);
-	chosen_mb->node_array = p_nodes; /* Reinstate pointers to nodes. */
-
 	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION) {
+		/* Transmit nodes. */
+#ifndef UNIT_TESTING
+		wsize = write(self_node_io_side.fd_direction, p_nodes,
+								nodes_size);
+#else
+		wsize = write(5, p_nodes, nodes_size);
+#endif
+		if (wsize == -1) return OP_ERROR;
+		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
+
+		nanosleep(&sleep, NULL);
+		chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
+
 		if (chosen_mb->n_nodes > 1) {
 			/* Transmit edges. */
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
@@ -1017,23 +1029,51 @@ write_message_block()
 
 /* If negotiation is still going, Check whether it should end. */
 static int
-check_negotiation_round()
+check_phase(int *count_passes_state_complete)
 {
-	if (self_node.pid != chosen_mb->initiator_pid ||
-		mb_is_updated)
-		return chosen_mb->state_flag;
-
+	int state_flag = chosen_mb->state_flag;
 	/* So, this is the initiator process and state is same as last pass */
-	if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION)
-		chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+	if (state_flag == PROT_STATE_NEGOTIATION) {
+		if (self_node.pid == chosen_mb->initiator_pid && 
+							!mb_is_updated) {
+			state_flag = PROT_STATE_NEGOTIATION_END;
+			chosen_mb->serial_no++;
+			mb_is_updated = 1;
+			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
+		}
+	} else if (state_flag == PROT_STATE_SOLUTION_SHARE) {
+		int n_edges_in =
+			graph_solution[self_node.index].n_edges_incoming;
+		int n_edges_out =	
+			graph_solution[self_node.index].n_edges_outgoing;
+		DPRINTF("%s(): passes: %d, edges in: %d, edges out: %d.",
+			__func__, *count_passes_state_complete, n_edges_in,
+			n_edges_out);
 
-	else if (chosen_mb->state_flag == PROT_STATE_SOLUTION_SHARE)
-		chosen_mb->state_flag = PROT_STATE_COMPLETE;
-
-	chosen_mb->serial_no++;
-	mb_is_updated = 1;
-	DPRINTF("%s(): Negotiation protocol state change: end of %s phase.\n", __func__, chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END ? "negotiation" : "solution sharing");
-	return chosen_mb->state_flag;
+		if (++(*count_passes_state_complete) == 
+						n_edges_in + n_edges_out)
+			if (chosen_mb->revisit.should ||
+			    chosen_mb->initiator_pid == self_node.pid) {
+				if (chosen_mb->revisit.node_pid == 
+							self_node.pid) {
+					chosen_mb->revisit.should = 0;
+					chosen_mb->revisit.node_pid = -1;
+				}
+				DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase (after write).***\n", __func__);
+				return PROT_STATE_END_AFTER_WRITE;
+			} else {
+				DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase.***\n", __func__);
+				return PROT_STATE_COMPLETE;
+			}
+		else {
+			if (!chosen_mb->revisit.should) {
+				chosen_mb->revisit.should = 1;
+				chosen_mb->revisit.node_pid = self_node.pid;
+			}
+			return PROT_STATE_SOLUTION_SHARE;
+		}
+	}
+	return state_flag;
 }
 
 /* Reallocate message block to fit new node coming in. */
@@ -1198,9 +1238,10 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
 static void 
 free_mb(struct sgsh_negotiation *mb)
 {
-	free(mb->node_array);
-	free(mb->edge_array);
+	if (mb->node_array) free(mb->node_array);
+	if (mb->edge_array) free(mb->edge_array);
 	free(mb);
+	DPRINTF("%s(): Freed message block.", __func__);
 }
 
 /** 
@@ -1228,9 +1269,9 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 		free_mb(fresh_mb); /* Discard MB just read. */
                 *should_transmit_mb = 0;
 	} else {
-		DPRINTF("Fresh vs chosen message block: same initiator pid.");
+		DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
-			DPRINTF("Fresh vs chosen message block: serial no updated.");
+			DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 			mb_is_updated = 1;
@@ -1320,6 +1361,8 @@ alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read,
 		return OP_ERROR;
 	*mb = (struct sgsh_negotiation *)malloc(bytes_read);
 	memcpy(*mb, buf, bytes_read);
+	(*mb)->node_array = NULL;
+	(*mb)->edge_array = NULL;
 	return OP_SUCCESS;
 }
 
@@ -1589,13 +1632,6 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 	point_io_direction(stdin_side);
 
-	DPRINTF("%s(): Try read negotiation graph nodes.", __func__);
-	/* Try read sgsh negotiation graph nodes. */
-	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
-			&stdin_side)) != OP_SUCCESS) return error_code;
-	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size) == OP_ERROR) 
-		return OP_ERROR;
-		
 	if ((chosen_mb && chosen_mb->state_flag ==
 					PROT_STATE_SOLUTION_SHARE) ||
 		   (*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
@@ -1611,6 +1647,14 @@ try_read_message_block(char *buf, int buf_size,
 	} else if ((chosen_mb && chosen_mb->state_flag ==
 					PROT_STATE_NEGOTIATION) ||
 	    		(*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
+		DPRINTF("%s(): Try read negotiation graph nodes.", __func__);
+		/* Try read sgsh negotiation graph nodes. */
+		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
+			&stdin_side)) != OP_SUCCESS) return error_code;
+		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
+								== OP_ERROR) 
+		return OP_ERROR;
+		
         	if ((*fresh_mb)->n_nodes > 1) {
 			/* Try read sgsh negotiation graph edges. */
 			DPRINTF("%s(): Try read negotiation graph edges.", __func__);
@@ -1644,6 +1688,8 @@ construct_message_block(pid_t self_pid)
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin.index = -1;
 	chosen_mb->origin.fd_direction = -1;
+	chosen_mb->revisit.should = 0;
+	chosen_mb->revisit.node_pid = -1;
 	DPRINTF("Message block created by pid %d.\n", (int)self_pid);
 	return OP_SUCCESS;
 }
@@ -1732,6 +1778,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int *n_output_fds) /* Number of output file descriptors. */
 		    /* magic_no? */
 {
+	int local_state_flag = PROT_STATE_NEGOTIATION;
+	int count_passes_state_complete = 0;
 	int should_transmit_mb = 1;
 	pid_t self_pid = getpid(); /* Get tool's pid */
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
@@ -1775,23 +1823,32 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		goto exit;
 	}
 	
-	/* Perform negotiation rounds. */
+	/* Perform phases and rounds. */
 	while (1) {
 
-		if (check_negotiation_round() == PROT_STATE_COMPLETE)
+		if ((local_state_flag = check_phase(
+			&count_passes_state_complete)) == PROT_STATE_COMPLETE)
 			break;
 
 		/**
 		 * If all I/O constraints have been contributed,
 		 * try to solve the I/O constraint problem, 
 		 * then spread the word, and leave negotiation.
+		 * Only initiator executes this block; once.
 		 */
-		if (chosen_mb->state_flag == PROT_STATE_NEGOTIATION_END) {
+		if (local_state_flag == PROT_STATE_NEGOTIATION_END) {
 			if (solve_sgsh_graph() == OP_ERROR) {
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
 			}
 			chosen_mb->state_flag = PROT_STATE_SOLUTION_SHARE;
+			/** 
+			 * This is to catch initiators with one (outgoing)
+			 * edge only. Theyshould exit after the following
+			 * write.
+			 */
+			local_state_flag = 
+				check_phase(&count_passes_state_complete);
 		}
 
 		/* Write message block et al. */
@@ -1799,6 +1856,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			if (write_message_block() == OP_ERROR) {
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
+			}
+			if (local_state_flag ==
+					PROT_STATE_END_AFTER_WRITE) {
+				local_state_flag = PROT_STATE_COMPLETE;
+				break;
 			}
 		}
 
@@ -1826,5 +1888,5 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 
 exit:
 	free_mb(chosen_mb);
-	return chosen_mb->state_flag;
+	return local_state_flag;
 }

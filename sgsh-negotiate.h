@@ -5,7 +5,8 @@
 #define PROT_STATE_NEGOTIATION 1
 #define PROT_STATE_NEGOTIATION_END 2
 #define PROT_STATE_SOLUTION_SHARE 3
-#define PROT_STATE_ERROR 4
+#define PROT_STATE_END_AFTER_WRITE 6
+#define PROT_STATE_ERROR 7
 
 #include <sys/socket.h> /* struct cmsghdr */
 union fdmsg {

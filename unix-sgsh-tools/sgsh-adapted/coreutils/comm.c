@@ -299,6 +299,19 @@ compare_files (char **infiles)
   fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
   fflush(stderr);
 
+  for (i = 0; i < noutputfds; i++) {
+    char buf[256];
+    int wsize = -1;
+    //printf("comm: write to output fd %d.\n", outputfds[i]);
+    sprintf(buf, "comm: write to output fd %d.\n", outputfds[i]);
+    if ((wsize = write(outputfds[i], buf, sizeof(buf))) == -1)
+      printf("comm: write with fd %d failed.", outputfds[i]);
+    else
+      printf("comm: write with fd %d succeeded; %d characters written.\n", outputfds[i], wsize);
+  }
+
+  exit(1);
+
   /* sgsh */
   assert(ninputfds <= 2);
   if (ninputfds == 0)
