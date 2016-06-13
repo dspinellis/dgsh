@@ -290,27 +290,14 @@ compare_files (char **infiles)
   else
     strcpy(sgshin, "SGSH_IN=0");
   putenv(sgshin);
-  strcpy(sgshout, "SGSH_OUT=1");
+  if (!isatty(fileno(stdout))) strcpy(sgshout, "SGSH_OUT=1");
+  else strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
-  status = sgsh_negotiate("comm", 2, 3, &inputfds, &ninputfds, &outputfds, 
-                                                          &noutputfds);
-  fprintf(stderr, "%d: sgsh_negotiate() return value is %d.\n", (int)getpid(), status);
-  fprintf(stderr, "%d: sgsh_negotiate() returned %d input fds.\n", (int)getpid(), ninputfds);
-  fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
-  fflush(stderr);
-
-  for (i = 0; i < noutputfds; i++) {
-    char buf[256];
-    int wsize = -1;
-    //printf("comm: write to output fd %d.\n", outputfds[i]);
-    sprintf(buf, "comm: write to output fd %d.\n", outputfds[i]);
-    if ((wsize = write(outputfds[i], buf, sizeof(buf))) == -1)
-      printf("comm: write with fd %d failed.", outputfds[i]);
-    else
-      printf("comm: write with fd %d succeeded; %d characters written.\n", outputfds[i], wsize);
+  if ((status = sgsh_negotiate("comm", 2, 3, &inputfds, &ninputfds, &outputfds, 
+                                                          &noutputfds))) {
+    printf("sgsh negotiation failed with status code %d.\n", status);
+    exit(1);
   }
-
-  exit(1);
 
   /* sgsh */
   assert(ninputfds <= 2);

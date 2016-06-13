@@ -1555,7 +1555,6 @@ sort_buffer_size (FILE *const *fps, size_t nfps,
         return size_bound;
       size += worst_case;
     }
-
   return size;
 }
 
@@ -3880,8 +3879,9 @@ merge (struct sortfile *files, size_t ntemps, size_t nfiles,
 
 /* Sort NFILES FILES onto OUTPUT_FILE.  Use at most NTHREADS threads.  */
 
+/* sgsh: char ***files to be able to adapt file names */
 static void
-sort (char *const *files, size_t nfiles, char const *output_file,
+sort (char ***files, size_t nfiles, char const *output_file,
       size_t nthreads)
 {
   struct buffer buf;
@@ -3898,44 +3898,50 @@ sort (char *const *files, size_t nfiles, char const *output_file,
   char sgshin[10];
   char sgshout[11];
   int status = -1;
+  int count_stdin_files = 0;
 
   buf.alloc = 0;
 
   /* sgsh */
-  strcpy(sgshin, "SGSH_IN=1");
+  if (!isatty(fileno(stdin))) strcpy(sgshin, "SGSH_IN=1");
+  else strcpy(sgshin, "SGSH_IN=0");
   putenv(sgshin);
   if (!isatty(fileno(stdout))) strcpy(sgshout, "SGSH_OUT=1");
   else strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
-  status = sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
-                                                          &noutputfds);
-  fprintf(stderr, "%d: sgsh_negotiate() return value is %d.\n", (int)getpid(), status);
-  fprintf(stderr, "%d: sgsh_negotiate() returned %d input fds.\n", (int)getpid(), ninputfds);
-  fprintf(stderr, "%d: sgsh_negotiate() returned %d output fds.\n", (int)getpid(), noutputfds);
-  fflush(stderr);
-
-  int k = 0;
-  for (k = 0; k < ninputfds; k++) {
-    char buffer[256];
-    int rsize;
-    //printf("sort: read from input fd %d:\n", inputfds[k]);
-    if ((rsize = read(inputfds[k], buffer, sizeof(buffer))) == -1)
-      printf("sort: read from fd %d failed.", inputfds[k]);
-    else {
-      //printf("sort: read from fd %d succeeded; %d characters read.\n", inputfds[k], rsize);
-      printf("Buffer content: %s\n", buffer);
-    }
+  if ((status = sgsh_negotiate("sort", -1, 1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds))) {
+    printf("sgsh negotiation failed with status code %d.\n", status);
+    exit(1);
   }
 
-  exit(1);
-  assert(ninputfds == nfiles);
-  assert(noutputfds == 1);
-  exit(1);
+  /* Count stdin input file directives */
+  for (j = 0; j < nfiles; j++)
+    {
+    const char *file = (*files)[j];
+    //printf("sort: input file: %s\n", file);
+    if (STREQ(file, "-")) count_stdin_files++;
+    }
+  
+  /**
+   * Realloc space in file name array to accommodate the implicit
+   * input streams coming from sgsh.
+   */
+  if (ninputfds > count_stdin_files)
+    {
+    nfiles += ninputfds - 1;
+    *files = xnrealloc (*files, nfiles, sizeof **files);
+    for (j = nfiles - ninputfds +1; j < nfiles; j++)
+      (*files)[j] = (*files)[0];
+    }
+    j = 0;
 
   while (nfiles)
-    {
+    { 
       char const *temp_output;
-      char const *file = *files;
+      /* sgsh */
+      int m = 0;
+      char const *file = (*files)[m];
       FILE *fp;
       /* sgsh */
       if (STREQ(file, "-"))
@@ -3965,9 +3971,9 @@ sort (char *const *files, size_t nfiles, char const *output_file,
 
       if (! buf.alloc)
         initbuf (&buf, bytes_per_line,
-                 sort_buffer_size (&fp, 1, files, nfiles, bytes_per_line));
+                 sort_buffer_size (&fp, 1, *files, nfiles, bytes_per_line));
       buf.eof = false;
-      files++;
+      m++;
       nfiles--;
 
       while (fillbuf (&buf, fp, file))
@@ -3991,8 +3997,8 @@ sort (char *const *files, size_t nfiles, char const *output_file,
             {
               xfclose (fp, file);
               /* sgsh */
-              tfp = fdopen(outputfds[0], "w");
-              //tfp = xfopen (output_file, "w");
+              if (noutputfds > 0) tfp = fdopen(outputfds[0], "w");
+              else tfp = xfopen (output_file, "w");
               temp_output = output_file;
               output_file_created = true;
             }
@@ -4805,7 +4811,7 @@ main (int argc, char **argv)
       size_t nthreads_max = SIZE_MAX / (2 * sizeof (struct merge_node));
       nthreads = MIN (nthreads, nthreads_max);
 
-      sort (files, nfiles, outfile, nthreads);
+      sort (&files, nfiles, outfile, nthreads);
     }
 
 #ifdef lint
