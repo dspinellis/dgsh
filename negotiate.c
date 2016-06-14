@@ -535,10 +535,9 @@ prepare_solution()
 		struct sgsh_edge **edges_outgoing =
 		       (struct sgsh_edge **)current_connections->edges_outgoing;
 		current_connections->edges_outgoing = NULL;
-		struct sgsh_node *current_node = &chosen_mb->node_array[i];
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
-		DPRINTF("%s(): Node %s, connections in: %d, connections out: %d.",__func__, current_node->name, *n_edges_incoming, *n_edges_outgoing);
+		DPRINTF("%s(): Node %s, connections in: %d, connections out: %d.",__func__, chosen_mb->node_array[i].name, *n_edges_incoming, *n_edges_outgoing);
 
 		if (*n_edges_incoming > 0) {
 			if (exit_state == OP_SUCCESS)
@@ -894,6 +893,8 @@ write_graph_solution()
 	wsize = write(5, buf, graph_solution_size);
 #endif
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
+	(void)wsize; /* silence compiler warning */
+
 	nanosleep(&sleep, NULL);
 	/* We haven't invalidated pointers to arrays of node indices. */
 

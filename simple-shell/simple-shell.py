@@ -90,24 +90,23 @@ for processPair, connector in connectorDict.iteritems():
 
 # Activate interconnections and execute processes
 for process in Process.processes:
-  print 'process %s, input channels: %d, output channels: %d' \
-         % (process.command, len(process.inputConnectors), \
-            len(process.outputConnectors))
+  #print 'process %s, input channels: %d, output channels: %d' \
+  #       % (process.command, len(process.inputConnectors), \
+  #          len(process.outputConnectors))
   pid = fork()
   if pid:
     for ic in process.inputConnectors:
       close(process.selectInputFileDescriptor())
       fd = dup(ic[1].fileno())
-      print "close %d, dup %d, gives %d" % (process.fileDescriptorsInUse[-1], ic[1].fileno(), fd)
+      #print "close %d, dup %d, gives %d" % (process.fileDescriptorsInUse[-1], ic[1].fileno(), fd)
       ic[1].close()
       ic[0].close()
     for oc in process.outputConnectors:
       close(process.selectOutputFileDescriptor())
-      print "%d <--> %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno())
+      #print "%d <--> %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno())
       dup(oc[0].fileno())
       oc[0].close()
       oc[1].close()
     args = process.command.split()
     execlp(args[0], args[0], *args[1:])
-
 

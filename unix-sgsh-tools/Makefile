@@ -1,4 +1,4 @@
-ADAPTED_TOOLS_SRC_DIR=sgsh-adapted
+PSEUDOSHELLDIR=../simple-shell
 
 prepare:
 	git clone git://git.savannah.gnu.org/gnulib.git
@@ -19,6 +19,11 @@ configure:
 	cd sed && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 	cd tar && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 
+adapt:
+	patch -d coreutils Makefile `pwd`/sgsh-adapted/coreutils/Makefile.patch
+	patch -d coreutils/src comm.c `pwd`/sgsh-adapted/coreutils/comm.patch
+	patch -d coreutils/src sort.c `pwd`/sgsh-adapted/coreutils/sort.patch
+
 make:
 	cd coreutils && make
 	cd diffutils && make
@@ -37,6 +42,14 @@ install:
 	cd sed && make install
 	cd tar && make install
 
+
+test:
+	cd $(PSEUDOSHELLDIR) && \
+	python $(PSEUDOSHELLDIR)/simple-shell.py comm_sort.sgsh && \
+	sleep 1 && \
+	echo "\nThe above output should match the following:\n" && \
+	cat comm_sort.success
+
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean
@@ -46,25 +59,3 @@ clean:
 	cd sed && make clean
 	cd tar && make clean
 
-dev:
-	#Only the first time uncomment the following two lines.
-	#mv coreutils/src/comm.c coreutils/src/coreutils-comm.c
-	#mv coreutils/src/join.c coreutils/src/coreutils-join.c
-	#mv coreutils/src/paste.c coreutils/src/coreutils-paste.c
-	#mv coreutils/src/sort.c coreutils/src/coreutils-sort.c
-	#mv coreutils/src/Makefile coreutils/coreutils-Makefile
-	#cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/Makefile coreutils/
-	#cp $(ADAPTED_TOOLS_SRC_DIR)/coreutils/*.c coreutils/src/
-	cd coreutils && make && make install
-
-	#Only the first time uncomment the following two lines.
-	#mv diffutils/src/diff.c diffutils/src/diffutils-diff.c
-	#mv diffutils/src/Makefile diffutils/src/diffutils-Makefile
-	#cp $(ADAPTED_TOOLS_SRC_DIR)/diffutils/* diffutils/src/
-	#cd diffutils && make && make install
-
-	#Only the first time uncomment the following two lines.
-	#mv grep/src/grep.c grep/src/grep-grep.c
-	#mv grep/src/Makefile grep/src/grep-Makefile
-	#cp $(ADAPTED_TOOLS_SRC_DIR)/grep/* grep/src/
-	#cd grep && make && make install
