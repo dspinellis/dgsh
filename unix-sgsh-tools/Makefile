@@ -20,9 +20,9 @@ configure:
 	cd tar && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 
 adapt:
-	patch -d coreutils Makefile `pwd`/sgsh-adapted/coreutils/Makefile.patch
-	patch -d coreutils/src comm.c `pwd`/sgsh-adapted/coreutils/comm.patch
-	patch -d coreutils/src sort.c `pwd`/sgsh-adapted/coreutils/sort.patch
+	cp sgsh-adapted/coreutils/Makefile coreutils/
+	cp sgsh-adapted/coreutils/comm.c coreutils/src/
+	cp sgsh-adapted/coreutils/sort.c coreutils/src/
 
 make:
 	cd coreutils && make

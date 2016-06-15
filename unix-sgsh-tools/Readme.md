@@ -27,7 +27,7 @@ The workflow includes the following steps:
 ```bash
 cp coreutils/src/sort.c sgsh-adapted/coreutils/sort.c
 git add sgsh-adapted/coreutils/sort.c
-git commit -a -m "Original code of sort tool"
+git commit -a -m "Original source code of sort in GNU coreutils v8.25.27."
 ```
 
 - adapt the tool for use with sgsh
@@ -60,13 +60,9 @@ git commit -a -m "Original code of sort tool"
 
 ```
 
-- produce patch from the original and adapted files
-```bash
-diff -u coreutils/src/sort.c sgsh-adapted/coreutils/sort.c > sgsh-adapted/coreutils/sort.patch
-```
 - modify the Makefile's *make adapt* recipe to patch the original file
 ```bash
-patch -d coreutils/src sort.c sgsh-adapted/coreutils/sort.patch
+cp sgsh-adapted/coreutils/sort.c coreutils/src/
 ```
 - contribute tests
   - *cd simple_shell*
