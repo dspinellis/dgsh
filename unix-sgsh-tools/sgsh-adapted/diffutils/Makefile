@@ -250,7 +250,8 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I. -I$(top_builddir)/lib
+# sgsh negotiate library header file path (-I../../..)
+DEFAULT_INCLUDES = -I. -I$(top_builddir)/lib -I../../..
 depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -874,6 +875,8 @@ LDFLAGS =
 LIBCSTACK = 
 LIBDIFFUTILS_LIBDEPS =  
 LIBDIFFUTILS_LTLIBDEPS =  
+# sgsh negotiate library to link
+LIBSGSH = -L`pwd`/../../.. -lsgsh_negotiate
 LIBICONV = 
 LIBINTL = 
 LIBOBJS = 
@@ -1236,7 +1239,8 @@ LDADD = \
   $(LIBSIGSEGV) \
   $(LIB_CLOCK_GETTIME)
 
-diff_LDADD = $(LDADD)
+# sgsh library: dependency for diff
+diff_LDADD = $(LDADD) $(LIBSGSH)
 cmp_LDADD = $(LDADD)
 sdiff_LDADD = $(LDADD)
 diff3_LDADD = $(LDADD)

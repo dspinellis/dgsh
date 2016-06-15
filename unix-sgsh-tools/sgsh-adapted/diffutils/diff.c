@@ -42,6 +42,10 @@
 #include <xreadlink.h>
 #include <binary-io.h>
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>          /* assert() */
+#include "sgsh-negotiate.h"
+
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "diff"
 
@@ -1401,24 +1405,84 @@ compare_files (struct comparison const *parent,
 
       /* Open the files and record their descriptors.  */
 
-      int oflags = O_RDONLY | (binary ? O_BINARY : 0);
+      /* sgsh */
+      int ninputfds = -1;
+      int noutputfds = -1;
+      int *inputfds;
+      int *outputfds;
+      char sgshin[10];
+      char sgshout[11];
 
-      if (cmp.file[0].desc == UNOPENED)
-	if ((cmp.file[0].desc = open (cmp.file[0].name, oflags, 0)) < 0)
-	  {
-	    perror_with_name (cmp.file[0].name);
-	    status = EXIT_TROUBLE;
-	  }
-      if (cmp.file[1].desc == UNOPENED)
-	{
-	  if (same_files)
-	    cmp.file[1].desc = cmp.file[0].desc;
-	  else if ((cmp.file[1].desc = open (cmp.file[1].name, oflags, 0)) < 0)
+      /* sgsh */
+      strcpy(sgshin, "SGSH_IN=1");
+      putenv(sgshin);
+      strcpy(sgshout, "SGSH_OUT=1");
+      putenv(sgshout);
+
+      /* sgsh */
+      /* If 1 of 2 inputs is file,
+       * additional handling will be required.
+       */
+      sgsh_negotiate("diff", 2, 1, &inputfds, &ninputfds, &outputfds,
+                     &noutputfds);
+
+      assert(noutputfds == 1);
+      outfile = fdopen(outputfds[0], "w");
+
+      assert(ninputfds > 0 && ninputfds <= 2);
+      if (ninputfds == 0)
+        {
+        int oflags = O_RDONLY | (binary ? O_BINARY : 0);
+        if (cmp.file[0].desc == UNOPENED)
+	  if ((cmp.file[0].desc = open (cmp.file[0].name, oflags, 0)) < 0)
 	    {
-	      perror_with_name (cmp.file[1].name);
+	      perror_with_name (cmp.file[0].name);
 	      status = EXIT_TROUBLE;
 	    }
-	}
+        if (cmp.file[1].desc == UNOPENED)
+	  {
+	    if (same_files)
+	      cmp.file[1].desc = cmp.file[0].desc;
+	    else if ((cmp.file[1].desc = open (cmp.file[1].name, oflags, 0)) < 0)
+	      {
+	        perror_with_name (cmp.file[1].name);
+	        status = EXIT_TROUBLE;
+	      }
+	  }
+        }
+      else if (ninputfds == 1)
+        {
+        int oflags = O_RDONLY | (binary ? O_BINARY : 0);
+        if STREQ(cmp.file[0].name, "-")
+          {
+          cmp.file[0].desc = inputfds[0];
+          if (cmp.file[1].desc == UNOPENED)
+	    {
+	      if (same_files)
+	        cmp.file[1].desc = cmp.file[0].desc;
+	      else if ((cmp.file[1].desc = open (cmp.file[1].name, oflags, 0)) < 0)
+	        {
+	          perror_with_name (cmp.file[1].name);
+	          status = EXIT_TROUBLE;
+	        }
+	    }
+          }
+        else
+          {
+          cmp.file[1].desc = inputfds[0];
+          if (cmp.file[0].desc == UNOPENED)
+	    if ((cmp.file[0].desc = open (cmp.file[0].name, oflags, 0)) < 0)
+	      {
+	        perror_with_name (cmp.file[0].name);
+	        status = EXIT_TROUBLE;
+	      }
+          }
+        }
+      else
+        {
+        cmp.file[0].desc = inputfds[0];
+        cmp.file[1].desc = inputfds[1];
+        }
 
       /* Compare the files, if no error was found.  */
 
@@ -1454,7 +1518,8 @@ compare_files (struct comparison const *parent,
     {
       /* Flush stdout so that the user sees differences immediately.
 	 This can hurt performance, unfortunately.  */
-      if (fflush (stdout) != 0)
+      /* sgsh */
+      if (fflush (outfile) != 0)
 	pfatal_with_name (_("standard output"));
     }
 

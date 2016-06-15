@@ -44,6 +44,10 @@
 #include "error.h"
 #include "fadvise.h"
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>
+#include "sgsh-negotiate.h"
+
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "paste"
 
@@ -200,12 +204,34 @@ paste_parallel (size_t nfiles, char **fnamptr)
      number of files, but at the (considerable) expense of remembering
      each file and its current offset, then opening/reading/closing.  */
 
+  /* sgsh */
+  int j = 0;
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+  FILE *outstream;
+
+  /* sgsh */
+  strcpy(sgshin, "SGSH_IN=1");
+  putenv(sgshin);
+  strcpy(sgshout, "SGSH_OUT=1");
+  putenv(sgshout);
+  sgsh_negotiate("paste", -1, 1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds);
+  assert(ninputfds >= 1);
+  assert(noutputfds == 1);
+  outstream = fdopen(outputfds[0], "w");
+
   for (files_open = 0; files_open < nfiles; ++files_open)
     {
       if (STREQ (fnamptr[files_open], "-"))
         {
           have_read_stdin = true;
-          fileptr[files_open] = stdin;
+          /* sgsh */
+          fileptr[files_open] = fdopen(inputfds[j++], "r");
         }
       else
         {
@@ -213,7 +239,11 @@ paste_parallel (size_t nfiles, char **fnamptr)
           if (fileptr[files_open] == NULL)
             error (EXIT_FAILURE, errno, "%s", quotef (fnamptr[files_open]));
           else if (fileno (fileptr[files_open]) == STDIN_FILENO)
+            {
             opened_stdin = true;
+            /* sgsh */
+            fileptr[files_open] = fdopen(inputfds[j++], "r");
+            }
           fadvise (fileptr[files_open], FADVISE_SEQUENTIAL);
         }
     }
@@ -245,7 +275,8 @@ paste_parallel (size_t nfiles, char **fnamptr)
               err = errno;
               if (chr != EOF && delims_saved)
                 {
-                  if (fwrite (delbuf, 1, delims_saved, stdout) != delims_saved)
+                  /* sgsh */
+                  if (fwrite (delbuf, 1, delims_saved, outstream) != delims_saved)
                     write_error ();
                   delims_saved = 0;
                 }
@@ -293,7 +324,7 @@ paste_parallel (size_t nfiles, char **fnamptr)
                       /* No.  Some files were not closed for this line. */
                       if (delims_saved)
                         {
-                          if (fwrite (delbuf, 1, delims_saved, stdout)
+                          if (fwrite (delbuf, 1, delims_saved, outstream)
                               != delims_saved)
                             write_error ();
                           delims_saved = 0;
@@ -353,6 +384,28 @@ paste_serial (size_t nfiles, char **fnamptr)
   char const *delimptr;	/* Current delimiter char. */
   FILE *fileptr;	/* Open for reading current file. */
 
+  /* sgsh */
+  int j = 0;
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+  //FILE *outstream; no reference to stdout in this function.
+
+  /* sgsh */
+  strcpy(sgshin, "SGSH_IN=1");
+  putenv(sgshin);
+  strcpy(sgshout, "SGSH_OUT=1");
+  putenv(sgshout);
+  sgsh_negotiate("paste", -1, 1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds);
+
+  assert(ninputfds >= 1);
+  assert(noutputfds == 1);
+  //outstream = fdopen(outputfds[0], "w");
+
   for (; nfiles; nfiles--, fnamptr++)
     {
       int saved_errno;
@@ -360,7 +413,7 @@ paste_serial (size_t nfiles, char **fnamptr)
       if (is_stdin)
         {
           have_read_stdin = true;
-          fileptr = stdin;
+          fileptr = fdopen(inputfds[j++], "r");
         }
       else
         {

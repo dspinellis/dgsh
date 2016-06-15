@@ -1946,7 +1946,8 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I. -I$(top_builddir)/lib
+# sgsh negotiate library header file path
+DEFAULT_INCLUDES = -I. -I$(top_builddir)/lib -I`pwd`/../..
 depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -3407,6 +3408,8 @@ INTL_MACOSX_LIBS =
 LDFLAGS = 
 LIBCOREUTILS_LIBDEPS =  
 LIBCOREUTILS_LTLIBDEPS =  
+# sgsh library path and file to link
+LIBSGSH = -L`pwd`/../.. -lsgsh_negotiate
 LIBICONV = 
 LIBINTL = 
 LIBMULTITHREAD = -pthread
@@ -4440,7 +4443,8 @@ src_chmod_LDADD = $(LDADD)
 src_chown_LDADD = $(LDADD)
 src_chroot_LDADD = $(LDADD)
 src_cksum_LDADD = $(LDADD)
-src_comm_LDADD = $(LDADD)
+# sgsh negotiate library dependency
+src_comm_LDADD = $(LDADD) $(LIBSGSH)
 src_nproc_LDADD = $(LDADD)
 src_cp_LDADD = $(LDADD) $(copy_ldadd) $(LIBICONV)
 src_coreutils_LDADD = $(LDADD)
@@ -4479,7 +4483,8 @@ src_hostid_LDADD = $(LDADD)
 # for gethostname, uname
 src_hostname_LDADD = $(LDADD) $(GETHOSTNAME_LIB)
 src_id_LDADD = $(LDADD) $(LIB_SELINUX) $(LIB_SMACK)
-src_join_LDADD = $(LDADD)
+# sgsh negotiate library dependency
+src_join_LDADD = $(LDADD) $(LIBSGSH)
 
 # for strsignal
 src_kill_LDADD = $(LDADD) $(LIBTHREAD)
@@ -4508,7 +4513,8 @@ src_nl_LDADD = $(LDADD)
 src_nohup_LDADD = $(LDADD)
 src_numfmt_LDADD = $(LDADD)
 src_od_LDADD = $(LDADD)
-src_paste_LDADD = $(LDADD)
+# sgsh negotiate library dependency
+src_paste_LDADD = $(LDADD) $(LIBSGSH)
 src_pathchk_LDADD = $(LDADD)
 
 # for canon_host
@@ -4536,8 +4542,9 @@ src_shuf_LDADD = $(LDADD)
 src_sleep_LDADD = $(LDADD) $(LIB_NANOSLEEP)
 
 # for pthread
+# sgsh negotiate library dependency
 src_sort_LDADD = $(LDADD) $(LIB_EACCESS) $(LIB_NANOSLEEP) \
-	$(LIB_CRYPTO) $(LIB_PTHREAD)
+	$(LIB_CRYPTO) $(LIB_PTHREAD) $(LIBSGSH)
 src_split_LDADD = $(LDADD) $(LIBICONV)
 
 # for nvlist_lookup_uint64_array

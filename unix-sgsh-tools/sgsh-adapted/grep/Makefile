@@ -253,7 +253,8 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I. -I$(top_builddir)
+# sgsh negotiate library header file path to link
+DEFAULT_INCLUDES = -I. -I$(top_builddir) -I../../..
 depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -836,6 +837,8 @@ INTL_MACOSX_LIBS =
 LDFLAGS = 
 LIBGREPUTILS_LIBDEPS =  
 LIBGREPUTILS_LTLIBDEPS =  
+# sgsh negotiate library to link
+LIBSGSH = -L../../.. -lsgsh_negotiate
 LIBICONV = 
 LIBINTL = 
 LIBMULTITHREAD = -pthread
@@ -1190,7 +1193,8 @@ LDADD = \
   ../lib/libgreputils.a $(LIBINTL) ../lib/libgreputils.a $(LIBICONV) \
   $(LIBTHREAD)
 
-grep_LDADD = $(LDADD) $(PCRE_LIBS)
+# sgsh negotiate library dependency
+grep_LDADD = $(LDADD) $(PCRE_LIBS) $(LIBSGSH)
 AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib
 EXTRA_DIST = dosbuf.c egrep.sh
 CLEANFILES = egrep fgrep *-t

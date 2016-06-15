@@ -50,6 +50,10 @@
 #include "xalloc.h"
 #include "xstrtol.h"
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>
+#include "sgsh-negotiate.h"
+
 #define SEP_CHAR_SELECTED ':'
 #define SEP_CHAR_REJECTED '-'
 #define SEP_STR_GROUP    "--"
@@ -1811,13 +1815,15 @@ grepdesc (int desc, bool command_line)
   return status;
 }
 
+/* sgsh */
 static bool
-grep_command_line_arg (char const *arg)
+grep_command_line_arg (char const *arg, int sgshinputfd)
 {
   if (STREQ (arg, "-"))
     {
       filename = label ? label : _("(standard input)");
-      return grepdesc (STDIN_FILENO, true);
+      /* sgsh */
+      return grepdesc (sgshinputfd, true);
     }
   else
     {
@@ -2722,8 +2728,34 @@ main (int argc, char **argv)
     }
 
   bool status = true;
+  /* sgsh */
+  int j = 0, sgshinputfd;
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+
+  /* sgsh */
+  strcpy(sgshin, "SGSH_IN=1");
+  putenv(sgshin);
+  strcpy(sgshout, "SGSH_OUT=1");
+  putenv(sgshout);
+  sgsh_negotiate("grep", -1, -1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds);
+
+  /* sgsh */
+  assert(ninputfds > 0);
+  /* 5: matching, non-matching, files, lines, parts */
+  assert(noutputfds > 0 && noutputfds <= 5);
+
   do
-    status &= grep_command_line_arg (*files++);
+    {
+    /* sgsh */
+    if (STREQ (*files, "-")) sgshinputfd = inputfds[j++];
+    status &= grep_command_line_arg (*files++, sgshinputfd);
+    }
   while (*files != NULL);
 
   /* We register via atexit() to test stdout.  */

@@ -34,6 +34,11 @@
 #include "xstrtol.h"
 #include "argmatch.h"
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>
+#include "sgsh-negotiate.h"
+static FILE* outfile;
+
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "join"
 
@@ -556,12 +561,12 @@ prfield (size_t n, struct line const *line)
     {
       len = line->fields[n].len;
       if (len)
-        fwrite (line->fields[n].beg, 1, len, stdout);
+        fwrite (line->fields[n].beg, 1, len, outfile);
       else if (empty_filler)
-        fputs (empty_filler, stdout);
+        fputs (empty_filler, outfile);
     }
   else if (empty_filler)
-    fputs (empty_filler, stdout);
+    fputs (empty_filler, outfile);
 }
 
 /* Output all the fields in line, other than the join field.  */
@@ -1015,6 +1020,16 @@ main (int argc, char **argv)
   int nfiles = 0;
   int i;
 
+  /* sgsh */
+    /* sgsh */
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+
+
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
   setlocale (LC_ALL, "");
@@ -1181,14 +1196,49 @@ main (int argc, char **argv)
   if (join_field_2 == SIZE_MAX)
     join_field_2 = 0;
 
-  fp1 = STREQ (g_names[0], "-") ? stdin : fopen (g_names[0], "r");
-  if (!fp1)
-    error (EXIT_FAILURE, errno, "%s", quotef (g_names[0]));
-  fp2 = STREQ (g_names[1], "-") ? stdin : fopen (g_names[1], "r");
-  if (!fp2)
-    error (EXIT_FAILURE, errno, "%s", quotef (g_names[1]));
-  if (fp1 == fp2)
-    error (EXIT_FAILURE, errno, _("both files cannot be standard input"));
+  /* sgsh */
+  strcpy(sgshin, "SGSH_IN=1");
+  putenv(sgshin);
+  strcpy(sgshout, "SGSH_OUT=1");
+  putenv(sgshout);
+  sgsh_negotiate("join", 2, 1, &inputfds, &ninputfds, &outputfds,
+                                                          &noutputfds);
+
+  /* sgsh */
+  assert(noutputfds <= 1);
+  outfile = noutputfds == 1 ? fdopen(outputfds[0], "w") : stdout;
+
+  assert(ninputfds <= 2);
+  if (ninputfds == 0)
+    {
+    fp1 = STREQ (g_names[0], "-") ? stdin : fopen (g_names[0], "r");
+    if (!fp1)
+      error (EXIT_FAILURE, errno, "%s", quotef (g_names[0]));
+    fp2 = STREQ (g_names[1], "-") ? stdin : fopen (g_names[1], "r");
+    if (!fp2)
+      error (EXIT_FAILURE, errno, "%s", quotef (g_names[1]));
+    if (fp1 == fp2)
+      error (EXIT_FAILURE, errno, _("both files cannot be standard input"));
+    }
+  else if (ninputfds == 1)
+    {
+      if (STREQ(g_names[0], "-"))
+        {
+        fp1 = fdopen(inputfds[0], "r");
+        fp2 = fopen(g_names[1], "r");
+        }
+      else
+        {
+        fp1 = fopen(g_names[0], "r");
+        fp2 = fdopen(inputfds[0], "r");
+        }
+    }
+  else
+    {
+    fp1 = fdopen(inputfds[0], "r");
+    fp2 = fdopen(inputfds[1], "r");
+    }
+
   join (fp1, fp2);
 
   if (fclose (fp1) != 0)
@@ -1201,3 +1251,4 @@ main (int argc, char **argv)
   else
     return EXIT_SUCCESS;
 }
+

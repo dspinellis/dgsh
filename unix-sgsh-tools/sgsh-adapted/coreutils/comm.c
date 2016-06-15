@@ -30,6 +30,10 @@
 #include "memcmp2.h"
 #include "xmemcoll.h"
 
+/*  sgsh negotiate API (fix -I) */
+#include <assert.h>
+#include "sgsh-negotiate.h"
+
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "comm"
 
@@ -259,10 +263,76 @@ compare_files (char **infiles)
   /* This is used to rotate through the buffers for each input file. */
   int alt[2][3];
 
-  /* streams[i] holds the input stream for file i.  */
-  FILE *streams[2];
+
+  /* sgsh */
+  /* istreams[i] holds the input stream for file i.  */
+  FILE *istreams[2];
+  /* ostreams[i] holds the output stream as follows.
+   * 3: 1st outputs lines only in 1st istream,
+        2nd                       2nd istream,
+        3rd               in     both istreams
+   */
+  FILE *ostreams[3];
 
   int i, j;
+  /* sgsh */
+  int ninputfds = -1;
+  int noutputfds = -1;
+  int *inputfds;
+  int *outputfds;
+  char sgshin[10];
+  char sgshout[11];
+  int status = -1;
+
+  /* sgsh */
+  if (STREQ(infiles[0], "-") || STREQ(infiles[0], "-"))
+    strcpy(sgshin, "SGSH_IN=1");
+  else
+    strcpy(sgshin, "SGSH_IN=0");
+  putenv(sgshin);
+  if (!isatty(fileno(stdout))) strcpy(sgshout, "SGSH_OUT=1");
+  else strcpy(sgshout, "SGSH_OUT=0");
+  putenv(sgshout);
+  if ((status = sgsh_negotiate("comm", 2, 3, &inputfds, &ninputfds, &outputfds, 
+                                                          &noutputfds))) {
+    printf("sgsh negotiation failed with status code %d.\n", status);
+    exit(1);
+  }
+
+  /* sgsh */
+  assert(ninputfds <= 2);
+  if (ninputfds == 0)
+    {
+    istreams[0] = STREQ (infiles[0], "-") ? stdin : fopen (infiles[0], "r");
+    if (!istreams[0])
+      error (EXIT_FAILURE, errno, "%s", quotef (infiles[0]));
+    istreams[1] = STREQ (infiles[1], "-") ? stdin : fopen (infiles[1], "r");
+    if (!istreams[1])
+      error (EXIT_FAILURE, errno, "%s", quotef (infiles[1]));
+    }
+  else if (ninputfds == 1)
+    {
+      if (STREQ(infiles[0], "-"))
+        {
+        istreams[0] = fdopen(inputfds[0], "r");
+        istreams[1] = fopen(infiles[1], "r");
+        }
+      else
+        {
+        istreams[0] = fopen(infiles[0], "r");
+        istreams[1] = fdopen(inputfds[0], "r");
+        }
+    }
+  else
+    {
+    istreams[0] = fdopen(inputfds[0], "r");
+    istreams[1] = fdopen(inputfds[1], "r");
+    }
+
+  assert(noutputfds <= 3);
+  for (i = 0; i < noutputfds; i++)
+    ostreams[i] = fdopen(outputfds[i], "w");
+  
 
   /* Initialize the storage. */
   for (i = 0; i < 2; i++)
@@ -275,15 +345,12 @@ compare_files (char **infiles)
       alt[i][0] = 0;
       alt[i][1] = 0;
       alt[i][2] = 0;
-      streams[i] = (STREQ (infiles[i], "-") ? stdin : fopen (infiles[i], "r"));
-      if (!streams[i])
-        error (EXIT_FAILURE, errno, "%s", quotef (infiles[i]));
 
-      fadvise (streams[i], FADVISE_SEQUENTIAL);
+      fadvise (istreams[i], FADVISE_SEQUENTIAL);
 
-      thisline[i] = readlinebuffer_delim (all_line[i][alt[i][0]], streams[i],
+      thisline[i] = readlinebuffer_delim (all_line[i][alt[i][0]], istreams[i],
                                           delim);
-      if (ferror (streams[i]))
+      if (ferror (istreams[i]))
         error (EXIT_FAILURE, errno, "%s", quotef (infiles[i]));
     }
 
@@ -316,14 +383,14 @@ compare_files (char **infiles)
 
       /* Output the line that is lesser. */
       if (order == 0)
-        writeline (thisline[1], stdout, 3);
+        writeline (thisline[1], ostreams[2], 3);
       else
         {
           seen_unpairable = true;
           if (order <= 0)
-            writeline (thisline[0], stdout, 1);
+            writeline (thisline[0], ostreams[0], 1);
           else
-            writeline (thisline[1], stdout, 2);
+            writeline (thisline[1], ostreams[1], 2);
         }
 
       /* Step the file the line came from.
@@ -342,7 +409,7 @@ compare_files (char **infiles)
             alt[i][0] = (alt[i][0] + 1) & 0x03;
 
             thisline[i] = readlinebuffer_delim (all_line[i][alt[i][0]],
-                                                streams[i], delim);
+                                                istreams[i], delim);
 
             if (thisline[i])
               check_order (all_line[i][alt[i][1]], thisline[i], i + 1);
@@ -354,7 +421,7 @@ compare_files (char **infiles)
               check_order (all_line[i][alt[i][2]],
                            all_line[i][alt[i][1]], i + 1);
 
-            if (ferror (streams[i]))
+            if (ferror (istreams[i]))
               error (EXIT_FAILURE, errno, "%s", quotef (infiles[i]));
 
             fill_up[i] = false;
@@ -362,7 +429,7 @@ compare_files (char **infiles)
     }
 
   for (i = 0; i < 2; i++)
-    if (fclose (streams[i]) != 0)
+    if (fclose (istreams[i]) != 0)
       error (EXIT_FAILURE, errno, "%s", quotef (infiles[i]));
 }
 
