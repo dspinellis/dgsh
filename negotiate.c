@@ -746,20 +746,12 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 
 	*n_input_fds = self_pipe_fds.n_input_fds;
 	assert(*n_input_fds >= 0);
-	if (*n_input_fds > 0) {
-		*input_fds = (int *)malloc(sizeof(int) * (*n_input_fds));
-		if (*input_fds == NULL) re = OP_ERROR;
-		memcpy(*input_fds, self_pipe_fds.input_fds,
-					sizeof(int) * (*n_input_fds));
-	}
+	if (*n_input_fds > 0) *input_fds = self_pipe_fds.input_fds;
+
 	*n_output_fds = self_pipe_fds.n_output_fds;
 	assert(*n_output_fds >= 0);
-	if (*n_output_fds > 0) {
-		*output_fds = (int *)malloc(sizeof(int) * (*n_output_fds));
-		if (*output_fds == NULL) re = OP_ERROR;
-		memcpy(*output_fds, self_pipe_fds.output_fds,
-					sizeof(int) * (*n_output_fds));
-	}
+	if (*n_output_fds > 0) *output_fds = self_pipe_fds.output_fds;
+
 	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__, (re == OP_SUCCESS ? "successful" : "failed"), *n_input_fds, *n_output_fds);
 
 	return re;
@@ -791,7 +783,8 @@ alloc_write_output_fds()
 		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++)
 			self_pipe_fds.n_output_fds++;
 	}
-	if (this_nc->n_edges_outgoing > 0)
+	if (!self_pipe_fds.output_fds && /* Use already allocated space. */
+	    this_nc->n_edges_outgoing > 0)
 		self_pipe_fds.output_fds = (int *)malloc(sizeof(int) * 
 						self_pipe_fds.n_output_fds);
 
@@ -1030,7 +1023,7 @@ write_message_block()
 
 /* If negotiation is still going, Check whether it should end. */
 static int
-check_phase(int *count_passes_state_complete)
+check_phase(int *count_passes)
 {
 	int state_flag = chosen_mb->state_flag;
 	/* So, this is the initiator process and state is same as last pass */
@@ -1048,11 +1041,22 @@ check_phase(int *count_passes_state_complete)
 		int n_edges_out =	
 			graph_solution[self_node.index].n_edges_outgoing;
 		DPRINTF("%s(): passes: %d, edges in: %d, edges out: %d.",
-			__func__, *count_passes_state_complete, n_edges_in,
+			__func__, *count_passes, n_edges_in,
 			n_edges_out);
 
-		if (++(*count_passes_state_complete) == 
-						n_edges_in + n_edges_out)
+		if (++(*count_passes) == n_edges_in + n_edges_out)
+			/**
+			 * The current node has notified its adjacent nodes.
+			 * It will exit the negotiation process either
+			 * immediately or after sending the solution one
+			 * last time depending on the state of revisit.should.
+			 * revisit.should checks whether
+			 * some hub node (>1 input edges || >1 output edges)
+			 * has stated that the message block should
+			 * continue its route until further notice.
+			 * If revisit.should is on and this node is 
+			 * this hub node it clears the flags.
+			 */
 			if (chosen_mb->revisit.should ||
 			    chosen_mb->initiator_pid == self_node.pid) {
 				if (chosen_mb->revisit.node_pid == 
@@ -1067,6 +1071,12 @@ check_phase(int *count_passes_state_complete)
 				return PROT_STATE_COMPLETE;
 			}
 		else {
+			/**
+			 * If the node takes more than one round to
+			 * notify its adjacent nodes, the node is a hub node
+			 * so it will require the solution to repass in order
+			 * to notify all adjacent nodes.
+			 */
 			if (!chosen_mb->revisit.should) {
 				chosen_mb->revisit.should = 1;
 				chosen_mb->revisit.node_pid = self_node.pid;
@@ -1257,6 +1267,13 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			int *should_transmit_mb)
 {
         *should_transmit_mb = 1; /* Default value. */
+
+	if (fresh_mb->state_flag == PROT_STATE_SOLUTION_SHARE) {
+		free_mb(chosen_mb);
+		chosen_mb = fresh_mb;
+		return OP_SUCCESS;
+	}
+
 	mb_is_updated = 0; /* Default value. */
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
 		free_mb(chosen_mb); 
@@ -1276,9 +1293,8 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 			mb_is_updated = 1;
-                	if (fresh_mb->state_flag == PROT_STATE_NEGOTIATION)
-				if (try_add_sgsh_edge() == OP_ERROR)
-					return OP_ERROR;
+			if (try_add_sgsh_edge() == OP_ERROR)
+				return OP_ERROR;
 		} else { /* serial_no of the mb has not changed 
 			  * in the interim, but we accept it to
 			  * receive the id of the dispatcher.
@@ -1420,7 +1436,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
         }
 	for (i = 0; i < FD_SETSIZE; i++) {
 		if (FD_ISSET(i, &read_fds))
-			call_read(i, buf, buf_size, fd_side,bytes_read,
+			call_read(i, buf, buf_size, fd_side, bytes_read,
 				  &error_code);
 	}
 #endif
@@ -1438,7 +1454,6 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 static int
 read_input_fds()
 {
-	DPRINTF("%s() pid %d", __func__, (int)getpid());
 	/** 
 	 * A node's connections are located at the same position
          * as the node in the node array.
@@ -1457,7 +1472,9 @@ read_input_fds()
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++)
 			self_pipe_fds.n_input_fds++;
 	}
-	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) * 
+	if (!self_pipe_fds.input_fds && /* Use already allocated space. */
+	   this_nc->n_edges_incoming > 0) 
+		self_pipe_fds.input_fds = (int *)malloc(sizeof(int) * 
 						self_pipe_fds.n_input_fds);
 	DPRINTF("%d incoming edges to inspect of node %d.", this_nc->n_edges_incoming, self_node.index);
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
@@ -1548,7 +1565,8 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
-	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
+	if (!graph_solution) /* Use already allocated space, else prealloc. */
+		graph_solution = (struct sgsh_node_connections *)malloc(
 			sizeof(struct sgsh_node_connections) * n_nodes);
 	if (!graph_solution) {
 		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
@@ -1625,7 +1643,6 @@ try_read_message_block(char *buf, int buf_size,
 	int stdin_side = 0;
 	int error_code = 0;
 
-	DPRINTF("%s(): Try read message block.", __func__);
 	/* Try read core message block: struct negotiation state fields. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
@@ -1633,23 +1650,8 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 	point_io_direction(stdin_side);
 
-	if ((chosen_mb && chosen_mb->state_flag ==
-					PROT_STATE_SOLUTION_SHARE) ||
-		   (*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
-		/** 
-		 * Try read solution. If fresh_mb is not the chosen_mb
-		 * we knew so far, it will become the chosen, because
-		 * negotiation has ended and there is a solution 
-		 * accompanying it.
-                 */
-		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
-			return OP_ERROR;
-		if (read_input_fds() == OP_ERROR) return OP_ERROR;
-	} else if ((chosen_mb && chosen_mb->state_flag ==
-					PROT_STATE_NEGOTIATION) ||
-	    		(*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
-		DPRINTF("%s(): Try read negotiation graph nodes.", __func__);
-		/* Try read sgsh negotiation graph nodes. */
+	if ((*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
+		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
 		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read, 
 			&stdin_side)) != OP_SUCCESS) return error_code;
 		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
@@ -1657,14 +1659,23 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 		
         	if ((*fresh_mb)->n_nodes > 1) {
-			/* Try read sgsh negotiation graph edges. */
-			DPRINTF("%s(): Try read negotiation graph edges.", __func__);
+			DPRINTF("%s(): Read negotiation graph edges.",__func__);
 			if ((error_code = try_read_chunk(buf, buf_size, 
 			     &bytes_read, &stdin_side)) != OP_SUCCESS)
 				return error_code;
 			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
 			    buf_size) == OP_ERROR) return OP_ERROR;
 		}
+	} else if ((*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
+		/** 
+		 * Try read solution.
+		 * fresh_mb should be an updated version of the chosen_mb
+		 * or even the same structure because this is the phase
+		 * where we share the solution across the sgsh graph.
+                 */
+		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
+			return OP_ERROR;
+		if (read_input_fds() == OP_ERROR) return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
@@ -1672,7 +1683,7 @@ try_read_message_block(char *buf, int buf_size,
 
 /* Construct a message block to use as a vehicle for the negotiation phase. */
 static int
-construct_message_block(pid_t self_pid)
+construct_message_block(const char *tool_name, pid_t self_pid)
 {
 	int memory_allocation_size = sizeof(struct sgsh_negotiation);
 	chosen_mb = (struct sgsh_negotiation *)malloc(
@@ -1691,7 +1702,8 @@ construct_message_block(pid_t self_pid)
 	chosen_mb->origin.fd_direction = -1;
 	chosen_mb->revisit.should = 0;
 	chosen_mb->revisit.node_pid = -1;
-	DPRINTF("Message block created by pid %d.\n", (int)self_pid);
+	DPRINTF("Message block created by process %s with pid %d.\n",
+						tool_name, (int)self_pid);
 	return OP_SUCCESS;
 }
 
@@ -1777,16 +1789,19 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int *n_input_fds, /* Number of input file descriptors. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
-		    /* magic_no? */
 {
 	int local_state_flag = PROT_STATE_NEGOTIATION;
-	int count_passes_state_complete = 0;
+	int count_passes = 0;         /* while in solution sharing phase */
 	int should_transmit_mb = 1;
-	pid_t self_pid = getpid(); /* Get tool's pid */
+	pid_t self_pid = getpid();    /* Get tool's pid */
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
 	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
+
 	memset(buf, 0, buf_size); /* Clear buffer used to read/write messages.*/
+	graph_solution = NULL;    /* Remove any garbage */
+	self_pipe_fds.input_fds = NULL;    /* Remove any garbage */
+	self_pipe_fds.output_fds = NULL;    /* Remove any garbage */
 	DPRINTF("Tool %s with pid %d entered sgsh negotiation.", tool_name,
 							(int)self_pid);
 	
@@ -1799,9 +1814,9 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		return PROT_STATE_ERROR;
 	}
 	
-	/* Start negotiation. Is this enough? */
+	/* Start negotiation */
         if ((self_node.sgsh_out) && (!self_node.sgsh_in)) { 
-                if (construct_message_block(self_pid) == OP_ERROR) 
+                if (construct_message_block(tool_name, self_pid) == OP_ERROR) 
 			return PROT_STATE_ERROR;
                 self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
@@ -1827,8 +1842,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if ((local_state_flag = check_phase(
-			&count_passes_state_complete)) == PROT_STATE_COMPLETE)
+		if ((local_state_flag = check_phase(&count_passes))
+							== PROT_STATE_COMPLETE)
 			break;
 
 		/**
@@ -1849,11 +1864,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			 * write.
 			 */
 			local_state_flag = 
-				check_phase(&count_passes_state_complete);
+				check_phase(&count_passes);
 		}
 
 		/* Write message block et al. */
-		if (should_transmit_mb) {
+		if (should_transmit_mb) { /* There  can be only one. */
 			if (write_message_block() == OP_ERROR) {
 				chosen_mb->state_flag = PROT_STATE_ERROR;
 				goto exit;
