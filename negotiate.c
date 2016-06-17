@@ -52,11 +52,6 @@ struct sgsh_node {
 	int sgsh_out;  /* Provides output to other tool(s) on sgsh graph. */
 };
 
-/* Statement to revisit a node*/
-struct block_revisit {
-	int should;
-	pid_t node_pid;
-};
 
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
@@ -68,7 +63,11 @@ struct sgsh_negotiation {
 	pid_t initiator_pid;
         enum prot_state state_flag;
         int serial_no;
-	struct block_revisit revisit;
+	/* Statement to revisit a node */
+	struct block_revisit {
+		int should;
+		pid_t node_pid;
+	} revisit;
 	struct node_io_side origin;
 };
 
