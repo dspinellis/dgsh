@@ -267,7 +267,8 @@ satisfy_io_constraints(int *free_instances,
 			edges[i]->to_instances = weight + (modulo > 0);
 		else
 			edges[i]->from_instances = weight + (modulo > 0);
-		if (modulo > 0) modulo--;
+		if (modulo > 0)
+			modulo--;
         	DPRINTF("%s(): edge from %d to %d, is_edge_incoming: %d, free_instances: %d, weight: %d, modulo: %d, from_instances: %d, to_instances: %d.\n", __func__, edges[i]->from, edges[i]->to, is_edge_incoming, *free_instances, weight, modulo, edges[i]->from_instances, edges[i]->to_instances);
 	}
         DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
@@ -365,11 +366,14 @@ record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 	if (*diff > 0 || *diff < 0 && to_move > 1) {
 		int subtract = 0;
 		/* In subtracting at least one edge instance should remain. */
-		if (*diff < 0) subtract = 1;
+		if (*diff < 0)
+			subtract = 1;
 		*index = to_move_index;
 		*diff -= to_move - subtract;
-		if (*diff > 0) *instances = to_move;
-		else *instances = -(to_move - 1);
+		if (*diff > 0)
+			*instances = to_move;
+		else
+			*instances = -(to_move - 1);
 	}
 }
 
@@ -406,14 +410,16 @@ move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
 		struct sgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
-		if (*from == -1 || *to == -1) continue;
+		if (*from == -1 || *to == -1)
+			continue;
 		if (is_edge_incoming)
 			record_move_unbalanced(&diff, &indexes[j], i,
 					&instances[j], *to, *from);
 		else
 			record_move_unbalanced(&diff, &indexes[j], i,
 					&instances[j], *from, *to);
-		if (diff == 0) goto checkout;
+		if (diff == 0)
+			goto checkout;
 	}
 	/* Edges with flexible constraints are by default balanced. Try move. */
 	for (i = 0; i < n_edges; i++) {
@@ -421,15 +427,18 @@ move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
 		if (is_edge_incoming) {
-			if (*from > 0) continue;
+			if (*from > 0)
+				continue;
 			record_move_flexible(&diff, &indexes[j], i,
 					&instances[j], *to);
 		} else {
-			if (*to > 0) continue;
+			if (*to > 0)
+				continue;
 			record_move_flexible(&diff, &indexes[j], i,
 					&instances[j], *from);
 		}
-		if (diff == 0) goto checkout;
+		if (diff == 0)
+			goto checkout;
 	}
 
 checkout:
@@ -474,11 +483,15 @@ cross_match_io_constraints(int *free_instances,
 		//int exit_state = OP_SUCCESS;
 		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
-			if (*from == -1 && *to == -1) e->instances = 5;
-			else if (*from == -1) e->instances = *to;
-			else if (*to == -1) e->instances = *from;
+			if (*from == -1 && *to == -1)
+				e->instances = 5;
+			else if (*from == -1)
+				e->instances = *to;
+			else if (*to == -1)
+				e->instances = *from;
 			(*edges_matched)++;
-		} else if (*from == *to) (*edges_matched)++;
+		} else if (*from == *to)
+			(*edges_matched)++;
 		else if (*from < *to) { /* e.g. from=1, to=3; then: */
 			if (is_edge_incoming) {         /* +2:  */
 				if (move(edges, n_edges, (*to - *from), 1)
@@ -745,11 +758,13 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 
 	*n_input_fds = self_pipe_fds.n_input_fds;
 	assert(*n_input_fds >= 0);
-	if (*n_input_fds > 0) *input_fds = self_pipe_fds.input_fds;
+	if (*n_input_fds > 0)
+		*input_fds = self_pipe_fds.input_fds;
 
 	*n_output_fds = self_pipe_fds.n_output_fds;
 	assert(*n_output_fds >= 0);
-	if (*n_output_fds > 0) *output_fds = self_pipe_fds.output_fds;
+	if (*n_output_fds > 0)
+		*output_fds = self_pipe_fds.output_fds;
 
 	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__, (re == OP_SUCCESS ? "successful" : "failed"), *n_input_fds, *n_output_fds);
 
@@ -847,7 +862,8 @@ alloc_write_output_fds()
 			self_pipe_fds.output_fds[total_edge_instances] = fd[1];
 			total_edge_instances++;
 		}
-		if (re == OP_ERROR) break;
+		if (re == OP_ERROR)
+			break;
 	}
 	if (re == OP_ERROR) {
 		DPRINTF("%s(): OP_ERROR. Aborting.", __func__);
@@ -1139,7 +1155,8 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	for (i = 0; i < n_nodes; i++) /* Check dispatcher node exists. */
-		if (i == chosen_mb->origin.index) break;
+		if (i == chosen_mb->origin.index)
+			break;
 	if (i == n_nodes) {
 		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
 		return OP_ERROR;
@@ -1225,7 +1242,8 @@ try_add_sgsh_node()
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++)
-		if (chosen_mb->node_array[i].pid == self_node.pid) break;
+		if (chosen_mb->node_array[i].pid == self_node.pid)
+			break;
 	if (i == n_nodes) {
 		if (add_node() == OP_ERROR)
 			return OP_ERROR;
@@ -1254,8 +1272,10 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
 static void
 free_mb(struct sgsh_negotiation *mb)
 {
-	if (mb->node_array) free(mb->node_array);
-	if (mb->edge_array) free(mb->edge_array);
+	if (mb->node_array)
+		free(mb->node_array);
+	if (mb->edge_array)
+		free(mb->edge_array);
 	free(mb);
 	DPRINTF("%s(): Freed message block.", __func__);
 }
@@ -1545,7 +1565,8 @@ read_input_fds()
 			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
 			total_edge_instances++;
 		}
-		if (re == OP_ERROR) break;
+		if (re == OP_ERROR)
+			break;
 	}
 	if (re == OP_ERROR) {
 		free_graph_solution(chosen_mb->n_nodes - 1);
@@ -1586,7 +1607,8 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
 						graph_solution_size, bytes_read);
 		return OP_ERROR;
-	} else memcpy(graph_solution, buf, bytes_read);
+	} else
+		memcpy(graph_solution, buf, bytes_read);
 
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
