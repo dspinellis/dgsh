@@ -27,8 +27,10 @@
 
 /* Identifies the node and node's fd that sent the message block. */
 struct node_io_side {
-	int index;
-	int fd_direction;
+	int index;		/* Node index on message block node array */
+	int fd_direction;	/* Message block origin node's file
+				 * descriptor
+				 */
 };
 
 #ifndef UNIT_TESTING
@@ -154,12 +156,24 @@ struct sgsh_node_pipe_fds {
  * in this order take place.
  */
 
-static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
-static bool mb_is_updated; /* Boolean value that signals an update to the mb. */
-static struct sgsh_node self_node; /* The sgsh node that models this tool. */
-static struct node_io_side self_node_io_side; /* Dispatch info for this tool.*/
-static struct sgsh_node_connections *graph_solution;
-static struct sgsh_node_pipe_fds self_pipe_fds;
+static struct sgsh_negotiation *chosen_mb;	/* Our king message block. */
+static bool mb_is_updated;			/* Boolean value that signals
+						 * an update to the mb.
+						 */
+static struct sgsh_node self_node;		/* The sgsh node that models
+						 * this tool.
+						 */
+static struct node_io_side self_node_io_side;	/* Dispatch info for this tool.
+						 */
+static struct sgsh_node_connections *graph_solution;	/* Data structure
+							 * containing the
+							 * problem's solution.
+							 */
+static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
+							 * write file
+							 * descriptors to use
+							 * at execution.
+							 */
 
 /**
  * Allocate node indexes to store a node's (at node_index)
