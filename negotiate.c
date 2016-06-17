@@ -69,7 +69,7 @@ struct block_revisit {
 
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
-	double version; /* Protocol version. */
+	int version; /* Protocol version. */
         struct sgsh_node *node_array;
         int n_nodes;
 	struct sgsh_edge *edge_array;
@@ -1704,7 +1704,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 		DPRINTF("Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
-	chosen_mb->version = 1.0;
+	chosen_mb->version = 1;
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
 	chosen_mb->initiator_pid = self_pid;
