@@ -67,7 +67,7 @@ struct sgsh_negotiation {
 	struct sgsh_edge *edge_array;
         int n_edges;
 	pid_t initiator_pid;
-        enum prot_state state_flag;
+        enum prot_state state;
         int serial_no;
 	struct block_revisit revisit;
 	struct node_io_side origin;
@@ -989,7 +989,7 @@ write_message_block()
 
 	nanosleep(&sleep, NULL);
 
-	if (chosen_mb->state_flag == PS_NEGOTIATION) {
+	if (chosen_mb->state == PS_NEGOTIATION) {
 		/* Transmit nodes. */
 #ifndef UNIT_TESTING
 		wsize = write(self_node_io_side.fd_direction, p_nodes,
@@ -1020,7 +1020,7 @@ write_message_block()
 			nanosleep(&sleep, NULL);
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 		}
-	} else if (chosen_mb->state_flag == PS_SOLUTION_SHARE) {
+	} else if (chosen_mb->state == PS_SOLUTION_SHARE) {
 		/* Transmit solution. */
 		if (write_graph_solution() == OP_ERROR)
 			return OP_ERROR;
@@ -1036,17 +1036,17 @@ write_message_block()
 static enum prot_state
 check_phase(int *count_passes)
 {
-	int state_flag = chosen_mb->state_flag;
+	int state = chosen_mb->state;
 	/* So, this is the initiator process and state is same as last pass */
-	if (state_flag == PS_NEGOTIATION) {
+	if (state == PS_NEGOTIATION) {
 		if (self_node.pid == chosen_mb->initiator_pid &&
 							!mb_is_updated) {
-			state_flag = PS_NEGOTIATION_END;
+			state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = 1;
 			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
 		}
-	} else if (state_flag == PS_SOLUTION_SHARE) {
+	} else if (state == PS_SOLUTION_SHARE) {
 		int n_edges_in =
 			graph_solution[self_node.index].n_edges_incoming;
 		int n_edges_out =
@@ -1095,7 +1095,7 @@ check_phase(int *count_passes)
 			return PS_SOLUTION_SHARE;
 		}
 	}
-	return state_flag;
+	return state;
 }
 
 /* Reallocate message block to fit new node coming in. */
@@ -1285,7 +1285,7 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 {
         *should_transmit_mb = 1; /* Default value. */
 
-	if (fresh_mb->state_flag == PS_SOLUTION_SHARE) {
+	if (fresh_mb->state == PS_SOLUTION_SHARE) {
 		free_mb(chosen_mb);
 		chosen_mb = fresh_mb;
 		return OP_SUCCESS;
@@ -1674,7 +1674,7 @@ try_read_message_block(char *buf, int buf_size,
 		return OP_ERROR;
 	point_io_direction(stdin_side);
 
-	if ((*fresh_mb)->state_flag == PS_NEGOTIATION) {
+	if ((*fresh_mb)->state == PS_NEGOTIATION) {
 		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
 		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
 			&stdin_side)) != OP_SUCCESS)
@@ -1692,7 +1692,7 @@ try_read_message_block(char *buf, int buf_size,
 			    buf_size) == OP_ERROR)
 				return OP_ERROR;
 		}
-	} else if ((*fresh_mb)->state_flag == PS_SOLUTION_SHARE) {
+	} else if ((*fresh_mb)->state == PS_SOLUTION_SHARE) {
 		/**
 		 * Try read solution.
 		 * fresh_mb should be an updated version of the chosen_mb
@@ -1723,7 +1723,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
 	chosen_mb->initiator_pid = self_pid;
-	chosen_mb->state_flag = PS_NEGOTIATION;
+	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin.index = -1;
 	chosen_mb->origin.fd_direction = -1;
@@ -1817,7 +1817,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
 {
-	int local_state_flag = PS_NEGOTIATION;
+	int local_state = PS_NEGOTIATION;
 	int count_passes = 0;         /* while in solution sharing phase */
 	int should_transmit_mb = 1;
 	pid_t self_pid = getpid();    /* Get tool's pid */
@@ -1858,18 +1858,18 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	fill_sgsh_node(tool_name, self_pid, channels_required,
 						channels_provided);
 	if (try_add_sgsh_node() == OP_ERROR) {
-		chosen_mb->state_flag = PS_ERROR;
+		chosen_mb->state = PS_ERROR;
 		goto exit;
 	}
 	if (try_add_sgsh_edge() == OP_ERROR) {
-		chosen_mb->state_flag = PS_ERROR;
+		chosen_mb->state = PS_ERROR;
 		goto exit;
 	}
 
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if ((local_state_flag = check_phase(&count_passes))
+		if ((local_state = check_phase(&count_passes))
 							== PS_COMPLETE)
 			break;
 
@@ -1879,30 +1879,30 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		 * then spread the word, and leave negotiation.
 		 * Only initiator executes this block; once.
 		 */
-		if (local_state_flag == PS_NEGOTIATION_END) {
+		if (local_state == PS_NEGOTIATION_END) {
 			if (solve_sgsh_graph() == OP_ERROR) {
-				chosen_mb->state_flag = PS_ERROR;
+				chosen_mb->state = PS_ERROR;
 				goto exit;
 			}
-			chosen_mb->state_flag = PS_SOLUTION_SHARE;
+			chosen_mb->state = PS_SOLUTION_SHARE;
 			/**
 			 * This is to catch initiators with one (outgoing)
 			 * edge only. Theyshould exit after the following
 			 * write.
 			 */
-			local_state_flag =
+			local_state =
 				check_phase(&count_passes);
 		}
 
 		/* Write message block et al. */
 		if (should_transmit_mb) { /* There  can be only one. */
 			if (write_message_block() == OP_ERROR) {
-				chosen_mb->state_flag = PS_ERROR;
+				chosen_mb->state = PS_ERROR;
 				goto exit;
 			}
-			if (local_state_flag ==
+			if (local_state ==
 					PS_END_AFTER_WRITE) {
-				local_state_flag = PS_COMPLETE;
+				local_state = PS_COMPLETE;
 				break;
 			}
 		}
@@ -1910,26 +1910,26 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		/* Read message block et al. */
 		if (try_read_message_block(buf, buf_size, &fresh_mb) ==
 								OP_ERROR) {
-			chosen_mb->state_flag = PS_ERROR;
+			chosen_mb->state = PS_ERROR;
 			goto exit;
 		}
 
 		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) ==
 								OP_ERROR) {
-			chosen_mb->state_flag = PS_ERROR;
+			chosen_mb->state = PS_ERROR;
 			goto exit;
 		}
 	}
 
 	if (establish_io_connections(input_fds, n_input_fds, output_fds,
 						n_output_fds) == OP_ERROR) {
-		chosen_mb->state_flag = PS_ERROR;
+		chosen_mb->state = PS_ERROR;
 		goto exit;
 	}
 	free_graph_solution(chosen_mb->n_nodes - 1);
 
 exit:
 	free_mb(chosen_mb);
-	return local_state_flag;
+	return local_state;
 }
