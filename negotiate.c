@@ -1710,9 +1710,10 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
  * Returns the fd to write the message block if need be transmitted.
  */
 static enum op_result
-read_message_block(char *buf, int buf_size,
-					struct sgsh_negotiation **fresh_mb)
+read_message_block(struct sgsh_negotiation **fresh_mb)
 {
+	int buf_size = getpagesize();		/* Make buffer page-wide. */
+	char buf[buf_size];
 	int bytes_read = 0;
 	int stdin_side = 0;
 	enum op_result error_code = 0;
@@ -1872,8 +1873,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	int count_passes = 0;         /* while in solution sharing phase */
 	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
-	int buf_size = getpagesize(); /* Make buffer page-wide. */
-	char buf[buf_size];
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 
 	memset(buf, 0, buf_size); /* Clear buffer used to read/write messages.*/
@@ -1899,8 +1898,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                 self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
-		if (read_message_block(buf, buf_size, &fresh_mb) ==
-								OP_ERROR)
+		if (read_message_block(&fresh_mb) == OP_ERROR)
 			return PS_ERROR;
 		chosen_mb = fresh_mb;
 	}
@@ -1959,8 +1957,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 
 		/* Read message block et al. */
-		if (read_message_block(buf, buf_size, &fresh_mb) ==
-								OP_ERROR) {
+		if (read_message_block(&fresh_mb) == OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
 			goto exit;
 		}
