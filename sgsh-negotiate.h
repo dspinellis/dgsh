@@ -3,12 +3,16 @@
 
 /* Negotiation protocol states */
 enum prot_state {
-	PS_COMPLETE,
-	PS_NEGOTIATION,
-	PS_NEGOTIATION_END,
-	PS_SOLUTION_SHARE,
-	PS_END_AFTER_WRITE,
-	PS_ERROR,
+	PS_COMPLETE,		/* Negotiation process is complete */
+	PS_NEGOTIATION,		/* Negotiation phase */
+	PS_NEGOTIATION_END,	/* End of negotiation phase */
+	PS_SOLUTION_SHARE,	/* Solution sharing phase */
+	PS_END_AFTER_WRITE,	/* Negotiation process will be complete for
+				 * the current node after writing the solution.
+				 * This means that another node on the graph
+				 * still has adjacent nodes to notify.
+				 */
+	PS_ERROR,		/* Error in negotiation process */
 };
 
 #include <sys/socket.h> /* struct cmsghdr */
@@ -48,13 +52,25 @@ enum prot_state sgsh_negotiate(const char *tool_name, /* Input. */
  * Also negative values signify a failed operation's errno value
  */
 enum op_result {
-	OP_SUCCESS,
-	OP_ERROR,
-	OP_QUIT,
-	OP_EXISTS,
-	OP_CREATE,
-	OP_NOOP,
-	OP_RETRY,
+	OP_SUCCESS,		/* Successful */
+	OP_ERROR,		/* Unresolvable error due to I/O problem
+				 * constraints provided by the processes
+				 * on the sgsh graph or memory constraints
+				 * of the systems.
+				 */
+	OP_EXISTS,		/* Node or edge already registered with the
+				 * sgsh graph.
+				 */
+	OP_CREATE,		/* Node ar edge registered with the sgsh 
+				 * graph.
+				 */
+	OP_NOOP,		/* No operation when trying to add an edge
+				 * on a graph with just one node at the time.
+				 */
+	OP_RETRY,		/* Not all constraints of an I/O constraint
+				 * problem have been satisfied yet.
+				 * Retry by leveraging flexible constraints.
+				 */
 };
 
 #ifdef UNIT_TESTING

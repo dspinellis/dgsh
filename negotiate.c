@@ -20,7 +20,6 @@
 #include <sys/socket.h> /* sendmsg(), recvmsg() */
 #include <unistd.h> /* getpid(), getpagesize(),
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
-#include <time.h>   /* nanosleep() */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh.h" /* DPRINTF() */
 
@@ -356,7 +355,7 @@ static void
 record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 		     int to_move)
 {
-	if (*diff > 0 || *diff < 0 && to_move > 1) {
+	if (*diff > 0 || (*diff < 0 && to_move > 1)) {
 		int subtract = 0;
 		/* In subtracting at least one edge instance should remain. */
 		if (*diff < 0)
@@ -378,8 +377,8 @@ static void
 record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
 			int to_move, int pair)
 {
-	if (*diff > 0 && to_move < pair ||
-	    *diff < 0 && to_move > pair) {
+	if ((*diff > 0 && to_move < pair) ||
+	    (*diff < 0 && to_move > pair)) {
 		*index = to_move_index;
 		*instances = pair - to_move;
 		*diff -= pair - to_move;
@@ -522,7 +521,7 @@ cross_match_io_constraints(int *free_instances,
  * (copies) to facilitate transmission and receipt in one piece.
  */
 static enum op_result
-prepare_solution()
+prepare_solution(void)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
@@ -571,7 +570,7 @@ prepare_solution()
  * I/O constraints of tools on an sgsh graph.
  */
 static enum op_result
-cross_match_constraints()
+cross_match_constraints(void)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
@@ -640,7 +639,7 @@ cross_match_constraints()
  * I/O constraints of tools on an sgsh graph.
  */
 static enum op_result
-node_match_constraints()
+node_match_constraints(void)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
@@ -709,7 +708,7 @@ node_match_constraints()
  * I/O constraints of tools on an sgsh graph.
  */
 static enum op_result
-solve_sgsh_graph()
+solve_sgsh_graph(void)
 {
 	enum op_result exit_state = OP_SUCCESS;
 	//int retries = 0;
@@ -768,7 +767,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
  * tool's output to another tool.
  */
 static enum op_result
-alloc_write_output_fds()
+alloc_write_output_fds(void)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -868,7 +867,7 @@ alloc_write_output_fds()
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static enum op_result
-write_graph_solution()
+write_graph_solution(void)
 {
 	int i;
 	int buf_size = getpagesize();
@@ -881,10 +880,6 @@ write_graph_solution()
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
-	/* 1 millisec sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
@@ -896,7 +891,6 @@ write_graph_solution()
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 	(void)wsize; /* silence compiler warning */
 
-	nanosleep(&sleep, NULL);
 	/* We haven't invalidated pointers to arrays of node indices. */
 
 	for (i = 0; i < n_nodes; i++) {
@@ -917,7 +911,6 @@ write_graph_solution()
 			wsize = write(5, buf, in_edges_size);
 #endif
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
-			nanosleep(&sleep, NULL);
 		}
 
 		if (nc->n_edges_outgoing) {
@@ -929,7 +922,6 @@ write_graph_solution()
 			write(5, buf, out_edges_size);
 #endif
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
-			nanosleep(&sleep, NULL);
 		}
 	}
 	return OP_SUCCESS;
@@ -941,7 +933,7 @@ write_graph_solution()
  * the send operation. This is a deep copy for simplicity.
  */
 static void
-set_dispatcher()
+set_dispatcher(void)
 {
 	chosen_mb->origin.index = self_node_io_side.index;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
@@ -952,7 +944,7 @@ set_dispatcher()
 
 /* Write message block to buffer. */
 static enum op_result
-write_message_block()
+write_message_block(void)
 {
 	int wsize = -1;
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
@@ -960,10 +952,6 @@ write_message_block()
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
-	/* 1 millisecond sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 
 	if (nodes_size > buf_size || edges_size > buf_size) {
 		DPRINTF("%s size exceeds buffer size.\n",
@@ -988,7 +976,6 @@ write_message_block()
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
-	nanosleep(&sleep, NULL);
 
 	if (chosen_mb->state == PS_NEGOTIATION) {
 		/* Transmit nodes. */
@@ -1002,7 +989,6 @@ write_message_block()
 			return OP_ERROR;
 		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
 
-		nanosleep(&sleep, NULL);
 		chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
 
 		if (chosen_mb->n_nodes > 1) {
@@ -1018,7 +1004,6 @@ write_message_block()
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
 
-			nanosleep(&sleep, NULL);
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 		}
 	} else if (chosen_mb->state == PS_SOLUTION_SHARE) {
@@ -1101,7 +1086,7 @@ check_phase(int *count_passes)
 
 /* Reallocate message block to fit new node coming in. */
 static enum op_result
-add_node()
+add_node(void)
 {
 	int n_nodes = chosen_mb->n_nodes;
 	void *p = realloc(chosen_mb->node_array,
@@ -1206,7 +1191,7 @@ add_edge(struct sgsh_edge *edge)
 
 /* Try to add a newly occured edge in the sgsh graph. */
 static enum op_result
-try_add_sgsh_edge()
+try_add_sgsh_edge(void)
 {
 	if (chosen_mb->origin.index >= 0) { /* If MB not created just now: */
 		struct sgsh_edge new_edge;
@@ -1230,7 +1215,7 @@ try_add_sgsh_edge()
  * calculation from the start of the array of nodes.
  */
 static enum op_result
-try_add_sgsh_node()
+try_add_sgsh_node(void)
 {
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
@@ -1423,7 +1408,7 @@ call_read(int fd, char *buf, int buf_size,
 		 * Mark the side where input is coming from.
 		 */
 		*fd_side = fd;
-		return OP_QUIT;
+		return OP_ERROR;
 	}
 	return OP_SUCCESS;
 }
@@ -1471,7 +1456,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 
 /* Read file descriptors piping input from another tool in the sgsh graph. */
 static enum op_result
-read_input_fds()
+read_input_fds(void)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1655,8 +1640,6 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
  * relies on an extension to a standard shell implementation,
  * e.g., bash, that allows reading and writing to both sides
  * for the negotiation phase.
- * Set I/O to non-blocking in order to be able to retry on both
- * sides.
  * Returns the fd to write the message block if need be transmitted.
  */
 static enum op_result
@@ -1755,7 +1738,7 @@ get_env_var(const char *env_var,int *value)
  * the shell (through execvpe()).
  */
 static enum op_result
-get_environment_vars()
+get_environment_vars(void)
 {
 	DPRINTF("Try to get environment variable SGSH_IN.");
 	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR)
