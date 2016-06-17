@@ -31,20 +31,6 @@ struct node_io_side {
 
 #ifndef UNIT_TESTING
 
-/*
- * Results of operations
- * Also negative values signify a failed operation's errno value
- */
-enum op_result {
-	OP_SUCCESS,
-	OP_ERROR,
-	OP_QUIT,
-	OP_EXISTS,
-	OP_CREATE,
-	OP_NOOP,
-	OP_RETRY,
-};
-
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
 	int from; /* Index of node on the graph where data comes from (out). */

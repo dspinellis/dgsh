@@ -40,15 +40,21 @@ int sgsh_negotiate(const char *tool_name, /* Input. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds); /* Number of output file descriptors. */
 
-#ifdef UNIT_TESTING
+/*
+ * Results of operations
+ * Also negative values signify a failed operation's errno value
+ */
+enum op_result {
+	OP_SUCCESS,
+	OP_ERROR,
+	OP_QUIT,
+	OP_EXISTS,
+	OP_CREATE,
+	OP_NOOP,
+	OP_RETRY,
+};
 
-#define OP_SUCCESS 0
-#define OP_ERROR 1
-#define OP_QUIT 2
-#define OP_EXISTS 3
-#define OP_CREATE 4
-#define OP_NOOP 5
-#define OP_RETRY 6
+#ifdef UNIT_TESTING
 
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
