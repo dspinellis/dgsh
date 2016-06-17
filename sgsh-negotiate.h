@@ -37,15 +37,17 @@ union fdmsg {
  * The function's return value signifies success or failure of the
  * negotiation phase.
  */
-enum prot_state sgsh_negotiate(const char *tool_name, /* Input. */
-                    int channels_required, /* How many input channels can take. */
-                    int channels_provided, /* How many output channels can
-						provide. */
-                                     /* Output: to fill. */
-                    int **input_fds,  /* Input file descriptors. */
-                    int *n_input_fds, /* Number of input file descriptors. */
-                    int **output_fds, /* Output file descriptors. */
-                    int *n_output_fds); /* Number of output file descriptors. */
+enum prot_state sgsh_negotiate(
+		/* Input */
+		const char *tool_name, /* Tool name */
+		int channels_required, /* How many input channels can take */
+		int channels_provided, /* How many output channels can provide
+					*/
+		/* Output: to fill */
+		int **input_fds,	/* Input file descriptors */
+		int *n_input_fds,	/* Number of input file descriptors */
+		int **output_fds,	/* Output file descriptors */
+		int *n_output_fds);	/* Number of output file descriptors */
 
 /*
  * Results of operations
@@ -85,11 +87,31 @@ struct sgsh_edge {
 };
 
 
-int validate_input(int channels_required, int channels_provided, const char *tool_name);
-int alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type, int node_index);
-int make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges, struct sgsh_edge **p_edges);
-int reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements);
-int assign_edge_instances(struct sgsh_edge **edges, int n_edges, int this_node_channels, int is_edge_incoming, int n_edges_unlimited_constraint, int instances_to_each_unlimited, int remaining_free_channels, int total_instances);
+int validate_input(
+		int channels_required,
+		int channels_provided,
+		const char *tool_name);
+int alloc_node_connections(
+		struct sgsh_edge **nc_edges,
+		int nc_n_edges,
+		int type,
+		int node_index);
+int make_compact_edge_array(
+		struct sgsh_edge **nc_edges,
+		int nc_n_edges,
+		struct sgsh_edge **p_edges);
+int reallocate_edge_pointer_array(
+		struct sgsh_edge ***edge_array,
+		int n_elements);
+int assign_edge_instances(
+		struct sgsh_edge **edges,
+		int n_edges,
+		int this_node_channels,
+		int is_edge_incoming,
+		int n_edges_unlimited_constraint,
+		int instances_to_each_unlimited,
+		int remaining_free_channels,
+		int total_instances);
 #endif
 
 #endif
