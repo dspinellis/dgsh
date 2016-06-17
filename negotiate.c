@@ -1422,7 +1422,7 @@ call_read(int fd, char *buf, int buf_size,
 		 * Mark the side where input is coming from.
 		 */
 		*fd_side = fd;
-		return OP_QUIT;
+		return OP_ERROR;
 	}
 	return OP_SUCCESS;
 }
