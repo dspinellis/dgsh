@@ -132,7 +132,7 @@ alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
 		DPRINTF("Index of node whose connections will be allocated is negative number.\n");
 		return OP_ERROR;
 	}
-	if ((type > 1) || (type < 0)) {
+	if (type > 1 || type < 0) {
 		DPRINTF("Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
 		return OP_ERROR;
 	}
@@ -362,8 +362,7 @@ static void
 record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 		     int to_move)
 {
-	if ((*diff > 0) ||
-	    (*diff < 0 && to_move > 1)) {
+	if (*diff > 0 || *diff < 0 && to_move > 1) {
 		int subtract = 0;
 		/* In subtracting at least one edge instance should remain. */
 		if (*diff < 0) subtract = 1;
@@ -382,8 +381,8 @@ static void
 record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
 			int to_move, int pair)
 {
-	if ((*diff > 0 && to_move < pair) ||
-	    (*diff < 0 && to_move > pair)) {
+	if (*diff > 0 && to_move < pair ||
+	    *diff < 0 && to_move > pair) {
 		*index = to_move_index;
 		*instances = pair - to_move;
 		*diff -= pair - to_move;
@@ -895,7 +894,7 @@ write_graph_solution()
 		struct sgsh_node_connections *nc = &graph_solution[i];
 		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
-		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
+		if (in_edges_size > buf_size || out_edges_size > buf_size) {
 			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
@@ -957,7 +956,7 @@ write_message_block()
 	sleep.tv_sec = 0;
 	sleep.tv_nsec = 1000000;
 
-	if ((nodes_size > buf_size) || (edges_size > buf_size)) {
+	if (nodes_size > buf_size || edges_size > buf_size) {
 		DPRINTF("%s size exceeds buffer size.\n",
 			(nodes_size > buf_size) ? "Nodes" : "Edges");
 		return OP_ERROR;
@@ -1120,8 +1119,8 @@ lookup_sgsh_edge(struct sgsh_edge *e)
 {
 	int i;
 	for (i = 0; i < chosen_mb->n_edges; i++) {
-		if ((chosen_mb->edge_array[i].from == e->from) &&
-		    (chosen_mb->edge_array[i].to == e->to)) {
+		if (chosen_mb->edge_array[i].from == e->from &&
+		    chosen_mb->edge_array[i].to == e->to) {
 			DPRINTF("%s(): Edge %d to %d exists.", __func__,
 								e->from, e->to);
 			return OP_EXISTS;
@@ -1406,7 +1405,7 @@ call_read(int fd, char *buf, int buf_size,
 		*error_code = -errno;
 	DPRINTF("Raw read captured: %s", buf);
 	DPRINTF("Read operation error_code %d", *error_code);
-	if ((*error_code == 0) || (*error_code != -EAGAIN)) {
+	if (*error_code == 0 || *error_code != -EAGAIN) {
 		/* This information fuels self_node_io_side.
 		 * Mark the side where input is coming from.
 		 */
@@ -1594,7 +1593,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		DPRINTF("Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
 		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
-		if ((in_edges_size > buf_size) || (out_edges_size > buf_size)) {
+		if (in_edges_size > buf_size || out_edges_size > buf_size) {
 			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
 			return OP_ERROR;
 		}
@@ -1763,17 +1762,17 @@ validate_input(int channels_required, int channels_provided, const char *tool_na
 		DPRINTF("NULL pointer provided as tool name.\n");
 		return OP_ERROR;
 	}
-	if ((channels_required < -1) || (channels_provided < -1)) {
+	if (channels_required < -1 || channels_provided < -1) {
 		DPRINTF("I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
-	if ((channels_required == 0) && (channels_provided == 0)) {
+	if (channels_required == 0 && channels_provided == 0) {
 		DPRINTF("I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d",
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
 	}
-	if ((channels_required > 1000) || (channels_provided > 1000)) {
+	if (channels_required > 1000 || channels_provided > 1000) {
 		DPRINTF("I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d",
 			tool_name, channels_required, channels_provided);
 		return OP_ERROR;
@@ -1828,7 +1827,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	}
 
 	/* Start negotiation */
-        if ((self_node.sgsh_out) && (!self_node.sgsh_in)) {
+        if (self_node.sgsh_out && !self_node.sgsh_in) {
                 if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			return PROT_STATE_ERROR;
                 self_node_io_side.fd_direction = STDOUT_FILENO;
