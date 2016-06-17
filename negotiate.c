@@ -976,7 +976,8 @@ write_message_block()
 #else
 	wsize = write(5, chosen_mb, mb_size);
 #endif
-	if (wsize == -1) return OP_ERROR;
+	if (wsize == -1)
+		return OP_ERROR;
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
 	nanosleep(&sleep, NULL);
@@ -989,7 +990,8 @@ write_message_block()
 #else
 		wsize = write(5, p_nodes, nodes_size);
 #endif
-		if (wsize == -1) return OP_ERROR;
+		if (wsize == -1)
+			return OP_ERROR;
 		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
 
 		nanosleep(&sleep, NULL);
@@ -1004,7 +1006,8 @@ write_message_block()
 #else
 			wsize = write(5, p_edges, edges_size);
 #endif
-			if (wsize == -1) return OP_ERROR;
+			if (wsize == -1)
+				return OP_ERROR;
 			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
 
 			nanosleep(&sleep, NULL);
@@ -1014,7 +1017,8 @@ write_message_block()
 		/* Transmit solution. */
 		if (write_graph_solution() == OP_ERROR)
 			return OP_ERROR;
-		if (alloc_write_output_fds() == OP_ERROR) return OP_ERROR;
+		if (alloc_write_output_fds() == OP_ERROR)
+			return OP_ERROR;
 	}
 
 	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
@@ -1199,7 +1203,8 @@ try_add_sgsh_edge()
 		struct sgsh_edge new_edge;
 		fill_sgsh_edge(&new_edge);
 		if (lookup_sgsh_edge(&new_edge) == OP_CREATE) {
-			if (add_edge(&new_edge) == OP_ERROR) return OP_ERROR;
+			if (add_edge(&new_edge) == OP_ERROR)
+				return OP_ERROR;
 			DPRINTF("Sgsh graph now has %d edges.\n",
 							chosen_mb->n_edges);
 			chosen_mb->serial_no++; /* Message block updated. */
@@ -1223,7 +1228,8 @@ try_add_sgsh_node()
 	for (i = 0; i < n_nodes; i++)
 		if (chosen_mb->node_array[i].pid == self_node.pid) break;
 	if (i == n_nodes) {
-		if (add_node() == OP_ERROR) return OP_ERROR;
+		if (add_node() == OP_ERROR)
+			return OP_ERROR;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		chosen_mb->serial_no++;
 		mb_is_updated = 1;
@@ -1575,7 +1581,8 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 
 	/* Read node connection structures of the solution. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-			&stdin_side)) != OP_SUCCESS) return error_code;
+			&stdin_side)) != OP_SUCCESS)
+		return error_code;
 	if (graph_solution_size != bytes_read) {
 		DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
 						graph_solution_size, bytes_read);
@@ -1595,7 +1602,8 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		/* Read a node's incoming connections. */
 		if (nc->n_edges_incoming > 0) {
 			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-				&stdin_side)) != OP_SUCCESS) return error_code;
+				&stdin_side)) != OP_SUCCESS)
+				return error_code;
 			if (in_edges_size != bytes_read) {
 				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
 						in_edges_size, bytes_read);
@@ -1610,7 +1618,8 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 		/* Read a node's outgoing connections. */
 		if (nc->n_edges_outgoing) {
 			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-				&stdout_side)) != OP_SUCCESS) return error_code;
+				&stdout_side)) != OP_SUCCESS)
+				return error_code;
 			if (out_edges_size != bytes_read) {
 				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
 						out_edges_size, bytes_read);
@@ -1645,7 +1654,8 @@ try_read_message_block(char *buf, int buf_size,
 
 	/* Try read core message block: struct negotiation state fields. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-			&stdin_side)) != OP_SUCCESS) return error_code;
+			&stdin_side)) != OP_SUCCESS)
+		return error_code;
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
 		return OP_ERROR;
 	point_io_direction(stdin_side);
@@ -1653,7 +1663,8 @@ try_read_message_block(char *buf, int buf_size,
 	if ((*fresh_mb)->state_flag == PROT_STATE_NEGOTIATION) {
 		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
 		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
-			&stdin_side)) != OP_SUCCESS) return error_code;
+			&stdin_side)) != OP_SUCCESS)
+			return error_code;
 		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
 								== OP_ERROR)
 		return OP_ERROR;
@@ -1664,7 +1675,8 @@ try_read_message_block(char *buf, int buf_size,
 			     &bytes_read, &stdin_side)) != OP_SUCCESS)
 				return error_code;
 			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
-			    buf_size) == OP_ERROR) return OP_ERROR;
+			    buf_size) == OP_ERROR)
+				return OP_ERROR;
 		}
 	} else if ((*fresh_mb)->state_flag == PROT_STATE_SOLUTION_SHARE) {
 		/**
@@ -1675,7 +1687,8 @@ try_read_message_block(char *buf, int buf_size,
                  */
 		if (read_graph_solution(*fresh_mb, buf, buf_size) == OP_ERROR)
 			return OP_ERROR;
-		if (read_input_fds() == OP_ERROR) return OP_ERROR;
+		if (read_input_fds() == OP_ERROR)
+			return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
