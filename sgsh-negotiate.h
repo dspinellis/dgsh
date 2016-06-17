@@ -1,12 +1,15 @@
 #ifndef SGSH_NEGOTIATE_H
 #define SGSH_NEGOTIATE_H
 
-#define PROT_STATE_COMPLETE 0
-#define PROT_STATE_NEGOTIATION 1
-#define PROT_STATE_NEGOTIATION_END 2
-#define PROT_STATE_SOLUTION_SHARE 3
-#define PROT_STATE_END_AFTER_WRITE 6
-#define PROT_STATE_ERROR 7
+/* Negotiation protocol states */
+enum prot_state {
+	PS_COMPLETE,
+	PS_NEGOTIATION,
+	PS_NEGOTIATION_END,
+	PS_SOLUTION_SHARE,
+	PS_END_AFTER_WRITE,
+	PS_ERROR,
+};
 
 #include <sys/socket.h> /* struct cmsghdr */
 union fdmsg {
@@ -30,7 +33,7 @@ union fdmsg {
  * The function's return value signifies success or failure of the
  * negotiation phase.
  */
-int sgsh_negotiate(const char *tool_name, /* Input. */
+enum prot_state sgsh_negotiate(const char *tool_name, /* Input. */
                     int channels_required, /* How many input channels can take. */
                     int channels_provided, /* How many output channels can
 						provide. */
