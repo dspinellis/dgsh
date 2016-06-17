@@ -834,7 +834,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
  * tool's output to another tool.
  */
 static enum op_result
-alloc_write_output_fds(void)
+write_output_fds(void)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1077,7 +1077,7 @@ write_message_block(void)
 		/* Transmit solution. */
 		if (write_graph_solution() == OP_ERROR)
 			return OP_ERROR;
-		if (alloc_write_output_fds() == OP_ERROR)
+		if (write_output_fds() == OP_ERROR)
 			return OP_ERROR;
 	}
 
