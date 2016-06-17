@@ -834,7 +834,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
  * tool's output to another tool.
  */
 static enum op_result
-write_output_fds(void)
+write_output_fds(int write_fd)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -910,8 +910,7 @@ write_output_fds(void)
 
 			/* Send the message.DEFINE self_node_io_side.fd_write */
 			DPRINTF("%s(): sendmsg: node: %d, from channel: %s (%d).", __func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output", self_node_io_side.fd_direction);
-			if (sendmsg(self_node_io_side.fd_direction, &msg, 0)
-									< 0) {
+			if (sendmsg(write_fd, &msg, 0) < 0) {
 				DPRINTF("sendmsg() failed.\n");
 				re = OP_ERROR;
 				break;
@@ -934,7 +933,7 @@ write_output_fds(void)
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static enum op_result
-write_graph_solution(void)
+write_graph_solution(int write_fd)
 {
 	int i;
 	int buf_size = getpagesize();
@@ -951,7 +950,7 @@ write_graph_solution(void)
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
 #ifndef UNIT_TESTING
-	wsize = write(self_node_io_side.fd_direction, buf, graph_solution_size);
+	wsize = write(write_fd, buf, graph_solution_size);
 #else
 	wsize = write(5, buf, graph_solution_size);
 #endif
@@ -973,7 +972,7 @@ write_graph_solution(void)
 			/* Transmit a node's incoming connections. */
 			memcpy(buf, nc->edges_incoming, in_edges_size);
 #ifndef UNIT_TESTING
-			wsize = write(self_node_io_side.fd_direction, buf, in_edges_size);
+			wsize = write(write_fd, buf, in_edges_size);
 #else
 			wsize = write(5, buf, in_edges_size);
 #endif
@@ -984,7 +983,7 @@ write_graph_solution(void)
 			/* Transmit a node's outgoing connections. */
 			memcpy(buf, nc->edges_outgoing, out_edges_size);
 #ifndef UNIT_TESTING
-			wsize = write(self_node_io_side.fd_direction, buf, out_edges_size);
+			wsize = write(write_fd, buf, out_edges_size);
 #else
 			write(5, buf, out_edges_size);
 #endif
@@ -1011,7 +1010,7 @@ set_dispatcher(void)
 
 /* Write message block to buffer. */
 static enum op_result
-write_message_block(void)
+write_message_block(int write_fd)
 {
 	int wsize = -1;
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
@@ -1035,7 +1034,7 @@ write_message_block(void)
 	chosen_mb->node_array = NULL;
 	DPRINTF("%s(): Write message block.", __func__);
 #ifndef UNIT_TESTING
-	wsize = write(self_node_io_side.fd_direction, chosen_mb, mb_size);
+	wsize = write(write_fd, chosen_mb, mb_size);
 #else
 	wsize = write(5, chosen_mb, mb_size);
 #endif
@@ -1047,8 +1046,7 @@ write_message_block(void)
 	if (chosen_mb->state == PS_NEGOTIATION) {
 		/* Transmit nodes. */
 #ifndef UNIT_TESTING
-		wsize = write(self_node_io_side.fd_direction, p_nodes,
-								nodes_size);
+		wsize = write(write_fd, p_nodes, nodes_size);
 #else
 		wsize = write(5, p_nodes, nodes_size);
 #endif
@@ -1063,7 +1061,7 @@ write_message_block(void)
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
 			chosen_mb->edge_array = NULL;
 #ifndef UNIT_TESTING
-			wsize = write(self_node_io_side.fd_direction, p_edges, edges_size);
+			wsize = write(write_fd, p_edges, edges_size);
 #else
 			wsize = write(5, p_edges, edges_size);
 #endif
@@ -1075,13 +1073,13 @@ write_message_block(void)
 		}
 	} else if (chosen_mb->state == PS_SOLUTION_SHARE) {
 		/* Transmit solution. */
-		if (write_graph_solution() == OP_ERROR)
+		if (write_graph_solution(write_fd) == OP_ERROR)
 			return OP_ERROR;
-		if (write_output_fds() == OP_ERROR)
+		if (write_output_fds(write_fd) == OP_ERROR)
 			return OP_ERROR;
 	}
 
-	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %d.\n", __func__, write_fd);
 	return OP_SUCCESS;
 }
 
@@ -1520,7 +1518,7 @@ read_chunk(fd_set read_fds, char *buf, int buf_size, int *bytes_read,
 
 /* Read file descriptors piping input from another tool in the sgsh graph. */
 static enum op_result
-read_input_fds(void)
+read_input_fds(int read_fd)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1588,8 +1586,7 @@ read_input_fds(void)
 #else
 			DPRINTF("%s(): recvmsg: node: %d, from channel: %s.",
 				__func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output");
-			if ((count = recvmsg(self_node_io_side.fd_direction,
-							&msg, 0)) < 0) {
+			if ((count = recvmsg(read_fd, &msg, 0)) < 0) {
 #endif
 				perror("recvmsg()");
 				re = OP_ERROR;
@@ -1753,7 +1750,7 @@ read_message_block(fd_set read_fds, int *read_fd,
 		if (read_graph_solution(read_fds, read_fd, *fresh_mb, buf,
 							buf_size) == OP_ERROR)
 			return OP_ERROR;
-		if (read_input_fds() == OP_ERROR)
+		if (read_input_fds(*read_fd) == OP_ERROR)
 			return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
@@ -1875,7 +1872,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 	fd_set read_fds;
-	int read_fd = 0;
+	int read_fd = STDIN_FILENO;
+	int write_fd = STDOUT_FILENO;
 
 	FD_ZERO(&read_fds);
 	FD_SET(STDIN_FILENO, &read_fds);
@@ -1950,13 +1948,12 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 
 		/* Write message block et al. */
-		if (should_transmit_mb) { /* There  can be only one. */
-			if (write_message_block() == OP_ERROR) {
+		if (should_transmit_mb) { /* There can be only one. */
+			if (write_message_block(write_fd) == OP_ERROR) {
 				chosen_mb->state = PS_ERROR;
 				goto exit;
 			}
-			if (local_state ==
-					PS_END_AFTER_WRITE) {
+			if (local_state == PS_END_AFTER_WRITE) {
 				local_state = PS_COMPLETE;
 				break;
 			}
