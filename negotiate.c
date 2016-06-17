@@ -31,6 +31,10 @@ struct node_io_side {
 
 #ifndef UNIT_TESTING
 
+/*
+ * Results of operations
+ * Also negative values signify a failed operation's errno value
+ */
 enum op_result {
 	OP_SUCCESS,
 	OP_ERROR,
@@ -122,7 +126,7 @@ static struct sgsh_node_pipe_fds self_pipe_fds;
  * Allocate node indexes to store a node's (at node_index)
  * node outgoing or incoming connections (nc_edges).
  */
-STATIC int
+STATIC enum op_result
 alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
 								int node_index)
 {
@@ -155,7 +159,7 @@ failed.\n", node_index, (type) ? "incoming" : "outgoing");
  * (i.e. its incoming or outgoing connections) to a self-contained compact
  * array of edges for easy transmission and receipt in one piece.
  */
-STATIC int
+STATIC enum op_result
 make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 			struct sgsh_edge **p_edges)
 {
@@ -205,7 +209,7 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 }
 
 /* Reallocate array to edge pointers. */
-STATIC int
+STATIC enum op_result
 reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 {
 	void **p = NULL;
@@ -239,7 +243,7 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
  * If a solution is found, allocate edge instances to each edge that
  * includes the node's channel (has to do with the flexible constraint).
  */
-static int
+static enum op_result
 satisfy_io_constraints(int *free_instances,
 		       int this_channel_constraint,   /* A node's required or provided constraint on the I or O channel. */
                        struct sgsh_edge **edges, /* Gathered pointers to edges that come to or leave from a node. */
@@ -283,7 +287,7 @@ satisfy_io_constraints(int *free_instances,
  * input and output channels.
  *
  */
-static int
+static enum op_result
 dry_match_io_constraints(struct sgsh_node *current_node,          /* Identifies the node we are currently setting up. */
 			 struct sgsh_node_connections *current_connections,
 			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). */
@@ -343,7 +347,7 @@ dry_match_io_constraints(struct sgsh_node *current_node,          /* Identifies 
  * Free the sgsh graph's solution in face of an error.
  * node_index: the last node we setup conenctions before error.
  */
-static int
+static enum op_result
 free_graph_solution(int node_index)
 {
 	int i;
@@ -401,7 +405,7 @@ record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
  * find instances to subtract or add to satisfy the constraint.
  * If that does not work try edges where the pair has a flexible constraint.
  */
-static int
+static enum op_result
 move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
 {
 	int i = 0, j = 0;
@@ -468,7 +472,7 @@ checkout:
  * If a solution is found, allocate edge instances to each edge that
  * includes the node's channel (has to do with the flexible constraint).
  */
-static int
+static enum op_result
 cross_match_io_constraints(int *free_instances,
 			int this_channel_constraint,   /* A node's required or provided constraint on the I or O channel. */
                        struct sgsh_edge **edges, /* Gathered pointers to edges that come to or leave from a node. */
@@ -530,12 +534,12 @@ cross_match_io_constraints(int *free_instances,
  * For each node substitute pointers to edges with proper edge structures
  * (copies) to facilitate transmission and receipt in one piece.
  */
-static int
+static enum op_result
 prepare_solution()
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
-	int exit_state = OP_SUCCESS;
+	enum op_result exit_state = OP_SUCCESS;
 
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
@@ -579,7 +583,7 @@ prepare_solution()
  * This function implements the algorithm that tries to satisfy reported
  * I/O constraints of tools on an sgsh graph.
  */
-static int
+static enum op_result
 cross_match_constraints()
 {
 	int i;
@@ -648,12 +652,12 @@ cross_match_constraints()
  * This function implements the algorithm that tries to satisfy reported
  * I/O constraints of tools on an sgsh graph.
  */
-static int
+static enum op_result
 node_match_constraints()
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
-	int exit_state = OP_SUCCESS;
+	enum op_result exit_state = OP_SUCCESS;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
 									n_nodes;
 	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
@@ -717,10 +721,10 @@ node_match_constraints()
  * This function implements the algorithm that tries to satisfy reported
  * I/O constraints of tools on an sgsh graph.
  */
-static int
+static enum op_result
 solve_sgsh_graph()
 {
-	int exit_state = OP_SUCCESS;
+	enum op_result exit_state = OP_SUCCESS;
 	//int retries = 0;
 	//int max_retries = 10;
 
@@ -752,11 +756,11 @@ exit:
  * The tool is responsible for freeing the memory allocated to these data
  * structures.
  */
-static int
+static enum op_result
 establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 							int *n_output_fds)
 {
-	int re = OP_SUCCESS;
+	enum op_result re = OP_SUCCESS;
 
 	*n_input_fds = self_pipe_fds.n_input_fds;
 	assert(*n_input_fds >= 0);
@@ -776,7 +780,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 /* Transmit file descriptors that will pipe this
  * tool's output to another tool.
  */
-static int
+static enum op_result
 alloc_write_output_fds()
 {
 	/**
@@ -790,7 +794,7 @@ alloc_write_output_fds()
 	assert(this_nc->node_index == self_node.index);
 	int i;
 	int total_edge_instances = 0;
-	int re = OP_SUCCESS;
+	enum op_result re = OP_SUCCESS;
 
 	/* To preallocate the memory needed for storing pipe fds. */
 	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
@@ -876,7 +880,7 @@ alloc_write_output_fds()
 }
 
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
-static int
+static enum op_result
 write_graph_solution()
 {
 	int i;
@@ -960,7 +964,7 @@ set_dispatcher()
 }
 
 /* Write message block to buffer. */
-static int
+static enum op_result
 write_message_block()
 {
 	int wsize = -1;
@@ -1109,7 +1113,7 @@ check_phase(int *count_passes)
 }
 
 /* Reallocate message block to fit new node coming in. */
-static int
+static enum op_result
 add_node()
 {
 	int n_nodes = chosen_mb->n_nodes;
@@ -1132,7 +1136,7 @@ add_node()
 }
 
 /* Lookup an edge in the sgsh graph. */
-static int
+static enum op_result
 lookup_sgsh_edge(struct sgsh_edge *e)
 {
 	int i;
@@ -1151,7 +1155,7 @@ lookup_sgsh_edge(struct sgsh_edge *e)
  * Fill edge depending on input/output fd information
  * passed by sender and found in receiver (this tool or self).
  */
-static int
+static enum op_result
 fill_sgsh_edge(struct sgsh_edge *e)
 {
 	int i;
@@ -1193,7 +1197,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 }
 
 /* Add new edge coming in. */
-static int
+static enum op_result
 add_edge(struct sgsh_edge *edge)
 {
 	int n_edges = chosen_mb->n_edges;
@@ -1214,7 +1218,7 @@ add_edge(struct sgsh_edge *edge)
 }
 
 /* Try to add a newly occured edge in the sgsh graph. */
-static int
+static enum op_result
 try_add_sgsh_edge()
 {
 	if (chosen_mb->origin.index >= 0) { /* If MB not created just now: */
@@ -1238,7 +1242,7 @@ try_add_sgsh_edge()
  * Add node to message block. Copy the node using offset-based
  * calculation from the start of the array of nodes.
  */
-static int
+static enum op_result
 try_add_sgsh_node()
 {
 	int n_nodes = chosen_mb->n_nodes;
@@ -1289,7 +1293,7 @@ free_mb(struct sgsh_negotiation *mb)
  * forward it.
  * If the arrived is the chosen, try to add the edge.
  */
-static int
+static enum op_result
 compete_message_block(struct sgsh_negotiation *fresh_mb,
 			int *should_transmit_mb)
 {
@@ -1354,7 +1358,7 @@ point_io_direction(int current_read_direction)
 	}
 }
 
-static int
+static enum op_result
 check_read(int bytes_read, int buf_size, int expected_read_size) {
 	if (bytes_read != expected_read_size) {
 		DPRINTF("Read %d bytes of message block, expected to read %d.\n",
@@ -1369,7 +1373,7 @@ check_read(int bytes_read, int buf_size, int expected_read_size) {
 }
 
 /* Allocate memory for message_block edges and copy from buffer. */
-static int
+static enum op_result
 alloc_copy_edges(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 								int buf_size)
 {
@@ -1382,7 +1386,7 @@ alloc_copy_edges(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 }
 
 /* Allocate memory for message_block nodes and copy from buffer. */
-static int
+static enum op_result
 alloc_copy_nodes(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 								int buf_size)
 {
@@ -1396,7 +1400,7 @@ alloc_copy_nodes(struct sgsh_negotiation *mb, char *buf, int bytes_read,
 }
 
 /* Allocate memory for core message_block and copy from buffer. */
-static int
+static enum op_result
 alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read,
 							int buf_size)
 {
@@ -1415,7 +1419,7 @@ alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read,
  * If the call does not succeed or does not signal retry we have
  * to quit operation.
  */
-static int
+static enum op_result
 call_read(int fd, char *buf, int buf_size,
 				int *fd_side, /* Mark (input or output) fd. */
 				int *bytes_read,
@@ -1436,12 +1440,13 @@ call_read(int fd, char *buf, int buf_size,
 	}
 	return OP_SUCCESS;
 }
+
 /**
  * Try to read a chunk of data from either side (stdin or stdout).
  * This function is agnostic as to what it is reading.
  * Its job is to manage a read operation.
  */
-static int
+static enum op_result
 try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 {
 	int error_code = -EAGAIN, i = 0;
@@ -1478,7 +1483,7 @@ try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 }
 
 /* Read file descriptors piping input from another tool in the sgsh graph. */
-static int
+static enum op_result
 read_input_fds()
 {
 	/**
@@ -1490,7 +1495,7 @@ read_input_fds()
 	assert(this_nc->node_index == self_node.index);
 	int i;
 	int total_edge_instances = 0;
-	int re = OP_SUCCESS;
+	enum op_result re = OP_SUCCESS;
 
 	/* To preallocate the memory needed for storing pipe fds. */
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
@@ -1578,14 +1583,14 @@ read_input_fds()
 }
 
 /* Try read solution to the sgsh negotiation graph. */
-static int
+static enum op_result
 read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 {
 	int i;
 	int stdin_side = 0;
 	int stdout_side = 0;
 	int bytes_read = 0;
-	int error_code = OP_SUCCESS;
+	enum op_result error_code = OP_SUCCESS;
 	int n_nodes = fresh_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
 								n_nodes;
@@ -1667,13 +1672,13 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
  * sides.
  * Returns the fd to write the message block if need be transmitted.
  */
-static int
+static enum op_result
 try_read_message_block(char *buf, int buf_size,
 					struct sgsh_negotiation **fresh_mb)
 {
 	int bytes_read = 0;
 	int stdin_side = 0;
-	int error_code = 0;
+	enum op_result error_code = 0;
 
 	/* Try read core message block: struct negotiation state fields. */
 	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
@@ -1718,7 +1723,7 @@ try_read_message_block(char *buf, int buf_size,
 }
 
 /* Construct a message block to use as a vehicle for the negotiation phase. */
-static int
+static enum op_result
 construct_message_block(const char *tool_name, pid_t self_pid)
 {
 	int memory_allocation_size = sizeof(struct sgsh_negotiation);
@@ -1744,7 +1749,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 }
 
 /* Get environment variable env_var. */
-static int
+static enum op_result
 get_env_var(const char *env_var,int *value)
 {
 	char *string_value = getenv(env_var);
@@ -1762,7 +1767,7 @@ get_env_var(const char *env_var,int *value)
  * Get environment variables SGSH_IN, SGSH_OUT set up by
  * the shell (through execvpe()).
  */
-static int
+static enum op_result
 get_environment_vars()
 {
 	DPRINTF("Try to get environment variable SGSH_IN.");
@@ -1779,7 +1784,7 @@ get_environment_vars()
  * We might need some upper barrier for requirements too,
  * such as, not more than 100 or 1000.
  */
-STATIC int
+STATIC enum op_result
 validate_input(int channels_required, int channels_provided, const char *tool_name)
 {
 	if (!tool_name) {
