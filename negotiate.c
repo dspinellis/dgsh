@@ -1486,7 +1486,7 @@ call_read(int fd, char *buf, int buf_size,
  * Its job is to manage a read operation.
  */
 static enum op_result
-try_read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
+read_chunk(char *buf, int buf_size, int *bytes_read, int *fd_side)
 {
 	int error_code = -EAGAIN, i = 0;
 	fd_set read_fds;
@@ -1646,7 +1646,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 	}
 
 	/* Read node connection structures of the solution. */
-	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+	if ((error_code = read_chunk(buf, buf_size, &bytes_read,
 			&stdin_side)) != OP_SUCCESS)
 		return error_code;
 	if (graph_solution_size != bytes_read) {
@@ -1668,7 +1668,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 
 		/* Read a node's incoming connections. */
 		if (nc->n_edges_incoming > 0) {
-			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+			if ((error_code = read_chunk(buf, buf_size, &bytes_read,
 				&stdin_side)) != OP_SUCCESS)
 				return error_code;
 			if (in_edges_size != bytes_read) {
@@ -1684,7 +1684,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
 
 		/* Read a node's outgoing connections. */
 		if (nc->n_edges_outgoing) {
-			if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+			if ((error_code = read_chunk(buf, buf_size, &bytes_read,
 				&stdout_side)) != OP_SUCCESS)
 				return error_code;
 			if (out_edges_size != bytes_read) {
@@ -1710,7 +1710,7 @@ read_graph_solution(struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
  * Returns the fd to write the message block if need be transmitted.
  */
 static enum op_result
-try_read_message_block(char *buf, int buf_size,
+read_message_block(char *buf, int buf_size,
 					struct sgsh_negotiation **fresh_mb)
 {
 	int bytes_read = 0;
@@ -1718,7 +1718,7 @@ try_read_message_block(char *buf, int buf_size,
 	enum op_result error_code = 0;
 
 	/* Try read core message block: struct negotiation state fields. */
-	if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+	if ((error_code = read_chunk(buf, buf_size, &bytes_read,
 			&stdin_side)) != OP_SUCCESS)
 		return error_code;
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
@@ -1727,7 +1727,7 @@ try_read_message_block(char *buf, int buf_size,
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
 		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
-		if ((error_code = try_read_chunk(buf, buf_size, &bytes_read,
+		if ((error_code = read_chunk(buf, buf_size, &bytes_read,
 			&stdin_side)) != OP_SUCCESS)
 			return error_code;
 		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
@@ -1736,7 +1736,7 @@ try_read_message_block(char *buf, int buf_size,
 
         	if ((*fresh_mb)->n_nodes > 1) {
 			DPRINTF("%s(): Read negotiation graph edges.",__func__);
-			if ((error_code = try_read_chunk(buf, buf_size,
+			if ((error_code = read_chunk(buf, buf_size,
 			     &bytes_read, &stdin_side)) != OP_SUCCESS)
 				return error_code;
 			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
@@ -1899,7 +1899,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                 self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
-		if (try_read_message_block(buf, buf_size, &fresh_mb) ==
+		if (read_message_block(buf, buf_size, &fresh_mb) ==
 								OP_ERROR)
 			return PS_ERROR;
 		chosen_mb = fresh_mb;
@@ -1959,7 +1959,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 
 		/* Read message block et al. */
-		if (try_read_message_block(buf, buf_size, &fresh_mb) ==
+		if (read_message_block(buf, buf_size, &fresh_mb) ==
 								OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
 			goto exit;
