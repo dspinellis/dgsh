@@ -19,7 +19,6 @@
 #include <sys/socket.h> /* sendmsg(), recvmsg() */
 #include <unistd.h> /* getpid(), getpagesize(),
 			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
-#include <time.h>   /* nanosleep() */
 #include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh.h" /* DPRINTF() */
 
@@ -880,10 +879,6 @@ write_graph_solution(void)
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
 		return OP_ERROR;
 	}
-	/* 1 millisec sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
@@ -895,7 +890,6 @@ write_graph_solution(void)
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 	(void)wsize; /* silence compiler warning */
 
-	nanosleep(&sleep, NULL);
 	/* We haven't invalidated pointers to arrays of node indices. */
 
 	for (i = 0; i < n_nodes; i++) {
@@ -916,7 +910,6 @@ write_graph_solution(void)
 			wsize = write(5, buf, in_edges_size);
 #endif
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
-			nanosleep(&sleep, NULL);
 		}
 
 		if (nc->n_edges_outgoing) {
@@ -928,7 +921,6 @@ write_graph_solution(void)
 			write(5, buf, out_edges_size);
 #endif
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
-			nanosleep(&sleep, NULL);
 		}
 	}
 	return OP_SUCCESS;
@@ -959,10 +951,6 @@ write_message_block(void)
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
-	/* 1 millisecond sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 
 	if (nodes_size > buf_size || edges_size > buf_size) {
 		DPRINTF("%s size exceeds buffer size.\n",
@@ -987,7 +975,6 @@ write_message_block(void)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
-	nanosleep(&sleep, NULL);
 
 	if (chosen_mb->state_flag == PS_NEGOTIATION) {
 		/* Transmit nodes. */
@@ -1001,7 +988,6 @@ write_message_block(void)
 			return OP_ERROR;
 		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
 
-		nanosleep(&sleep, NULL);
 		chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
 
 		if (chosen_mb->n_nodes > 1) {
@@ -1017,7 +1003,6 @@ write_message_block(void)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
 
-			nanosleep(&sleep, NULL);
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 		}
 	} else if (chosen_mb->state_flag == PS_SOLUTION_SHARE) {
