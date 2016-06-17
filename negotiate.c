@@ -11,17 +11,19 @@
  */
 
 /* Placeholder: LICENSE. */
-#include <assert.h> /* assert() */
-#include <errno.h> /* EAGAIN */
-#include <stdbool.h> /* bool, true, false */
-#include <stdio.h> /* fprintf() in DPRINTF() */
-#include <stdlib.h> /* getenv(), errno */
-#include <string.h> /* memcpy() */
-#include <sys/socket.h> /* sendmsg(), recvmsg() */
-#include <unistd.h> /* getpid(), getpagesize(),
-			STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO */
-#include "sgsh-negotiate.h" /* sgsh_negotiate(), sgsh_run(), union fdmsg */
-#include "sgsh.h" /* DPRINTF() */
+#include <assert.h>		/* assert() */
+#include <errno.h>		/* EAGAIN */
+#include <stdbool.h>		/* bool, true, false */
+#include <stdio.h>		/* fprintf() in DPRINTF() */
+#include <stdlib.h>		/* getenv(), errno */
+#include <string.h>		/* memcpy() */
+#include <sys/socket.h>		/* sendmsg(), recvmsg() */
+#include <unistd.h>		/* getpid(), getpagesize(),
+				 * STDIN_FILENO, STDOUT_FILENO,
+				 * STDERR_FILENO 
+				 */
+#include "sgsh-negotiate.h"	/* sgsh_negotiate(), sgsh_run(), union fdmsg */
+#include "sgsh.h"		/* DPRINTF() */
 
 /* Identifies the node and node's fd that sent the message block. */
 struct node_io_side {
@@ -33,11 +35,19 @@ struct node_io_side {
 
 /* Models an I/O connection between tools on an sgsh graph. */
 struct sgsh_edge {
-	int from; /* Index of node on the graph where data comes from (out). */
-	int to; /* Index of node on the graph that receives the data (in). */
-	int instances; /* Number of instances of an edge. */
-	int from_instances; /* Number of instances the origin node of an edge can provide. */
-	int to_instances; /* Number of instances the destination of an edge can require. */
+	int from;		/* Index of node on the graph where data
+				 * comes from (out).
+				 */
+	int to;			/* Index of node on the graph that
+				 * receives the data (in).
+				 */
+	int instances;		/* Number of instances of an edge. */
+	int from_instances;	/* Number of instances the origin node of
+				 * an edge can provide.
+				 */
+	int to_instances;	/* Number of instances the destination
+				 * of an edge can require.
+				 */
 };
 
 #endif
@@ -45,49 +55,94 @@ struct sgsh_edge {
 /* Each tool that participates in an sgsh graph is modelled as follows. */
 struct sgsh_node {
         pid_t pid;
-	int index; /* Position in message block's node array. */
-        char name[100];
-        int requires_channels; /* Input channels it can take. */
-        int provides_channels; /* Output channels it can provide. */
-	int sgsh_in;   /* Takes input from other tool(s) on sgsh graph. */
-	int sgsh_out;  /* Provides output to other tool(s) on sgsh graph. */
+	int index;		/* Position in message block's node array. */
+        char name[100];		/* Tool's name */
+        int requires_channels;	/* Input channels it can take. */
+        int provides_channels;	/* Output channels it can provide. */
+	int sgsh_in;		/* Takes input from other tool(s) on
+				 * sgsh graph.
+				 */
+	int sgsh_out;		/* Provides output to other tool(s)
+				 * on sgsh graph.
+				 */
 };
 
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
-	int version; /* Protocol version. */
-        struct sgsh_node *node_array;
-        int n_nodes;
-	struct sgsh_edge *edge_array;
-        int n_edges;
-	pid_t initiator_pid;
-        enum prot_state state;
-        int serial_no;
-	/* Statement to revisit a node */
-	struct block_revisit {
-		int should;
-		pid_t node_pid;
+	int version;			/* Protocol version. */
+        struct sgsh_node *node_array;	/* Nodes, that is tools, on the sgsh
+					 * graph.
+					 */
+        int n_nodes;			/* Number of nodes */
+	struct sgsh_edge *edge_array;	/* Edges, that is connections between
+					 * nodes, on the sgsh graph
+					 */
+        int n_edges;			/* Number of edges */
+	pid_t initiator_pid;		/* pid of the tool initiating the
+					 * negotiation. All processes that
+					 * only contribute their output
+					 * channel to the sgsh graph will
+					 * initiate the negotiation process
+					 * by constructing and sharing a
+					 * message block. The one with the
+					 * smaller pid will prevail.
+					 */
+        enum prot_state state;		/* State of the negotiation process */
+        int serial_no;			/* Message block serial no.
+					 * It shows how many times it has been
+					 * updated.
+					 */
+	struct block_revisit {		/* Statement to revisit a node */
+		bool should;		/* Nodes that take multiple input
+					 * and/or provide multiple output
+					 * set this flag to make sure that
+					 * other nodes on the route stay
+					 * alive to pass it through even
+					 * if they have completed their
+					 * part. 
+					 */
+		pid_t node_pid;		/* The node who set the flag seals
+					 * it with its pid in order to be
+					 * able to clear it when time comes.
+					 */
 	} revisit;
-	struct node_io_side origin;
+	struct node_io_side origin;	/* The node from which the message
+					 * block is dispatched.
+					 */
 };
 
 /* Holds a node's connections. It contains a piece of the solution. */
 struct sgsh_node_connections {
-	int node_index; /* The subject of the connections. For verification. */
-	struct sgsh_edge *edges_incoming; /* Array of edges through which other nodes provide input to node at node_index. */
-	int n_edges_incoming;
-	int n_instances_incoming_free;
-	struct sgsh_edge *edges_outgoing; /* Array of edges through which a node provides output to other nodes. */
-	int n_edges_outgoing;
-	int n_instances_outgoing_free;
+	int node_index;				/* The subject of the
+						 * connections. For
+						 * verification.
+						 */
+	struct sgsh_edge *edges_incoming;	/* Array of edges through
+						 * which other nodes provide
+						 * input to node at node_index.
+						 */
+	int n_edges_incoming;			/* Number of incoming edges */
+	int n_instances_incoming_free;		/* Number of incoming edges
+						 * not yet binded to a pair
+						 * node's output channel.
+						 */
+	struct sgsh_edge *edges_outgoing;	/* Array of edges through
+						 * which a node provides
+						 * output to other nodes.
+						 */
+	int n_edges_outgoing;			/* Number of outgoing edges */
+	int n_instances_outgoing_free;		/* Number of outgoing edges
+						 * not yet binded to a pair
+						 * node's outgoing edges.
+						 */
 };
 
 /* The output of the negotiation process. */
 struct sgsh_node_pipe_fds {
-	int *input_fds;
-	int n_input_fds;
-	int *output_fds;
-	int n_output_fds;
+	int *input_fds;		/* Array of input file descriptors */
+	int n_input_fds;	/* Number of input file descriptors */
+	int *output_fds;	/* Array of output file descriptors */
+	int n_output_fds;	/* Number of output file descriptors */
 };
 
 /**
