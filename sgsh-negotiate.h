@@ -15,14 +15,14 @@ union fdmsg {
 };
 
 #ifdef UNIT_TESTING
-#define STATIC 
+#define STATIC
 #else
 #define STATIC static
 #endif
 
 /* Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block is circulated among tools
- * and is filled with tools' I/O requirements. When all requirements are in 
+ * and is filled with tools' I/O requirements. When all requirements are in
  * place, an algorithm runs that tries to find a solution that satisfies
  * all requirements. If a solution is found, pipes are allocated and
  * set up according to the solution. The appropriate file descriptors
@@ -32,7 +32,7 @@ union fdmsg {
  */
 int sgsh_negotiate(const char *tool_name, /* Input. */
                     int channels_required, /* How many input channels can take. */
-                    int channels_provided, /* How many output channels can 
+                    int channels_provided, /* How many output channels can
 						provide. */
                                      /* Output: to fill. */
                     int **input_fds,  /* Input file descriptors. */
