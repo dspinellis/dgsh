@@ -355,7 +355,7 @@ static void
 record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 		     int to_move)
 {
-	if (*diff > 0 || *diff < 0 && to_move > 1) {
+	if (*diff > 0 || (*diff < 0 && to_move > 1)) {
 		int subtract = 0;
 		/* In subtracting at least one edge instance should remain. */
 		if (*diff < 0)
@@ -377,8 +377,8 @@ static void
 record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
 			int to_move, int pair)
 {
-	if (*diff > 0 && to_move < pair ||
-	    *diff < 0 && to_move > pair) {
+	if ((*diff > 0 && to_move < pair) ||
+	    (*diff < 0 && to_move > pair)) {
 		*index = to_move_index;
 		*instances = pair - to_move;
 		*diff -= pair - to_move;
