@@ -13,6 +13,7 @@
 /* Placeholder: LICENSE. */
 #include <assert.h> /* assert() */
 #include <errno.h> /* EAGAIN */
+#include <stdbool.h> /* bool, true, false */
 #include <stdio.h> /* fprintf() in DPRINTF() */
 #include <stdlib.h> /* getenv(), errno */
 #include <string.h> /* memcpy() */
@@ -55,7 +56,7 @@ struct sgsh_node {
 
 /* Statement to revisit a node*/
 struct block_revisit {
-	int should;
+	bool should;
 	pid_t node_pid;
 };
 
@@ -102,7 +103,7 @@ struct sgsh_node_pipe_fds {
  */
 
 static struct sgsh_negotiation *chosen_mb; /* Our king message block. */
-static int mb_is_updated; /* Boolean value that signals an update to the mb. */
+static bool mb_is_updated; /* Boolean value that signals an update to the mb. */
 static struct sgsh_node self_node; /* The sgsh node that models this tool. */
 static struct node_io_side self_node_io_side; /* Dispatch info for this tool.*/
 static struct sgsh_node_connections *graph_solution;
@@ -1043,7 +1044,7 @@ check_phase(int *count_passes)
 							!mb_is_updated) {
 			state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
-			mb_is_updated = 1;
+			mb_is_updated = true;
 			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
 		}
 	} else if (state == PS_SOLUTION_SHARE) {
@@ -1072,7 +1073,7 @@ check_phase(int *count_passes)
 			    chosen_mb->initiator_pid == self_node.pid) {
 				if (chosen_mb->revisit.node_pid ==
 							self_node.pid) {
-					chosen_mb->revisit.should = 0;
+					chosen_mb->revisit.should = false;
 					chosen_mb->revisit.node_pid = -1;
 				}
 				DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase (after write).***\n", __func__);
@@ -1089,7 +1090,7 @@ check_phase(int *count_passes)
 			 * to notify all adjacent nodes.
 			 */
 			if (!chosen_mb->revisit.should) {
-				chosen_mb->revisit.should = 1;
+				chosen_mb->revisit.should = true;
 				chosen_mb->revisit.node_pid = self_node.pid;
 			}
 			return PS_SOLUTION_SHARE;
@@ -1216,7 +1217,7 @@ try_add_sgsh_edge()
 			DPRINTF("Sgsh graph now has %d edges.\n",
 							chosen_mb->n_edges);
 			chosen_mb->serial_no++; /* Message block updated. */
-			mb_is_updated = 1;
+			mb_is_updated = true;
 			return OP_SUCCESS;
 		}
 		return OP_EXISTS;
@@ -1241,7 +1242,7 @@ try_add_sgsh_node()
 			return OP_ERROR;
 		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		chosen_mb->serial_no++;
-		mb_is_updated = 1;
+		mb_is_updated = true;
 		return OP_SUCCESS;
 	}
 	return OP_EXISTS;
@@ -1281,9 +1282,9 @@ free_mb(struct sgsh_negotiation *mb)
  */
 static enum op_result
 compete_message_block(struct sgsh_negotiation *fresh_mb,
-			int *should_transmit_mb)
+			bool *should_transmit_mb)
 {
-        *should_transmit_mb = 1; /* Default value. */
+        *should_transmit_mb = true; /* Default value. */
 
 	if (fresh_mb->state == PS_SOLUTION_SHARE) {
 		free_mb(chosen_mb);
@@ -1291,7 +1292,7 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 		return OP_SUCCESS;
 	}
 
-	mb_is_updated = 0; /* Default value. */
+	mb_is_updated = false; /* Default value. */
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
 		free_mb(chosen_mb);
 		chosen_mb = fresh_mb;
@@ -1299,17 +1300,17 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			return OP_ERROR; /* Double realloc: one for node, */
                 if (try_add_sgsh_edge() == OP_ERROR)
 			return OP_ERROR; /* one for edge. */
-		mb_is_updated = 1; /*Substituting chosen_mb is an update.*/
+		mb_is_updated = true; /*Substituting chosen_mb is an update.*/
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free_mb(fresh_mb); /* Discard MB just read. */
-                *should_transmit_mb = 0;
+                *should_transmit_mb = false;
 	} else {
 		DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
 			DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
-			mb_is_updated = 1;
+			mb_is_updated = true;
 			if (try_add_sgsh_edge() == OP_ERROR)
 				return OP_ERROR;
 		} else { /* serial_no of the mb has not changed
@@ -1727,7 +1728,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin.index = -1;
 	chosen_mb->origin.fd_direction = -1;
-	chosen_mb->revisit.should = 0;
+	chosen_mb->revisit.should = false;
 	chosen_mb->revisit.node_pid = -1;
 	DPRINTF("Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
@@ -1819,7 +1820,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 {
 	int local_state = PS_NEGOTIATION;
 	int count_passes = 0;         /* while in solution sharing phase */
-	int should_transmit_mb = 1;
+	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	int buf_size = getpagesize(); /* Make buffer page-wide. */
 	char buf[buf_size];
