@@ -232,7 +232,7 @@ setup_pipe_fds(void)
 	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) *
 						self_pipe_fds.n_input_fds);
 	self_pipe_fds.input_fds[0] = 0;
-	self_pipe_fds.input_fds[0] = 3;
+	self_pipe_fds.input_fds[1] = 3;
 	self_pipe_fds.n_output_fds = 0;
 }
 
@@ -402,7 +402,7 @@ setup_test_alloc_copy_nodes(void)
 }
 
 void
-setup_test_try_read_chunk(void)
+setup_test_read_chunk(void)
 {
 	setup_self_node_io_side();
 }
@@ -433,7 +433,7 @@ setup_test_write_graph_solution(void)
 }
 
 void
-setup_test_try_read_message_block(void)
+setup_test_read_message_block(void)
 {
 	setup_chosen_mb();
 	setup_self_node_io_side();
@@ -458,7 +458,7 @@ setup_test_reallocate_edge_pointer_array(void)
 	setup_pointers_to_edges();
 }
 
-void
+/*void
 setup_test_assign_edge_instances(void)
 {
 	setup_chosen_mb();
@@ -470,7 +470,7 @@ setup_test_eval_constraints(void)
 {
 	setup_args();
 }
-
+*/
 void
 setup_test_satisfy_io_constraints(void)
 {
@@ -505,7 +505,7 @@ setup_test_solve_sgsh_graph(void)
 }
 
 void
-setup_test_alloc_write_output_fds(void)
+setup_test_write_output_fds(void)
 {
 	setup_chosen_mb(); /* For setting up graph_solution. */
 	setup_graph_solution(&graph_solution);
@@ -666,7 +666,7 @@ retire_test_read_input_fds(void)
 }
 
 void
-retire_test_try_read_message_block(void)
+retire_test_read_message_block(void)
 {
 	retire_chosen_mb();
 }
@@ -704,7 +704,7 @@ retire_test_reallocate_edge_pointer_array(void)
 	retire_pointers_to_edges();
 }
 
-void
+/*void
 retire_test_assign_edge_instances(void)
 {
 	retire_chosen_mb();
@@ -716,7 +716,7 @@ retire_test_eval_constraints(void)
 {
         retire_args();
 }
-
+*/
 void
 retire_test_satisfy_io_constraints(void)
 {
@@ -754,7 +754,7 @@ retire_test_solve_sgsh_graph(void)
 }
 
 void
-retire_test_alloc_write_output_fds(void)
+retire_test_write_output_fds(void)
 {
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_pipe_fds();
@@ -969,9 +969,10 @@ START_TEST(test_satisfy_io_constraints)
 }
 END_TEST
 
+/*
 START_TEST(test_eval_constraints)
 {
-	/* 0 flexible constraints. */
+	// 0 flexible constraints.
 	ck_assert_int_eq(eval_constraints(2, 3, 0, &args[0], &args[1],
                                                               &args[2]), OP_ERROR);
 	ck_assert_int_eq(eval_constraints(2, 2, 0, &args[0], &args[1],
@@ -989,7 +990,7 @@ START_TEST(test_eval_constraints)
 	ck_assert_int_eq(args[1], 0);
 	ck_assert_int_eq(args[2], 2);
 
-	/* Pair nodes have flexible constraints; the test node has fixed. */
+	// Pair nodes have flexible constraints; the test node has fixed.
         args[0] = -1;
         args[1] = -1;
         args[2] = -1;
@@ -1019,7 +1020,7 @@ START_TEST(test_eval_constraints)
 	ck_assert_int_eq(args[1], 1);
 	ck_assert_int_eq(args[2], 5); // remaining free channels included
 
-	/* The test node has flexible constraints; the pair nodes have fixed. */
+	// The test node has flexible constraints; the pair nodes have fixed.
         args[0] = -1;
         args[1] = -1;
         args[2] = -1;
@@ -1029,7 +1030,7 @@ START_TEST(test_eval_constraints)
 	ck_assert_int_eq(args[1], 0);
 	ck_assert_int_eq(args[2], 2);
 
-	/* The test node has flexible constraints; so do the pair nodes. */
+	// The test node has flexible constraints; so do the pair nodes.
         args[0] = -1;
         args[1] = -1;
         args[2] = -1;
@@ -1044,21 +1045,21 @@ END_TEST
 
 START_TEST(test_assign_edge_instances)
 {
-	/*   No flexible. */
+	//   No flexible.
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 0, 0, 0, 2), OP_SUCCESS);
 
-	/*   Flexible with standard instances. */
+	//   Flexible with standard instances.
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 1, 1, 0, 2), OP_SUCCESS);
 	retire_test_assign_edge_instances();
 
-        /* Flexible with extra instances, but no remaining. */
+        // Flexible with extra instances, but no remaining.
 	setup_test_assign_edge_instances();
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 1, 5, 0, 6), OP_SUCCESS);
 	retire_test_assign_edge_instances();
 
-        /* Flexible with extra instances, including remaining. */
+        // Flexible with extra instances, including remaining.
 	setup_test_assign_edge_instances();
         chosen_mb->node_array[0].provides_channels = -1;
         chosen_mb->node_array[0].provides_channels = -1;
@@ -1066,6 +1067,7 @@ START_TEST(test_assign_edge_instances)
 
 }
 END_TEST
+*/
 
 START_TEST(test_reallocate_edge_pointer_array)
 {
@@ -1097,16 +1099,17 @@ START_TEST(test_make_compact_edge_array)
 }
 END_TEST
 
-START_TEST(test_alloc_write_output_fds)
+START_TEST(test_write_output_fds)
 {
+	int write_fd = 1;
 	/* 0 outgoing edges for node 3, so no action really. */
-	ck_assert_int_eq(alloc_write_output_fds(), OP_SUCCESS);
-	retire_test_alloc_write_output_fds();
+	ck_assert_int_eq(write_output_fds(write_fd), OP_SUCCESS);
+	retire_test_write_output_fds();
 
 	/* Switch to node 2 that has 2 outgoing edges. */
-	setup_test_alloc_write_output_fds();
+	setup_test_write_output_fds();
 	memcpy(&self_node, &chosen_mb->node_array[2], sizeof(struct sgsh_node));
-	ck_assert_int_eq(alloc_write_output_fds(), OP_SUCCESS);
+	ck_assert_int_eq(write_output_fds(write_fd), OP_SUCCESS);
 
 	/* Incomplete testing since socket descriptors have not yet been setup.
 	 * This will hapeen through the shell.
@@ -1247,14 +1250,14 @@ START_TEST(test_write_graph_solution)
 
 			DPRINTF("Child reads outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
-                	write(fd[0], nc->edges_outgoing, out_edges_size);
+                	read(fd[0], nc->edges_outgoing, out_edges_size);
         	}
 		DPRINTF("Child: closes fd %d.", fd[0]);
 		close(fd[0]);
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 	} else {
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(write_graph_solution(), OP_SUCCESS);
+		ck_assert_int_eq(write_graph_solution(fd[1]), OP_SUCCESS);
 	}
 }
 END_TEST
@@ -1316,28 +1319,24 @@ START_TEST(test_write_message_block)
 		int buf_size = getpagesize();
 		char buf[buf_size];
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(write_message_block(), OP_SUCCESS);
+		ck_assert_int_eq(write_message_block(fd[1]), OP_SUCCESS);
 	}
 }
 END_TEST
 
 /* Incomplete? */
-START_TEST(test_try_read_message_block)
+START_TEST(test_read_message_block)
 {
 	int fd[2];
 	int fd_side = -1;
 	int pid;
-        /* 1 millisecond sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 	DPRINTF("%s()", __func__);
 
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
 
 	pid = fork();
 	if (pid <= 0) {
@@ -1356,12 +1355,10 @@ START_TEST(test_try_read_message_block)
 					mb_struct_size);
         	write(fd[1], test_mb, mb_struct_size);
 		/* Sleep for 1 millisecond before the next operation. */
-		nanosleep(&sleep, NULL);
 
 		DPRINTF("Child writes message block node array of size %d.",
 					mb_nodes_size);
         	write(fd[1], test_mb->node_array, mb_nodes_size);
-		nanosleep(&sleep, NULL);
 
 		DPRINTF("Child writes message block edge array of size %d.",
 					mb_edges_size);
@@ -1370,18 +1367,20 @@ START_TEST(test_try_read_message_block)
                         DPRINTF("Edge from: %d, to: %d", e->from, e->to);
                 }
 		write(fd[1], test_mb->edge_array, mb_edges_size);
-		nanosleep(&sleep, NULL);
 
 		DPRINTF("Child: closes fd %d.", fd[1]);
 		close(fd[1]);
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 		retire_mb(test_mb);
 	} else {
-		int buf_size = getpagesize();
-		char buf[buf_size];
+		int read_fd = -1;
+		fd_set read_fds;
+		FD_ZERO(&read_fds);
+		FD_SET(fd[0], &read_fds);
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(try_read_message_block(buf, buf_size,
+		ck_assert_int_eq(read_message_block(read_fds, &read_fd,
 							&fresh_mb), OP_SUCCESS);
+		ck_assert_int_eq(read_fd, fd[0]);
 	}
 }
 END_TEST
@@ -1392,18 +1391,13 @@ START_TEST(test_read_graph_solution)
 	int fd[2];
 	int fd_side = -1;
 	int bytes_read = -1;
-	int buf_size = getpagesize();
 	int pid;
 	int i;
         int n_nodes = fresh_mb->n_nodes;
+	int buf_size = getpagesize();
         int graph_solution_size = sizeof(struct sgsh_node_connections) *
                                                                 n_nodes;
-	char buf[buf_size];
 	struct sgsh_node_connections *graph_solution;
-        /* 1 millisecond sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 	DPRINTF("%s()", __func__);
 
 	if(pipe(fd) == -1){
@@ -1422,7 +1416,6 @@ START_TEST(test_read_graph_solution)
 					graph_solution_size);
         	write(fd[1], graph_solution, graph_solution_size);
 		/* Sleep for 1 millisecond before the next operation. */
-		nanosleep(&sleep, NULL);
 
 		for (i = 0; i < chosen_mb->n_nodes; i++) {
                 	struct sgsh_node_connections *nc = &graph_solution[i];
@@ -1439,21 +1432,24 @@ START_TEST(test_read_graph_solution)
 			DPRINTF("Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
                 	write(fd[1], nc->edges_incoming, in_edges_size);
-			nanosleep(&sleep, NULL);
 
 			DPRINTF("Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
                 	write(fd[1], nc->edges_outgoing, out_edges_size);
-			nanosleep(&sleep, NULL);
         	}
 		DPRINTF("Child: closes fd %d.", fd[1]);
 		close(fd[1]);
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 		retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
 	} else {
+		int read_fd = -1;
+		fd_set read_fds;
+		FD_ZERO(&read_fds);
+		FD_SET(fd[0], &read_fds);
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(read_graph_solution(fresh_mb, buf, buf_size),
-								OP_SUCCESS);
+		ck_assert_int_eq(read_graph_solution(read_fds, &read_fd,
+					fresh_mb), OP_SUCCESS);
+		ck_assert_int_eq(read_fd, fd[0]);
 	}
 }
 END_TEST
@@ -1527,7 +1523,7 @@ START_TEST(test_read_input_fds)
 		graph_solution[1].edges_incoming[0].instances = 1;
 	
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(read_input_fds(), OP_SUCCESS);
+		ck_assert_int_eq(read_input_fds(sockets[1]), OP_SUCCESS);
 		DPRINTF("Parent with pid %d exits.", (int)getpid()); 
 	}
 	close(sockets[0]);
@@ -1536,7 +1532,7 @@ START_TEST(test_read_input_fds)
 END_TEST
 
 /* Incomplete? */
-START_TEST(test_try_read_chunk)
+START_TEST(test_read_chunk)
 {
 	/* Requires setting up of I/O multiplexing (a bash shell extension)
 	 * in order to be able to support bidirectional negotiation.
@@ -1548,25 +1544,25 @@ START_TEST(test_try_read_chunk)
 	 * call read, which has been successfully tested.
 	 * Then there is variable checking to determine the exit code.
 	 */
+	fd_set read_fds;
+	FD_ZERO(&read_fds);
 	int fd[2];
 	DPRINTF("%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	/* Non-blocking in order to be able to try read stdin, then stdout
-	 * and again.
-	 */
-        fcntl(fd[0], F_SETFL, O_NONBLOCK);
+	FD_SET(fd[0], &read_fds);
 
 	/* Broken pipe error if we close the other side. */
 	//close(fd[0]);
 	write(fd[1], "test-in", 9);
 	char buf[32];
-	int fd_return = -1;
+	int read_fd = -1;
 	int bytes_read = -1;
-	ck_assert_int_eq(try_read_chunk(buf, 32, &bytes_read, &fd_return),OP_SUCCESS);
-	ck_assert_int_eq(fd_return, 4);
+	ck_assert_int_eq(read_chunk(read_fds, buf, 32, &bytes_read, &read_fd),
+									OP_SUCCESS);
+	ck_assert_int_eq(read_fd, 4);
 	ck_assert_int_eq(bytes_read, 9);
 	
 	close(fd[0]);
@@ -1593,7 +1589,7 @@ START_TEST(test_call_read)
 	int bytes_read = -1;
 	int error_code = -1;
 	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
-				&error_code), OP_QUIT);
+				&error_code), OP_ERROR);
 	ck_assert_int_eq(fd_side, 4);
 	ck_assert_int_eq(bytes_read, 5);
 	ck_assert_int_eq(error_code, 0);
@@ -1678,21 +1674,21 @@ END_TEST
 
 START_TEST(test_compete_message_block)
 {
-	int should_transmit_mb = -1;
+	bool should_transmit_mb = true;
 	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
 	/* set_dispatcher() */
 	self_node_io_side.index = 3;
 	self_node_io_side.fd_direction = STDIN_FILENO;
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, 1);
+	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
 	exit_state = 1;
 	retire_test_compete_message_block();
 
 	setup_test_compete_message_block();
-	should_transmit_mb = -1;
+	should_transmit_mb = false;
 	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
 	/* set_dispatcher() */
 	self_node_io_side.index = 3;
@@ -1700,7 +1696,7 @@ START_TEST(test_compete_message_block)
 	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, 0);
+	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 0);
 	retire_test_compete_message_block();
 
@@ -1714,14 +1710,14 @@ START_TEST(test_compete_message_block)
 	fresh_mb->serial_no = 1; /* fresh_mb prevails */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, 1);
+	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
 	exit_state = 1;
 	retire_test_compete_message_block();
 
 	setup_test_compete_message_block();
-	should_transmit_mb = -1;
+	should_transmit_mb = false;
 	memcpy(&self_node, &chosen_mb->node_array[0], sizeof(struct sgsh_node));
 	/* set_dispatcher() */
 	self_node_io_side.index = 0;
@@ -1732,7 +1728,7 @@ START_TEST(test_compete_message_block)
 	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, 0);
+	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 0);
 
 }
@@ -1890,8 +1886,9 @@ START_TEST(test_construct_message_block)
 {
 	DPRINTF("%s()", __func__);
 	int pid = 7;
-	ck_assert_int_eq(construct_message_block(pid), OP_SUCCESS);
-	ck_assert_int_eq(chosen_mb->version, 1.0);
+	const char tool_name[10] = "test";
+	ck_assert_int_eq(construct_message_block(tool_name, pid), OP_SUCCESS);
+	ck_assert_int_eq(chosen_mb->version, 1);
         ck_assert_int_eq((long)chosen_mb->node_array, 0);
         ck_assert_int_eq(chosen_mb->n_nodes, 0);
         ck_assert_int_eq(chosen_mb->initiator_pid, pid);
@@ -1983,10 +1980,10 @@ suite_connect(void)
 	suite_add_tcase(s, tc_sd);
 
 	/* Need to also simulate sendmsg; make sure it works. */
-	TCase *tc_awof = tcase_create("allocate write output fds");
-	tcase_add_checked_fixture(tc_awof, setup_test_alloc_write_output_fds,
-					   retire_test_alloc_write_output_fds);
-	tcase_add_test(tc_awof, test_alloc_write_output_fds);
+	TCase *tc_awof = tcase_create("write output fds");
+	tcase_add_checked_fixture(tc_awof, setup_test_write_output_fds,
+					   retire_test_write_output_fds);
+	tcase_add_test(tc_awof, test_write_output_fds);
 	suite_add_tcase(s, tc_awof);
 
 	return s;
@@ -2033,7 +2030,7 @@ suite_solve(void)
 	tcase_add_test(tc_sic, test_satisfy_io_constraints);
 	suite_add_tcase(s, tc_sic);
 
-	TCase *tc_ec = tcase_create("evaluate constraints");
+	/*TCase *tc_ec = tcase_create("evaluate constraints");
 	tcase_add_checked_fixture(tc_ec, setup_test_eval_constraints,
 					 retire_test_eval_constraints);
 	tcase_add_test(tc_ec, test_eval_constraints);
@@ -2044,7 +2041,7 @@ suite_solve(void)
 					  retire_test_assign_edge_instances);
 	tcase_add_test(tc_aei, test_assign_edge_instances);
 	suite_add_tcase(s, tc_aei);
-
+*/
 	TCase *tc_repa = tcase_create("reallocate edge pointer array");
 	tcase_add_checked_fixture(tc_repa,
 				setup_test_reallocate_edge_pointer_array,
@@ -2073,14 +2070,14 @@ suite_broadcast(void)
 	suite_add_tcase(s, tc_wmb);
 
 	TCase *tc_trm = tcase_create("try read message block");
-	tcase_add_checked_fixture(tc_trm, setup_test_try_read_message_block,
-					  retire_test_try_read_message_block);
-	tcase_add_test(tc_trm, test_try_read_message_block);
+	tcase_add_checked_fixture(tc_trm, setup_test_read_message_block,
+					  retire_test_read_message_block);
+	tcase_add_test(tc_trm, test_read_message_block);
 	suite_add_tcase(s, tc_trm);
 
-	TCase *tc_trc = tcase_create("try read chunk");
-	tcase_add_checked_fixture(tc_trc, setup_test_try_read_chunk, NULL);
-	tcase_add_test(tc_trc, test_try_read_chunk);
+	TCase *tc_trc = tcase_create("read chunk");
+	tcase_add_checked_fixture(tc_trc, setup_test_read_chunk, NULL);
+	tcase_add_test(tc_trc, test_read_chunk);
 	suite_add_tcase(s, tc_trc);
 
 	TCase *tc_clr = tcase_create("call read");

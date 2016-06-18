@@ -1629,10 +1629,11 @@ read_input_fds(int read_fd)
 /* Try read solution to the sgsh negotiation graph. */
 static enum op_result
 read_graph_solution(fd_set read_fds, int *read_fd,
-		struct sgsh_negotiation *fresh_mb, char *buf, int buf_size)
+		struct sgsh_negotiation *fresh_mb)
 {
 	int i;
-	//int stdout_side = 0;
+	int buf_size = getpagesize();		/* Make buffer page-wide. */
+	char buf[buf_size];
 	int bytes_read = 0;
 	enum op_result error_code = OP_SUCCESS;
 	int n_nodes = fresh_mb->n_nodes;
@@ -1758,8 +1759,8 @@ read_message_block(fd_set read_fds, int *read_fd,
 		 * or even the same structure because this is the phase
 		 * where we share the solution across the sgsh graph.
                  */
-		if (read_graph_solution(read_fds, read_fd, *fresh_mb, buf,
-							buf_size) == OP_ERROR)
+		if (read_graph_solution(read_fds, read_fd, *fresh_mb)
+								== OP_ERROR)
 			return OP_ERROR;
 		if (read_input_fds(*read_fd) == OP_ERROR)
 			return OP_ERROR;
