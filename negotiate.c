@@ -298,10 +298,15 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
  */
 static enum op_result
 satisfy_io_constraints(int *free_instances,
-		       int this_channel_constraint,   /* A node's required or provided constraint on the I or O channel. */
-                       struct sgsh_edge **edges, /* Gathered pointers to edges that come to or leave from a node. */
-		       int n_edges,              /* Number of edges (see above). */
-                       int is_edge_incoming)     /* Incoming or outgoing edges. */
+		       int this_channel_constraint,	/* A node's required or
+							 * provided constraint
+							 * on this channel
+							 */
+                       struct sgsh_edge **edges, /* Gathered pointers to edges
+						  * of this channel
+						  */
+		       int n_edges,		/* Number of edges */
+                       bool is_edge_incoming)	/* Incoming or outgoing */
 {
 	int i;
 	int weight = -1, modulo = 0;
@@ -315,14 +320,14 @@ satisfy_io_constraints(int *free_instances,
 			weight = this_channel_constraint / n_edges;
 			modulo = this_channel_constraint % n_edges;
 		}
-	else
+	else			/* Flexible constraint */
 		*free_instances = -1;
 
 	/* Aggregate the constraints for the node's channel. */
 	for (i = 0; i < n_edges; i++) {
 		if (this_channel_constraint > 0)
 			*free_instances -= weight + (modulo > 0);
-		if (is_edge_incoming) /* Outgoing for the pair node of edge. */
+		if (is_edge_incoming) /* Outgoing for the pair node of edge */
 			edges[i]->to_instances = weight + (modulo > 0);
 		else
 			edges[i]->from_instances = weight + (modulo > 0);
@@ -330,21 +335,20 @@ satisfy_io_constraints(int *free_instances,
 			modulo--;
         	DPRINTF("%s(): edge from %d to %d, is_edge_incoming: %d, free_instances: %d, weight: %d, modulo: %d, from_instances: %d, to_instances: %d.\n", __func__, edges[i]->from, edges[i]->to, is_edge_incoming, *free_instances, weight, modulo, edges[i]->from_instances, edges[i]->to_instances);
 	}
-        DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
+	DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
 	return OP_SUCCESS;
 }
 
 /**
  * Lookup this tool's edges and store pointers to them in order
- * to then allow the evaluation of constraints for node's at node_index
+ * to then allow the evaluation of constraints for the current node's
  * input and output channels.
- *
  */
 static enum op_result
-dry_match_io_constraints(struct sgsh_node *current_node,          /* Identifies the node we are currently setting up. */
+dry_match_io_constraints(struct sgsh_node *current_node,
 			 struct sgsh_node_connections *current_connections,
-			 struct sgsh_edge ***edges_incoming, /* The node's incoming edges (uninitialised). */
-			 struct sgsh_edge ***edges_outgoing) /* The node's outgoing edges (uninitialised). */
+			 struct sgsh_edge ***edges_incoming, /* Uninitialised*/
+			 struct sgsh_edge ***edges_outgoing) /* Uninitialised*/
 {
 	int n_edges = chosen_mb->n_edges;
 	int n_free_in_channels = current_node->requires_channels;
@@ -406,8 +410,10 @@ free_graph_solution(int node_index)
 	int i;
 	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
-		free(graph_solution[i].edges_incoming);
-		free(graph_solution[i].edges_outgoing);
+		if (graph_solution[i].n_edges_incoming > 0)
+			free(graph_solution[i].edges_incoming);
+		if (graph_solution[i].n_edges_outgoing > 0)
+			free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
 	DPRINTF("%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
@@ -441,8 +447,8 @@ record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
  * the pair node's constraint.
  */
 static void
-record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
-			int to_move, int pair)
+record_move_unbalanced(int *diff, int *index, int to_move_index,
+		int *instances, int to_move, int pair)
 {
 	if ((*diff > 0 && to_move < pair) ||
 	    (*diff < 0 && to_move > pair)) {
@@ -459,7 +465,7 @@ record_move_unbalanced(int *diff, int *index, int to_move_index, int *instances,
  * If that does not work try edges where the pair has a flexible constraint.
  */
 static enum op_result
-move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
+move(struct sgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 {
 	int i = 0, j = 0;
 	int indexes[n_edges];
@@ -480,7 +486,7 @@ move(struct sgsh_edge** edges, int n_edges, int diff, int is_edge_incoming)
 		if (diff == 0)
 			goto checkout;
 	}
-	/* Edges with flexible constraints are by default balanced. Try move. */
+	/* Edges with flexible constraints are by default balanced. Try move */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;
@@ -527,10 +533,15 @@ checkout:
  */
 static enum op_result
 cross_match_io_constraints(int *free_instances,
-			int this_channel_constraint,   /* A node's required or provided constraint on the I or O channel. */
-                       struct sgsh_edge **edges, /* Gathered pointers to edges that come to or leave from a node. */
-		       int n_edges,              /* Number of edges (see above). */
-                       int is_edge_incoming,     /* Incoming or outgoing edges. */
+			int this_channel_constraint,	/* A node's required
+							 * provided constraint
+							 * on the channel
+							 */
+                       struct sgsh_edge **edges,	/* Gathered pointers
+							 * to edges
+							 */
+		       int n_edges,		/* Number of edges */
+                       bool is_edge_incoming,	/* Incoming or outgoing edges*/
 		       int *edges_matched)
 {
 	int i;
@@ -539,7 +550,6 @@ cross_match_io_constraints(int *free_instances,
 		struct sgsh_edge *e = edges[i];
 		int *from = &e->from_instances;
 		int *to = &e->to_instances;
-		//int exit_state = OP_SUCCESS;
 		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 			if (*from == -1 && *to == -1)
@@ -594,7 +604,6 @@ prepare_solution(void)
 	int n_nodes = chosen_mb->n_nodes;
 	enum op_result exit_state = OP_SUCCESS;
 
-	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *current_connections =
 							&graph_solution[i];
@@ -642,7 +651,6 @@ cross_match_constraints(void)
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int n_edges = chosen_mb->n_edges;
-	//aint exit_state = OP_SUCCESS;
 	int edges_matched = 0;
 
 	/* Check constraints for each node on the sgsh graph. */
@@ -712,8 +720,8 @@ node_match_constraints(void)
 	int n_nodes = chosen_mb->n_nodes;
 	enum op_result exit_state = OP_SUCCESS;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
-									n_nodes;
-	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc. */
+								n_nodes;
+	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc */
 							graph_solution_size);
 	if (!graph_solution) {
 		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
@@ -728,13 +736,7 @@ node_match_constraints(void)
 		memset(current_connections, 0,
 					sizeof(struct sgsh_node_connections));
 		struct sgsh_edge **edges_incoming;
-		///nc->n_edges_incoming = 0;
-		///nc->edges_incoming = NULL;
-		//int *n_edges_incoming = &nc->n_edges_incoming;
 		struct sgsh_edge **edges_outgoing;
-		///nc->n_edges_outgoing = 0;
-		///nc->edges_outgoing = NULL;
-		//int *n_edges_outgoing = &nc->n_edges_outgoing;
 		struct sgsh_node *current_node = &chosen_mb->node_array[i];
 		current_connections->node_index = current_node->index;
 		DPRINTF("Node %s, index %d, channels required %d, channels_provided %d, sgsh_in %d, sgsh_out %d.", current_node->name, current_node->index, current_node->requires_channels, current_node->provides_channels, current_node->sgsh_in, current_node->sgsh_out);
@@ -743,10 +745,7 @@ node_match_constraints(void)
 		 * Try to satisfy the I/O channel constraints at node level.
 		 */
 		if (dry_match_io_constraints(current_node, current_connections,
-				&edges_incoming, &edges_outgoing) == OP_ERROR) {
-				/*&edges_incoming,
-				n_edges_incoming, &edges_outgoing,
-				n_edges_outgoing) == OP_ERROR) { */
+			&edges_incoming, &edges_outgoing) == OP_ERROR) {
 			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
@@ -778,18 +777,31 @@ static enum op_result
 solve_sgsh_graph(void)
 {
 	enum op_result exit_state = OP_SUCCESS;
-	//int retries = 0;
-	//int max_retries = 10;
 
+	/**
+	 * The initial layout of the solution plays an important
+	 * role. We could add a scheme that allows restarting
+	 * the solution process with a different initial layout
+	 * after a failure. The key points of the scheme would be:
+	 * while
+	 * int retries = 0;
+	 * int max_retries = 10;
+	 * assign a node's available edges to adjacent nodes differently
+	 */
+
+	/**
+	 * Try to match each node's I/O resources with constraints
+	 * expressed by incoming and outgoing edges.
+	 */
 	if ((exit_state = node_match_constraints()) == OP_ERROR)
 		return exit_state;
 
+	/* Optimise solution using flexible constraints */
 	exit_state = OP_RETRY;
 	while (exit_state == OP_RETRY)
 		if ((exit_state = cross_match_constraints()) == OP_ERROR)
 			goto exit;
 
-	/* optimise solution using flexible constraints */
 
 	/**
 	 * Substitute pointers to edges with proper edge structures
