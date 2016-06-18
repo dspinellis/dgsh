@@ -1470,7 +1470,7 @@ alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read,
  */
 static enum op_result
 call_read(int fd, char *buf, int buf_size,
-				int *fd_side, /* Mark (input or output) fd. */
+				int *read_fd,
 				int *bytes_read,
 				int *error_code)
 {
@@ -1484,7 +1484,7 @@ call_read(int fd, char *buf, int buf_size,
 		/* This information fuels self_node_io_side.
 		 * Mark the side where input is coming from.
 		 */
-		*fd_side = fd;
+		*read_fd = fd;
 		return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -1504,9 +1504,8 @@ read_chunk(fd_set read_fds, char *buf, int buf_size, int *bytes_read,
 
 #ifdef UNIT_TESTING
 	close(5);
-	call_read(4, buf, buf_size, fd_side, bytes_read, &error_code);
+	call_read(4, buf, buf_size, read_fd, bytes_read, &error_code);
 #else
-	/* Recheck the rationale of fd_side. */
 	if ((error_code = select (FD_SETSIZE, &read_fds, NULL,
 				  NULL, NULL)) < 0) {
           DPRINTF("Error: select returned %d.", error_code);
