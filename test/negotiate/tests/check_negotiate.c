@@ -106,7 +106,7 @@ setup_chosen_mb(void)
         chosen_mb->n_edges = n_edges;
 
 	/* check_negotiation_round() */
-	chosen_mb->state_flag = PROT_STATE_NEGOTIATION;
+	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->initiator_pid = 103; /* Node 3 */
 	mb_is_updated = 0;
 	chosen_mb->serial_no = 0;
@@ -185,7 +185,7 @@ setup_mb(struct sgsh_negotiation **mb)
         temp_mb->n_edges = n_edges;
 
 	/* check_negotiation_round() */
-	temp_mb->state_flag = PROT_STATE_NEGOTIATION;
+	temp_mb->state = PS_NEGOTIATION;
 	temp_mb->initiator_pid = 102; /* Node 2 */
 	mb_is_updated = 0;
 	temp_mb->serial_no = 0;
@@ -483,6 +483,7 @@ void
 setup_test_dry_match_io_constraints(void)
 {
 	setup_chosen_mb();
+	setup_graph_solution(&graph_solution);
 	setup_pointers_to_edges();
 	setup_args();
 }
@@ -727,6 +728,7 @@ retire_test_satisfy_io_constraints(void)
 void
 retire_test_dry_match_io_constraints(void)
 {
+	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pointers_to_edges();
 	retire_args();
@@ -865,31 +867,33 @@ retire_dmic(void)
 START_TEST(test_dry_match_io_constraints)
 {
         /* A normal case with fixed, tight constraints. */
-	n_edges_in = 0;
-	n_edges_out = 0;
+	struct sgsh_node_connections *current_connections = &graph_solution[3];
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-			&edges_in, &n_edges_in,&edges_out, &n_edges_out), OP_SUCCESS);
+				current_connections,
+			&edges_in,&edges_out), OP_SUCCESS);
         /* Hard coded. Observe the topology of the prototype solution in setup(). */
-	ck_assert_int_eq(n_edges_in, 2);
-	ck_assert_int_eq(n_edges_out, 0);
+	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
+	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 
 	/* An impossible case. */
-	n_edges_in = 0;
-	n_edges_out = 0;
+	current_connections->n_edges_incoming = 0;
+	current_connections->n_edges_outgoing = 0;
 	chosen_mb->node_array[3].requires_channels = 1;
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_ERROR);
-	ck_assert_int_eq(n_edges_in, 2);
-	ck_assert_int_eq(n_edges_out, 0);
+				current_connections,
+			&edges_in, &edges_out), OP_ERROR);
+	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
+	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 
 	/* Relaxing our target node's constraint. */
-	n_edges_in = 0;
-	n_edges_out = 0;
+	current_connections->n_edges_incoming = 0;
+	current_connections->n_edges_outgoing = 0;
 	chosen_mb->node_array[3].requires_channels = -1;
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_SUCCESS);
-	ck_assert_int_eq(n_edges_in, 2);
-	ck_assert_int_eq(n_edges_out, 0);
+				current_connections,
+			&edges_in, &edges_out), OP_SUCCESS);
+	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
+	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 	/* Pair edges still have tight constraints. */
 	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
 	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
@@ -897,15 +901,16 @@ START_TEST(test_dry_match_io_constraints)
 
 	/* Relaxing also pair nodes' constraints. Need to reset the testbed. */
 	setup_test_dry_match_io_constraints();
-	n_edges_in = 0;
-	n_edges_out = 0;
+	current_connections->n_edges_incoming = 0;
+	current_connections->n_edges_outgoing = 0;
 	chosen_mb->node_array[3].requires_channels = -1;
 	chosen_mb->node_array[0].provides_channels = -1;
 	chosen_mb->node_array[1].provides_channels = -1;
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-			&edges_in, &n_edges_in, &edges_out, &n_edges_out), OP_SUCCESS);
-	ck_assert_int_eq(n_edges_in, 2);
-	ck_assert_int_eq(n_edges_out, 0);
+				current_connections,
+			&edges_in, &edges_out), OP_SUCCESS);
+	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
+	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
 	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 5);
 }
@@ -913,29 +918,34 @@ END_TEST
 
 START_TEST(test_satisfy_io_constraints)
 {
-        /* To be concise, when changing the first argument that mirrors
+        /* To be concise, when changing the second argument that mirrors
          * the channel constraint of the node under evaluation, we should
          * also change it in the node array, but it does not matter since it
          * is the pair nodes that we are interested in.
          */
-
+	int free_instances = 0;
         /* Fixed constraint both sides, just satisfy. */
-	ck_assert_int_eq(satisfy_io_constraints(2, pointers_to_edges, 2, 1),
-									OP_SUCCESS);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances, 
+				2, pointers_to_edges, 2, true), OP_SUCCESS);
+	ck_assert_int_eq(free_instances, 0);
         /* Fixed constraint both sides, inadequate. */
-	ck_assert_int_eq(satisfy_io_constraints(1, pointers_to_edges, 2, 1),
-									OP_ERROR);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				1, pointers_to_edges, 2, true), OP_ERROR);
+	ck_assert_int_eq(free_instances, 0);
         /* Fixed constraint bith sides, plenty. */
-	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
-									OP_SUCCESS);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				5, pointers_to_edges, 2, true), OP_SUCCESS);
+	ck_assert_int_eq(free_instances, 0);
         /* Fixed constraint node, flexible pair, just one. */
         chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(satisfy_io_constraints(2, pointers_to_edges, 2, 1),
-									OP_SUCCESS);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				2, pointers_to_edges, 2, true), OP_SUCCESS);
+	ck_assert_int_eq(free_instances, 0);
         /* Fixed constraint node, flexible pair, inadequate. */
         chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(satisfy_io_constraints(1, pointers_to_edges, 2, 1),
-									OP_ERROR);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				1, pointers_to_edges, 2, true), OP_ERROR);
+	ck_assert_int_eq(free_instances, 0);
 	retire_test_satisfy_io_constraints();
 
         /* Expand the semantics of remaining_free_channels to fixed constraints
@@ -943,15 +953,19 @@ START_TEST(test_satisfy_io_constraints)
         /* Fixed constraint node, flexible pair, plenty. */
 	setup_test_satisfy_io_constraints();
         chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(satisfy_io_constraints(5, pointers_to_edges, 2, 1),
-									OP_SUCCESS);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				5, pointers_to_edges, 2, true), OP_SUCCESS);
+	ck_assert_int_eq(free_instances, 0);
+	free_instances = 0;
 	retire_test_satisfy_io_constraints();
 
         /* Flexible constraint both sides */
 	setup_test_satisfy_io_constraints();
         chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(satisfy_io_constraints(-1, pointers_to_edges, 2, 1),
-									OP_SUCCESS);
+	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
+				-1, pointers_to_edges, 2, 1), OP_SUCCESS);
+	ck_assert_int_eq(free_instances, -1);
+	free_instances = 0;
 }
 END_TEST
 
@@ -1131,7 +1145,7 @@ START_TEST(test_check_negotiation_round)
 	int negotiation_round = 0;
 	check_negotiation_round(&negotiation_round);
 	ck_assert_int_eq(negotiation_round, 1);
-	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
 	ck_assert_int_eq(chosen_mb->serial_no, 1);
 	ck_assert_int_eq(mb_is_updated, 1);
 	retire();
@@ -1143,7 +1157,7 @@ START_TEST(test_check_negotiation_round)
 	mb_is_updated = 1;
 	check_negotiation_round(&negotiation_round);
 	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
 	ck_assert_int_eq(chosen_mb->serial_no, 0);
 	ck_assert_int_eq(mb_is_updated, 1);
 
@@ -1153,7 +1167,7 @@ START_TEST(test_check_negotiation_round)
 	negotiation_round = 0;
 	check_negotiation_round(&negotiation_round);
 	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
 	ck_assert_int_eq(chosen_mb->serial_no, 1);
 	ck_assert_int_eq(mb_is_updated, 1);
 	retire();
@@ -1164,7 +1178,7 @@ START_TEST(test_check_negotiation_round)
 	mb_is_updated = 1;
 	check_negotiation_round(&negotiation_round);
 	ck_assert_int_eq(negotiation_round, 1);
-	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
 	ck_assert_int_eq(chosen_mb->serial_no, 0);
 	ck_assert_int_eq(mb_is_updated, 1);
 	retire();
@@ -1172,10 +1186,10 @@ START_TEST(test_check_negotiation_round)
 	/* Negotiation has ended. */
 	setup();
 	negotiation_round = 0;
-	chosen_mb->state_flag = PROT_STATE_NEGOTIATION_END;
+	chosen_mb->state = PS_NEGOTIATION_END;
 	check_negotiation_round(&negotiation_round);
 	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
 	ck_assert_int_eq(chosen_mb->serial_no, 0);
 	ck_assert_int_eq(mb_is_updated, 0);
 	retire();
@@ -1881,7 +1895,7 @@ START_TEST(test_construct_message_block)
         ck_assert_int_eq((long)chosen_mb->node_array, 0);
         ck_assert_int_eq(chosen_mb->n_nodes, 0);
         ck_assert_int_eq(chosen_mb->initiator_pid, pid);
-        ck_assert_int_eq(chosen_mb->state_flag, PROT_STATE_NEGOTIATION);
+        ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
         ck_assert_int_eq(chosen_mb->serial_no, 0);
         ck_assert_int_eq(chosen_mb->origin.index, -1);
         ck_assert_int_eq(chosen_mb->origin.fd_direction, -1);
@@ -1936,7 +1950,7 @@ START_TEST(test_sgsh_negotiate)
 	int *output_fds;
 	int n_output_fds;
 	ck_assert_int_eq(sgsh_negotiate("test", 0, 0, &input_fds, &n_input_fds, 
-				&output_fds, &n_output_fds), PROT_STATE_ERROR);
+				&output_fds, &n_output_fds), PS_ERROR);
 }
 END_TEST
 
