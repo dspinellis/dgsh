@@ -65,7 +65,7 @@ test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
 
 test-negotiate: build-run-ng-tests
 
-setup-test-negotiate: autoreconf-ng-tests test-negotiate
+setup-test-negotiate: autoreconf-ng-tests
 
 autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test/negotiate/src/Makefile.am test/negotiate/tests/Makefile.am
 	cd test/negotiate && \
