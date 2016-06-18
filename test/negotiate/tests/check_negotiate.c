@@ -80,22 +80,32 @@ setup_chosen_mb(void)
         edges[0].from = 2;
         edges[0].to = 0;
         edges[0].instances = 0;
+        edges[0].from_instances = 0;
+        edges[0].to_instances = 0;
 
         edges[1].from = 2;
         edges[1].to = 1;
         edges[1].instances = 0;
+        edges[1].from_instances = 0;
+        edges[1].to_instances = 0;
 
         edges[2].from = 1;
         edges[2].to = 0;
         edges[2].instances = 0;
+        edges[2].from_instances = 0;
+        edges[2].to_instances = 0;
 
         edges[3].from = 1;
         edges[3].to = 3;
         edges[3].instances = 0;
+        edges[3].from_instances = 0;
+        edges[3].to_instances = 0;
 
         edges[4].from = 0;
         edges[4].to = 3;
         edges[4].instances = 0;
+        edges[4].from_instances = 0;
+        edges[4].to_instances = 0;
 
         double sgsh_version = 0.1;
         chosen_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
@@ -159,22 +169,32 @@ setup_mb(struct sgsh_negotiation **mb)
         edges[0].from = 2;
         edges[0].to = 0;
         edges[0].instances = 0;
+        edges[0].from_instances = 0;
+        edges[0].to_instances = 0;
 
         edges[1].from = 2;
         edges[1].to = 1;
         edges[1].instances = 0;
+        edges[1].from_instances = 0;
+        edges[1].to_instances = 0;
 
         edges[2].from = 1;
         edges[2].to = 0;
         edges[2].instances = 0;
+        edges[2].from_instances = 0;
+        edges[2].to_instances = 0;
 
         edges[3].from = 1;
         edges[3].to = 3;
         edges[3].instances = 0;
+        edges[3].from_instances = 0;
+        edges[3].to_instances = 0;
 
         edges[4].from = 0;
         edges[4].to = 3;
         edges[4].instances = 0;
+        edges[4].from_instances = 0;
+        edges[4].to_instances = 0;
 
         double sgsh_version = 0.1;
         struct sgsh_negotiation *temp_mb = (struct sgsh_negotiation *)malloc(sizeof(struct sgsh_negotiation));
@@ -206,6 +226,8 @@ setup_pointers_to_edges(void)
 		pointers_to_edges[i]->from = i;
 		pointers_to_edges[i]->to = 3; // the node.
 		pointers_to_edges[i]->instances = 0;
+		pointers_to_edges[i]->from_instances = 0;
+		pointers_to_edges[i]->to_instances = 0;
         }
 }
 
@@ -237,10 +259,9 @@ setup_pipe_fds(void)
 }
 
 void
-setup_graph_solution(struct sgsh_node_connections **gs)
+setup_graph_solution(void)
 {
 	int i;
-	struct sgsh_node_connections *graph_solution;
 	graph_solution = (struct sgsh_node_connections *)malloc(
 			sizeof(struct sgsh_node_connections) * 
 			chosen_mb->n_nodes);
@@ -294,7 +315,6 @@ setup_graph_solution(struct sgsh_node_connections **gs)
 	graph_solution[3].n_edges_outgoing = 0;
 	graph_solution[3].edges_outgoing = NULL;
 
-	*gs = graph_solution;
 }
 
 void setup_args(void)
@@ -312,7 +332,7 @@ setup(void)
 	setup_self_node();
 	setup_self_node_io_side();
 	setup_pipe_fds();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 }
 
 void
@@ -411,7 +431,7 @@ void
 setup_test_read_input_fds(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 	setup_self_node();
 	setup_pipe_fds();
 }
@@ -428,7 +448,7 @@ void
 setup_test_write_graph_solution(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 	setup_self_node_io_side();
 }
 
@@ -483,7 +503,7 @@ void
 setup_test_dry_match_io_constraints(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 	setup_pointers_to_edges();
 	setup_args();
 }
@@ -492,14 +512,14 @@ void
 setup_test_free_graph_solution(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 }
 
 void
 setup_test_solve_sgsh_graph(void)
 {
 	setup_chosen_mb();
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 	setup_pointers_to_edges();
 	setup_args();
 }
@@ -508,7 +528,7 @@ void
 setup_test_write_output_fds(void)
 {
 	setup_chosen_mb(); /* For setting up graph_solution. */
-	setup_graph_solution(&graph_solution);
+	setup_graph_solution();
 	setup_self_node();
 	setup_pipe_fds();
 }
@@ -866,11 +886,14 @@ retire_dmic(void)
 
 START_TEST(test_dry_match_io_constraints)
 {
+	struct sgsh_edge **edges_in;
+	struct sgsh_edge **edges_out;
         /* A normal case with fixed, tight constraints. */
 	struct sgsh_node_connections *current_connections = &graph_solution[3];
+	current_connections->n_edges_incoming = 0;
+	current_connections->n_edges_outgoing = 0;
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-				current_connections,
-			&edges_in,&edges_out), OP_SUCCESS);
+		current_connections, &edges_in, &edges_out), OP_SUCCESS);
         /* Hard coded. Observe the topology of the prototype solution in setup(). */
 	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
 	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
@@ -894,25 +917,9 @@ START_TEST(test_dry_match_io_constraints)
 			&edges_in, &edges_out), OP_SUCCESS);
 	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
 	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
-	/* Pair edges still have tight constraints. */
-	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
-	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
-	retire_test_dry_match_io_constraints();
+	ck_assert_int_eq(chosen_mb->edge_array[3].to_instances, -1);
+	ck_assert_int_eq(chosen_mb->edge_array[4].to_instances, -1);
 
-	/* Relaxing also pair nodes' constraints. Need to reset the testbed. */
-	setup_test_dry_match_io_constraints();
-	current_connections->n_edges_incoming = 0;
-	current_connections->n_edges_outgoing = 0;
-	chosen_mb->node_array[3].requires_channels = -1;
-	chosen_mb->node_array[0].provides_channels = -1;
-	chosen_mb->node_array[1].provides_channels = -1;
-	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
-				current_connections,
-			&edges_in, &edges_out), OP_SUCCESS);
-	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
-	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
-	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
-	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 5);
 }
 END_TEST
 
@@ -1349,16 +1356,25 @@ START_TEST(test_read_message_block)
         	int mb_nodes_size = sizeof(struct sgsh_node) * n_nodes;
         	int mb_edges_size = sizeof(struct sgsh_edge) * n_edges;
                 int i = 0;
+		struct timespec tm;
+		tm.tv_sec = 0;
+		tm.tv_nsec = 1000000;
 
 		close(fd[0]);
 		DPRINTF("Child writes message block structure of size %d.",
 					mb_struct_size);
         	write(fd[1], test_mb, mb_struct_size);
-		/* Sleep for 1 millisecond before the next operation. */
+		/* Sleep for 1 millisecond to write-read orderly.
+		 * Why do we need this?
+		 * Shouldn't the write block by deafult?
+		 */
+		nanosleep(&tm, NULL);
 
 		DPRINTF("Child writes message block node array of size %d.",
 					mb_nodes_size);
         	write(fd[1], test_mb->node_array, mb_nodes_size);
+		/* Sleep for 1 millisecond before the next operation. */
+		nanosleep(&tm, NULL);
 
 		DPRINTF("Child writes message block edge array of size %d.",
 					mb_edges_size);
@@ -1397,7 +1413,9 @@ START_TEST(test_read_graph_solution)
 	int buf_size = getpagesize();
         int graph_solution_size = sizeof(struct sgsh_node_connections) *
                                                                 n_nodes;
-	struct sgsh_node_connections *graph_solution;
+	struct timespec tm;
+	tm.tv_sec = 0;
+	tm.tv_nsec = 1000000;
 	DPRINTF("%s()", __func__);
 
 	if(pipe(fd) == -1){
@@ -1409,13 +1427,14 @@ START_TEST(test_read_graph_solution)
 	pid = fork();
 	if (pid <= 0) {
 		DPRINTF("Child speaking with pid %d.", (int)getpid());
-		setup_graph_solution(&graph_solution);
+		setup_graph_solution();
 
 		close(fd[0]);
 		DPRINTF("Child writes graph solution of size %d.",
 					graph_solution_size);
         	write(fd[1], graph_solution, graph_solution_size);
 		/* Sleep for 1 millisecond before the next operation. */
+		nanosleep(&tm, NULL);
 
 		for (i = 0; i < chosen_mb->n_nodes; i++) {
                 	struct sgsh_node_connections *nc = &graph_solution[i];
@@ -1432,10 +1451,14 @@ START_TEST(test_read_graph_solution)
 			DPRINTF("Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
                 	write(fd[1], nc->edges_incoming, in_edges_size);
+			/* Sleep for 1 millisecond before the next operation. */
+			nanosleep(&tm, NULL);
 
 			DPRINTF("Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
                 	write(fd[1], nc->edges_outgoing, out_edges_size);
+			/* Sleep for 1 millisecond before the next operation. */
+			nanosleep(&tm, NULL);
         	}
 		DPRINTF("Child: closes fd %d.", fd[1]);
 		close(fd[1]);
@@ -1465,6 +1488,7 @@ START_TEST(test_read_input_fds)
 	union fdmsg cmsg;
 	struct cmsghdr *h;
 
+	memset(&msg, 0, sizeof(struct msghdr));
 	DPRINTF("%s()...pid %d", __func__, (int)getpid());
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets) < 0) {
@@ -1473,12 +1497,14 @@ START_TEST(test_read_input_fds)
 	}
 	DPRINTF("Opened socket pair %d - %d.", sockets[0], sockets[1]);
 
-	fd = open("unit-test-sgsh", O_CREAT | O_WRONLY);
+	fd = open("unit-test-sgsh", O_CREAT | O_RDWR, 0660);
 	write(fd, "Unit testing sgsh...", 21);
         close(fd);
 	fd = open("unit-test-sgsh", O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		perror("Failed to open file test-sgsh for reading.");
+		exit(1);
+	}
 
         int pid = fork();
 	if (pid <= 0) {
@@ -1681,7 +1707,7 @@ START_TEST(test_compete_message_block)
 	self_node_io_side.fd_direction = STDIN_FILENO;
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, false);
+	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
 	exit_state = 1;
@@ -1696,7 +1722,7 @@ START_TEST(test_compete_message_block)
 	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 0);
 	retire_test_compete_message_block();
 
@@ -1706,11 +1732,11 @@ START_TEST(test_compete_message_block)
 	/* set_dispatcher() */
 	self_node_io_side.index = 3;
 	self_node_io_side.fd_direction = STDIN_FILENO;
-	fresh_mb->initiator_pid = 103; /* Draw */
+	fresh_mb->initiator_pid = 103; /* Same initiator */
 	fresh_mb->serial_no = 1; /* fresh_mb prevails */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, false);
+	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
 	exit_state = 1;
@@ -1724,11 +1750,11 @@ START_TEST(test_compete_message_block)
 	self_node_io_side.fd_direction = STDOUT_FILENO;
 	chosen_mb->origin.index = 3;
 	chosen_mb->origin.fd_direction = STDIN_FILENO;
-	fresh_mb->initiator_pid = 103; /* Younger than chosen_mb. */
+	fresh_mb->initiator_pid = 103; /* Same initiator */
 	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 0);
 
 }
@@ -2069,7 +2095,7 @@ suite_broadcast(void)
 	tcase_add_test(tc_wmb, test_write_message_block);
 	suite_add_tcase(s, tc_wmb);
 
-	TCase *tc_trm = tcase_create("try read message block");
+	TCase *tc_trm = tcase_create("read message block");
 	tcase_add_checked_fixture(tc_trm, setup_test_read_message_block,
 					  retire_test_read_message_block);
 	tcase_add_test(tc_trm, test_read_message_block);

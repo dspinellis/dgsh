@@ -363,7 +363,7 @@ dry_match_io_constraints(struct sgsh_node *current_node,
 	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = &chosen_mb->edge_array[i];
-		DPRINTF("%s(): edge at index %d from %d to %d.", __func__, i, edge->from, edge->to);
+		DPRINTF("%s(): edge at index %d from %d to %d, instances %d, from_instances %d, to_instances %d.", __func__, i, edge->from, edge->to, edge->instances, edge->from_instances, edge->to_instances);
 		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(edges_outgoing,
@@ -559,9 +559,10 @@ cross_match_io_constraints(int *free_instances,
 			else if (*to == -1)
 				e->instances = *from;
 			(*edges_matched)++;
-		} else if (*from == *to)
+		} else if (*from == *to) {
 			(*edges_matched)++;
-		else if (*from < *to) { /* e.g. from=1, to=3; then: */
+			e->instances = *from;
+		} else if (*from < *to) { /* e.g. from=1, to=3; then: */
 			if (is_edge_incoming) {         /* +2:  */
 				if (move(edges, n_edges, (*to - *from), 1)
 							== OP_SUCCESS) {
@@ -1346,14 +1347,15 @@ static enum op_result
 compete_message_block(struct sgsh_negotiation *fresh_mb,
 			bool *should_transmit_mb)
 {
-        *should_transmit_mb = true; /* Default value. */
 
 	if (fresh_mb->state == PS_SOLUTION_SHARE) {
+        	*should_transmit_mb = true;
 		free_mb(chosen_mb);
 		chosen_mb = fresh_mb;
 		return OP_SUCCESS;
 	}
 
+        *should_transmit_mb = false; /* Default value. */
 	mb_is_updated = false; /* Default value. */
         if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
 		free_mb(chosen_mb);
@@ -1363,9 +1365,9 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
                 if (try_add_sgsh_edge() == OP_ERROR)
 			return OP_ERROR; /* one for edge. */
 		mb_is_updated = true; /*Substituting chosen_mb is an update.*/
+                *should_transmit_mb = true;
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free_mb(fresh_mb); /* Discard MB just read. */
-                *should_transmit_mb = false;
 	} else {
 		DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
@@ -1373,6 +1375,7 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 			mb_is_updated = true;
+                	*should_transmit_mb = true;
 			if (try_add_sgsh_edge() == OP_ERROR)
 				return OP_ERROR;
 		} else { /* serial_no of the mb has not changed
@@ -1891,14 +1894,16 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	FD_SET(STDIN_FILENO, &read_fds);
 	FD_SET(STDOUT_FILENO, &read_fds);
 
-	graph_solution = NULL;    /* Remove any garbage */
-	self_pipe_fds.input_fds = NULL;    /* Remove any garbage */
-	self_pipe_fds.output_fds = NULL;    /* Remove any garbage */
-	DPRINTF("Tool %s with pid %d entered sgsh negotiation.", tool_name,
-							(int)self_pid);
+#ifndef UNIT_TESTING
+	graph_solution = NULL;			/* Remove any garbage */
+	self_pipe_fds.input_fds = NULL;		/* Ditto */
+	self_pipe_fds.output_fds = NULL;	/* Ditto */
+#endif
+	DPRINTF("%s(): Tool %s with pid %d entered sgsh negotiation.",
+			__func__, tool_name, (int)self_pid);
 
 	if (validate_input(channels_required, channels_provided, tool_name)
-								== OP_ERROR)
+							== OP_ERROR)
 		return PS_ERROR;
 
 	if (get_environment_vars() == OP_ERROR) {
