@@ -902,7 +902,11 @@ write_output_fds(int write_fd)
 			 * data and close the read side to let the recipient
 			 * process handle it.
 			 */
-			pipe(fd);
+			if (pipe(fd) == -1) {
+				perror("pipe open failed");
+				exit(1);
+			}
+
 			DPRINTF("%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
 			iov[0].iov_base = &ping;
 			iov[0].iov_len = 1;
@@ -1001,7 +1005,7 @@ write_graph_solution(int write_fd)
 #ifndef UNIT_TESTING
 			wsize = write(write_fd, buf, out_edges_size);
 #else
-			write(5, buf, out_edges_size);
+			wsize = write(5, buf, out_edges_size);
 #endif
 			if (wsize == -1)
 				return OP_ERROR;
