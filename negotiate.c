@@ -1136,6 +1136,9 @@ check_phase(int *count_passes)
 			    chosen_mb->initiator_pid == self_node.pid) {
 				if (chosen_mb->revisit.node_pid ==
 							self_node.pid) {
+					/* For sure PS_END_AFTER_WRITE after
+					 * clearing the flag?
+					 */
 					chosen_mb->revisit.should = false;
 					chosen_mb->revisit.node_pid = -1;
 				}
