@@ -63,9 +63,12 @@ test-tee: sgsh-tee charcount test-tee.sh
 test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
 	./test-merge-sum.sh
 
-test-negotiate: build-run-ng-tests
+test-negotiate: copy_files build-run-ng-tests
 
-setup-test-negotiate: autoreconf-ng-tests
+setup-test-negotiate: copy_files autoreconf-ng-tests
+
+copy_files: sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/tests/check_negotiate.c
+	cp sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/src/
 
 autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test/negotiate/src/Makefile.am test/negotiate/tests/Makefile.am
 	-mkdir test/negotiate/m4
@@ -73,8 +76,7 @@ autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test
 	autoreconf --install && \
 	./configure
 
-build-run-ng-tests: sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/tests/check_negotiate.c
-	cp sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/src/ && \
+build-run-ng-tests:
 	cd test/negotiate && \
 	$(MAKE) && \
 	$(MAKE) check
