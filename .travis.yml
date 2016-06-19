@@ -1,0 +1,10 @@
+language: c
+
+install:
+- sudo apt-get -qq update
+- sudo apt-get install -y check
+- make setup-test-negotiate
+
+compiler: gcc
+
+script: make test-negotiate
