@@ -2,7 +2,7 @@ language: c
 
 install:
 - sudo apt-get -qq update
-- sudo apt-get install -y check
+- sudo apt-get install -y check make automake gcc libtool pkg-config
 - make setup-test-negotiate
 
 compiler: gcc
