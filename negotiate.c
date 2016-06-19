@@ -967,8 +967,9 @@ write_graph_solution(int write_fd)
 #else
 	wsize = write(5, buf, graph_solution_size);
 #endif
+	if (wsize == -1)
+		return OP_ERROR;
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
-	(void)wsize; /* silence compiler warning */
 
 	/* We haven't invalidated pointers to arrays of node indices. */
 
@@ -989,6 +990,8 @@ write_graph_solution(int write_fd)
 #else
 			wsize = write(5, buf, in_edges_size);
 #endif
+			if (wsize == -1)
+				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
 		}
 
@@ -1000,6 +1003,8 @@ write_graph_solution(int write_fd)
 #else
 			write(5, buf, out_edges_size);
 #endif
+			if (wsize == -1)
+				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
 		}
 	}

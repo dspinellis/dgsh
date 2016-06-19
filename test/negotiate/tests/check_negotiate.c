@@ -263,7 +263,6 @@ setup_pipe_fds(void)
 void
 setup_graph_solution(void)
 {
-	int i;
 	graph_solution = (struct sgsh_node_connections *)malloc(
 			sizeof(struct sgsh_node_connections) * 
 			chosen_mb->n_nodes);
@@ -1217,15 +1216,12 @@ END_TEST
 START_TEST(test_write_graph_solution)
 {
 	int fd[2];
-	int fd_side = -1;
-	int bytes_read = -1;
 	int buf_size = getpagesize();
 	int pid;
 	int i;
         int n_nodes = chosen_mb->n_nodes;
         int graph_solution_size = sizeof(struct sgsh_node_connections) *
                                                                 n_nodes;
-	char buf[buf_size];
 	struct sgsh_node_connections *graph_solution = 
 		(struct sgsh_node_connections *)malloc(graph_solution_size);
 
@@ -1238,12 +1234,17 @@ START_TEST(test_write_graph_solution)
 
 	pid = fork();
 	if (pid <= 0) {
+		int rsize = -1;
 		DPRINTF("Child speaking with pid %d.", (int)getpid());
 
 		close(fd[1]);
 		DPRINTF("Child reads graph solution of size %d.",
 					graph_solution_size);
-        	read(fd[0], graph_solution, graph_solution_size);
+        	rsize = read(fd[0], graph_solution, graph_solution_size);
+		if (rsize == -1) {
+			DPRINTF("Write graph solution failed.");
+			exit(1);
+		}
 
 		for (i = 0; i < chosen_mb->n_nodes; i++) {
                 	struct sgsh_node_connections *nc = &graph_solution[i];
@@ -1259,11 +1260,19 @@ START_TEST(test_write_graph_solution)
 
 			DPRINTF("Child reads incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
-                	read(fd[0], nc->edges_incoming, in_edges_size);
+                	rsize = read(fd[0], nc->edges_incoming, in_edges_size);
+			if (rsize == -1) {
+				DPRINTF("Read edges incoming failed.");
+				exit(1);
+			}
 
 			DPRINTF("Child reads outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
-                	read(fd[0], nc->edges_outgoing, out_edges_size);
+                	rsize = read(fd[0], nc->edges_outgoing, out_edges_size);
+			if (rsize == -1) {
+				DPRINTF("Read edges outgoing failed.");
+				exit(1);
+			}
         	}
 		DPRINTF("Child: closes fd %d.", fd[0]);
 		close(fd[0]);
@@ -1279,12 +1288,7 @@ END_TEST
 START_TEST(test_write_message_block)
 {
 	int fd[2];
-	int fd_side = -1;
 	int pid;
-        /* 1 millisecond sleep. */
-	struct timespec sleep;
-	sleep.tv_sec = 0;
-	sleep.tv_nsec = 1000000;
 	DPRINTF("%s()", __func__);
 
 	if(pipe(fd) == -1){
@@ -1300,11 +1304,16 @@ START_TEST(test_write_message_block)
 				malloc(sizeof(struct sgsh_negotiation));
         	int mb_struct_size = sizeof(struct sgsh_negotiation);
                 int i = 0;
+		int rsize = -1;
 
 		close(fd[1]);
 		DPRINTF("Child reads message block structure of size %d.",
 					mb_struct_size);
-        	read(fd[0], test_mb, mb_struct_size);
+        	rsize = read(fd[0], test_mb, mb_struct_size);
+		if (rsize == -1) {
+			DPRINTF("Read message block failed.");
+			exit(1);
+		}
         	int n_nodes = test_mb->n_nodes;
         	int n_edges = test_mb->n_edges;
         	int mb_nodes_size = sizeof(struct sgsh_node) * n_nodes;
@@ -1314,11 +1323,19 @@ START_TEST(test_write_message_block)
 
 		DPRINTF("Child reads message block node array of size %d.",
 					mb_nodes_size);
-        	read(fd[0], test_mb->node_array, mb_nodes_size);
+        	rsize = read(fd[0], test_mb->node_array, mb_nodes_size);
+		if (rsize == -1) {
+			DPRINTF("Read node array failed.");
+			exit(1);
+		}
 
 		DPRINTF("Child reads message block edge array of size %d.",
 					mb_edges_size);
-		read(fd[0], test_mb->edge_array, mb_edges_size);
+		rsize = read(fd[0], test_mb->edge_array, mb_edges_size);
+		if (rsize == -1) {
+			DPRINTF("Read edge array failed.");
+			exit(1);
+		}
                 for (i = 0; i < test_mb->n_edges; i++) {
                         struct sgsh_edge *e = &test_mb->edge_array[i];
                         DPRINTF("Edge from: %d, to: %d", e->from, e->to);
@@ -1329,8 +1346,6 @@ START_TEST(test_write_message_block)
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 		retire_mb(test_mb);
 	} else {
-		int buf_size = getpagesize();
-		char buf[buf_size];
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(write_message_block(fd[1]), OP_SUCCESS);
 	}
@@ -1341,7 +1356,6 @@ END_TEST
 START_TEST(test_read_message_block)
 {
 	int fd[2];
-	int fd_side = -1;
 	int pid;
 	DPRINTF("%s()", __func__);
 
@@ -1362,6 +1376,7 @@ START_TEST(test_read_message_block)
         	int mb_nodes_size = sizeof(struct sgsh_node) * n_nodes;
         	int mb_edges_size = sizeof(struct sgsh_edge) * n_edges;
                 int i = 0;
+		int wsize = -1;
 		struct timespec tm;
 		tm.tv_sec = 0;
 		tm.tv_nsec = 1000000;
@@ -1369,7 +1384,11 @@ START_TEST(test_read_message_block)
 		close(fd[0]);
 		DPRINTF("Child writes message block structure of size %d.",
 					mb_struct_size);
-        	write(fd[1], test_mb, mb_struct_size);
+        	wsize = write(fd[1], test_mb, mb_struct_size);
+		if (wsize == -1) {
+			DPRINTF("Write message block structure failed.");
+			exit(1);
+		}
 		/* Sleep for 1 millisecond to write-read orderly.
 		 * Why do we need this?
 		 * Shouldn't the write block by deafult?
@@ -1378,7 +1397,11 @@ START_TEST(test_read_message_block)
 
 		DPRINTF("Child writes message block node array of size %d.",
 					mb_nodes_size);
-        	write(fd[1], test_mb->node_array, mb_nodes_size);
+        	wsize = write(fd[1], test_mb->node_array, mb_nodes_size);
+		if (wsize == -1) {
+			DPRINTF("Write message block node array failed.");
+			exit(1);
+		}
 		/* Sleep for 1 millisecond before the next operation. */
 		nanosleep(&tm, NULL);
 
@@ -1388,7 +1411,11 @@ START_TEST(test_read_message_block)
                         struct sgsh_edge *e = &test_mb->edge_array[i];
                         DPRINTF("Edge from: %d, to: %d", e->from, e->to);
                 }
-		write(fd[1], test_mb->edge_array, mb_edges_size);
+		wsize = write(fd[1], test_mb->edge_array, mb_edges_size);
+		if (wsize == -1) {
+			DPRINTF("Write message block edge array failed.");
+			exit(1);
+		}
 
 		DPRINTF("Child: closes fd %d.", fd[1]);
 		close(fd[1]);
@@ -1411,8 +1438,6 @@ END_TEST
 START_TEST(test_read_graph_solution)
 {
 	int fd[2];
-	int fd_side = -1;
-	int bytes_read = -1;
 	int pid;
 	int i;
         int n_nodes = fresh_mb->n_nodes;
@@ -1432,13 +1457,18 @@ START_TEST(test_read_graph_solution)
 
 	pid = fork();
 	if (pid <= 0) {
+		int wsize = -1;
 		DPRINTF("Child speaking with pid %d.", (int)getpid());
 		setup_graph_solution();
 
 		close(fd[0]);
 		DPRINTF("Child writes graph solution of size %d.",
 					graph_solution_size);
-        	write(fd[1], graph_solution, graph_solution_size);
+        	wsize = write(fd[1], graph_solution, graph_solution_size);
+		if (wsize == -1) {
+			DPRINTF("Write graph solution failed.");
+			exit(1);
+		}
 		/* Sleep for 1 millisecond before the next operation. */
 		nanosleep(&tm, NULL);
 
@@ -1448,7 +1478,8 @@ START_TEST(test_read_graph_solution)
 							nc->n_edges_incoming;
                 	int out_edges_size = sizeof(struct sgsh_edge) *
 							nc->n_edges_outgoing;
-                	if ((in_edges_size > buf_size) || 
+			int wsize = -1;
+			if ((in_edges_size > buf_size) || 
 						(out_edges_size > buf_size)) {
                         	DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
                         	exit(1);
@@ -1456,13 +1487,21 @@ START_TEST(test_read_graph_solution)
 
 			DPRINTF("Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
-                	write(fd[1], nc->edges_incoming, in_edges_size);
+                	wsize = write(fd[1], nc->edges_incoming, in_edges_size);
+			if (wsize == -1) {
+				DPRINTF("Write edges incoming failed.");
+				exit(1);
+			}
 			/* Sleep for 1 millisecond before the next operation. */
 			nanosleep(&tm, NULL);
 
 			DPRINTF("Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
-                	write(fd[1], nc->edges_outgoing, out_edges_size);
+                	wsize = write(fd[1], nc->edges_outgoing, out_edges_size);
+			if (wsize == -1) {
+				DPRINTF("Write edges outgoing failed.");
+				exit(1);
+			}
 			/* Sleep for 1 millisecond before the next operation. */
 			nanosleep(&tm, NULL);
         	}
@@ -1487,12 +1526,12 @@ END_TEST
 START_TEST(test_read_input_fds)
 {
 	int sockets[2];
-	char buf[1024];
 	int fd, ping;
 	struct msghdr msg;
 	struct iovec vec[1];
 	union fdmsg cmsg;
 	struct cmsghdr *h;
+	int wsize = -1;
 
 	memset(&msg, 0, sizeof(struct msghdr));
 	DPRINTF("%s()...pid %d", __func__, (int)getpid());
@@ -1504,7 +1543,11 @@ START_TEST(test_read_input_fds)
 	DPRINTF("Opened socket pair %d - %d.", sockets[0], sockets[1]);
 
 	fd = open("unit-test-sgsh", O_CREAT | O_RDWR, 0660);
-	write(fd, "Unit testing sgsh...", 21);
+	wsize = write(fd, "Unit testing sgsh...", 21);
+	if (wsize == -1) {
+		DPRINTF("Write to 'unit-test-sgsh' failed.");
+		exit(1);
+	}
         close(fd);
 	fd = open("unit-test-sgsh", O_RDONLY);
 	if (fd < 0) {
@@ -1579,6 +1622,7 @@ START_TEST(test_read_chunk)
 	fd_set read_fds;
 	FD_ZERO(&read_fds);
 	int fd[2];
+	int wsize = -1;
 	DPRINTF("%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
@@ -1588,7 +1632,11 @@ START_TEST(test_read_chunk)
 
 	/* Broken pipe error if we close the other side. */
 	//close(fd[0]);
-	write(fd[1], "test-in", 9);
+	wsize = write(fd[1], "test-in", 9);
+	if (wsize == -1) {
+		DPRINTF("Write to 'test-in' failed.");
+		exit(1);
+	}
 	char buf[32];
 	int read_fd = -1;
 	int bytes_read = -1;
@@ -1605,37 +1653,28 @@ END_TEST
 START_TEST(test_call_read)
 {
 	int fd[2];
+	int wsize = -1;
 	DPRINTF("%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	/* Non-blocking in order to be able to try read stdin, then stdout
-	 * and again.
-	 */
-        fcntl(fd[0], F_SETFL, O_NONBLOCK);
 
-	write(fd[1], "test", 5);
+	if (wsize = write(fd[1], "test", 5) == -1) {
+		DPRINTF("Write to 'test' failed.\n");
+		exit(1);
+	}
+
 	char buf[32];
-	int fd_side = -1;
+	int read_fd = -1;
 	int bytes_read = -1;
 	int error_code = -1;
-	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
+	ck_assert_int_eq(call_read(fd[0], buf, 32, &read_fd, &bytes_read,
 				&error_code), OP_ERROR);
-	ck_assert_int_eq(fd_side, 4);
+	ck_assert_int_eq(read_fd, 4);
 	ck_assert_int_eq(bytes_read, 5);
 	ck_assert_int_eq(error_code, 0);
 
-	fd_side = -1;
-	bytes_read = -1;
-	error_code = -1;
-	ck_assert_int_eq(call_read(fd[0], buf, 32, &fd_side, &bytes_read,
-				&error_code), OP_SUCCESS);
-	/* No write, no side */
-	ck_assert_int_eq(fd_side, -1);
-	ck_assert_int_eq(bytes_read, -1);
-	ck_assert_int_eq(error_code, -EAGAIN);
-	
 	close(fd[0]);
 	close(fd[1]);
 }
