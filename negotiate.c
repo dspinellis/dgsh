@@ -429,16 +429,14 @@ record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 		     int to_move)
 {
 	if (*diff > 0 || (*diff < 0 && to_move > 1)) {
-		int subtract = 0;
 		/* In subtracting at least one edge instance should remain. */
-		if (*diff < 0)
-			subtract = 1;
-		*index = to_move_index;
-		*diff -= to_move - subtract;
-		if (*diff > 0)
-			*instances = to_move;
+		if (*diff < 0 && *diff + (to_move - 1) <= 0)
+				*instances = -(to_move - 1);
 		else
-			*instances = -(to_move - 1);
+				*instances = *diff;
+	
+		*diff -= *instances;
+		*index = to_move_index;
 	}
 }
 
@@ -470,7 +468,9 @@ move(struct sgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 	int i = 0, j = 0;
 	int indexes[n_edges];
 	int instances[n_edges];
-	/* Try move unbalanced edges first. */
+	/* Try move unbalanced edges first.
+	 * Avoid doing the move at the same edge.
+	 */
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;

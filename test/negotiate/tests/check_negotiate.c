@@ -1039,6 +1039,59 @@ START_TEST(test_satisfy_io_constraints)
 }
 END_TEST
 
+START_TEST(test_record_move_flexible)
+{
+	/* Successful increase move */
+	int diff = 1;
+	int index = -1;
+	int to_move_index = 2;
+	int instances = 0;
+	int to_move = 2;
+	record_move_flexible(&diff, &index, to_move_index,
+			&instances, to_move);
+	ck_assert_int_eq(diff, 0);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, 1);
+
+	/* Can't subtract instances from size 1 */
+	diff = -1;
+	index = -1;
+	to_move_index = 2;
+	instances = 0;
+	to_move = 1;
+	record_move_flexible(&diff, &index, to_move_index,
+			&instances, to_move);
+	ck_assert_int_eq(diff, -1);
+	ck_assert_int_eq(index, -1);
+	ck_assert_int_eq(instances, 0);
+
+	/* Successful decrease. diff greater than to_move */
+	diff = -3;
+	index = -1;
+	to_move_index = 2;
+	instances = 0;
+	to_move = 2;
+	record_move_flexible(&diff, &index, to_move_index,
+			&instances, to_move);
+	ck_assert_int_eq(diff, -2);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, -1);
+
+	/* Successful decrease. diff smaller than to_move */
+	diff = -2;
+	index = -1;
+	to_move_index = 2;
+	instances = 0;
+	to_move = 4;
+	record_move_flexible(&diff, &index, to_move_index,
+			&instances, to_move);
+	ck_assert_int_eq(diff, 0);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, -2);
+
+}
+END_TEST
+
 /*
 START_TEST(test_eval_constraints)
 {
@@ -2275,6 +2328,11 @@ suite_solve(void)
 					  retire_test_satisfy_io_constraints);
 	tcase_add_test(tc_sic, test_satisfy_io_constraints);
 	suite_add_tcase(s, tc_sic);
+
+	TCase *tc_rmf = tcase_create("record move flexible");
+	tcase_add_checked_fixture(tc_rmf, NULL, NULL);
+	tcase_add_test(tc_rmf, test_record_move_flexible);
+	suite_add_tcase(s, tc_rmf);
 
 	/*TCase *tc_ec = tcase_create("evaluate constraints");
 	tcase_add_checked_fixture(tc_ec, setup_test_eval_constraints,
