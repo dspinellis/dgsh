@@ -115,11 +115,13 @@ setup_chosen_mb(void)
         chosen_mb->edge_array = edges;
         chosen_mb->n_edges = n_edges;
 
-	/* check_negotiation_round() */
+	/* check_phase() */
 	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->initiator_pid = 103; /* Node 3 */
 	mb_is_updated = 0;
 	chosen_mb->serial_no = 0;
+	chosen_mb->revisit.should = false;
+	chosen_mb->revisit.node_pid = -1;
 }
 
 /* Identical to chosen_mb except for the initiator field. */
@@ -204,7 +206,7 @@ setup_mb(struct sgsh_negotiation **mb)
         temp_mb->edge_array = edges;
         temp_mb->n_edges = n_edges;
 
-	/* check_negotiation_round() */
+	/* check_phase() */
 	temp_mb->state = PS_NEGOTIATION;
 	temp_mb->initiator_pid = 102; /* Node 2 */
 	mb_is_updated = 0;
@@ -332,6 +334,14 @@ setup(void)
 	setup_self_node();
 	setup_self_node_io_side();
 	setup_pipe_fds();
+	setup_graph_solution();
+}
+
+void
+setup_test_check_phase(void)
+{
+	setup_chosen_mb();
+	setup_self_node();
 	setup_graph_solution();
 }
 
@@ -606,6 +616,13 @@ retire(void)
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pipe_fds();
+}
+
+void
+retire_test_check_phase(void)
+{
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
 }
 
 void
@@ -1148,64 +1165,6 @@ START_TEST(test_alloc_node_connections)
 }
 END_TEST
 
-/* orphan test case. */
-START_TEST(test_check_negotiation_round)
-{
-	/* End of negotiation rounds */
-	int negotiation_round = 0;
-	check_negotiation_round(&negotiation_round);
-	ck_assert_int_eq(negotiation_round, 1);
-	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 1);
-	retire();
-
-	/* Continue negotiation rounds, but don't update the counter */
-	setup();
-	chosen_mb->initiator_pid = 100; /* Node at index 0 */
-	negotiation_round = 0;
-	mb_is_updated = 1;
-	check_negotiation_round(&negotiation_round);
-	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
-	ck_assert_int_eq(chosen_mb->serial_no, 0);
-	ck_assert_int_eq(mb_is_updated, 1);
-
-	/* Don't update negotiation rounds, message block not updated */
-	setup();
-	chosen_mb->initiator_pid = 100; /* Node at index 0 */
-	negotiation_round = 0;
-	check_negotiation_round(&negotiation_round);
-	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 1);
-	retire();
-
-	/* Don't update and continue negotiation rounds. */
-	setup();
-	negotiation_round = 0;
-	mb_is_updated = 1;
-	check_negotiation_round(&negotiation_round);
-	ck_assert_int_eq(negotiation_round, 1);
-	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
-	ck_assert_int_eq(chosen_mb->serial_no, 0);
-	ck_assert_int_eq(mb_is_updated, 1);
-	retire();
-
-	/* Negotiation has ended. */
-	setup();
-	negotiation_round = 0;
-	chosen_mb->state = PS_NEGOTIATION_END;
-	check_negotiation_round(&negotiation_round);
-	ck_assert_int_eq(negotiation_round, 0);
-	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
-	ck_assert_int_eq(chosen_mb->serial_no, 0);
-	ck_assert_int_eq(mb_is_updated, 0);
-	retire();
-
-}
-END_TEST
 
 /* Incomplete? */
 START_TEST(test_write_graph_solution)
@@ -1966,6 +1925,175 @@ START_TEST(test_validate_input)
 }
 END_TEST
 
+START_TEST(test_check_phase)
+{
+	DPRINTF("***%s()\n", __func__);
+	/* End of negotiation rounds */
+	int count_passes = -1;		/* Not matter in ngt phase */
+	chosen_mb->serial_no = 1;
+	ck_assert_int_eq(check_phase(&count_passes),
+				PS_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->serial_no, 2);
+	ck_assert_int_eq(mb_is_updated, true);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+	//retire_test_check_phase();
+
+	/* Continue negotiation rounds */
+	count_passes = -1;		/* Not matter in ngt phase */
+	mb_is_updated = true;
+	chosen_mb->serial_no = 1;
+	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, true);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+	//retire_test_check_phase();
+
+	/* At non initiator node, continue negotiation rounds */
+	//setup_test_check_phase();
+	chosen_mb->initiator_pid = 100; /* Node at index 0 */
+	count_passes = -1;		/* Not matter in ngt phase */
+	chosen_mb->serial_no = 1;
+	mb_is_updated = true;
+	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, true);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+	/* At non initiator node, message block not updated */
+	//setup();
+	chosen_mb->initiator_pid = 100; /* Node at index 0 */
+	count_passes = -1;		/* Not matter in ngt phase */
+	mb_is_updated = false;
+	chosen_mb->serial_no = 1;
+	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+	//retire();
+
+	/* Enter check phase at end of negotiation phase
+	 * Should never occur (See sgsh_negotiate()
+	 */
+	//setup();
+	chosen_mb->initiator_pid = 100; /* Node at index 0 */
+	count_passes = -1;		/* Not matter in ngt phase */
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_NEGOTIATION_END;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+	/* Solution sharing. Not complete. Set revisit */
+	//setup();
+	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	count_passes = 0;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	chosen_mb->serial_no = 1;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_SOLUTION_SHARE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 1);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, true);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, self_node.pid);
+
+	/* Solution sharing. Not complete. Revisit already set */
+	//setup();
+	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->revisit.should = true;
+	chosen_mb->revisit.node_pid = 102;
+	count_passes = 0;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_SOLUTION_SHARE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 1);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, true);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
+
+	/* Solution sharing. Non initiator. Complete. Revisit not set */
+	//setup();
+	chosen_mb->initiator_pid = 102; /* Node at index 0 */
+	chosen_mb->revisit.should = false;
+	chosen_mb->revisit.node_pid = -1;
+	count_passes = 1;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_COMPLETE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 2);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+	/* Solution sharing. Complete. Revisit set by other */
+	//setup();
+	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->revisit.should = true;
+	chosen_mb->revisit.node_pid = 102;
+	count_passes = 1;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_END_AFTER_WRITE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 2);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, true);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
+
+	/* Solution sharing. Complete. Revisit set by this node */
+	//setup();
+	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->revisit.should = true;
+	chosen_mb->revisit.node_pid = 103;
+	count_passes = 1;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_END_AFTER_WRITE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 2);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+	/* Solution sharing. Complete. Revisit not set */
+	//setup();
+	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->revisit.should = true;
+	chosen_mb->revisit.node_pid = 103;
+	count_passes = 1;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_END_AFTER_WRITE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 2);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+}
+END_TEST
+
 START_TEST(test_sgsh_negotiate)
 {
 	int *input_fds;
@@ -2210,6 +2338,12 @@ suite_broadcast(void)
 	tcase_add_checked_fixture(tc_vi, NULL, NULL);
 	tcase_add_test(tc_vi, test_validate_input);
 	suite_add_tcase(s, tc_vi);
+
+	TCase *tc_cp = tcase_create("check phase");
+	tcase_add_checked_fixture(tc_cp, setup_test_check_phase,
+			retire_test_check_phase);
+	tcase_add_test(tc_cp, test_check_phase);
+	suite_add_tcase(s, tc_cp);
 
 	TCase *tc_sn = tcase_create("sgsh negotiate");
 	tcase_add_checked_fixture(tc_sn, setup, retire);
