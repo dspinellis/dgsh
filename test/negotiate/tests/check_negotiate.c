@@ -519,6 +519,12 @@ setup_test_dry_match_io_constraints(void)
 }
 
 void
+setup_test_node_match_constraints(void)
+{
+	setup_chosen_mb();
+}
+
+void
 setup_test_free_graph_solution(void)
 {
 	setup_chosen_mb();
@@ -772,6 +778,13 @@ retire_test_dry_match_io_constraints(void)
 }
 
 void
+retire_test_node_match_constraints(void)
+{
+	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
 retire_test_free_graph_solution(void)
 {
 	retire_chosen_mb();
@@ -901,10 +914,44 @@ retire_dmic(void)
 		free(edges_out);
 }
 
+START_TEST(test_node_match_constraints)
+{
+	/* Impossible case: channels: 2 -> 1 for node 3 */
+	DPRINTF("%s()\n", __func__);
+	chosen_mb->node_array[3].requires_channels = 1;
+	ck_assert_int_eq(node_match_constraints(), OP_ERROR);
+
+	/* Default topology; take a look at setup_chosen_mb() */
+	chosen_mb->node_array[3].requires_channels = 2;
+	ck_assert_int_eq(node_match_constraints(), OP_SUCCESS);
+	ck_assert_int_eq(graph_solution[0].node_index, 0);
+	ck_assert_int_eq(graph_solution[0].n_edges_incoming, 2);
+	ck_assert_int_eq(graph_solution[0].n_instances_incoming_free, 0);
+	ck_assert_int_eq(graph_solution[0].n_edges_outgoing, 1);
+	ck_assert_int_eq(graph_solution[0].n_instances_outgoing_free, 0);
+
+	ck_assert_int_eq(graph_solution[1].node_index, 1);
+	ck_assert_int_eq(graph_solution[1].n_edges_incoming, 1);
+	ck_assert_int_eq(graph_solution[1].n_instances_incoming_free, 0);
+	ck_assert_int_eq(graph_solution[1].n_edges_outgoing, 2);
+	ck_assert_int_eq(graph_solution[1].n_instances_outgoing_free, 0);
+
+	ck_assert_int_eq(graph_solution[2].node_index, 2);
+	ck_assert_int_eq(graph_solution[2].n_edges_incoming, 0);
+	ck_assert_int_eq(graph_solution[2].n_instances_incoming_free, 0);
+	ck_assert_int_eq(graph_solution[2].n_edges_outgoing, 2);
+	ck_assert_int_eq(graph_solution[2].n_instances_outgoing_free, 0);
+
+	ck_assert_int_eq(graph_solution[3].node_index, 3);
+	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
+	ck_assert_int_eq(graph_solution[3].n_instances_incoming_free, 0);
+	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
+	ck_assert_int_eq(graph_solution[3].n_instances_outgoing_free, 0);
+}
+END_TEST
+	
 START_TEST(test_dry_match_io_constraints)
 {
-	struct sgsh_edge **edges_in;
-	struct sgsh_edge **edges_out;
         /* A normal case with fixed, tight constraints. */
 	struct sgsh_node_connections *current_connections = &graph_solution[3];
 	current_connections->n_edges_incoming = 0;
@@ -2171,6 +2218,12 @@ suite_solve(void)
 					  retire_test_free_graph_solution);
 	tcase_add_test(tc_fgs, test_free_graph_solution);
 	suite_add_tcase(s, tc_fgs);
+
+	TCase *tc_nmc = tcase_create("node match constraints");
+	tcase_add_checked_fixture(tc_nmc, setup_test_node_match_constraints,
+					  retire_test_node_match_constraints);
+	tcase_add_test(tc_nmc, test_node_match_constraints);
+	suite_add_tcase(s, tc_nmc);
 
 	TCase *tc_dmic = tcase_create("dry match io constraints");
 	tcase_add_checked_fixture(tc_dmic, setup_test_dry_match_io_constraints,
