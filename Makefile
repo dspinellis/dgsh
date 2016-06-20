@@ -36,6 +36,9 @@ EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
 WEBPNG=$(EGPNG) debug.png profile.png
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
+# Files required for sgsh negotiation
+NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h
+
 %.png: %.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
 
@@ -67,8 +70,8 @@ test-negotiate: copy_files build-run-ng-tests
 
 setup-test-negotiate: copy_files autoreconf-ng-tests
 
-copy_files: sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/tests/check_negotiate.c
-	cp sgsh.h sgsh-negotiate.h negotiate.c test/negotiate/src/
+copy_files: $(NEGOTIATE_TEST_FILES) test/negotiate/tests/check_negotiate.c
+	cp $(NEGOTIATE_TEST_FILES) test/negotiate/src/
 
 autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test/negotiate/src/Makefile.am test/negotiate/tests/Makefile.am
 	-mkdir test/negotiate/m4
