@@ -1116,7 +1116,7 @@ check_phase(int *count_passes)
 			 * before exiting.
 			 */
 			if (!chosen_mb->revisit.should &&
-			    !chosen_mb->initiator_pid == self_node.pid)
+			    chosen_mb->initiator_pid != self_node.pid)
 				state = PS_COMPLETE;
 
 			if (chosen_mb->revisit.should) {
