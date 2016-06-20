@@ -1401,13 +1401,13 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
         } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
 		free_mb(fresh_mb); /* Discard MB just read. */
 	} else {
+                *should_transmit_mb = true;
 		DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
 		if (fresh_mb->serial_no > chosen_mb->serial_no) {
 			DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
 			mb_is_updated = true;
-                	*should_transmit_mb = true;
 			if (try_add_sgsh_edge() == OP_ERROR)
 				return OP_ERROR;
 		} else { /* serial_no of the mb has not changed
@@ -1597,7 +1597,7 @@ read_input_fds(int read_fd)
 		 * than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
-			int read_fd;
+			int fd;
 			int count;
 			int ping;
 			struct msghdr msg;
@@ -1647,9 +1647,9 @@ read_input_fds(int read_fd)
 				perror("Incorrect value in recvmsg");
 				re = OP_ERROR;
 			}
-			read_fd = *((int*)CMSG_DATA(h));
+			fd = *((int*)CMSG_DATA(h));
 			DPRINTF("%s: Node %d received file descriptor %d.", __func__, this_nc->node_index, read_fd);
-			self_pipe_fds.input_fds[total_edge_instances] = read_fd;
+			self_pipe_fds.input_fds[total_edge_instances] = fd;
 			total_edge_instances++;
 		}
 		if (re == OP_ERROR)
@@ -1956,6 +1956,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
 								== OP_ERROR)
 			return PS_ERROR;
+		write_fd = point_io_direction(read_fd);
 		chosen_mb = fresh_mb;
 	}
 

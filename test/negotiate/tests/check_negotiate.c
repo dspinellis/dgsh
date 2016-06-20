@@ -1893,7 +1893,7 @@ START_TEST(test_compete_message_block)
 	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
 	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
 								OP_SUCCESS);
-	ck_assert_int_eq(should_transmit_mb, false);
+	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 0);
 
 }
