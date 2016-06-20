@@ -23,7 +23,7 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
-	sgsh-ps sgsh-merge-sum
+	sgsh-ps sgsh-merge-sum sgsh-conc
 
 # Manual pages
 MANSRC=$(wildcard *.1)
