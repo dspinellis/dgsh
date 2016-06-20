@@ -425,7 +425,7 @@ free_graph_solution(int node_index)
  * Add or subtract edge instances from an edge that meets a pair node's
  * flexible constraint.
  */
-static void
+static enum op_result
 record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 		     int to_move)
 {
@@ -438,17 +438,20 @@ record_move_flexible(int *diff, int *index, int to_move_index, int *instances,
 	
 		*diff -= *instances;
 		*index = to_move_index;
+		return OP_SUCCESS;
 	}
+	return OP_NOOP;
 }
 
 /**
  * Add or subtract edge instances from an edge that is unbalanced wrt
  * the pair node's constraint.
  */
-static void
+static enum op_result
 record_move_unbalanced(int *diff, int *index, int to_move_index,
 		int *instances, int to_move, int pair)
 {
+	DPRINTF("%s(): to_move: %d, pair: %d, diff: %d", __func__, to_move, pair, *diff);
 	/* Can either to_move or pair be 0? I don't think so */
 	if ((*diff > 0 && to_move < pair) ||
 	    (*diff < 0 && to_move > pair)) {
@@ -459,8 +462,10 @@ record_move_unbalanced(int *diff, int *index, int to_move_index,
 		else
 			*instances = *diff;
 		*diff -= *instances;
-
+		DPRINTF("%s(): move successful: to_move: %d, pair: %d, diff: %d, instances: %d, edge index: %d", __func__, to_move, pair, *diff, *instances, *index);
+		return OP_SUCCESS;
 	}
+	return OP_NOOP;
 }
 
 /**
@@ -482,14 +487,19 @@ move(struct sgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 		struct sgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
+		DPRINTF("%s(): before move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
 		if (*from == -1 || *to == -1)
 			continue;
-		if (is_edge_incoming)
-			record_move_unbalanced(&diff, &indexes[j], i,
-					&instances[j], *to, *from);
-		else
-			record_move_unbalanced(&diff, &indexes[j], i,
-					&instances[j], *from, *to);
+		if (is_edge_incoming) {
+			if (record_move_unbalanced(&diff, &indexes[j], i,
+				&instances[j], *to, *from) == OP_SUCCESS)
+				j++;
+		} else {
+			if (record_move_unbalanced(&diff, &indexes[j], i,
+				&instances[j], *from, *to) == OP_SUCCESS)
+				j++;
+		}
+		DPRINTF("%s(): after move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
 		if (diff == 0)
 			goto checkout;
 	}
@@ -501,13 +511,15 @@ move(struct sgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 		if (is_edge_incoming) {
 			if (*from > 0)
 				continue;
-			record_move_flexible(&diff, &indexes[j], i,
-					&instances[j], *to);
+			if (record_move_flexible(&diff, &indexes[j], i,
+				&instances[j], *to) == OP_SUCCESS)
+				j++;
 		} else {
 			if (*to > 0)
 				continue;
-			record_move_flexible(&diff, &indexes[j], i,
-					&instances[j], *from);
+			if (record_move_flexible(&diff, &indexes[j], i,
+				&instances[j], *from) == OP_SUCCESS)
+				j++;
 		}
 		if (diff == 0)
 			goto checkout;

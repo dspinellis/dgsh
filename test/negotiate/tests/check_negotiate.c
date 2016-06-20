@@ -500,6 +500,13 @@ setup_test_eval_constraints(void)
 	setup_args();
 }
 */
+
+void
+setup_test_move(void)
+{
+	setup_pointers_to_edges();
+}
+
 void
 setup_test_satisfy_io_constraints(void)
 {
@@ -759,6 +766,13 @@ retire_test_eval_constraints(void)
         retire_args();
 }
 */
+
+void
+retire_test_move(void)
+{
+	retire_pointers_to_edges();
+}
+
 void
 retire_test_satisfy_io_constraints(void)
 {
@@ -1036,6 +1050,24 @@ START_TEST(test_satisfy_io_constraints)
 				-1, pointers_to_edges, 2, 1), OP_SUCCESS);
 	ck_assert_int_eq(free_instances, -1);
 	free_instances = 0;
+}
+END_TEST
+
+START_TEST(test_move)
+{
+	int diff = 1;
+	bool is_edge_incoming = true;
+	DPRINTF("%s()", __func__);
+	pointers_to_edges[0]->from_instances = 1;
+	pointers_to_edges[0]->to_instances = 2;
+	pointers_to_edges[1]->from_instances = 2;
+	pointers_to_edges[1]->to_instances = 1;
+	ck_assert_int_eq(move(pointers_to_edges, n_ptedges, diff, is_edge_incoming),
+			OP_SUCCESS);
+	ck_assert_int_eq(pointers_to_edges[0]->from_instances, 1);
+	ck_assert_int_eq(pointers_to_edges[0]->to_instances, 2);
+	ck_assert_int_eq(pointers_to_edges[1]->from_instances, 2);
+	ck_assert_int_eq(pointers_to_edges[1]->to_instances, 2);
 }
 END_TEST
 
@@ -2377,6 +2409,11 @@ suite_solve(void)
 					  retire_test_satisfy_io_constraints);
 	tcase_add_test(tc_sic, test_satisfy_io_constraints);
 	suite_add_tcase(s, tc_sic);
+
+	TCase *tc_mov = tcase_create("move");
+	tcase_add_checked_fixture(tc_mov, setup_test_move, retire_test_move);
+	tcase_add_test(tc_mov, test_move);
+	suite_add_tcase(s, tc_mov);
 
 	TCase *tc_rmf = tcase_create("record move flexible");
 	tcase_add_checked_fixture(tc_rmf, NULL, NULL);
