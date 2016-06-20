@@ -12,6 +12,8 @@ sgsh-readval
 sgsh-writeval
 sgsh-httpval
 sgsh-monitor
+negotiate
+libsgsh_negotiate.a
 charcount
 sgsh.html
 sgsh-httpval.html
