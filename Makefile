@@ -74,7 +74,9 @@ autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test
 	-mkdir test/negotiate/m4
 	cd test/negotiate && \
 	autoreconf --install && \
-	./configure
+	./configure && \
+	cd tests && \
+	patch Makefile Makefile.patch
 
 build-run-ng-tests:
 	cd test/negotiate && \
