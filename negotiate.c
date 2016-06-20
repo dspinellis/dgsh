@@ -80,8 +80,8 @@ struct sgsh_negotiation {
 					 * nodes, on the sgsh graph
 					 */
         int n_edges;			/* Number of edges */
-	pid_t initiator_pid;		/* pid of the tool initiating the
-					 * negotiation. All processes that
+	pid_t initiator_pid;		/* pid of the tool initiating this
+					 * negotiation block. All processes that
 					 * only contribute their output
 					 * channel to the sgsh graph will
 					 * initiate the negotiation process
@@ -156,7 +156,8 @@ struct sgsh_node_pipe_fds {
  * in this order take place.
  */
 
-static struct sgsh_negotiation *chosen_mb;	/* Our king message block. */
+/* The message block implicitly used by many functions */
+static struct sgsh_negotiation *chosen_mb;
 static bool mb_is_updated;			/* Boolean value that signals
 						 * an update to the mb.
 						 */
@@ -1030,7 +1031,9 @@ set_dispatcher(void)
 	(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
 }
 
-/* Write message block to buffer. */
+/*
+ * Write the chosen_mb message block to the specified file descriptor.
+ */
 static enum op_result
 write_message_block(int write_fd)
 {
@@ -1723,15 +1726,18 @@ read_graph_solution(fd_set read_fds, int *read_fd,
 }
 
 /**
- * Read in circulated message block from either direction,
- * that is, input or output side. This capability
+ * Read a circulated message block coming in on any of the specified read_fds.
+ * In most cases these will specify the input or output side. This capability
  * relies on an extension to a standard shell implementation,
  * e.g., bash, that allows reading and writing to both sides
  * for the negotiation phase.
- * Returns the fd to write the message block if need be transmitted.
+ * On return:
+ * read_fd will contain the file descriptor number that was read.
+ * fresh_mb will contain the read message block in dynamically allocated
+ * memory. This should be freed by calling free_mb.
  */
 static enum op_result
-read_message_block(fd_set read_fds, int *read_fd, 
+read_message_block(fd_set read_fds, int *read_fd,
 		struct sgsh_negotiation **fresh_mb)
 {
 	int buf_size = getpagesize();		/* Make buffer page-wide. */
