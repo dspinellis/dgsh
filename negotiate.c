@@ -1137,7 +1137,7 @@ check_phase(int *count_passes)
 			__func__, *count_passes, n_edges_in,
 			n_edges_out);
 
-		if (++(*count_passes) == n_edges_in + n_edges_out)
+		if (++(*count_passes) == n_edges_in + n_edges_out) {
 			/**
 			 * The current node has notified its adjacent nodes.
 			 * It will exit the negotiation process either
@@ -1149,24 +1149,35 @@ check_phase(int *count_passes)
 			 * continue its route until further notice.
 			 * If revisit.should is on and this node is
 			 * this hub node it clears the flags.
+			 * If this node is the initiator of the solution
+			 * sharing phase (according to initiator_pid it
+			 * will also write the block one last time
+			 * before exiting.
 			 */
-			if (chosen_mb->revisit.should ||
-			    chosen_mb->initiator_pid == self_node.pid) {
+			if (!chosen_mb->revisit.should &&
+			    !chosen_mb->initiator_pid == self_node.pid)
+				state = PS_COMPLETE;
+
+			if (chosen_mb->revisit.should) {
 				if (chosen_mb->revisit.node_pid ==
 							self_node.pid) {
-					/* For sure PS_END_AFTER_WRITE after
-					 * clearing the flag?
-					 */
 					chosen_mb->revisit.should = false;
 					chosen_mb->revisit.node_pid = -1;
-				}
-				DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase (after write).***\n", __func__);
-				return PS_END_AFTER_WRITE;
-			} else {
-				DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase.***\n", __func__);
-				return PS_COMPLETE;
-			}
-		else {
+					if (chosen_mb->initiator_pid ==
+							self_node.pid)
+						state = PS_END_AFTER_WRITE;
+					else
+						state = PS_COMPLETE;
+				} else
+					state = PS_END_AFTER_WRITE;
+			} else
+				if (chosen_mb->initiator_pid == self_node.pid)
+					state = PS_END_AFTER_WRITE;
+				else
+					state = PS_COMPLETE;
+
+			DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase%s.***\n", __func__, state == PS_END_AFTER_WRITE ? " (after write)" : "");
+		} else {
 			/**
 			 * If the node takes more than one round to
 			 * notify its adjacent nodes, the node is a hub node
@@ -1177,7 +1188,7 @@ check_phase(int *count_passes)
 				chosen_mb->revisit.should = true;
 				chosen_mb->revisit.node_pid = self_node.pid;
 			}
-			return PS_SOLUTION_SHARE;
+			state = PS_SOLUTION_SHARE;
 		}
 	}
 	return state;

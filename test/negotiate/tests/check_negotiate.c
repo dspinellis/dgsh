@@ -2175,7 +2175,7 @@ START_TEST(test_check_phase)
 
 	/* Solution sharing. Not complete. Set revisit */
 	//setup();
-	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	count_passes = 0;
 	chosen_mb->state = PS_SOLUTION_SHARE;
 	chosen_mb->serial_no = 1;
@@ -2190,7 +2190,7 @@ START_TEST(test_check_phase)
 
 	/* Solution sharing. Not complete. Revisit already set */
 	//setup();
-	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 102;
 	count_passes = 0;
@@ -2207,7 +2207,7 @@ START_TEST(test_check_phase)
 
 	/* Solution sharing. Non initiator. Complete. Revisit not set */
 	//setup();
-	chosen_mb->initiator_pid = 102; /* Node at index 0 */
+	chosen_mb->initiator_pid = 102; /* Node at index 2 */
 	chosen_mb->revisit.should = false;
 	chosen_mb->revisit.node_pid = -1;
 	count_passes = 1;
@@ -2222,9 +2222,9 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.should, false);
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
-	/* Solution sharing. Complete. Revisit set by other */
+	/* Solution sharing. Initiator. Complete. Revisit set by other */
 	//setup();
-	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 102;
 	count_passes = 1;
@@ -2239,9 +2239,9 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.should, true);
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
 
-	/* Solution sharing. Complete. Revisit set by this node */
+	/* Solution sharing. Initiator. Complete. Revisit set by this node */
 	//setup();
-	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 103;
 	count_passes = 1;
@@ -2256,16 +2256,34 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.should, false);
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
-	/* Solution sharing. Complete. Revisit not set */
+	/* Solution sharing. Initiator. Complete. Revisit not set */
 	//setup();
-	chosen_mb->initiator_pid = 103; /* Node at index 0 */
+	chosen_mb->initiator_pid = 103; /* Node at index 3 */
+	chosen_mb->revisit.should = false;
+	chosen_mb->revisit.node_pid = -1;
+	count_passes = 1;
+	chosen_mb->serial_no = 1;
+	chosen_mb->state = PS_SOLUTION_SHARE;
+	DPRINTF("self node pid is: %d.\n", self_node.pid);
+	ck_assert_int_eq(check_phase(&count_passes),
+			PS_END_AFTER_WRITE);
+	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
+	ck_assert_int_eq(count_passes, 2);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, 0);
+	ck_assert_int_eq(chosen_mb->revisit.should, false);
+	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+
+	/* Solution sharing. Non initiator. Complete. Revisit set by this node */
+	//setup();
+	chosen_mb->initiator_pid = 102; /* Node at index 2 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 103;
 	count_passes = 1;
 	chosen_mb->serial_no = 1;
 	chosen_mb->state = PS_SOLUTION_SHARE;
 	ck_assert_int_eq(check_phase(&count_passes),
-			PS_END_AFTER_WRITE);
+			PS_COMPLETE);
 	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
 	ck_assert_int_eq(count_passes, 2);
 	ck_assert_int_eq(chosen_mb->serial_no, 1);
