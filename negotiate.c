@@ -448,11 +448,17 @@ static void
 record_move_unbalanced(int *diff, int *index, int to_move_index,
 		int *instances, int to_move, int pair)
 {
+	/* Can either to_move or pair be 0? I don't think so */
 	if ((*diff > 0 && to_move < pair) ||
 	    (*diff < 0 && to_move > pair)) {
 		*index = to_move_index;
-		*instances = pair - to_move;
-		*diff -= pair - to_move;
+		if ((*diff > 0 && *diff - (pair - to_move) >= 0) ||
+		    (*diff < 0 && *diff - (pair - to_move) <= 0))
+			*instances = pair - to_move;
+		else
+			*instances = *diff;
+		*diff -= *instances;
+
 	}
 }
 

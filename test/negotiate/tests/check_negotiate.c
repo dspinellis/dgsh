@@ -1092,6 +1092,49 @@ START_TEST(test_record_move_flexible)
 }
 END_TEST
 
+START_TEST(test_record_move_unbalanced)
+{
+	/* Successful increase move */
+	int diff = 1;
+	int index = -1;
+	int to_move_index = 2;
+	int instances = 0;
+	int to_move = 2;
+	int pair = 3;
+	record_move_unbalanced(&diff, &index, to_move_index,
+			&instances, to_move, pair);
+	ck_assert_int_eq(diff, 0);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, 1);
+
+	/* Successful decrease. diff greater than to_move - pair */
+	diff = -3;
+	index = -1;
+	to_move_index = 2;
+	instances = 0;
+	to_move = 2;
+	pair = 1;
+	record_move_unbalanced(&diff, &index, to_move_index,
+			&instances, to_move, pair);
+	ck_assert_int_eq(diff, -2);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, -1);
+
+	/* Successful decrease. diff smaller than to_move - pair */
+	diff = -2;
+	index = -1;
+	to_move_index = 2;
+	instances = 0;
+	to_move = 4;
+	pair = 1;
+	record_move_unbalanced(&diff, &index, to_move_index,
+			&instances, to_move, pair);
+	ck_assert_int_eq(diff, 0);
+	ck_assert_int_eq(index, to_move_index);
+	ck_assert_int_eq(instances, -2);
+
+}
+END_TEST
 /*
 START_TEST(test_eval_constraints)
 {
@@ -2333,6 +2376,11 @@ suite_solve(void)
 	tcase_add_checked_fixture(tc_rmf, NULL, NULL);
 	tcase_add_test(tc_rmf, test_record_move_flexible);
 	suite_add_tcase(s, tc_rmf);
+
+	TCase *tc_rmu = tcase_create("record move unbalanced");
+	tcase_add_checked_fixture(tc_rmu, NULL, NULL);
+	tcase_add_test(tc_rmu, test_record_move_unbalanced);
+	suite_add_tcase(s, tc_rmu);
 
 	/*TCase *tc_ec = tcase_create("evaluate constraints");
 	tcase_add_checked_fixture(tc_ec, setup_test_eval_constraints,
