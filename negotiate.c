@@ -1426,7 +1426,7 @@ compete_message_block(struct sgsh_negotiation *fresh_mb,
  * Point next write operation to the correct file descriptor: stdin or stdout.
  * If only one is active, stay with that one.
  */
-static void
+static int
 point_io_direction(int current_read_direction)
 {
 	if (current_read_direction == STDIN_FILENO) {
@@ -1440,6 +1440,7 @@ point_io_direction(int current_read_direction)
 		else /* sgsh in graph endpoint */
 			self_node_io_side.fd_direction = STDOUT_FILENO;
 	}
+	return self_node_io_side.fd_direction;
 }
 
 static enum op_result
@@ -1770,7 +1771,6 @@ read_message_block(fd_set read_fds, int *read_fd,
 		return error_code;
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
 		return OP_ERROR;
-	point_io_direction(*read_fd);
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
 		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
@@ -2017,6 +2017,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			chosen_mb->state = PS_ERROR;
 			goto exit;
 		}
+		write_fd = point_io_direction(read_fd);
 
 		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) ==

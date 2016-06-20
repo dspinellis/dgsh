@@ -1829,12 +1829,10 @@ END_TEST
 
 START_TEST(test_point_io_direction)
 {
-	point_io_direction(STDOUT_FILENO);
-	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
+	ck_assert_int_eq(point_io_direction(STDOUT_FILENO), STDIN_FILENO);
 
 	memcpy(&self_node, &chosen_mb->node_array[2], sizeof(struct sgsh_node));
-	point_io_direction(STDIN_FILENO);
-	ck_assert_int_eq(self_node_io_side.fd_direction, STDOUT_FILENO);
+	ck_assert_int_eq(point_io_direction(STDIN_FILENO), STDOUT_FILENO);
 	
 }
 END_TEST
@@ -2133,7 +2131,6 @@ START_TEST(test_check_phase)
 	//retire_test_check_phase();
 
 	/* At non initiator node, continue negotiation rounds */
-	//setup_test_check_phase();
 	chosen_mb->initiator_pid = 100; /* Node at index 0 */
 	count_passes = -1;		/* Not matter in ngt phase */
 	chosen_mb->serial_no = 1;
@@ -2145,7 +2142,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
 	/* At non initiator node, message block not updated */
-	//setup();
 	chosen_mb->initiator_pid = 100; /* Node at index 0 */
 	count_passes = -1;		/* Not matter in ngt phase */
 	mb_is_updated = false;
@@ -2160,7 +2156,6 @@ START_TEST(test_check_phase)
 	/* Enter check phase at end of negotiation phase
 	 * Should never occur (See sgsh_negotiate()
 	 */
-	//setup();
 	chosen_mb->initiator_pid = 100; /* Node at index 0 */
 	count_passes = -1;		/* Not matter in ngt phase */
 	chosen_mb->serial_no = 1;
@@ -2174,7 +2169,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
 	/* Solution sharing. Not complete. Set revisit */
-	//setup();
 	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	count_passes = 0;
 	chosen_mb->state = PS_SOLUTION_SHARE;
@@ -2189,7 +2183,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, self_node.pid);
 
 	/* Solution sharing. Not complete. Revisit already set */
-	//setup();
 	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 102;
@@ -2206,7 +2199,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
 
 	/* Solution sharing. Non initiator. Complete. Revisit not set */
-	//setup();
 	chosen_mb->initiator_pid = 102; /* Node at index 2 */
 	chosen_mb->revisit.should = false;
 	chosen_mb->revisit.node_pid = -1;
@@ -2223,7 +2215,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
 	/* Solution sharing. Initiator. Complete. Revisit set by other */
-	//setup();
 	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 102;
@@ -2240,7 +2231,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
 
 	/* Solution sharing. Initiator. Complete. Revisit set by this node */
-	//setup();
 	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 103;
@@ -2257,7 +2247,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
 	/* Solution sharing. Initiator. Complete. Revisit not set */
-	//setup();
 	chosen_mb->initiator_pid = 103; /* Node at index 3 */
 	chosen_mb->revisit.should = false;
 	chosen_mb->revisit.node_pid = -1;
@@ -2275,7 +2264,6 @@ START_TEST(test_check_phase)
 	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
 
 	/* Solution sharing. Non initiator. Complete. Revisit set by this node */
-	//setup();
 	chosen_mb->initiator_pid = 102; /* Node at index 2 */
 	chosen_mb->revisit.should = true;
 	chosen_mb->revisit.node_pid = 103;
