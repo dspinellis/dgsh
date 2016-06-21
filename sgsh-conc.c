@@ -56,7 +56,9 @@ static struct portinfo {
 STATIC bool multiple_inputs;
 STATIC int nfd;
 
-// Return the next fd where a block should be passed
+/**
+ * Return the next fd where a read block should be passed
+ */
 STATIC int
 next_fd(int fd)
 {
@@ -77,10 +79,11 @@ next_fd(int fd)
 			return 1;
 		case 1:
 			return 3;
-		case 4:
-			return 0;
 		default:
-			return fd + 1;
+			if (fd == nfd)
+				return 0;
+			else
+				return fd + 1;
 		}
 }
 
