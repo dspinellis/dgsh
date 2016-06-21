@@ -20,6 +20,7 @@
  *
  */
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,8 +29,10 @@
 #include <limits.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/select.h>
 
 #include "sgsh-negotiate.h"
+#include "sgsh-internal-api.h"
 
 static const char *program_name;
 
@@ -47,6 +50,7 @@ static struct portinfo {
 	int lowest_pid;		// Lowest pid seen on this port
 	int seen_times;		// Number of times the pid was seen
 	bool run_ready;		// True when the associated process can run
+	struct sgsh_negotiation *to_write; // Block pending a write
 } *pi;
 
 /*
@@ -87,6 +91,79 @@ next_fd(int fd)
 		}
 }
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+void
+pass_blocks(void)
+{
+	fd_set readfds, writefds;
+	int nfds = 0;
+	int i;
+
+	for (;;) {
+		// Create select(2) masks
+		FD_ZERO(&readfds);
+		FD_ZERO(&writefds);
+		for (i = 0; i < nfd + 1; i++) {
+			if (i == STDERR_FILENO)
+				continue;
+			if (!pi[i].run_ready &&
+					pi[next_fd(i)].to_write == NULL) {
+				FD_SET(i, &readfds);
+				nfds = max(i + 1, nfds);
+			}
+			if (pi[i].to_write) {
+				FD_SET(i, &writefds);
+				nfds = max(i + 1, nfds);
+			}
+		}
+
+		if (select(nfds, &readfds, &writefds, NULL, NULL) < 0) {
+			perror("select");
+			// XXX Notify other processes
+			exit(1);
+		}
+
+		// Read/write what we can
+		for (i = 0; i < nfd + 1; i++) {
+			if (FD_ISSET(i, &writefds)) {
+				assert(pi[i].to_write);
+				chosen_mb = pi[i].to_write;
+				write_message_block(i); // XXX check return
+				free_mb(pi[i].to_write);
+				pi[i].to_write = NULL;
+			}
+			if (FD_ISSET(i, &readfds)) {
+				struct sgsh_negotiation *rb;
+				int next = next_fd(i);
+
+				assert(!pi[i].run_ready);
+				assert(pi[next].to_write == NULL);
+				// read_message_block(i, &pi[next].to_write); // XXX check return
+				rb = pi[next].to_write;
+
+				// Count # times we see a block on a port
+				if (rb->initiator_pid < pi[i].lowest_pid) {
+					pi[i].lowest_pid = rb->initiator_pid;
+					pi[i].seen_times = 1;
+				} else if (rb->initiator_pid == pi[i].lowest_pid)
+					pi[i].seen_times++;
+
+				if (pi[i].seen_times == 2)
+					pi[i].run_ready = true;
+			}
+		}
+
+		// See if all processes are run-ready
+		nfds = 0;
+		for (i = 0; i < nfd + 1; i++)
+			if (pi[i].run_ready)
+				nfds++;
+		if (nfds == nfd)
+			return;
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -116,9 +193,8 @@ main(int argc, char *argv[])
 	nfd = atoi(argv[0]);
 	pi = (struct portinfo *)calloc(nfd + 1, sizeof(struct portinfo));
 
-	// Pass around message blocks
-
-	// Scatter or gather file descriptors
+	pass_blocks();
+	// Scatter or gather file descriptors XXX
 
 	return 0;
 }

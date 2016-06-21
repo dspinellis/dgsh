@@ -57,6 +57,8 @@ sgsh-readval: sgsh-readval.c kvstore.c
 
 sgsh-httpval: sgsh-httpval.c kvstore.c
 
+sgsh-conc: sgsh-conc.o negotiate.o
+
 test-sgsh: $(EXECUTABLES)
 	./test-sgsh.sh
 
