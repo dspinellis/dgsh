@@ -106,7 +106,7 @@ struct sgsh_node_pipe_fds {
  */
 
 /* The message block implicitly used by many functions */
-static struct sgsh_negotiation *chosen_mb;
+struct sgsh_negotiation *chosen_mb;
 static bool mb_is_updated;			/* Boolean value that signals
 						 * an update to the mb.
 						 */

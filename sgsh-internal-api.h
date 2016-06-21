@@ -5,6 +5,9 @@
 
 #include "sgsh-negotiate.h"
 
+/* The message block implicitly used by many functions */
+extern struct sgsh_negotiation *chosen_mb;
+
 /* Identifies the node and node's fd that sent the message block. */
 struct node_io_side {
 	int index;		/* Node index on message block node array */
