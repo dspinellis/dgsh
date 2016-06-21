@@ -845,11 +845,9 @@ write_output_fds(int write_fd)
 	/**
 	 * Create a pipe for each instance of each outgoing edge connection.
 	 * Inject the pipe read side in the cont.
-	 * Send each pipe fd as a message to a socket descriptor that has been
+	 * Send each pipe fd as a message to a socket descriptor,
+	 * that is write_fd, that has been
 	 * set up by the shell to support the sgsh negotiation phase.
-	 * We use the following convention for selecting the socket descriptor
-	 * to send the message to: 1, 3, 4, 5, 6, 7, ... are the socket
-	 * descriptors we send to (in this order).
 	 */
 	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
 		int k;
