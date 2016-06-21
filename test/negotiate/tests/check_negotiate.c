@@ -337,6 +337,14 @@ setup(void)
 }
 
 void
+setup_test_check_state(void)
+{
+	DPRINTF("%s()", __func__);
+	setup_chosen_mb();
+	setup_self_node();
+}
+
+void
 setup_test_check_phase(void)
 {
 	setup_chosen_mb();
@@ -628,6 +636,12 @@ retire(void)
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pipe_fds();
+}
+
+void
+retire_test_check_state(void)
+{
+	retire_chosen_mb();
 }
 
 void
@@ -2314,6 +2328,27 @@ START_TEST(test_check_phase)
 }
 END_TEST
 
+START_TEST(test_check_state)
+{
+	DPRINTF("%s()", __func__);
+	/* self_node is node 3, which is a terminal node */
+	ck_assert_int_eq(check_state(0), OP_RETRY);
+	ck_assert_int_eq(check_state(1), OP_ERROR);
+	/* Do we need this case? It should exit before getting there */
+	//ck_assert_int_eq(check_state(2), OP_ERROR);
+
+	/* Make node 1 self node, which is a non terminal node */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+
+	ck_assert_int_eq(check_state(0), OP_RETRY);
+	ck_assert_int_eq(check_state(1), OP_RETRY);
+	ck_assert_int_eq(check_state(2), OP_ERROR);
+	/* Do we need this case? It should exit before getting there */
+	//ck_assert_int_eq(check_state(3), OP_ERROR);
+
+}
+END_TEST
+
 START_TEST(test_sgsh_negotiate)
 {
 	int *input_fds;
@@ -2585,6 +2620,12 @@ suite_broadcast(void)
 			retire_test_check_phase);
 	tcase_add_test(tc_cp, test_check_phase);
 	suite_add_tcase(s, tc_cp);
+
+	TCase *tc_cs = tcase_create("check state");
+	tcase_add_checked_fixture(tc_cs, setup_test_check_state,
+			retire_test_check_state);
+	tcase_add_test(tc_cs, test_check_state);
+	suite_add_tcase(s, tc_cs);
 
 	TCase *tc_sn = tcase_create("sgsh negotiate");
 	tcase_add_checked_fixture(tc_sn, setup, retire);

@@ -1853,6 +1853,26 @@ validate_input(int channels_required, int channels_provided, const char *tool_na
 	return OP_SUCCESS;
 }
 
+
+/**
+ * Count times we read a message block in error state
+ * and return whether we should continue transmitting it or
+ * exit the negotiation.
+ * The decision is dependent on whether the node is terminal
+ * or not. Terminal nodes (those that only take input or only
+ * provide output) need get the message block with the error
+ * flag set once. After they pass it along they exit.
+ * Non-terminal ones pass the block and exit the second time
+ * they receive it in error state.
+ */
+static enum op_result
+check_state(int count_time_passes)
+{
+	if (self_node.sgsh_in + self_node.sgsh_out == count_time_passes)
+		return OP_ERROR;
+	return OP_RETRY;
+}
+
 /**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -1875,7 +1895,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
 {
-	int count_passes = 0;
+	int count_times_same = 0;
 	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
@@ -1912,8 +1932,10 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
-								== OP_ERROR)
+								== OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
+			count_times_same ++;
+		}
 		write_fd = point_io_direction(read_fd);		/* XXX */
 		chosen_mb = fresh_mb;
 	}
@@ -1930,7 +1952,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if (check_phase(&count_passes) == PS_COMPLETE)
+		if (check_phase(&count_times_same) == PS_COMPLETE)
 			break;
 
 		/**
@@ -1939,34 +1961,37 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		 * then spread the word, and leave negotiation.
 		 * Only initiator executes this block; once.
 		 */
-		if (chose_mb->state == PS_NEGOTIATION_END) {
+		if (chosen_mb->state == PS_NEGOTIATION_END) {
 			if (solve_sgsh_graph() == OP_ERROR)
 				chosen_mb->state = PS_ERROR;
 			else
 				chosen_mb->state = PS_SOLUTION_SHARE;
-		}
 			/**
 			 * This is to catch initiators with one (outgoing)
 			 * edge only. They should exit after the following
 			 * write.
 			 */
-			check_phase(&count_passes);
+			check_phase(&count_times_same);
 		}
 
 		/* Write message block et al. */
 		if (should_transmit_mb) { /* There can be only one. */
 			if (write_message_block(write_fd) == OP_ERROR)
 				chosen_mb->state = PS_ERROR;
-			else if (chose_mb->state == PS_END_AFTER_WRITE) {
+			else if (chosen_mb->state == PS_END_AFTER_WRITE) {
 				chosen_mb->state = PS_COMPLETE;
 				break;
 			}
+			if (check_state(count_times_same) == OP_ERROR)
+				break;
 		}
 
 		/* Read message block et al. */
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
-								== OP_ERROR)
+								== OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
+			count_times_same++;
+		}
 		write_fd = point_io_direction(read_fd);		/* XXX */
 
 		/* Message block battle: the chosen vs the freshly read. */
@@ -1981,5 +2006,5 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		chosen_mb->state = PS_ERROR;
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	free_mb(chosen_mb);
-	return chose_mb->state;
+	return chosen_mb->state;
 }
