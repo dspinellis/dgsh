@@ -1875,8 +1875,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
 {
-	int local_state = PS_NEGOTIATION;
-	int count_passes = 0;         /* while in solution sharing phase */
+	int count_passes = 0;
 	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
@@ -1908,34 +1907,30 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Start negotiation */
         if (self_node.sgsh_out && !self_node.sgsh_in) {
                 if (construct_message_block(tool_name, self_pid) == OP_ERROR)
-			return PS_ERROR;
+			chosen_mb->state = PS_ERROR;
                 self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
 								== OP_ERROR)
-			return PS_ERROR;
-		write_fd = point_io_direction(read_fd);
+			chosen_mb->state = PS_ERROR;
+		write_fd = point_io_direction(read_fd);		/* XXX */
 		chosen_mb = fresh_mb;
 	}
 
 	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required,
 						channels_provided);
-	if (try_add_sgsh_node() == OP_ERROR) {
+	if (try_add_sgsh_node() == OP_ERROR)
 		chosen_mb->state = PS_ERROR;
-		goto exit;
-	}
-	if (try_add_sgsh_edge() == OP_ERROR) {
+
+	if (try_add_sgsh_edge() == OP_ERROR)
 		chosen_mb->state = PS_ERROR;
-		goto exit;
-	}
 
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if ((local_state = check_phase(&count_passes))
-							== PS_COMPLETE)
+		if (check_phase(&count_passes) == PS_COMPLETE)
 			break;
 
 		/**
@@ -1944,57 +1939,47 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		 * then spread the word, and leave negotiation.
 		 * Only initiator executes this block; once.
 		 */
-		if (local_state == PS_NEGOTIATION_END) {
-			if (solve_sgsh_graph() == OP_ERROR) {
+		if (chose_mb->state == PS_NEGOTIATION_END) {
+			if (solve_sgsh_graph() == OP_ERROR)
 				chosen_mb->state = PS_ERROR;
-				goto exit;
-			}
-			chosen_mb->state = PS_SOLUTION_SHARE;
+			else
+				chosen_mb->state = PS_SOLUTION_SHARE;
+		}
 			/**
 			 * This is to catch initiators with one (outgoing)
-			 * edge only. Theyshould exit after the following
+			 * edge only. They should exit after the following
 			 * write.
 			 */
-			local_state =
-				check_phase(&count_passes);
+			check_phase(&count_passes);
 		}
 
 		/* Write message block et al. */
 		if (should_transmit_mb) { /* There can be only one. */
-			if (write_message_block(write_fd) == OP_ERROR) {
+			if (write_message_block(write_fd) == OP_ERROR)
 				chosen_mb->state = PS_ERROR;
-				goto exit;
-			}
-			if (local_state == PS_END_AFTER_WRITE) {
-				local_state = PS_COMPLETE;
+			else if (chose_mb->state == PS_END_AFTER_WRITE) {
+				chosen_mb->state = PS_COMPLETE;
 				break;
 			}
 		}
 
 		/* Read message block et al. */
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
-								== OP_ERROR) {
+								== OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-			goto exit;
-		}
-		write_fd = point_io_direction(read_fd);
+		write_fd = point_io_direction(read_fd);		/* XXX */
 
 		/* Message block battle: the chosen vs the freshly read. */
 		if (compete_message_block(fresh_mb, &should_transmit_mb) ==
-								OP_ERROR) {
+								OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-			goto exit;
-		}
 	}
 
+	/* XXX */
 	if (establish_io_connections(input_fds, n_input_fds, output_fds,
-						n_output_fds) == OP_ERROR) {
+						n_output_fds) == OP_ERROR)
 		chosen_mb->state = PS_ERROR;
-		goto exit;
-	}
 	free_graph_solution(chosen_mb->n_nodes - 1);
-
-exit:
 	free_mb(chosen_mb);
-	return local_state;
+	return chose_mb->state;
 }
