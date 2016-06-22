@@ -6,12 +6,7 @@ enum prot_state {
 	PS_COMPLETE,		/* Negotiation process is complete */
 	PS_NEGOTIATION,		/* Negotiation phase */
 	PS_NEGOTIATION_END,	/* End of negotiation phase */
-	PS_SOLUTION_SHARE,	/* Solution sharing phase */
-	PS_END_AFTER_WRITE,	/* Negotiation process will be complete for
-				 * the current node after writing the solution.
-				 * This means that another node on the graph
-				 * still has adjacent nodes to notify.
-				 */
+	PS_RUN,			/* Share solution; prepare to run */
 	PS_ERROR,		/* Error in negotiation process */
 };
 

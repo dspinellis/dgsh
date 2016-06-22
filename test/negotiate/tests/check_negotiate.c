@@ -115,13 +115,12 @@ setup_chosen_mb(void)
         chosen_mb->edge_array = edges;
         chosen_mb->n_edges = n_edges;
 
-	/* check_phase() */
+	/* check_negotiation_round() */
 	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->initiator_pid = 103; /* Node 3 */
 	mb_is_updated = 0;
 	chosen_mb->serial_no = 0;
-	chosen_mb->revisit.should = false;
-	chosen_mb->revisit.node_pid = -1;
+	chosen_mb->preceding_process_pid = -1;
 }
 
 /* Identical to chosen_mb except for the initiator field. */
@@ -206,13 +205,13 @@ setup_mb(struct sgsh_negotiation **mb)
         temp_mb->edge_array = edges;
         temp_mb->n_edges = n_edges;
 
-	/* check_phase() */
+	/* check_negotiation_round() */
 	temp_mb->state = PS_NEGOTIATION;
 	temp_mb->initiator_pid = 102; /* Node 2 */
 	mb_is_updated = 0;
 	temp_mb->serial_no = 0;
-	temp_mb->origin.index = 2;
-	temp_mb->origin.fd_direction = STDOUT_FILENO;
+	temp_mb->origin_index = 2;
+	temp_mb->origin_fd_direction = STDOUT_FILENO;
 
 	*mb = temp_mb;
 }
@@ -337,7 +336,7 @@ setup(void)
 }
 
 void
-setup_test_check_state(void)
+setup_test_leave_negotiation(void)
 {
 	DPRINTF("%s()", __func__);
 	setup_chosen_mb();
@@ -345,7 +344,7 @@ setup_test_check_state(void)
 }
 
 void
-setup_test_check_phase(void)
+setup_test_check_negotiation_round(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
@@ -410,7 +409,7 @@ setup_test_free_mb(void)
 }
 
 void
-setup_test_compete_message_block(void)
+setup_test_analyse_read(void)
 {
 	setup_chosen_mb();
 	setup_mb(&fresh_mb);
@@ -639,13 +638,13 @@ retire(void)
 }
 
 void
-retire_test_check_state(void)
+retire_test_leave_negotiation(void)
 {
 	retire_chosen_mb();
 }
 
 void
-retire_test_check_phase(void)
+retire_test_check_negotiation_round(void)
 {
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
@@ -694,7 +693,7 @@ retire_test_try_add_sgsh_node(void)
 }
 
 void
-retire_test_compete_message_block(void)
+retire_test_analyse_read(void)
 {
 	if (exit_state == 1) {
 		retire_mb(fresh_mb);
@@ -1332,8 +1331,8 @@ END_TEST
 START_TEST(test_set_dispatcher)
 {
 	set_dispatcher();
-	ck_assert_int_eq(chosen_mb->origin.index, 3);
-	ck_assert_int_eq(chosen_mb->origin.fd_direction, 0); /* The input side */
+	ck_assert_int_eq(chosen_mb->origin_index, 3);
+	ck_assert_int_eq(chosen_mb->origin_fd_direction, 0); /* The input side */
 }
 END_TEST
 
@@ -1883,63 +1882,214 @@ START_TEST(test_point_io_direction)
 }
 END_TEST
 
-START_TEST(test_compete_message_block)
+START_TEST(test_analyse_read)
 {
-	bool should_transmit_mb = true;
-	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
-	/* set_dispatcher() */
-	self_node_io_side.index = 3;
-	self_node_io_side.fd_direction = STDIN_FILENO;
-	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
-								OP_SUCCESS);
+	DPRINTF("%s()", __func__);
+	/* error state flag seen; terminal process such as node 3
+	 * which is the current node leave.
+	 */
+	bool should_transmit_mb = false;
+	int serialno_ntimes_same = 0;
+	int run_ntimes_same = 0;
+	int error_ntimes_same = 0;
+	fresh_mb->state = PS_ERROR;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
-	ck_assert_int_eq(mb_is_updated, 1);
+	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
+	ck_assert_int_eq(error_ntimes_same, 1);
+	ck_assert_int_eq(mb_is_updated, false);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
-	exit_state = 1;
-	retire_test_compete_message_block();
+	retire_test_analyse_read();
 
-	setup_test_compete_message_block();
+	setup_test_analyse_read();
+	/* error state flag seen; non-terminal process such as node 1
+	 * which is the current node leave when they see it the second time.
+	 * This is the first.
+	 */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
 	should_transmit_mb = false;
-	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
+	error_ntimes_same = 0;
+	fresh_mb->state = PS_ERROR;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
+	ck_assert_int_eq(error_ntimes_same, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* error state flag seen; non-terminal process such as node 1
+	 * which is the current node have to leave when they see it 
+	 * the second time. This is the second.
+	 * Before leaving they have to pass the block.
+	 */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	should_transmit_mb = false;
+	error_ntimes_same = 1;
+	fresh_mb->state = PS_ERROR;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
+	ck_assert_int_eq(error_ntimes_same, 2);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* All processes have to pass the block first except
+	 * for the ones who passed the block the last time
+	 * before finding a solution.
+	 */
+	should_transmit_mb = false;
+	error_ntimes_same = 1;
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	fresh_mb->preceding_process_pid = 101;
+	fresh_mb->state = PS_ERROR;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, false);
+	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
+	ck_assert_int_eq(error_ntimes_same, 2);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* run state flag seen; terminal process such as node 3
+	 * which is the current node leave.
+	 */
+	should_transmit_mb = false;
+	serialno_ntimes_same = 0;
+	run_ntimes_same = 0;
+	error_ntimes_same = 0;
+	fresh_mb->state = PS_RUN;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(chosen_mb->state, PS_RUN);
+	ck_assert_int_eq(run_ntimes_same, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* run state flag seen; non-terminal process such as node 1
+	 * which is the current node leave when they see it the second time.
+	 * This is the first.
+	 */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	should_transmit_mb = false;
+	run_ntimes_same = 0;
+	fresh_mb->state = PS_RUN;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(chosen_mb->state, PS_RUN);
+	ck_assert_int_eq(run_ntimes_same, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* run state flag seen; non-terminal process such as node 1
+	 * which is the current node have to leave when they see it 
+	 * the second time. This is the second.
+	 * Before leaving they have to pass the block.
+	 */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	should_transmit_mb = false;
+	run_ntimes_same = 1;
+	fresh_mb->state = PS_RUN;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(chosen_mb->state, PS_RUN);
+	ck_assert_int_eq(run_ntimes_same, 2);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	setup_test_analyse_read();
+	/* When they are to leave they pass the block first except
+	 * if they are the ones who passed the block the last time
+	 * before finding a solution.
+	 */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+	should_transmit_mb = false;
+	fresh_mb->preceding_process_pid = 101;
+	fresh_mb->state = PS_RUN;
+	run_ntimes_same = 1;
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
+	ck_assert_int_eq(should_transmit_mb, false);
+	ck_assert_int_eq(chosen_mb->state, PS_RUN);
+	ck_assert_int_eq(run_ntimes_same, 2);
+	ck_assert_int_eq(mb_is_updated, false);
+	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
+	retire_test_analyse_read();
+
+	/* Negotiation state */
+	setup_test_analyse_read();
+	should_transmit_mb = false;
+	run_ntimes_same = 0;
+	error_ntimes_same = 0;
+	serialno_ntimes_same = 0;
 	/* set_dispatcher() */
 	self_node_io_side.index = 3;
 	self_node_io_side.fd_direction = STDIN_FILENO;
 	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
-	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
-								OP_SUCCESS);
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 0);
-	retire_test_compete_message_block();
+	ck_assert_int_eq(serialno_ntimes_same, 0);
+	retire_test_analyse_read();
 
-	setup_test_compete_message_block();
-	should_transmit_mb = -1;
+	setup_test_analyse_read();
+	should_transmit_mb = false;
 	memcpy(&self_node, &chosen_mb->node_array[3], sizeof(struct sgsh_node));
 	/* set_dispatcher() */
 	self_node_io_side.index = 3;
 	self_node_io_side.fd_direction = STDIN_FILENO;
 	fresh_mb->initiator_pid = 103; /* Same initiator */
 	fresh_mb->serial_no = 1; /* fresh_mb prevails */
-	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
-								OP_SUCCESS);
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
-	exit_state = 1;
-	retire_test_compete_message_block();
+	ck_assert_int_eq(serialno_ntimes_same, 0);
+	retire_test_analyse_read();
 
-	setup_test_compete_message_block();
+	setup_test_analyse_read();
 	should_transmit_mb = false;
 	memcpy(&self_node, &chosen_mb->node_array[0], sizeof(struct sgsh_node));
 	/* set_dispatcher() */
 	self_node_io_side.index = 0;
 	self_node_io_side.fd_direction = STDOUT_FILENO;
-	chosen_mb->origin.index = 3;
-	chosen_mb->origin.fd_direction = STDIN_FILENO;
+	chosen_mb->origin_index = 3;
+	chosen_mb->origin_fd_direction = STDIN_FILENO;
 	fresh_mb->initiator_pid = 103; /* Same initiator */
 	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
-	ck_assert_int_eq(compete_message_block(fresh_mb, &should_transmit_mb),
-								OP_SUCCESS);
+	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
+				&serialno_ntimes_same, &run_ntimes_same,
+				&error_ntimes_same), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
+	ck_assert_int_eq(serialno_ntimes_same, 1);
 	ck_assert_int_eq(mb_is_updated, 0);
 
 }
@@ -1990,8 +2140,8 @@ END_TEST
 START_TEST(test_try_add_sgsh_edge)
 {
 	/* Better in a setup function. */ 
-	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
-	chosen_mb->origin.index = 0;
+	chosen_mb->origin_fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin_index = 0;
 	/* self_node_io_side should also be set; it is set in setup */
 	ck_assert_int_eq(try_add_sgsh_edge(), OP_EXISTS);
 
@@ -2005,8 +2155,8 @@ START_TEST(test_try_add_sgsh_edge)
 	new.sgsh_in = 1;
         new.sgsh_out = 1;
 	/* Better in a setup function. */ 
-	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
-	chosen_mb->origin.index = new.index;
+	chosen_mb->origin_fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin_index = new.index;
 	/* self_node_io_side should also be set; it is set in setup */
 	memcpy(&self_node, &new, sizeof(struct sgsh_node));
 	chosen_mb->n_nodes++;
@@ -2018,15 +2168,15 @@ START_TEST(test_try_add_sgsh_edge)
 
 	/* New edge: from existing to new node */
 	/* Better in a setup function. */ 
-	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
-	chosen_mb->origin.index = 0;
+	chosen_mb->origin_fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin_index = 0;
 	/* self_node_io_side should also be set; it is set in setup */
 	self_node_io_side.index = new.index;
 	self_node_io_side.fd_direction = STDIN_FILENO;
 	ck_assert_int_eq(try_add_sgsh_edge(), OP_SUCCESS);
 
 	/* NOOP: message block created just now */
-	chosen_mb->origin.index = -1;
+	chosen_mb->origin_index = -1;
 	ck_assert_int_eq(try_add_sgsh_edge(), OP_NOOP);
 }
 END_TEST
@@ -2047,18 +2197,18 @@ START_TEST(test_fill_sgsh_edge)
 	struct sgsh_edge new;
 	/* STDIN -> STDOUT */
 	/* Better in a setup function. */ 
-	chosen_mb->origin.fd_direction = STDOUT_FILENO;   
-	chosen_mb->origin.index = 0;
+	chosen_mb->origin_fd_direction = STDOUT_FILENO;   
+	chosen_mb->origin_index = 0;
 	/* self_node_io_side should also be set; it is set in setup */
 	ck_assert_int_eq(fill_sgsh_edge(&new), OP_SUCCESS);
 	
 	/* Impossible case. No such origin. */
-	chosen_mb->origin.index = 7;
+	chosen_mb->origin_index = 7;
 	ck_assert_int_eq(fill_sgsh_edge(&new), OP_ERROR);
 	
 	/* STDOUT -> STDIN */
-	chosen_mb->origin.fd_direction = STDIN_FILENO;   
-	chosen_mb->origin.index = 3;
+	chosen_mb->origin_fd_direction = STDIN_FILENO;   
+	chosen_mb->origin_index = 3;
 	memcpy(&self_node, &chosen_mb->node_array[0], sizeof(struct sgsh_node));
 	self_node_io_side.fd_direction = STDOUT_FILENO;   
 	self_node_io_side.index = 0;
@@ -2105,8 +2255,8 @@ START_TEST(test_construct_message_block)
         ck_assert_int_eq(chosen_mb->initiator_pid, pid);
         ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
         ck_assert_int_eq(chosen_mb->serial_no, 0);
-        ck_assert_int_eq(chosen_mb->origin.index, -1);
-        ck_assert_int_eq(chosen_mb->origin.fd_direction, -1);
+        ck_assert_int_eq(chosen_mb->origin_index, -1);
+        ck_assert_int_eq(chosen_mb->origin_fd_direction, -1);
 	free(chosen_mb);
 }
 END_TEST
@@ -2151,200 +2301,68 @@ START_TEST(test_validate_input)
 }
 END_TEST
 
-START_TEST(test_check_phase)
+START_TEST(test_check_negotiation_round)
 {
 	DPRINTF("***%s()\n", __func__);
-	/* End of negotiation rounds */
-	int count_passes = -1;		/* Not matter in ngt phase */
+	/* Continue negotiation rounds */
+	int serialno_ntimes_same = 0;
 	chosen_mb->serial_no = 1;
-	ck_assert_int_eq(check_phase(&count_passes),
-				PS_NEGOTIATION_END);
-	ck_assert_int_eq(chosen_mb->serial_no, 2);
-	ck_assert_int_eq(mb_is_updated, true);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-	//retire_test_check_phase();
+	check_negotiation_round(serialno_ntimes_same);
+	ck_assert_int_eq(chosen_mb->state,
+				PS_NEGOTIATION);
+	ck_assert_int_eq(chosen_mb->serial_no, 1);
+	ck_assert_int_eq(mb_is_updated, false);
+	//retire_test_check_negotiation_round();
 
 	/* Continue negotiation rounds */
-	count_passes = -1;		/* Not matter in ngt phase */
+	serialno_ntimes_same = 2;
 	mb_is_updated = true;
 	chosen_mb->serial_no = 1;
-	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
+	check_negotiation_round(serialno_ntimes_same);
+	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION);
 	ck_assert_int_eq(chosen_mb->serial_no, 1);
 	ck_assert_int_eq(mb_is_updated, true);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-	//retire_test_check_phase();
+	//retire_test_check_negotiation_round();
 
-	/* At non initiator node, continue negotiation rounds */
-	chosen_mb->initiator_pid = 100; /* Node at index 0 */
-	count_passes = -1;		/* Not matter in ngt phase */
+	/* End of negotiation rounds */
+	serialno_ntimes_same = 3;
 	chosen_mb->serial_no = 1;
-	mb_is_updated = true;
-	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, true);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-
-	/* At non initiator node, message block not updated */
-	chosen_mb->initiator_pid = 100; /* Node at index 0 */
-	count_passes = -1;		/* Not matter in ngt phase */
 	mb_is_updated = false;
-	chosen_mb->serial_no = 1;
-	ck_assert_int_eq(check_phase(&count_passes), PS_NEGOTIATION);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, false);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-	//retire();
-
-	/* Enter check phase at end of negotiation phase
-	 * Should never occur (See sgsh_negotiate()
-	 */
-	chosen_mb->initiator_pid = 100; /* Node at index 0 */
-	count_passes = -1;		/* Not matter in ngt phase */
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_NEGOTIATION_END;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_NEGOTIATION_END);
+	check_negotiation_round(serialno_ntimes_same);
 	ck_assert_int_eq(chosen_mb->state, PS_NEGOTIATION_END);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, false);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-
-	/* Solution sharing. Not complete. Set revisit */
-	chosen_mb->initiator_pid = 103; /* Node at index 3 */
-	count_passes = 0;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	chosen_mb->serial_no = 1;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_SOLUTION_SHARE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 1);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, true);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, self_node.pid);
-
-	/* Solution sharing. Not complete. Revisit already set */
-	chosen_mb->initiator_pid = 103; /* Node at index 3 */
-	chosen_mb->revisit.should = true;
-	chosen_mb->revisit.node_pid = 102;
-	count_passes = 0;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_SOLUTION_SHARE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 1);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, true);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
-
-	/* Solution sharing. Non initiator. Complete. Revisit not set */
-	chosen_mb->initiator_pid = 102; /* Node at index 2 */
-	chosen_mb->revisit.should = false;
-	chosen_mb->revisit.node_pid = -1;
-	count_passes = 1;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_COMPLETE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 2);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-
-	/* Solution sharing. Initiator. Complete. Revisit set by other */
-	chosen_mb->initiator_pid = 103; /* Node at index 3 */
-	chosen_mb->revisit.should = true;
-	chosen_mb->revisit.node_pid = 102;
-	count_passes = 1;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_END_AFTER_WRITE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 2);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, true);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, 102);
-
-	/* Solution sharing. Initiator. Complete. Revisit set by this node */
-	chosen_mb->initiator_pid = 103; /* Node at index 3 */
-	chosen_mb->revisit.should = true;
-	chosen_mb->revisit.node_pid = 103;
-	count_passes = 1;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_END_AFTER_WRITE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 2);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-
-	/* Solution sharing. Initiator. Complete. Revisit not set */
-	chosen_mb->initiator_pid = 103; /* Node at index 3 */
-	chosen_mb->revisit.should = false;
-	chosen_mb->revisit.node_pid = -1;
-	count_passes = 1;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	DPRINTF("self node pid is: %d.\n", self_node.pid);
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_END_AFTER_WRITE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 2);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
-
-	/* Solution sharing. Non initiator. Complete. Revisit set by this node */
-	chosen_mb->initiator_pid = 102; /* Node at index 2 */
-	chosen_mb->revisit.should = true;
-	chosen_mb->revisit.node_pid = 103;
-	count_passes = 1;
-	chosen_mb->serial_no = 1;
-	chosen_mb->state = PS_SOLUTION_SHARE;
-	ck_assert_int_eq(check_phase(&count_passes),
-			PS_COMPLETE);
-	ck_assert_int_eq(chosen_mb->state, PS_SOLUTION_SHARE);
-	ck_assert_int_eq(count_passes, 2);
-	ck_assert_int_eq(chosen_mb->serial_no, 1);
-	ck_assert_int_eq(mb_is_updated, 0);
-	ck_assert_int_eq(chosen_mb->revisit.should, false);
-	ck_assert_int_eq(chosen_mb->revisit.node_pid, -1);
+	ck_assert_int_eq(chosen_mb->serial_no, 2);
+	ck_assert_int_eq(mb_is_updated, true);
 
 }
 END_TEST
 
-START_TEST(test_check_state)
+START_TEST(test_leave_negotiation)
 {
 	DPRINTF("%s()", __func__);
 	/* self_node is node 3, which is a terminal node */
-	ck_assert_int_eq(check_state(0), OP_RETRY);
-	ck_assert_int_eq(check_state(1), OP_ERROR);
+	ck_assert_int_eq(leave_negotiation(0, 0), false);
+	/* Should not happen for PS_NEGOTIATION */
+	ck_assert_int_eq(leave_negotiation(1, 0), false);
+	/* Should not happen for PS_NEGOTIATION */
+	ck_assert_int_eq(leave_negotiation(0, 1), false);
+	chosen_mb->state = PS_ERROR;
+	ck_assert_int_eq(leave_negotiation(0, 1), true);
+	chosen_mb->state = PS_RUN;
+	ck_assert_int_eq(leave_negotiation(1, 0), true);
 	/* Do we need this case? It should exit before getting there */
-	//ck_assert_int_eq(check_state(2), OP_ERROR);
+	//ck_assert_int_eq(leave_negotiation(2, 0), false);
 
 	/* Make node 1 self node, which is a non terminal node */
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
 
-	ck_assert_int_eq(check_state(0), OP_RETRY);
-	ck_assert_int_eq(check_state(1), OP_RETRY);
-	ck_assert_int_eq(check_state(2), OP_ERROR);
+	chosen_mb->state = PS_ERROR;
+	ck_assert_int_eq(leave_negotiation(0, 1), false);
+	ck_assert_int_eq(leave_negotiation(0, 2), true);
+	chosen_mb->state = PS_RUN;
+	ck_assert_int_eq(leave_negotiation(1, 0), false);
+	ck_assert_int_eq(leave_negotiation(2, 0), true);
 	/* Do we need this case? It should exit before getting there */
-	//ck_assert_int_eq(check_state(3), OP_ERROR);
+	//ck_assert_int_eq(leave_negotiation(2, 0), false);
 
 }
 END_TEST
@@ -2543,11 +2561,11 @@ suite_broadcast(void)
 	tcase_add_test(tc_pid, test_point_io_direction);
 	suite_add_tcase(s, tc_pid);
 
-	TCase *tc_cmb = tcase_create("compete message block");
-	tcase_add_checked_fixture(tc_cmb, setup_test_compete_message_block,
-					  retire_test_compete_message_block);
-	tcase_add_test(tc_cmb, test_compete_message_block);
-	suite_add_tcase(s, tc_cmb);
+	TCase *tc_ar = tcase_create("analyse read");
+	tcase_add_checked_fixture(tc_ar, setup_test_analyse_read,
+					  retire_test_analyse_read);
+	tcase_add_test(tc_ar, test_analyse_read);
+	suite_add_tcase(s, tc_ar);
 
 	TCase *tc_fm = tcase_create("free message block");
 	tcase_add_checked_fixture(tc_fm, setup_test_free_mb, NULL);
@@ -2615,17 +2633,17 @@ suite_broadcast(void)
 	tcase_add_test(tc_vi, test_validate_input);
 	suite_add_tcase(s, tc_vi);
 
-	TCase *tc_cp = tcase_create("check phase");
-	tcase_add_checked_fixture(tc_cp, setup_test_check_phase,
-			retire_test_check_phase);
-	tcase_add_test(tc_cp, test_check_phase);
-	suite_add_tcase(s, tc_cp);
+	TCase *tc_cnr = tcase_create("check negotiation round");
+	tcase_add_checked_fixture(tc_cnr, setup_test_check_negotiation_round,
+			retire_test_check_negotiation_round);
+	tcase_add_test(tc_cnr, test_check_negotiation_round);
+	suite_add_tcase(s, tc_cnr);
 
-	TCase *tc_cs = tcase_create("check state");
-	tcase_add_checked_fixture(tc_cs, setup_test_check_state,
-			retire_test_check_state);
-	tcase_add_test(tc_cs, test_check_state);
-	suite_add_tcase(s, tc_cs);
+	TCase *tc_ln = tcase_create("leave negotiation");
+	tcase_add_checked_fixture(tc_ln, setup_test_leave_negotiation,
+			retire_test_leave_negotiation);
+	tcase_add_test(tc_ln, test_leave_negotiation);
+	suite_add_tcase(s, tc_ln);
 
 	TCase *tc_sn = tcase_create("sgsh negotiate");
 	tcase_add_checked_fixture(tc_sn, setup, retire);

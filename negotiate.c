@@ -989,11 +989,11 @@ write_graph_solution(int write_fd)
 static void
 set_dispatcher(void)
 {
-	chosen_mb->origin.index = self_node_io_side.index;
+	chosen_mb->origin_index = self_node_io_side.index;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
-	chosen_mb->origin.fd_direction = self_node_io_side.fd_direction;
-	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin.index,
-	(chosen_mb->origin.fd_direction == 0) ? "input" : "output");
+	chosen_mb->origin_fd_direction = self_node_io_side.fd_direction;
+	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin_index,
+	(chosen_mb->origin_fd_direction == 0) ? "input" : "output");
 }
 
 /*
@@ -1061,7 +1061,7 @@ write_message_block(int write_fd)
 
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 		}
-	} else if (chosen_mb->state == PS_SOLUTION_SHARE) {
+	} else if (chosen_mb->state == PS_RUN) {
 		/* Transmit solution. */
 		if (write_graph_solution(write_fd) == OP_ERROR)
 			return OP_ERROR;
@@ -1074,83 +1074,17 @@ write_message_block(int write_fd)
 }
 
 /* If negotiation is still going, Check whether it should end. */
-static enum prot_state
-check_phase(int *count_passes)
+static void
+check_negotiation_round(int serialno_ntimes_same)
 {
-	int state = chosen_mb->state;
-	/* So, this is the initiator process and state is same as last pass */
-	if (state == PS_NEGOTIATION) {
-		if (self_node.pid == chosen_mb->initiator_pid &&
-							!mb_is_updated) {
-			state = PS_NEGOTIATION_END;
+	if (chosen_mb->state == PS_NEGOTIATION) {
+		if (serialno_ntimes_same == 3) {
+			chosen_mb->state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = true;
 			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
 		}
-	} else if (state == PS_SOLUTION_SHARE) {
-		int n_edges_in =
-			graph_solution[self_node.index].n_edges_incoming;
-		int n_edges_out =
-			graph_solution[self_node.index].n_edges_outgoing;
-		DPRINTF("%s(): passes: %d, edges in: %d, edges out: %d.",
-			__func__, *count_passes, n_edges_in,
-			n_edges_out);
-
-		if (++(*count_passes) == n_edges_in + n_edges_out) {
-			/**
-			 * The current node has notified its adjacent nodes.
-			 * It will exit the negotiation process either
-			 * immediately or after sending the solution one
-			 * last time depending on the state of revisit.should.
-			 * revisit.should checks whether
-			 * some hub node (>1 input edges || >1 output edges)
-			 * has stated that the message block should
-			 * continue its route until further notice.
-			 * If revisit.should is on and this node is
-			 * this hub node it clears the flags.
-			 * If this node is the initiator of the solution
-			 * sharing phase (according to initiator_pid it
-			 * will also write the block one last time
-			 * before exiting.
-			 */
-			if (!chosen_mb->revisit.should &&
-			    chosen_mb->initiator_pid != self_node.pid)
-				state = PS_COMPLETE;
-
-			if (chosen_mb->revisit.should) {
-				if (chosen_mb->revisit.node_pid ==
-							self_node.pid) {
-					chosen_mb->revisit.should = false;
-					chosen_mb->revisit.node_pid = -1;
-					if (chosen_mb->initiator_pid ==
-							self_node.pid)
-						state = PS_END_AFTER_WRITE;
-					else
-						state = PS_COMPLETE;
-				} else
-					state = PS_END_AFTER_WRITE;
-			} else
-				if (chosen_mb->initiator_pid == self_node.pid)
-					state = PS_END_AFTER_WRITE;
-				else
-					state = PS_COMPLETE;
-
-			DPRINTF("%s(): ***Negotiation protocol state change: end of solution sharing phase%s.***\n", __func__, state == PS_END_AFTER_WRITE ? " (after write)" : "");
-		} else {
-			/**
-			 * If the node takes more than one round to
-			 * notify its adjacent nodes, the node is a hub node
-			 * so it will require the solution to repass in order
-			 * to notify all adjacent nodes.
-			 */
-			if (!chosen_mb->revisit.should) {
-				chosen_mb->revisit.should = true;
-				chosen_mb->revisit.node_pid = self_node.pid;
-			}
-			state = PS_SOLUTION_SHARE;
-		}
 	}
-	return state;
 }
 
 /* Reallocate message block to fit new node coming in. */
@@ -1202,28 +1136,28 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	for (i = 0; i < n_nodes; i++) /* Check dispatcher node exists. */
-		if (i == chosen_mb->origin.index)
+		if (i == chosen_mb->origin_index)
 			break;
 	if (i == n_nodes) {
-		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin.index);
+		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin_index);
 		return OP_ERROR;
 	}
-	if (chosen_mb->origin.fd_direction == STDIN_FILENO) {
+	if (chosen_mb->origin_fd_direction == STDIN_FILENO) {
 	/**
          * MB sent from stdin, so dispatcher is the destination of the edge.
 	 * Self should be sgsh-active on output side. Self's current fd is stdin
 	 * if self is sgsh-active on input side or output side otherwise.
 	 * Self (the recipient) is the source of the edge.
          */
-		e->to = chosen_mb->origin.index;
+		e->to = chosen_mb->origin_index;
 		assert(self_node.sgsh_out == 1);
 		assert((self_node.sgsh_in &&
 			self_node_io_side.fd_direction == STDIN_FILENO) ||
 			self_node_io_side.fd_direction == STDOUT_FILENO);
 		e->from = self_node_io_side.index;
-	} else if (chosen_mb->origin.fd_direction == STDOUT_FILENO) {
+	} else if (chosen_mb->origin_fd_direction == STDOUT_FILENO) {
 		/* Similarly. */
-		e->from = chosen_mb->origin.index;
+		e->from = chosen_mb->origin_index;
 		assert(self_node.sgsh_in == 1);
 		assert((self_node.sgsh_out &&
 			self_node_io_side.fd_direction == STDOUT_FILENO) ||
@@ -1262,7 +1196,7 @@ add_edge(struct sgsh_edge *edge)
 static enum op_result
 try_add_sgsh_edge(void)
 {
-	if (chosen_mb->origin.index >= 0) { /* If MB not created just now: */
+	if (chosen_mb->origin_index >= 0) { /* If MB not created just now: */
 		struct sgsh_edge new_edge;
 		fill_sgsh_edge(&new_edge);
 		if (lookup_sgsh_edge(&new_edge) == OP_CREATE) {
@@ -1335,47 +1269,83 @@ free_mb(struct sgsh_negotiation *mb)
  * If the arrived is the chosen, try to add the edge.
  */
 static enum op_result
-compete_message_block(struct sgsh_negotiation *fresh_mb,
-			bool *should_transmit_mb)
+analyse_read(struct sgsh_negotiation *fresh_mb,
+			bool *should_transmit_mb,
+			int *serialno_ntimes_same,
+			int *run_ntimes_same,
+			int *error_ntimes_same)
 {
-
-	if (fresh_mb->state == PS_SOLUTION_SHARE) {
-        	*should_transmit_mb = true;
-		free_mb(chosen_mb);
-		chosen_mb = fresh_mb;
-		return OP_SUCCESS;
-	}
-
         *should_transmit_mb = false; /* Default value. */
 	mb_is_updated = false; /* Default value. */
-        if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) { /* New chosen! .*/
+
+	if (fresh_mb->state == PS_ERROR) {
+		(*error_ntimes_same)++;
 		free_mb(chosen_mb);
 		chosen_mb = fresh_mb;
-                if (try_add_sgsh_node() == OP_ERROR)
-			return OP_ERROR; /* Double realloc: one for node, */
-                if (try_add_sgsh_edge() == OP_ERROR)
-			return OP_ERROR; /* one for edge. */
-		mb_is_updated = true; /*Substituting chosen_mb is an update.*/
-                *should_transmit_mb = true;
-        } else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid) {
-		free_mb(fresh_mb); /* Discard MB just read. */
-	} else {
-                *should_transmit_mb = true;
-		DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
-		if (fresh_mb->serial_no > chosen_mb->serial_no) {
-			DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
+		/* Records whether process is terminal or non-terminal */
+		int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
+		/* The second time terminals processes
+		 * and first time non-terminal processes see the error
+		 * flag in the message block is time to exit.
+		 * All processes but the preceding process to the one
+		 * found the solution (if we were in the run phase when
+		 * the error stroke) pass the block before exiting.
+		 */
+		DPRINTF("%s(): preceding pid: %d, self pid: %d", __func__, chosen_mb->preceding_process_pid, self_node.pid);
+		if ((n_io_channels == *error_ntimes_same &&
+					chosen_mb->preceding_process_pid !=
+					self_node.pid) ||
+				(n_io_channels != *error_ntimes_same))
+			*should_transmit_mb = true;
+	} else if (fresh_mb->state == PS_RUN) {
+		(*run_ntimes_same)++;
+		free_mb(chosen_mb);
+		chosen_mb = fresh_mb;
+		/* Records whether process is terminal or non-terminal */
+		int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
+		/* The second time terminals processes
+		 * and first time non-terminal processes see the run
+		 * flag in the message block is time to exit.
+		 * All processes but the preceding process to the one
+		 * found the solution pass the block before exiting.
+		 */
+		if ((n_io_channels == *run_ntimes_same &&
+					chosen_mb->preceding_process_pid !=
+					self_node.pid) ||
+				(n_io_channels != *run_ntimes_same))
+			*should_transmit_mb = true;
+	} else if (fresh_mb->state == PS_NEGOTIATION) {
+		/* New chosen message block */
+        	if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
 			free_mb(chosen_mb);
 			chosen_mb = fresh_mb;
-			mb_is_updated = true;
+			mb_is_updated = true; /*Substituting chosen_mb is an update.*/
+			if (try_add_sgsh_node() == OP_ERROR)
+				return OP_ERROR; /* Double realloc: one for node, */
 			if (try_add_sgsh_edge() == OP_ERROR)
-				return OP_ERROR;
-		} else { /* serial_no of the mb has not changed
-			  * in the interim, but we accept it to
-			  * receive the id of the dispatcher.
-			  */
-			DPRINTF("Fresh vs chosen message block: serial no not updated.");
-			free_mb(chosen_mb);
-			chosen_mb = fresh_mb;
+				return OP_ERROR; /* one for edge. */
+			*should_transmit_mb = true;
+		} else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid)
+			free_mb(fresh_mb); /* Discard MB just read. */
+		else {
+                	*should_transmit_mb = true;
+			DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
+			if (fresh_mb->serial_no > chosen_mb->serial_no) {
+				DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
+				free_mb(chosen_mb);
+				chosen_mb = fresh_mb;
+				mb_is_updated = true;
+				if (try_add_sgsh_edge() == OP_ERROR)
+					return OP_ERROR;
+			} else { /* serial_no of the mb has not changed
+			 	  * in the interim, but we accept it to
+			  	  * receive the id of the dispatcher.
+			  	  */
+				DPRINTF("Fresh vs chosen message block: serial no not updated.");
+				(*serialno_ntimes_same)++;
+				free_mb(chosen_mb);
+				chosen_mb = fresh_mb;
+			}
 		}
 	}
 	return OP_SUCCESS;
@@ -1749,7 +1719,7 @@ read_message_block(fd_set read_fds, int *read_fd,
 			    buf_size) == OP_ERROR)
 				return OP_ERROR;
 		}
-	} else if ((*fresh_mb)->state == PS_SOLUTION_SHARE) {
+	} else if ((*fresh_mb)->state == PS_RUN) {
 		/**
 		 * Try read solution.
 		 * fresh_mb should be an updated version of the chosen_mb
@@ -1781,12 +1751,11 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
 	chosen_mb->initiator_pid = self_pid;
+	chosen_mb->preceding_process_pid = -1;
 	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->serial_no = 0;
-	chosen_mb->origin.index = -1;
-	chosen_mb->origin.fd_direction = -1;
-	chosen_mb->revisit.should = false;
-	chosen_mb->revisit.node_pid = -1;
+	chosen_mb->origin_index = -1;
+	chosen_mb->origin_fd_direction = -1;
 	DPRINTF("Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
 	return OP_SUCCESS;
@@ -1865,12 +1834,16 @@ validate_input(int channels_required, int channels_provided, const char *tool_na
  * Non-terminal ones pass the block and exit the second time
  * they receive it in error state.
  */
-static enum op_result
-check_state(int count_time_passes)
+static bool
+leave_negotiation(int run_ntimes_same, int error_ntimes_same)
 {
-	if (self_node.sgsh_in + self_node.sgsh_out == count_time_passes)
-		return OP_ERROR;
-	return OP_RETRY;
+	int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
+	if ((chosen_mb->state == PS_RUN &&
+			n_io_channels == run_ntimes_same) ||
+			(chosen_mb->state == PS_ERROR &&
+			 n_io_channels == error_ntimes_same))
+		return true;
+	return false;
 }
 
 /**
@@ -1895,7 +1868,9 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
                     int **output_fds, /* Output file descriptors. */
                     int *n_output_fds) /* Number of output file descriptors. */
 {
-	int count_times_same = 0;
+	int serialno_ntimes_same = 0;
+	int run_ntimes_same = 0;
+	int error_ntimes_same = 0;
 	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
@@ -1934,7 +1909,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
 								== OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
-			count_times_same ++;
+			error_ntimes_same++;
 		}
 		write_fd = point_io_direction(read_fd);		/* XXX */
 		chosen_mb = fresh_mb;
@@ -1952,8 +1927,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if (check_phase(&count_times_same) == PS_COMPLETE)
-			break;
+		check_negotiation_round(serialno_ntimes_same);
 
 		/**
 		 * If all I/O constraints have been contributed,
@@ -1962,41 +1936,37 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		 * Only initiator executes this block; once.
 		 */
 		if (chosen_mb->state == PS_NEGOTIATION_END) {
-			if (solve_sgsh_graph() == OP_ERROR)
+			if (solve_sgsh_graph() == OP_ERROR) {
 				chosen_mb->state = PS_ERROR;
-			else
-				chosen_mb->state = PS_SOLUTION_SHARE;
-			/**
-			 * This is to catch initiators with one (outgoing)
-			 * edge only. They should exit after the following
-			 * write.
-			 */
-			check_phase(&count_times_same);
+				fprintf(stderr, "No solution was found to satisfy the I/O requirements of the participating processes.");
+			} else
+				chosen_mb->state = PS_RUN;
+			chosen_mb->preceding_process_pid =
+				chosen_mb->node_array[chosen_mb->origin_index].pid;
 		}
 
 		/* Write message block et al. */
 		if (should_transmit_mb) { /* There can be only one. */
 			if (write_message_block(write_fd) == OP_ERROR)
 				chosen_mb->state = PS_ERROR;
-			else if (chosen_mb->state == PS_END_AFTER_WRITE) {
+		}
+
+		if (leave_negotiation(run_ntimes_same, error_ntimes_same)) {
+			if (chosen_mb->state == PS_RUN)
 				chosen_mb->state = PS_COMPLETE;
-				break;
-			}
-			if (check_state(count_times_same) == OP_ERROR)
-				break;
+			break;
 		}
 
 		/* Read message block et al. */
 		if (read_message_block(read_fds, &read_fd, &fresh_mb)
-								== OP_ERROR) {
+								== OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-			count_times_same++;
-		}
 		write_fd = point_io_direction(read_fd);		/* XXX */
 
 		/* Message block battle: the chosen vs the freshly read. */
-		if (compete_message_block(fresh_mb, &should_transmit_mb) ==
-								OP_ERROR)
+		if (analyse_read(fresh_mb, &should_transmit_mb,
+					&serialno_ntimes_same, &run_ntimes_same,
+					&error_ntimes_same) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 	}
 

@@ -36,27 +36,20 @@ struct sgsh_negotiation {
 					 * message block. The one with the
 					 * smaller pid will prevail.
 					 */
-        enum prot_state state;		/* State of the negotiation process */
+	pid_t preceding_process_pid;	/* The pid of the process that passed the
+					 * message block to the process that
+					 * found a solution and set the PS_RUN
+					 * flag.
+					 */
+	enum prot_state state;		/* State of the negotiation process */
         int serial_no;			/* Message block serial no.
 					 * It shows how many times it has been
 					 * updated.
 					 */
-	struct block_revisit {		/* Statement to revisit a node */
-		bool should;		/* Nodes that take multiple input
-					 * and/or provide multiple output
-					 * set this flag to make sure that
-					 * other nodes on the route stay
-					 * alive to pass it through even
-					 * if they have completed their
-					 * part. 
-					 */
-		pid_t node_pid;		/* The node who set the flag seals
-					 * it with its pid in order to be
-					 * able to clear it when time comes.
-					 */
-	} revisit;
-	struct node_io_side origin;	/* The node from which the message
+	int origin_index;		/* The node from which the message
 					 * block is dispatched.
+					 */
+	int origin_fd_direction;	/* The origin's input or output channel
 					 */
 };
 
