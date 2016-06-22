@@ -417,13 +417,13 @@ setup_test_analyse_read(void)
 	setup_self_node_io_side();
 }
 
-void
+/*void
 setup_test_point_io_direction(void)
 {
 	setup_chosen_mb();
 	setup_self_node();
 	setup_self_node_io_side();
-}
+}*/
 
 void
 setup_test_alloc_copy_edges(void)
@@ -701,11 +701,11 @@ retire_test_analyse_read(void)
 	} else retire_chosen_mb();
 }
 
-void
+/*void
 retire_test_point_io_direction(void)
 {
 	retire_chosen_mb();
-}
+}*/
 
 void
 retire_test_alloc_copy_edges(void)
@@ -1563,14 +1563,9 @@ START_TEST(test_read_message_block)
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 		retire_mb(test_mb);
 	} else {
-		int read_fd = -1;
-		fd_set read_fds;
-		FD_ZERO(&read_fds);
-		FD_SET(fd[0], &read_fds);
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(read_message_block(read_fds, &read_fd,
-							&fresh_mb), OP_SUCCESS);
-		ck_assert_int_eq(read_fd, fd[0]);
+		ck_assert_int_eq(read_message_block(fd[0], &fresh_mb),
+				OP_SUCCESS);
 	}
 }
 END_TEST
@@ -1651,14 +1646,9 @@ START_TEST(test_read_graph_solution)
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 		retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
 	} else {
-		int read_fd = -1;
-		fd_set read_fds;
-		FD_ZERO(&read_fds);
-		FD_SET(fd[0], &read_fds);
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(read_graph_solution(read_fds, &read_fd,
+		ck_assert_int_eq(read_graph_solution(fd[0],
 					fresh_mb), OP_SUCCESS);
-		ck_assert_int_eq(read_fd, fd[0]);
 	}
 }
 END_TEST
@@ -1760,8 +1750,6 @@ START_TEST(test_read_chunk)
 	 * call read, which has been successfully tested.
 	 * Then there is variable checking to determine the exit code.
 	 */
-	fd_set read_fds;
-	FD_ZERO(&read_fds);
 	int fd[2];
 	int wsize = -1;
 	DPRINTF("%s()...", __func__);
@@ -1769,7 +1757,6 @@ START_TEST(test_read_chunk)
 		perror("pipe open failed");
 		exit(1);
 	}
-	FD_SET(fd[0], &read_fds);
 
 	/* Broken pipe error if we close the other side. */
 	//close(fd[0]);
@@ -1781,9 +1768,7 @@ START_TEST(test_read_chunk)
 	char buf[32];
 	int read_fd = -1;
 	int bytes_read = -1;
-	ck_assert_int_eq(read_chunk(read_fds, buf, 32, &bytes_read, &read_fd),
-									OP_SUCCESS);
-	ck_assert_int_eq(read_fd, 4);
+	ck_assert_int_eq(read_chunk(fd[0], buf, 32, &bytes_read), OP_SUCCESS);
 	ck_assert_int_eq(bytes_read, 9);
 	
 	close(fd[0]);
@@ -1807,12 +1792,10 @@ START_TEST(test_call_read)
 	}
 
 	char buf[32];
-	int read_fd = -1;
 	int bytes_read = -1;
 	int error_code = -1;
-	ck_assert_int_eq(call_read(fd[0], buf, 32, &read_fd, &bytes_read,
-				&error_code), OP_ERROR);
-	ck_assert_int_eq(read_fd, 4);
+	ck_assert_int_eq(call_read(fd[0], buf, 32, &bytes_read,
+				&error_code), OP_SUCCESS);
 	ck_assert_int_eq(bytes_read, 5);
 	ck_assert_int_eq(error_code, 0);
 
@@ -1872,6 +1855,7 @@ START_TEST(test_check_read)
 }
 END_TEST
 
+/*
 START_TEST(test_point_io_direction)
 {
 	ck_assert_int_eq(point_io_direction(STDOUT_FILENO), STDIN_FILENO);
@@ -1881,6 +1865,7 @@ START_TEST(test_point_io_direction)
 	
 }
 END_TEST
+*/
 
 START_TEST(test_analyse_read)
 {
@@ -2554,12 +2539,13 @@ suite_broadcast(void)
 	tcase_add_checked_fixture(tc_cr, NULL, NULL);
 	tcase_add_test(tc_cr, test_check_read);
 	suite_add_tcase(s, tc_cr);
-
+/*
 	TCase *tc_pid = tcase_create("point io direction");
 	tcase_add_checked_fixture(tc_pid, setup_test_point_io_direction,
 					  retire_test_point_io_direction);
 	tcase_add_test(tc_pid, test_point_io_direction);
 	suite_add_tcase(s, tc_pid);
+*/
 
 	TCase *tc_ar = tcase_create("analyse read");
 	tcase_add_checked_fixture(tc_ar, setup_test_analyse_read,

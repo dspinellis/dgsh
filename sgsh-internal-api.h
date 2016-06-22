@@ -53,7 +53,7 @@ struct sgsh_negotiation {
 					 */
 };
 
-enum op_result read_message_block(fd_set read_fds, int *read_fd,
+enum op_result read_message_block(int read_fd,
 		struct sgsh_negotiation **fresh_mb);
 enum op_result write_message_block(int write_fd);
 void free_mb(struct sgsh_negotiation *mb);
