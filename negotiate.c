@@ -1066,8 +1066,6 @@ write_message_block(int write_fd)
 		/* Transmit solution. */
 		if (write_graph_solution(write_fd) == OP_ERROR)
 			return OP_ERROR;
-		if (write_output_fds(write_fd) == OP_ERROR)
-			return OP_ERROR;
 	}
 
 	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %d.\n", __func__, write_fd);
@@ -1686,8 +1684,6 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
                  */
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
-		if (read_input_fds(read_fd) == OP_ERROR)
-			return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
@@ -1803,6 +1799,33 @@ leave_negotiation(int run_ntimes_same, int error_ntimes_same)
 	return false;
 }
 
+int
+set_fds(fd_set *read_fds, fd_set *write_fds)
+{
+	int nfds = 0;
+	if (self_node.sgsh_out) {
+		if (read_fds) {
+			FD_SET(STDOUT_FILENO, read_fds);
+			nfds++;
+		}
+		if (write_fds) {
+			FD_SET(STDOUT_FILENO, write_fds);
+			nfds++;
+		}
+	}
+	if (self_node.sgsh_in) {
+		if (read_fds) {
+			FD_SET(STDIN_FILENO, read_fds);
+			nfds++;
+		}
+		if (write_fds) {
+			FD_SET(STDIN_FILENO, write_fds);
+			nfds++;
+		}
+	}
+	return nfds == 1 ? nfds + 1 : nfds;
+}
+
 /**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -1832,15 +1855,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	bool should_transmit_mb = true;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
+
+	int nfds = 0;
 	fd_set read_fds, write_fds;
-
 	FD_ZERO(&read_fds);
-	FD_SET(STDIN_FILENO, &read_fds);
-	FD_SET(STDOUT_FILENO, &read_fds);
-
 	FD_ZERO(&write_fds);
-	FD_SET(STDIN_FILENO, &write_fds);
-	FD_SET(STDOUT_FILENO, &write_fds);
 
 #ifndef UNIT_TESTING
 	graph_solution = NULL;			/* Remove any garbage */
@@ -1859,6 +1878,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		return PS_ERROR;
 	}
 
+
 	/* Start negotiation */
         if (self_node.sgsh_out && !self_node.sgsh_in) {
                 if (construct_message_block(tool_name, self_pid) == OP_ERROR)
@@ -1872,6 +1892,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 		chosen_mb = fresh_mb;
 	}
+	
+	/* Either we just read or we are about to write */
+	nfds = set_fds(NULL, &write_fds);
+	for (i = 0; i < nfds; i++)
+		DPRINTF("fd %d; activity: %d.", i, FD_ISSET(i, &write_fds));
 
 	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required,
@@ -1885,13 +1910,14 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Perform phases and rounds. */
 	while (1) {
 
-		if (select(FD_SETSIZE, &read_fds, &write_fds, NULL, NULL) < 0) {
+		if (select(nfds, &read_fds, &write_fds, NULL, NULL) < 0) {
 			perror("select");
 			chosen_mb->state = PS_ERROR;
 		}
 
-		for (i = 0; i < FD_SETSIZE; i++) {
+		for (i = 0; i < nfds; i++) {
 			if (FD_ISSET(i, &write_fds)) {
+				DPRINTF("write on fd %d is active.", i);
 				/* Decision to drop message block */
 				if (should_transmit_mb) {	
 					/* Write message block et al. */
@@ -1905,8 +1931,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 						chosen_mb->state = PS_COMPLETE;
 					break;
 				}
+				FD_ZERO(&write_fds);
+				nfds = set_fds(&read_fds, NULL);
 			}
 			if (FD_ISSET(i, &read_fds)) {
+				DPRINTF("read on fd %d is active.", i);
 				/* Read message block et al. */
 				if (read_message_block(i, &fresh_mb)
 						== OP_ERROR)
@@ -1941,16 +1970,22 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 						chosen_mb->state = PS_COMPLETE;
 					break;
 				}
-
+				FD_ZERO(&read_fds);
+				nfds = set_fds(NULL, &write_fds);
 			}
 		}
-
 	}
 
 	/* XXX */
-	if (establish_io_connections(input_fds, n_input_fds, output_fds,
+	if (chosen_mb->state == PS_RUN) {
+		if (read_input_fds(STDIN_FILENO) == OP_ERROR)
+			chosen_mb->state = PS_ERROR;
+		if (write_output_fds(STDOUT_FILENO) == OP_ERROR)
+			chosen_mb->state = PS_ERROR;
+		if (establish_io_connections(input_fds, n_input_fds, output_fds,
 						n_output_fds) == OP_ERROR)
-		chosen_mb->state = PS_ERROR;
+			chosen_mb->state = PS_ERROR;
+	}
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	free_mb(chosen_mb);
 	return chosen_mb->state;

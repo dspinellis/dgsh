@@ -338,7 +338,13 @@ setup(void)
 void
 setup_test_leave_negotiation(void)
 {
-	DPRINTF("%s()", __func__);
+	setup_chosen_mb();
+	setup_self_node();
+}
+
+void
+setup_test_set_fds(void)
+{
 	setup_chosen_mb();
 	setup_self_node();
 }
@@ -635,6 +641,12 @@ retire(void)
 	free_graph_solution(chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pipe_fds();
+}
+
+void
+retire_test_set_fds(void)
+{
+	retire_chosen_mb();
 }
 
 void
@@ -2352,6 +2364,23 @@ START_TEST(test_leave_negotiation)
 }
 END_TEST
 
+
+START_TEST(test_set_fds)
+{
+	/* nfds == 1, so nfds + 1 = 2 */
+	fd_set read_fds, write_fds;
+	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
+
+	/* Make node 1 self node, which is a non terminal node */
+	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
+
+	/* nfds == 2 */
+	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
+}
+END_TEST
+
 START_TEST(test_sgsh_negotiate)
 {
 	int *input_fds;
@@ -2630,6 +2659,11 @@ suite_broadcast(void)
 			retire_test_leave_negotiation);
 	tcase_add_test(tc_ln, test_leave_negotiation);
 	suite_add_tcase(s, tc_ln);
+
+	TCase *tc_sf = tcase_create("set fds");
+	tcase_add_checked_fixture(tc_sf, setup_test_set_fds, retire_test_set_fds);
+	tcase_add_test(tc_sf, test_set_fds);
+	suite_add_tcase(s, tc_sf);
 
 	TCase *tc_sn = tcase_create("sgsh negotiate");
 	tcase_add_checked_fixture(tc_sn, setup, retire);
