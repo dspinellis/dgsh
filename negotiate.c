@@ -1895,8 +1895,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	
 	/* Either we just read or we are about to write */
 	nfds = set_fds(NULL, &write_fds);
-	for (i = 0; i < nfds; i++)
-		DPRINTF("fd %d; activity: %d.", i, FD_ISSET(i, &write_fds));
 
 	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required,
@@ -1929,7 +1927,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 							error_ntimes_same)) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					break;
+					DPRINTF("%s(): leave after write with state %d.", __func__, chosen_mb->state);
+					goto exit;
 				}
 				FD_ZERO(&write_fds);
 				nfds = set_fds(&read_fds, NULL);
@@ -1958,8 +1957,10 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 					if (solve_sgsh_graph() == OP_ERROR) {
 						chosen_mb->state = PS_ERROR;
 							fprintf(stderr, "No solution was found to satisfy the I/O requirements of the participating processes.");
-					} else
+					} else {
 						chosen_mb->state = PS_RUN;
+						run_ntimes_same++;
+					}
 					chosen_mb->preceding_process_pid =
 						chosen_mb->node_array[chosen_mb->origin_index].pid;
 				}
@@ -1968,16 +1969,16 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 						!should_transmit_mb) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					break;
+					DPRINTF("%s(): leave after read with state %d.", __func__, chosen_mb->state);
+					goto exit;
 				}
 				FD_ZERO(&read_fds);
 				nfds = set_fds(NULL, &write_fds);
 			}
 		}
 	}
-
-	/* XXX */
-	if (chosen_mb->state == PS_RUN) {
+exit:
+	if (chosen_mb->state == PS_COMPLETE) {
 		if (read_input_fds(STDIN_FILENO) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (write_output_fds(STDOUT_FILENO) == OP_ERROR)
@@ -1987,6 +1988,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 			chosen_mb->state = PS_ERROR;
 	}
 	free_graph_solution(chosen_mb->n_nodes - 1);
+	int state = chosen_mb->state;
 	free_mb(chosen_mb);
-	return chosen_mb->state;
+	return state;
 }
