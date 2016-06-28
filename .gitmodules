@@ -3,7 +3,7 @@
 	url = git://git.savannah.gnu.org/gnulib.git
 [submodule "unix-sgsh-tools/coreutils"]
 	path = unix-sgsh-tools/coreutils
-	url = git://git.savannah.gnu.org/coreutils.git
+	url = https://github.com/mfragkoulis/coreutils.git
 [submodule "unix-sgsh-tools/diffutils"]
 	path = unix-sgsh-tools/diffutils
 	url = git://git.savannah.gnu.org/diffutils.git
@@ -22,3 +22,5 @@
 [submodule "unix-sgsh-tools/tar"]
 	path = unix-sgsh-tools/tar
 	url = git://git.savannah.gnu.org/tar.git
+[submodule "coreutils"]
+	branch = sgsh
