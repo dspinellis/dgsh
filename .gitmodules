@@ -7,11 +7,23 @@
 [submodule "unix-sgsh-tools/tar"]
 	path = unix-sgsh-tools/tar
 	url = git://git.savannah.gnu.org/tar.git
-[submodule "diffutils"]
-	branch = sgsh
-[submodule "grep"]
-	branch = sgsh
-[submodule "parallel"]
-	branch = sgsh
-[submodule "sed"]
-	branch = sgsh
+[submodule "unix-sgsh-tools/coreutils"]
+	path = unix-sgsh-tools/coreutils
+	url = https://github.com/mfragkoulis/coreutils
+	branch = master
+[submodule "unix-sgsh-tools/diffutils"]
+	path = unix-sgsh-tools/diffutils
+	url = https://github.com/mfragkoulis/diffutils
+	branch = master
+[submodule "unix-sgsh-tools/grep"]
+	path = unix-sgsh-tools/grep
+	url = https://github.com/mfragkoulis/grep
+	branch = master
+[submodule "unix-sgsh-tools/parallel"]
+	path = unix-sgsh-tools/parallel
+	url = https://github.com/mfragkoulis/parallel
+	branch = master
+[submodule "unix-sgsh-tools/sed"]
+	path = unix-sgsh-tools/sed
+	url = https://github.com/mfragkoulis/sed
+	branch = master
