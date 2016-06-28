@@ -1,9 +1,6 @@
 [submodule "unix-sgsh-tools/gnulib"]
 	path = unix-sgsh-tools/gnulib
 	url = git://git.savannah.gnu.org/gnulib.git
-[submodule "unix-sgsh-tools/coreutils"]
-	path = unix-sgsh-tools/coreutils
-	url = https://github.com/mfragkoulis/coreutils.git
 [submodule "unix-sgsh-tools/diffutils"]
 	path = unix-sgsh-tools/diffutils
 	url = https://github.com/mfragkoulis/diffutils.git
@@ -22,8 +19,6 @@
 [submodule "unix-sgsh-tools/tar"]
 	path = unix-sgsh-tools/tar
 	url = git://git.savannah.gnu.org/tar.git
-[submodule "coreutils"]
-	branch = sgsh
 [submodule "diffutils"]
 	branch = sgsh
 [submodule "grep"]
