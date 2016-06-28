@@ -1,21 +1,9 @@
 [submodule "unix-sgsh-tools/gnulib"]
 	path = unix-sgsh-tools/gnulib
 	url = git://git.savannah.gnu.org/gnulib.git
-[submodule "unix-sgsh-tools/diffutils"]
-	path = unix-sgsh-tools/diffutils
-	url = https://github.com/mfragkoulis/diffutils.git
 [submodule "unix-sgsh-tools/gawk"]
 	path = unix-sgsh-tools/gawk
 	url = git://git.savannah.gnu.org/gawk.git
-[submodule "unix-sgsh-tools/grep"]
-	path = unix-sgsh-tools/grep
-	url = https://github.com/mfragkoulis/grep.git
-[submodule "unix-sgsh-tools/parallel"]
-	path = unix-sgsh-tools/parallel
-	url = https://github.com/mfragkoulis/parallel.git
-[submodule "unix-sgsh-tools/sed"]
-	path = unix-sgsh-tools/sed
-	url = https://github.com/mfragkoulis/sed.git
 [submodule "unix-sgsh-tools/tar"]
 	path = unix-sgsh-tools/tar
 	url = git://git.savannah.gnu.org/tar.git
@@ -26,8 +14,4 @@
 [submodule "parallel"]
 	branch = sgsh
 [submodule "sed"]
-	branch = sgsh
-[submodule "unix-sgsh-tools/coreutils"]
-	path = unix-sgsh-tools/coreutils
-	url = https://github.com/mfragkoulis/coreutils.git
 	branch = sgsh
