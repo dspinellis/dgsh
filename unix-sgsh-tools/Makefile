@@ -9,11 +9,6 @@ configure:
 	cd sed && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 	cd tar && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 
-adapt:
-	cp sgsh-adapted/coreutils/Makefile coreutils/
-	cp sgsh-adapted/coreutils/comm.c coreutils/src/
-	cp sgsh-adapted/coreutils/sort.c coreutils/src/
-
 make:
 	cd coreutils && make
 	cd diffutils && make
