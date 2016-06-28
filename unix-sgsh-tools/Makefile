@@ -1,15 +1,5 @@
 PSEUDOSHELLDIR=../simple-shell
 
-prepare:
-	git clone git://git.savannah.gnu.org/gnulib.git
-	git clone git://git.savannah.gnu.org/coreutils.git
-	git clone git://git.savannah.gnu.org/diffutils.git
-	git clone git://git.savannah.gnu.org/gawk.git
-	git clone git://git.savannah.gnu.org/grep.git
-	git clone git://git.savannah.gnu.org/parallel.git
-	git clone git://git.savannah.gnu.org/sed.git
-	git clone git://git.savannah.gnu.org/tar.git
-
 configure:
 	cd coreutils && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
 	cd diffutils && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
