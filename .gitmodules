@@ -27,3 +27,7 @@
 	branch = sgsh
 [submodule "sed"]
 	branch = sgsh
+[submodule "unix-sgsh-tools/coreutils"]
+	path = unix-sgsh-tools/coreutils
+	url = https://github.com/mfragkoulis/coreutils.git
+	branch = sgsh
