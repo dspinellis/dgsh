@@ -1193,7 +1193,7 @@ START_TEST(test_record_move_unbalanced)
 }
 END_TEST
 /*
-START_TEST(test_eval_constraints)
+*START_TEST(test_eval_constraints)
 {
 	// 0 flexible constraints.
 	ck_assert_int_eq(eval_constraints(2, 3, 0, &args[0], &args[1],
@@ -1266,7 +1266,7 @@ START_TEST(test_eval_constraints)
 }
 END_TEST
 
-START_TEST(test_assign_edge_instances)
+*START_TEST(test_assign_edge_instances)
 {
 	//   No flexible.
 	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 0, 0, 0, 2), OP_SUCCESS);
@@ -1868,7 +1868,7 @@ START_TEST(test_check_read)
 END_TEST
 
 /*
-START_TEST(test_point_io_direction)
+*START_TEST(test_point_io_direction)
 {
 	ck_assert_int_eq(point_io_direction(STDOUT_FILENO), STDIN_FILENO);
 
@@ -2498,7 +2498,7 @@ suite_solve(void)
 	tcase_add_test(tc_ec, test_eval_constraints);
 	suite_add_tcase(s, tc_ec);
 
-	TCase *tc_aei = tcase_create("assign edge instances");
+	*TCase *tc_aei = tcase_create("assign edge instances");
 	tcase_add_checked_fixture(tc_aei, setup_test_assign_edge_instances,
 					  retire_test_assign_edge_instances);
 	tcase_add_test(tc_aei, test_assign_edge_instances);
@@ -2569,7 +2569,7 @@ suite_broadcast(void)
 	tcase_add_test(tc_cr, test_check_read);
 	suite_add_tcase(s, tc_cr);
 /*
-	TCase *tc_pid = tcase_create("point io direction");
+	*TCase *tc_pid = tcase_create("point io direction");
 	tcase_add_checked_fixture(tc_pid, setup_test_point_io_direction,
 					  retire_test_point_io_direction);
 	tcase_add_test(tc_pid, test_point_io_direction);
