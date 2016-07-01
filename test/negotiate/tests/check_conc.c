@@ -3,17 +3,13 @@
 #include <check.h>  /* Check unit test framework API. */
 #include <stdlib.h> /* EXIT_SUCCESS, EXIT_FAILURE */
 #include <stdbool.h> /* EXIT_SUCCESS, EXIT_FAILURE */
+#include "../src/sgsh-internal-api.h"
 
 START_TEST (test_name)
 {
-	/*extern bool multiple_inputs;
-	extern int nfd;
-	extern int next_fd(int fd);
-
 	multiple_inputs = true;
 	nfd = 5;
 	ck_assert_int_eq(next_fd(0), 1);
-*/
 }
 END_TEST
 
