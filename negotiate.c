@@ -1512,6 +1512,28 @@ alloc_io_fds()
  * expected by process with pid PID.
  */
 int
+get_expected_fds_n(pid_t pid)
+{
+	int expected_fds_n = 0;
+	int i = 0, j = 0;
+	for (i = 0; i < chosen_mb->n_nodes; i++) {
+		if (chosen_mb->node_array[i].pid == pid) {
+			struct sgsh_node_connections *graph_solution =
+				chosen_mb->graph_solution;
+			for (j = 0; j < graph_solution[i].n_edges_incoming; j++)
+				expected_fds_n +=
+					graph_solution[i].edges_incoming[j].instances;
+			return expected_fds_n;
+		}
+	}
+	/* Invalid pid */
+	return -1;
+}
+
+/* Return the number of output file descriptors
+ * provided by process with pid PID.
+ */
+int
 get_provided_fds_n(pid_t pid)
 {
 	int provided_fds_n = 0;

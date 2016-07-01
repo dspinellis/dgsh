@@ -471,6 +471,13 @@ setup_test_get_provided_fds_n(void)
 }
 
 void
+setup_test_get_expected_fds_n(void)
+{
+	setup_chosen_mb();
+	setup_graph_solution();
+}
+
+void
 setup_test_read_input_fds(void)
 {
 	setup_chosen_mb();
@@ -769,6 +776,14 @@ retire_test_alloc_io_fds(void)
 
 void
 retire_test_get_provided_fds_n(void)
+{
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
+retire_test_get_expected_fds_n(void)
 {
 	retire_graph_solution(chosen_mb->graph_solution,
 			chosen_mb->n_nodes - 1);
@@ -1758,6 +1773,21 @@ START_TEST(test_alloc_io_fds)
 }
 END_TEST
 
+START_TEST(test_get_expected_fds_n)
+{
+	struct sgsh_node_connections *graph_solution =
+			chosen_mb->graph_solution;
+	graph_solution[0].edges_incoming[0].instances = 1;
+	graph_solution[1].edges_incoming[0].instances = 1;
+	graph_solution[3].edges_incoming[0].instances = 1;
+	graph_solution[3].edges_incoming[1].instances = 1;
+	ck_assert_int_eq(get_expected_fds_n(103), 2);
+	ck_assert_int_eq(get_expected_fds_n(100), 1);
+	ck_assert_int_eq(get_expected_fds_n(101), 1);
+	ck_assert_int_eq(get_expected_fds_n(102), 0);
+}
+END_TEST
+
 START_TEST(test_get_provided_fds_n)
 {
 	struct sgsh_node_connections *graph_solution =
@@ -2550,6 +2580,12 @@ suite_connect(void)
 					  retire_test_read_input_fds);
 	tcase_add_test(tc_rif, test_read_input_fds);
 	suite_add_tcase(s, tc_rif);
+
+	TCase *tc_gefn = tcase_create("get expected fds number");
+	tcase_add_checked_fixture(tc_gefn, setup_test_get_expected_fds_n,
+					  retire_test_get_expected_fds_n);
+	tcase_add_test(tc_gefn, test_get_expected_fds_n);
+	suite_add_tcase(s, tc_gefn);
 
 	TCase *tc_gpfn = tcase_create("get provided fds number");
 	tcase_add_checked_fixture(tc_gpfn, setup_test_get_provided_fds_n,

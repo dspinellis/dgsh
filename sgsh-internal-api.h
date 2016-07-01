@@ -58,6 +58,7 @@ struct sgsh_negotiation {
 
 };
 
+int get_expected_fds_n(pid_t pid);
 int get_provided_fds_n(pid_t pid);
 enum op_result read_message_block(int read_fd,
 		struct sgsh_negotiation **fresh_mb);
