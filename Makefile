@@ -37,7 +37,8 @@ WEBPNG=$(EGPNG) debug.png profile.png
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
 # Files required for sgsh negotiation
-NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h
+NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h \
+		     sgsh-conc.c
 
 %.png: %.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
@@ -81,7 +82,7 @@ autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test
 	autoreconf --install && \
 	./configure && \
 	cd tests && \
-	patch Makefile Makefile.patch
+	patch Makefile <Makefile.patch
 
 build-run-ng-tests:
 	cd test/negotiate && \
