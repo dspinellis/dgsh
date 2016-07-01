@@ -58,6 +58,11 @@ static struct portinfo {
  * Otherwise we scatter 0 to 1, 3, 4 ...
  */
 STATIC bool multiple_inputs;
+
+/*
+ * Total number of file descriptors on which the process performs I/O
+ * (including stderr).
+ */
 STATIC int nfd;
 
 /**
