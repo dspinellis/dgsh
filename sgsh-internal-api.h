@@ -51,6 +51,11 @@ struct sgsh_negotiation {
 					 */
 	int origin_fd_direction;	/* The origin's input or output channel
 					 */
+	struct sgsh_node_connections *graph_solution; /* The solution to the
+						       * I/O constraint problem
+						       * at hand.
+						       */
+
 };
 
 enum op_result read_message_block(int read_fd,

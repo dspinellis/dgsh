@@ -27,6 +27,66 @@ int n_output_fds;
 int exit_state = 0;
 
 void
+setup_graph_solution(void)
+{
+	chosen_mb->graph_solution = (struct sgsh_node_connections *)malloc(
+			sizeof(struct sgsh_node_connections) * 
+			chosen_mb->n_nodes);
+	struct sgsh_node_connections *graph_solution =
+		chosen_mb->graph_solution;
+	graph_solution[0].node_index = 0;
+	graph_solution[0].n_edges_incoming = 2;
+	graph_solution[0].edges_incoming = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[0].n_edges_incoming);
+	memcpy(&graph_solution[0].edges_incoming[0], &chosen_mb->edge_array[0],
+					sizeof(struct sgsh_edge));
+	memcpy(&graph_solution[0].edges_incoming[1], &chosen_mb->edge_array[2],
+					sizeof(struct sgsh_edge));
+	graph_solution[0].n_edges_outgoing = 1;
+	graph_solution[0].edges_outgoing = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[0].n_edges_outgoing);
+	memcpy(&graph_solution[0].edges_outgoing[0], &chosen_mb->edge_array[4],
+					sizeof(struct sgsh_edge));
+
+	graph_solution[1].node_index = 1;
+	graph_solution[1].n_edges_incoming = 1;
+	graph_solution[1].edges_incoming = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[1].n_edges_incoming);
+	memcpy(&graph_solution[1].edges_incoming[0], &chosen_mb->edge_array[1],
+					sizeof(struct sgsh_edge));
+	graph_solution[1].n_edges_outgoing = 2;
+	graph_solution[1].edges_outgoing = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[1].n_edges_outgoing);
+	memcpy(&graph_solution[1].edges_outgoing[0], &chosen_mb->edge_array[2],
+					sizeof(struct sgsh_edge));
+	memcpy(&graph_solution[1].edges_outgoing[1], &chosen_mb->edge_array[3],
+					sizeof(struct sgsh_edge));
+
+	graph_solution[2].node_index = 2;
+	graph_solution[2].n_edges_incoming = 0;
+	graph_solution[2].edges_incoming = NULL;
+	graph_solution[2].n_edges_outgoing = 2;
+	graph_solution[2].edges_outgoing = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[2].n_edges_outgoing);
+	memcpy(&graph_solution[2].edges_outgoing[0], &chosen_mb->edge_array[0],
+					sizeof(struct sgsh_edge));
+	memcpy(&graph_solution[2].edges_outgoing[1], &chosen_mb->edge_array[1],
+					sizeof(struct sgsh_edge));
+
+	graph_solution[3].node_index = 3;
+	graph_solution[3].n_edges_incoming = 2;
+	graph_solution[3].edges_incoming = (struct sgsh_edge *)malloc(
+		sizeof(struct sgsh_edge) * graph_solution[3].n_edges_incoming);
+	memcpy(&graph_solution[0].edges_incoming[0], &chosen_mb->edge_array[3],
+					sizeof(struct sgsh_edge));
+	memcpy(&graph_solution[0].edges_incoming[1], &chosen_mb->edge_array[4],
+					sizeof(struct sgsh_edge));
+	graph_solution[3].n_edges_outgoing = 0;
+	graph_solution[3].edges_outgoing = NULL;
+
+}
+
+void
 setup_chosen_mb(void)
 {
 	struct sgsh_node *nodes;
@@ -114,6 +174,7 @@ setup_chosen_mb(void)
         chosen_mb->n_nodes = n_nodes;
         chosen_mb->edge_array = edges;
         chosen_mb->n_edges = n_edges;
+	chosen_mb->graph_solution = NULL;
 
 	/* check_negotiation_round() */
 	chosen_mb->state = PS_NEGOTIATION;
@@ -204,6 +265,7 @@ setup_mb(struct sgsh_negotiation **mb)
         temp_mb->n_nodes = n_nodes;
         temp_mb->edge_array = edges;
         temp_mb->n_edges = n_edges;
+	temp_mb->graph_solution = NULL;
 
 	/* check_negotiation_round() */
 	temp_mb->state = PS_NEGOTIATION;
@@ -259,63 +321,6 @@ setup_pipe_fds(void)
 	self_pipe_fds.n_output_fds = 0;
 }
 
-void
-setup_graph_solution(void)
-{
-	graph_solution = (struct sgsh_node_connections *)malloc(
-			sizeof(struct sgsh_node_connections) * 
-			chosen_mb->n_nodes);
-	graph_solution[0].node_index = 0;
-	graph_solution[0].n_edges_incoming = 2;
-	graph_solution[0].edges_incoming = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[0].n_edges_incoming);
-	memcpy(&graph_solution[0].edges_incoming[0], &chosen_mb->edge_array[0],
-					sizeof(struct sgsh_edge));
-	memcpy(&graph_solution[0].edges_incoming[1], &chosen_mb->edge_array[2],
-					sizeof(struct sgsh_edge));
-	graph_solution[0].n_edges_outgoing = 1;
-	graph_solution[0].edges_outgoing = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[0].n_edges_outgoing);
-	memcpy(&graph_solution[0].edges_outgoing[0], &chosen_mb->edge_array[4],
-					sizeof(struct sgsh_edge));
-
-	graph_solution[1].node_index = 1;
-	graph_solution[1].n_edges_incoming = 1;
-	graph_solution[1].edges_incoming = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[1].n_edges_incoming);
-	memcpy(&graph_solution[1].edges_incoming[0], &chosen_mb->edge_array[1],
-					sizeof(struct sgsh_edge));
-	graph_solution[1].n_edges_outgoing = 2;
-	graph_solution[1].edges_outgoing = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[1].n_edges_outgoing);
-	memcpy(&graph_solution[1].edges_outgoing[0], &chosen_mb->edge_array[2],
-					sizeof(struct sgsh_edge));
-	memcpy(&graph_solution[1].edges_outgoing[1], &chosen_mb->edge_array[3],
-					sizeof(struct sgsh_edge));
-
-	graph_solution[2].node_index = 2;
-	graph_solution[2].n_edges_incoming = 0;
-	graph_solution[2].edges_incoming = NULL;
-	graph_solution[2].n_edges_outgoing = 2;
-	graph_solution[2].edges_outgoing = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[2].n_edges_outgoing);
-	memcpy(&graph_solution[2].edges_outgoing[0], &chosen_mb->edge_array[0],
-					sizeof(struct sgsh_edge));
-	memcpy(&graph_solution[2].edges_outgoing[1], &chosen_mb->edge_array[1],
-					sizeof(struct sgsh_edge));
-
-	graph_solution[3].node_index = 3;
-	graph_solution[3].n_edges_incoming = 2;
-	graph_solution[3].edges_incoming = (struct sgsh_edge *)malloc(
-		sizeof(struct sgsh_edge) * graph_solution[3].n_edges_incoming);
-	memcpy(&graph_solution[0].edges_incoming[0], &chosen_mb->edge_array[3],
-					sizeof(struct sgsh_edge));
-	memcpy(&graph_solution[0].edges_incoming[1], &chosen_mb->edge_array[4],
-					sizeof(struct sgsh_edge));
-	graph_solution[3].n_edges_outgoing = 0;
-	graph_solution[3].edges_outgoing = NULL;
-
-}
 
 void setup_args(void)
 {
@@ -430,6 +435,12 @@ setup_test_point_io_direction(void)
 	setup_self_node();
 	setup_self_node_io_side();
 }*/
+
+void
+setup_test_alloc_copy_graph_solution(void)
+{
+	setup_mb(&fresh_mb);
+}
 
 void
 setup_test_alloc_copy_edges(void)
@@ -591,6 +602,18 @@ retire_pointers_to_edges(void)
 }
 
 void
+retire_graph_solution(struct sgsh_node_connections *graph_solution,
+								int node_index)
+{
+	int i;
+        for (i = 0; i <= node_index; i++) {
+                free(graph_solution[i].edges_incoming);
+                free(graph_solution[i].edges_outgoing);
+        }
+        free(graph_solution);
+}
+
+void
 retire_chosen_mb(void)
 {
         free(chosen_mb->node_array);
@@ -604,18 +627,6 @@ retire_mb(struct sgsh_negotiation *mb)
         free(mb->node_array);
         free(mb->edge_array);
         free(mb);
-}
-
-void
-retire_graph_solution(struct sgsh_node_connections *graph_solution,
-								int node_index)
-{
-	int i;
-        for (i = 0; i <= node_index; i++) {
-                free(graph_solution[i].edges_incoming);
-                free(graph_solution[i].edges_outgoing);
-        }
-        free(graph_solution);
 }
 
 /* establish_io_connections() */
@@ -720,6 +731,12 @@ retire_test_point_io_direction(void)
 }*/
 
 void
+retire_test_alloc_copy_graph_solution(void)
+{
+	retire_mb(fresh_mb);
+}
+
+void
 retire_test_alloc_copy_edges(void)
 {
 	retire_mb(fresh_mb);
@@ -761,7 +778,8 @@ retire_test_read_graph_solution(void)
 void
 retire_test_write_graph_solution(void)
 {
-	retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 }
 
@@ -864,6 +882,8 @@ START_TEST(test_solve_sgsh_graph)
 {
         /* A normal case with fixed, tight constraints. */
 	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	struct sgsh_node_connections *graph_solution =
+		chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
 	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
@@ -886,6 +906,7 @@ START_TEST(test_solve_sgsh_graph)
 	setup_test_solve_sgsh_graph();
 	chosen_mb->node_array[3].requires_channels = -1;
 	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	graph_solution = chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
 	/* Pair edges still have tight constraints. */
@@ -904,6 +925,7 @@ START_TEST(test_solve_sgsh_graph)
 	chosen_mb->node_array[0].provides_channels = -1;
 	chosen_mb->node_array[1].provides_channels = -1;
 	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
+	graph_solution = chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
 	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
@@ -962,6 +984,8 @@ START_TEST(test_node_match_constraints)
 	/* Default topology; take a look at setup_chosen_mb() */
 	chosen_mb->node_array[3].requires_channels = 2;
 	ck_assert_int_eq(node_match_constraints(), OP_SUCCESS);
+	struct sgsh_node_connections *graph_solution =
+		chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[0].node_index, 0);
 	ck_assert_int_eq(graph_solution[0].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[0].n_instances_incoming_free, 0);
@@ -990,6 +1014,8 @@ END_TEST
 	
 START_TEST(test_dry_match_io_constraints)
 {
+	struct sgsh_node_connections *graph_solution =
+		chosen_mb->graph_solution;
         /* A normal case with fixed, tight constraints. */
 	struct sgsh_node_connections *current_connections = &graph_solution[3];
 	current_connections->n_edges_incoming = 0;
@@ -1608,6 +1634,8 @@ START_TEST(test_read_graph_solution)
 		int wsize = -1;
 		DPRINTF("Child speaking with pid %d.", (int)getpid());
 		setup_graph_solution();
+		struct sgsh_node_connections *graph_solution =
+			chosen_mb->graph_solution;
 
 		close(fd[0]);
 		DPRINTF("Child writes graph solution of size %d.",
@@ -1731,6 +1759,8 @@ START_TEST(test_read_input_fds)
 		close(fd);
 		DPRINTF("Child with pid %d exits.", (int)getpid());
 	} else {
+		struct sgsh_node_connections *graph_solution =
+			chosen_mb->graph_solution;
 		memcpy(&self_node, &chosen_mb->node_array[1],
 						sizeof(struct sgsh_node));
 		/* Edges have been setup with 0 instances.
@@ -1856,6 +1886,28 @@ START_TEST(test_alloc_copy_edges)
 
 	free(fresh_mb->edge_array);  /* to avoid memory leak */
 	ck_assert_int_eq(alloc_copy_edges(fresh_mb, buf, size, 256), OP_SUCCESS);
+}
+END_TEST
+
+START_TEST(test_alloc_copy_graph_solution)
+{
+	const int size = sizeof(struct sgsh_node_connections) *
+		fresh_mb->n_nodes;
+	char buf[256];
+	ck_assert_int_eq(alloc_copy_graph_solution(fresh_mb, buf, 86, 256),
+			OP_ERROR);
+
+	char buf2[32];
+	ck_assert_int_eq(alloc_copy_edges(fresh_mb, buf2, size, 32), OP_ERROR);
+
+	/* Free to avoid memory leak.
+	 * About the free() see how graph_solution is malloc'ed
+	 * at alloc_copy_graph_solution.
+	 */
+	free(fresh_mb->graph_solution);
+	ck_assert_int_eq(alloc_copy_graph_solution(fresh_mb, buf, size, 256),
+			OP_SUCCESS);
+	free(fresh_mb->graph_solution); /* Easier to handle here. */
 }
 END_TEST
 
@@ -2563,6 +2615,12 @@ suite_broadcast(void)
 					  retire_test_alloc_copy_edges);
 	tcase_add_test(tc_ace, test_alloc_copy_edges);
 	suite_add_tcase(s, tc_ace);
+
+	TCase *tc_acg = tcase_create("alloc copy graph solution");
+	tcase_add_checked_fixture(tc_acg, setup_test_alloc_copy_graph_solution,
+				retire_test_alloc_copy_graph_solution);
+	tcase_add_test(tc_acg, test_alloc_copy_graph_solution);
+	suite_add_tcase(s, tc_acg);
 
 	TCase *tc_cr = tcase_create("check read");
 	tcase_add_checked_fixture(tc_cr, NULL, NULL);

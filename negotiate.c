@@ -116,10 +116,6 @@ static struct sgsh_node self_node;		/* The sgsh node that models
 						 */
 static struct node_io_side self_node_io_side;	/* Dispatch info for this tool.
 						 */
-static struct sgsh_node_connections *graph_solution;	/* Data structure
-							 * containing the
-							 * problem's solution.
-							 */
 static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
 							 * write file
 							 * descriptors to use
@@ -359,6 +355,8 @@ static enum op_result
 free_graph_solution(int node_index)
 {
 	int i;
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	assert(node_index < chosen_mb->n_nodes);
 	for (i = 0; i <= node_index; i++) {
 		if (graph_solution[i].n_edges_incoming > 0)
@@ -572,6 +570,8 @@ prepare_solution(void)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	enum op_result exit_state = OP_SUCCESS;
 
 	for (i = 0; i < n_nodes; i++) {
@@ -622,6 +622,8 @@ cross_match_constraints(void)
 	int n_nodes = chosen_mb->n_nodes;
 	int n_edges = chosen_mb->n_edges;
 	int edges_matched = 0;
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 
 	/* Check constraints for each node on the sgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
@@ -691,8 +693,11 @@ node_match_constraints(void)
 	enum op_result exit_state = OP_SUCCESS;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
 								n_nodes;
-	graph_solution = (struct sgsh_node_connections *)malloc( /* Prealloc */
+	/* Prealloc */
+	chosen_mb->graph_solution = (struct sgsh_node_connections *)malloc(
 							graph_solution_size);
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	if (!graph_solution) {
 		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
 		return OP_ERROR;
@@ -822,6 +827,8 @@ write_output_fds(int write_fd)
 	 * A node's connections are located at the same position
          * as the node in the node array.
 	 */
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	struct sgsh_node_connections *this_nc =
 					&graph_solution[self_node.index];
 	DPRINTF("%s(): for node at index %d with %d outgoing edges.", __func__,
@@ -925,6 +932,8 @@ write_graph_solution(int write_fd)
 	int n_nodes = chosen_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
 								n_nodes;
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	int wsize = -1;
 	if (graph_solution_size > buf_size) {
 		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
@@ -1252,6 +1261,8 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
 void
 free_mb(struct sgsh_negotiation *mb)
 {
+	if (mb->graph_solution)
+		free_graph_solution(mb->n_nodes - 1);
 	if (mb->node_array)
 		free(mb->node_array);
 	if (mb->edge_array)
@@ -1364,6 +1375,20 @@ check_read(int bytes_read, int buf_size, int expected_read_size) {
 	return OP_SUCCESS;
 }
 
+/* Allocate memory for graph solution and copy from buffer. */
+static enum op_result
+alloc_copy_graph_solution(struct sgsh_negotiation *mb, char *buf, int bytes_read,
+								int buf_size)
+{
+	int expected_read_size = sizeof(struct sgsh_node_connections) *
+								mb->n_nodes;
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR)
+		return OP_ERROR;
+	mb->graph_solution = (struct sgsh_node_connections *)malloc(bytes_read);
+	memcpy(mb->graph_solution, buf, bytes_read);
+	return OP_SUCCESS;
+}
+
 /* Allocate memory for message_block edges and copy from buffer. */
 static enum op_result
 alloc_copy_edges(struct sgsh_negotiation *mb, char *buf, int bytes_read,
@@ -1403,6 +1428,7 @@ alloc_copy_mb(struct sgsh_negotiation **mb, char *buf, int bytes_read,
 	memcpy(*mb, buf, bytes_read);
 	(*mb)->node_array = NULL;
 	(*mb)->edge_array = NULL;
+	(*mb)->graph_solution = NULL;
 	return OP_SUCCESS;
 }
 
@@ -1458,6 +1484,8 @@ read_input_fds(int read_fd)
 	 * A node's connections are located at the same position
          * as the node in the node array.
 	 */
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
 	struct sgsh_node_connections *this_nc =
 					&graph_solution[self_node.index];
 	assert(this_nc->node_index == self_node.index);
@@ -1557,33 +1585,19 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 	int buf_size = getpagesize();		/* Make buffer page-wide. */
 	char buf[buf_size];
 	int bytes_read = 0;
-	enum op_result error_code = OP_SUCCESS;
 	int n_nodes = fresh_mb->n_nodes;
-	int graph_solution_size = sizeof(struct sgsh_node_connections) *
-								n_nodes;
-	if (graph_solution_size > buf_size) {
-		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
-		return OP_ERROR;
-	}
-	if (!graph_solution) /* Use already allocated space, else prealloc. */
-		graph_solution = (struct sgsh_node_connections *)malloc(
-			sizeof(struct sgsh_node_connections) * n_nodes);
-	if (!graph_solution) {
-		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
-		return OP_ERROR;
-	}
+	enum op_result error_code = OP_SUCCESS;
 
 	/* Read node connection structures of the solution. */
 	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
 			!= OP_SUCCESS)
 		return error_code;
-	if (graph_solution_size != bytes_read) {
-		DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
-						graph_solution_size, bytes_read);
-		return OP_ERROR;
-	} else
-		memcpy(graph_solution, buf, bytes_read);
+	if (alloc_copy_graph_solution(fresh_mb, buf, bytes_read, buf_size) ==
+									OP_ERROR)
+		return error_code;
 
+	struct sgsh_node_connections *graph_solution =
+					fresh_mb->graph_solution;
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *nc = &graph_solution[i];
 		DPRINTF("Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
@@ -1703,12 +1717,15 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->version = 1;
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
+	chosen_mb->edge_array = NULL;
+	chosen_mb->n_edges = 0;
 	chosen_mb->initiator_pid = self_pid;
 	chosen_mb->preceding_process_pid = -1;
 	chosen_mb->state = PS_NEGOTIATION;
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
+	chosen_mb->graph_solution = NULL;
 	DPRINTF("Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
 	return OP_SUCCESS;
@@ -1862,7 +1879,6 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	FD_ZERO(&write_fds);
 
 #ifndef UNIT_TESTING
-	graph_solution = NULL;			/* Remove any garbage */
 	self_pipe_fds.input_fds = NULL;		/* Ditto */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
@@ -1987,7 +2003,6 @@ exit:
 						n_output_fds) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 	}
-	free_graph_solution(chosen_mb->n_nodes - 1);
 	int state = chosen_mb->state;
 	free_mb(chosen_mb);
 	return state;
