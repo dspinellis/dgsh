@@ -649,7 +649,8 @@ retire_args(void)
 void
 retire(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pipe_fds();
 }
@@ -669,7 +670,8 @@ retire_test_leave_negotiation(void)
 void
 retire_test_check_negotiation_round(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 }
 
@@ -752,7 +754,8 @@ void
 retire_test_read_input_fds(void)
 {
 	retire_pipe_fds();
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 }
 
@@ -827,7 +830,8 @@ retire_test_satisfy_io_constraints(void)
 void
 retire_test_dry_match_io_constraints(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pointers_to_edges();
 	retire_args();
@@ -836,7 +840,8 @@ retire_test_dry_match_io_constraints(void)
 void
 retire_test_node_match_constraints(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 }
 
@@ -852,7 +857,9 @@ retire_test_solve_sgsh_graph(void)
 	/* Are the other data structures handled correctly?
 	 * They could be deallocated above our feet.
 	 */
-	if (!exit_state) free_graph_solution(chosen_mb->n_nodes - 1);
+	if (!exit_state) 
+		retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	else exit_state = 0;
 	retire_chosen_mb();
 	retire_pointers_to_edges();
@@ -862,7 +869,8 @@ retire_test_solve_sgsh_graph(void)
 void
 retire_test_write_output_fds(void)
 {
-	free_graph_solution(chosen_mb->n_nodes - 1);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
 	retire_pipe_fds();
 }
 
