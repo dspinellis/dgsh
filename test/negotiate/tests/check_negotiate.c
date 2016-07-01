@@ -478,6 +478,12 @@ setup_test_get_expected_fds_n(void)
 }
 
 void
+setup_test_get_origin_pid(void)
+{
+	setup_chosen_mb();
+}
+
+void
 setup_test_read_input_fds(void)
 {
 	setup_chosen_mb();
@@ -795,6 +801,12 @@ retire_test_read_input_fds(void)
 {
 	retire_graph_solution(chosen_mb->graph_solution,
 			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
+retire_test_get_origin_pid(void)
+{
 	retire_chosen_mb();
 }
 
@@ -1773,6 +1785,13 @@ START_TEST(test_alloc_io_fds)
 }
 END_TEST
 
+START_TEST(test_get_origin_pid)
+{
+	chosen_mb->origin_index = 3;
+	ck_assert_int_eq(get_origin_pid(chosen_mb), 103);
+}
+END_TEST
+
 START_TEST(test_get_expected_fds_n)
 {
 	struct sgsh_node_connections *graph_solution =
@@ -2580,6 +2599,12 @@ suite_connect(void)
 					  retire_test_read_input_fds);
 	tcase_add_test(tc_rif, test_read_input_fds);
 	suite_add_tcase(s, tc_rif);
+
+	TCase *tc_gop = tcase_create("get origin pid");
+	tcase_add_checked_fixture(tc_gop, setup_test_get_origin_pid,
+					  retire_test_get_origin_pid);
+	tcase_add_test(tc_gop, test_get_origin_pid);
+	suite_add_tcase(s, tc_gop);
 
 	TCase *tc_gefn = tcase_create("get expected fds number");
 	tcase_add_checked_fixture(tc_gefn, setup_test_get_expected_fds_n,

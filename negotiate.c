@@ -1508,6 +1508,15 @@ alloc_io_fds()
 	return OP_SUCCESS;
 }
 
+/* Return the pid of the node that dispatched
+ * the provided message block.
+ */
+pid_t
+get_origin_pid(struct sgsh_negotiation *mb)
+{
+	return mb->node_array[mb->origin_index].pid;
+}
+
 /* Return the number of input file descriptors
  * expected by process with pid PID.
  */
