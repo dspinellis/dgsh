@@ -67,4 +67,13 @@ enum op_result write_message_block(int write_fd);
 void free_mb(struct sgsh_negotiation *mb);
 enum op_result read_input_fds(int read_fd, int *input_fds);
 enum op_result write_output_fds(int write_fd, int *output_fds);
+
+#ifdef UNIT_TESTING
+
+extern bool multiple_inputs;
+extern int nfd;
+extern int next_fd(int fd);
+
+#endif
+
 #endif
