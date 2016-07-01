@@ -820,8 +820,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 /* Transmit file descriptors that will pipe this
  * tool's output to another tool.
  */
-static enum op_result
-write_output_fds(int write_fd)
+enum op_result
+write_output_fds(int write_fd, int *output_fds)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -837,18 +837,6 @@ write_output_fds(int write_fd)
 	int i;
 	int total_edge_instances = 0;
 	enum op_result re = OP_SUCCESS;
-
-	/* To preallocate the memory needed for storing pipe fds. */
-	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
-		int k;
-		self_pipe_fds.n_output_fds = 0; /* For safety. */
-		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++)
-			self_pipe_fds.n_output_fds++;
-	}
-	if (!self_pipe_fds.output_fds && /* Use already allocated space. */
-	    this_nc->n_edges_outgoing > 0)
-		self_pipe_fds.output_fds = (int *)malloc(sizeof(int) *
-						self_pipe_fds.n_output_fds);
 
 	/**
 	 * Create a pipe for each instance of each outgoing edge connection.
@@ -908,7 +896,7 @@ write_output_fds(int write_fd)
 			}
 			close(fd[0]);
 
-			self_pipe_fds.output_fds[total_edge_instances] = fd[1];
+			output_fds[total_edge_instances] = fd[1];
 			total_edge_instances++;
 		}
 		if (re == OP_ERROR)
@@ -1476,9 +1464,53 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read)
 	return OP_SUCCESS;
 }
 
-/* Read file descriptors piping input from another tool in the sgsh graph. */
+/* Allocate memory for file descriptors. */
 static enum op_result
-read_input_fds(int read_fd)
+alloc_fds(int **fds, int n_fds)
+{
+	if (n_fds) {
+		*fds = (int *)malloc(sizeof(int) * n_fds);
+		if (*fds == NULL)
+			return OP_ERROR;
+	}
+	return OP_SUCCESS;
+}
+
+/* Allocate memory for output file descriptors. */
+static enum op_result
+alloc_io_fds()
+{
+	int i = 0;
+	struct sgsh_node_connections *this_nc =
+				&chosen_mb->graph_solution[self_node.index];
+	DPRINTF("%s(): self node: %d, incoming edges: %d, outgoing edges: %d", __func__, self_node.index, this_nc->n_edges_incoming, this_nc->n_edges_outgoing);
+
+	self_pipe_fds.n_input_fds = 0; /* For safety. */
+	for (i = 0; i < this_nc->n_edges_incoming; i++) {
+		int k;
+		for (k = 0; k < this_nc->edges_incoming[i].instances; k++)
+			self_pipe_fds.n_input_fds++;
+	}
+	if (alloc_fds(&self_pipe_fds.input_fds, self_pipe_fds.n_input_fds) ==
+									OP_ERROR)
+		return OP_ERROR;
+
+	self_pipe_fds.n_output_fds = 0;
+	for (i = 0; i < this_nc->n_edges_outgoing; i++) {
+		int k;
+		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++)
+			self_pipe_fds.n_output_fds++;
+	}
+	if (alloc_fds(&self_pipe_fds.output_fds, self_pipe_fds.n_output_fds) ==
+									OP_ERROR)
+		return OP_ERROR;
+
+	return OP_SUCCESS;
+}
+
+/* Read file descriptors piping input from another tool in the sgsh graph. */
+enum op_result
+read_input_fds(int read_fd, int *input_fds)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1493,17 +1525,6 @@ read_input_fds(int read_fd)
 	int total_edge_instances = 0;
 	enum op_result re = OP_SUCCESS;
 
-	/* To preallocate the memory needed for storing pipe fds. */
-	for (i = 0; i < this_nc->n_edges_incoming; i++) {
-		int k;
-		self_pipe_fds.n_input_fds = 0; /* For safety. */
-		for (k = 0; k < this_nc->edges_incoming[i].instances; k++)
-			self_pipe_fds.n_input_fds++;
-	}
-	if (!self_pipe_fds.input_fds && /* Use already allocated space. */
-	   this_nc->n_edges_incoming > 0)
-		self_pipe_fds.input_fds = (int *)malloc(sizeof(int) *
-						self_pipe_fds.n_input_fds);
 	DPRINTF("%d incoming edges to inspect of node %d.", this_nc->n_edges_incoming, self_node.index);
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
 		int k;
@@ -1564,7 +1585,7 @@ read_input_fds(int read_fd)
 			}
 			fd = *((int*)CMSG_DATA(h));
 			DPRINTF("%s: Node %d received file descriptor %d.", __func__, this_nc->node_index, read_fd);
-			self_pipe_fds.input_fds[total_edge_instances] = fd;
+			input_fds[total_edge_instances] = fd;
 			total_edge_instances++;
 		}
 		if (re == OP_ERROR)
@@ -1994,10 +2015,15 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 		}
 	}
 exit:
+	/* XXX: error handling */
 	if (chosen_mb->state == PS_COMPLETE) {
-		if (read_input_fds(STDIN_FILENO) == OP_ERROR)
+		if (alloc_io_fds() == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-		if (write_output_fds(STDOUT_FILENO) == OP_ERROR)
+		if (read_input_fds(STDIN_FILENO, self_pipe_fds.input_fds) ==
+									OP_ERROR)
+			chosen_mb->state = PS_ERROR;
+		if (write_output_fds(STDOUT_FILENO, self_pipe_fds.output_fds) ==
+									OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (establish_io_connections(input_fds, n_input_fds, output_fds,
 						n_output_fds) == OP_ERROR)

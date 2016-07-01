@@ -7,24 +7,19 @@
 #include "../src/sgsh-negotiate.h"
 #include "../src/negotiate.c" /* struct definitions, static structures */
 
+
 struct sgsh_negotiation *fresh_mb;
 struct sgsh_edge *compact_edges;
 struct sgsh_edge **pointers_to_edges;
 int n_ptedges;
-
 int *args;
-
-int *input_fds;
-int n_input_fds;
-int *output_fds;
-int n_output_fds;
-
 /* Depending on whether a test triggers a failure or not, a different sequence
  * of actions may be needed to exit normally.
  * exit_state is the control variable for following the correct 
  * sequence of actions.
  */
 int exit_state = 0;
+
 
 void
 setup_graph_solution(void)
@@ -461,12 +456,19 @@ setup_test_read_chunk(void)
 }
 
 void
+setup_test_alloc_io_fds(void)
+{
+	setup_chosen_mb();
+	setup_graph_solution();
+	setup_self_node();
+}
+
+void
 setup_test_read_input_fds(void)
 {
 	setup_chosen_mb();
 	setup_graph_solution();
 	setup_self_node();
-	setup_pipe_fds();
 }
 
 void
@@ -576,7 +578,6 @@ setup_test_write_output_fds(void)
 	setup_chosen_mb(); /* For setting up graph_solution. */
 	setup_graph_solution();
 	setup_self_node();
-	setup_pipe_fds();
 }
 
 void
@@ -633,10 +634,10 @@ retire_mb(struct sgsh_negotiation *mb)
 void
 retire_pipe_fds(void)
 {
-	if (n_input_fds > 0)
-		free(input_fds);
-	if (n_output_fds > 0)
-		free(output_fds);
+	if (self_pipe_fds.n_input_fds > 0)
+		free(self_pipe_fds.input_fds);
+	if (self_pipe_fds.n_output_fds > 0)
+		free(self_pipe_fds.output_fds);
 	/* What about self_pipe_fds.input_fds? */
 }
 
@@ -751,9 +752,17 @@ retire_test_alloc_copy_nodes(void)
 }
 
 void
-retire_test_read_input_fds(void)
+retire_test_alloc_io_fds(void)
 {
 	retire_pipe_fds();
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
+retire_test_read_input_fds(void)
+{
 	retire_graph_solution(chosen_mb->graph_solution,
 			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
@@ -871,7 +880,6 @@ retire_test_write_output_fds(void)
 {
 	retire_graph_solution(chosen_mb->graph_solution,
 			chosen_mb->n_nodes - 1);
-	retire_pipe_fds();
 }
 
 void
@@ -962,8 +970,16 @@ START_TEST(test_establish_io_connections)
 {
 	/* Should be in the solution propagation test suite. */
 	/* The test case contains an arrangement of 0 fds and another of >0 fds. */
+	int *input_fds = NULL;
+	int n_input_fds;
+	int *output_fds = NULL;
+	int n_output_fds;
 	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
 					&output_fds, &n_output_fds), OP_SUCCESS);
+	ck_assert_int_eq(n_input_fds, 2);
+	ck_assert_int_ne(input_fds, 0);
+	ck_assert_int_eq(n_output_fds, 0);
+	ck_assert_int_eq(output_fds, 0);
 }
 END_TEST
 
@@ -1359,14 +1375,15 @@ END_TEST
 START_TEST(test_write_output_fds)
 {
 	int write_fd = 1;
+	int *output_fds;
 	/* 0 outgoing edges for node 3, so no action really. */
-	ck_assert_int_eq(write_output_fds(write_fd), OP_SUCCESS);
-	retire_test_write_output_fds();
+	ck_assert_int_eq(write_output_fds(write_fd, output_fds), OP_SUCCESS);
 
 	/* Switch to node 2 that has 2 outgoing edges. */
-	setup_test_write_output_fds();
 	memcpy(&self_node, &chosen_mb->node_array[2], sizeof(struct sgsh_node));
-	ck_assert_int_eq(write_output_fds(write_fd), OP_SUCCESS);
+	output_fds = (int *)malloc(sizeof(int) * 2);
+	ck_assert_int_eq(write_output_fds(write_fd, output_fds), OP_SUCCESS);
+	free(output_fds);
 
 	/* Incomplete testing since socket descriptors have not yet been setup.
 	 * This will hapeen through the shell.
@@ -1701,6 +1718,31 @@ START_TEST(test_read_graph_solution)
 }
 END_TEST
 
+START_TEST(test_alloc_fds)
+{
+	int *fds = NULL;
+	int n_fds = 0;
+	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
+	ck_assert_int_eq(fds, 0);
+
+	n_fds = 2;
+	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
+	ck_assert_int_ne(fds, 0);
+	free(fds);
+}
+END_TEST
+
+START_TEST(test_alloc_io_fds)
+{
+	/* By default initialised to 0. See setup_chosen_mb() */
+	chosen_mb->graph_solution[3].edges_incoming[0].instances = 1;
+	chosen_mb->graph_solution[3].edges_incoming[1].instances = 1;
+	ck_assert_int_eq(alloc_io_fds(), OP_SUCCESS);
+	ck_assert_int_eq(self_pipe_fds.n_input_fds, 2);
+	ck_assert_int_eq(self_pipe_fds.n_output_fds, 0);
+}
+END_TEST
+
 /* Incomplete? */
 START_TEST(test_read_input_fds)
 {
@@ -1777,9 +1819,13 @@ START_TEST(test_read_input_fds)
 		 * See setup_graph_solution().
 	 	 */
 		graph_solution[1].edges_incoming[0].instances = 1;
+		int *input_fds = (int *)malloc(sizeof(int));
 	
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
-		ck_assert_int_eq(read_input_fds(sockets[1]), OP_SUCCESS);
+		ck_assert_int_eq(read_input_fds(sockets[1], input_fds),
+				OP_SUCCESS);
+		ck_assert_int_eq(input_fds[0], 4);
+		free(input_fds);
 		DPRINTF("Parent with pid %d exits.", (int)getpid()); 
 	}
 	close(sockets[0]);
@@ -2456,6 +2502,17 @@ Suite *
 suite_connect(void)
 {
 	Suite *s = suite_create("Connect");
+
+	TCase *tc_aiof = tcase_create("alloc io fds");
+	tcase_add_checked_fixture(tc_aiof, setup_test_alloc_io_fds,
+					  retire_test_alloc_io_fds);
+	tcase_add_test(tc_aiof, test_alloc_io_fds);
+	suite_add_tcase(s, tc_aiof);
+
+	TCase *tc_af = tcase_create("alloc fds");
+	tcase_add_checked_fixture(tc_af, NULL, NULL);
+	tcase_add_test(tc_af, test_alloc_fds);
+	suite_add_tcase(s, tc_af);
 
 	TCase *tc_rif = tcase_create("read input fds");
 	tcase_add_checked_fixture(tc_rif, setup_test_read_input_fds,

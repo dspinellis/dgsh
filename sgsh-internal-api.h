@@ -62,4 +62,6 @@ enum op_result read_message_block(int read_fd,
 		struct sgsh_negotiation **fresh_mb);
 enum op_result write_message_block(int write_fd);
 void free_mb(struct sgsh_negotiation *mb);
+enum op_result read_input_fds(int read_fd, int *input_fds);
+enum op_result write_output_fds(int write_fd, int *output_fds);
 #endif
