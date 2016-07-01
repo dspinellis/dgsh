@@ -65,6 +65,7 @@ STATIC bool multiple_inputs;
  */
 STATIC int nfd;
 
+
 /**
  * Return the next fd where a read block should be passed
  */
@@ -98,12 +99,14 @@ next_fd(int fd)
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-void
+
+struct sgsh_negotiation *
 pass_blocks(void)
 {
 	fd_set readfds, writefds;
 	int nfds = 0;
 	int i;
+	struct sgsh_negotiation *solution = NULL;
 
 	for (;;) {
 		// Create select(2) masks
@@ -147,7 +150,7 @@ pass_blocks(void)
 
 				assert(!pi[i].run_ready);
 				assert(pi[next].to_write == NULL);
-				// read_message_block(i, &pi[next].to_write); // XXX check return
+				read_message_block(i, &pi[next].to_write); // XXX check return
 				rb = pi[next].to_write;
 
 				// Count # times we see a block on a port
@@ -157,8 +160,10 @@ pass_blocks(void)
 				} else if (rb->initiator_pid == pi[i].lowest_pid)
 					pi[i].seen_times++;
 
-				if (pi[i].seen_times == 2)
+				if (pi[i].seen_times == 2) {
+					solution = pi[next].to_write;
 					pi[i].run_ready = true;
+				}
 			}
 		}
 
@@ -167,8 +172,10 @@ pass_blocks(void)
 		for (i = 0; i < nfd + 1; i++)
 			if (pi[i].run_ready)
 				nfds++;
-		if (nfds == nfd)
-			return;
+		if (nfds == nfd) {
+			assert(solution != NULL);
+			return solution;
+		}
 	}
 }
 
@@ -176,6 +183,7 @@ int
 main(int argc, char *argv[])
 {
 	int ch;
+	struct sgsh_negotiation *solution;
 
 	program_name = argv[0];
 
@@ -201,7 +209,7 @@ main(int argc, char *argv[])
 	nfd = atoi(argv[0]);
 	pi = (struct portinfo *)calloc(nfd + 1, sizeof(struct portinfo));
 
-	pass_blocks();
+	solution = pass_blocks();
 	// Scatter or gather file descriptors XXX
 
 	return 0;
