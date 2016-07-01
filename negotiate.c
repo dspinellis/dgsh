@@ -1508,6 +1508,28 @@ alloc_io_fds()
 	return OP_SUCCESS;
 }
 
+/* Return the number of input file descriptors
+ * expected by process with pid PID.
+ */
+int
+get_provided_fds_n(pid_t pid)
+{
+	int provided_fds_n = 0;
+	int i = 0, j = 0;
+	for (i = 0; i < chosen_mb->n_nodes; i++) {
+		if (chosen_mb->node_array[i].pid == pid) {
+			struct sgsh_node_connections *graph_solution =
+				chosen_mb->graph_solution;
+			for (j = 0; j < graph_solution[i].n_edges_outgoing; j++)
+				provided_fds_n +=
+					graph_solution[i].edges_outgoing[j].instances;
+			return provided_fds_n;
+		}
+	}
+	/* Invalid pid */
+	return -1;
+}
+
 /* Read file descriptors piping input from another tool in the sgsh graph. */
 enum op_result
 read_input_fds(int read_fd, int *input_fds)
