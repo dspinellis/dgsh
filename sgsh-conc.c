@@ -74,29 +74,30 @@ STATIC int nfd;
 /**
  * Return the next fd where a read block should be passed
  */
+#define FREE_FILENO (STDERR_FILENO + 1)
 STATIC int
 next_fd(int fd)
 {
 	if (multiple_inputs)
 		switch (fd) {
-		case 0:
-			return 1;
-		case 1:
+		case STDIN_FILENO:
+			return STDOUT_FILENO;
+		case STDOUT_FILENO:
 			return nfd - 1;
-		case 3:
-			return 0;
+		case FREE_FILENO:
+			return STDIN_FILENO;
 		default:
 			return fd - 1;
 		}
 	else
 		switch (fd) {
-		case 0:
-			return 1;
-		case 1:
-			return 3;
+		case STDIN_FILENO:
+			return STDOUT_FILENO;
+		case STDOUT_FILENO:
+			return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
-				return 0;
+				return STDIN_FILENO;
 			else
 				return fd + 1;
 		}
