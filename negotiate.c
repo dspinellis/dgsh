@@ -75,7 +75,7 @@ struct sgsh_node_connections {
 						 */
 	int n_edges_incoming;			/* Number of incoming edges */
 	int n_instances_incoming_free;		/* Number of incoming edges
-						 * not yet binded to a pair
+						 * not yet bound to a pair
 						 * node's output channel.
 						 */
 	struct sgsh_edge *edges_outgoing;	/* Array of edges through
