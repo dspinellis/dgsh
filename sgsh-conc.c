@@ -118,9 +118,12 @@ pass_blocks(void)
 			}
 		}
 
+	again:
 		if (select(nfds, &readfds, &writefds, NULL, NULL) < 0) {
+			if (errno == EINTR)
+				goto again;
+			/* All other cases are internal errors. */
 			perror("select");
-			// XXX Notify other processes
 			exit(1);
 		}
 
