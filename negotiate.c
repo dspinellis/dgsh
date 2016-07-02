@@ -1646,7 +1646,7 @@ read_input_fds(int read_fd, int *input_fds)
 	}
 	if (re == OP_ERROR) {
 		free_graph_solution(chosen_mb->n_nodes - 1);
-		free(self_pipe_fds.input_fds);
+		free(input_fds);
 	}
 	return re;
 }
@@ -1997,8 +1997,10 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 
 	/* Perform phases and rounds. */
 	while (1) {
-
+again:
 		if (select(nfds, &read_fds, &write_fds, NULL, NULL) < 0) {
+			if (errno == EINTR)
+				goto again;
 			perror("select");
 			chosen_mb->state = PS_ERROR;
 		}
