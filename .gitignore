@@ -5,6 +5,7 @@
 *.pdf
 png/*.png
 sgsh
+sgsh-conc
 sgsh-ps
 sgsh-merge-sum
 sgsh-tee
