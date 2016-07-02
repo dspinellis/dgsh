@@ -5,11 +5,20 @@
 #include <stdbool.h> /* EXIT_SUCCESS, EXIT_FAILURE */
 #include "../src/sgsh-internal-api.h"
 
-START_TEST (test_name)
+START_TEST (test_next_fd)
 {
 	multiple_inputs = true;
 	nfd = 5;
 	ck_assert_int_eq(next_fd(0), 1);
+	ck_assert_int_eq(next_fd(1), 4);
+	ck_assert_int_eq(next_fd(4), 3);
+	ck_assert_int_eq(next_fd(3), 0);
+
+	multiple_inputs = false;
+	ck_assert_int_eq(next_fd(0), 1);
+	ck_assert_int_eq(next_fd(1), 3);
+	ck_assert_int_eq(next_fd(3), 4);
+	ck_assert_int_eq(next_fd(4), 0);
 }
 END_TEST
 
@@ -17,9 +26,9 @@ Suite *
 suite_conc(void)
 {
 	Suite *s = suite_create("Concentrator");
-	TCase *tc_tn = tcase_create("test name");
+	TCase *tc_tn = tcase_create("test next_fd");
 	tcase_add_checked_fixture(tc_tn, NULL, NULL);
-	tcase_add_test(tc_tn, test_name);
+	tcase_add_test(tc_tn, test_next_fd);
 	suite_add_tcase(s, tc_tn);
 	return s;
 }
