@@ -1900,11 +1900,16 @@ START_TEST(test_read_input_fds)
 	 	 */
 		graph_solution[1].edges_incoming[0].instances = 1;
 		int *input_fds = (int *)malloc(sizeof(int));
+		input_fds[0] = -1;
 	
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_input_fds(sockets[1], input_fds),
 				OP_SUCCESS);
-		ck_assert_int_eq(input_fds[0], 4);
+		ck_assert_int_ge(input_fds[0], 3);
+		/* Hard-coded ceiling to check whether some weird
+		 * error has caused some random number to slip in.
+		 */
+		ck_assert_int_le(input_fds[0], 20);
 		free(input_fds);
 		DPRINTF("Parent with pid %d exits.", (int)getpid()); 
 	}
