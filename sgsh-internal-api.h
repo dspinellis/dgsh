@@ -73,6 +73,8 @@ enum op_result write_output_fds(int write_fd, int *output_fds);
 extern bool multiple_inputs;
 extern int nfd;
 extern int next_fd(int fd);
+extern int read_fd(int input_socket);
+extern void write_fd(int output_socket, int fd_to_write);
 
 #endif
 

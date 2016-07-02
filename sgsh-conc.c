@@ -199,10 +199,13 @@ write_fd(int output_socket, int fd_to_write)
 	struct msghdr    msg;
 	struct cmsghdr  *cmsg;
 	unsigned char    buf[CMSG_SPACE(sizeof(int))];
+	struct iovec io = { .iov_base = " ", .iov_len = 1 };
 
 	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
 	msg.msg_control = buf;
-	msg.msg_controllen = CMSG_LEN(sizeof(int));
+	msg.msg_controllen = sizeof(buf);
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
@@ -220,16 +223,26 @@ write_fd(int output_socket, int fd_to_write)
 STATIC int
 read_fd(int input_socket)
 {
-	struct msghdr    msg;
-	struct cmsghdr  *cmsg;
-	unsigned char    buf[CMSG_SPACE(sizeof(int))];
+	struct msghdr msg;
+	struct cmsghdr *cmsg;
+	unsigned char buf[CMSG_SPACE(sizeof(int))];
+	char m_buffer[2];
+	struct iovec io = { .iov_base = m_buffer, .iov_len = sizeof(m_buffer) };
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_control = buf;
 	msg.msg_controllen = sizeof(buf);
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
 
-	if (recvmsg(input_socket, &msg, 0) == -1)
+again:
+	if (recvmsg(input_socket, &msg, 0) == -1) {
+		if (errno == EAGAIN) {
+			sleep(1);
+			goto again;
+		}
 		err(1, "recvmsg on fd %d", input_socket);
+	}
 	if ((msg.msg_flags & MSG_TRUNC) || (msg.msg_flags & MSG_CTRUNC))
 		errx(1, "control message truncated on fd %d", input_socket);
 	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
