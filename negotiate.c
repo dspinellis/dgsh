@@ -930,11 +930,7 @@ write_graph_solution(int write_fd)
 
 	/* Transmit node connection structures. */
 	memcpy(buf, graph_solution, graph_solution_size);
-#ifndef UNIT_TESTING
 	wsize = write(write_fd, buf, graph_solution_size);
-#else
-	wsize = write(5, buf, graph_solution_size);
-#endif
 	if (wsize == -1)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
@@ -953,11 +949,7 @@ write_graph_solution(int write_fd)
 		if (nc->n_edges_incoming) {
 			/* Transmit a node's incoming connections. */
 			memcpy(buf, nc->edges_incoming, in_edges_size);
-#ifndef UNIT_TESTING
 			wsize = write(write_fd, buf, in_edges_size);
-#else
-			wsize = write(5, buf, in_edges_size);
-#endif
 			if (wsize == -1)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
@@ -966,11 +958,7 @@ write_graph_solution(int write_fd)
 		if (nc->n_edges_outgoing) {
 			/* Transmit a node's outgoing connections. */
 			memcpy(buf, nc->edges_outgoing, out_edges_size);
-#ifndef UNIT_TESTING
 			wsize = write(write_fd, buf, out_edges_size);
-#else
-			wsize = write(5, buf, out_edges_size);
-#endif
 			if (wsize == -1)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
@@ -1021,11 +1009,7 @@ write_message_block(int write_fd)
 	 */
 	chosen_mb->node_array = NULL;
 	DPRINTF("%s(): Write message block.", __func__);
-#ifndef UNIT_TESTING
 	wsize = write(write_fd, chosen_mb, mb_size);
-#else
-	wsize = write(5, chosen_mb, mb_size);
-#endif
 	if (wsize == -1)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
@@ -1033,11 +1017,7 @@ write_message_block(int write_fd)
 
 	if (chosen_mb->state == PS_NEGOTIATION) {
 		/* Transmit nodes. */
-#ifndef UNIT_TESTING
 		wsize = write(write_fd, p_nodes, nodes_size);
-#else
-		wsize = write(5, p_nodes, nodes_size);
-#endif
 		if (wsize == -1)
 			return OP_ERROR;
 		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
@@ -1048,11 +1028,7 @@ write_message_block(int write_fd)
 			/* Transmit edges. */
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
 			chosen_mb->edge_array = NULL;
-#ifndef UNIT_TESTING
 			wsize = write(write_fd, p_edges, edges_size);
-#else
-			wsize = write(5, p_edges, edges_size);
-#endif
 			if (wsize == -1)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
@@ -1448,12 +1424,7 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read)
 	int error_code = -EAGAIN;
 	DPRINTF("%s()", __func__);
 
-#ifdef UNIT_TESTING
-	close(5);
-	call_read(4, buf, buf_size, bytes_read, &error_code);
-#else
 	call_read(read_fd, buf, buf_size, bytes_read, &error_code);
-#endif
 	if (*bytes_read == -1) {  /* Read failed. */
 	 	DPRINTF("Reading from fd %d failed with error code %d.",
 			read_fd, error_code);
@@ -1613,17 +1584,9 @@ read_input_fds(int read_fd, int *input_fds)
 			h->cmsg_type = SCM_RIGHTS;
 			*((int*)CMSG_DATA(h)) = -1;
 
-#ifdef UNIT_TESTING
-			close(4); /* Close the opposite endpoint. */
-			/* Define self_node_io_side.fd_read */
-			DPRINTF("Parent: waiting to receive pipe fd with recvmsg().");
-			/* Hard-coded socket fd 5. */
-			if ((count = recvmsg(5, &msg, 0)) < 0) {
-#else
 			DPRINTF("%s(): recvmsg: node: %d, from channel: %s.",
 				__func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output");
 			if ((count = recvmsg(read_fd, &msg, 0)) < 0) {
-#endif
 				perror("recvmsg()");
 				re = OP_ERROR;
 				break;
@@ -1953,7 +1916,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	FD_ZERO(&write_fds);
 
 #ifndef UNIT_TESTING
-	self_pipe_fds.input_fds = NULL;		/* Ditto */
+	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
 	DPRINTF("%s(): Tool %s with pid %d entered sgsh negotiation.",
