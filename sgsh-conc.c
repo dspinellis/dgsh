@@ -189,71 +189,7 @@ pass_message_blocks(void)
 	}
 }
 
-/*
- * Write the file descriptor fd_to_write to
- * the socket file descriptor output_socket.
- */
-STATIC void
-write_fd(int output_socket, int fd_to_write)
-{
-	struct msghdr    msg;
-	struct cmsghdr  *cmsg;
-	unsigned char    buf[CMSG_SPACE(sizeof(int))];
-	struct iovec io = { .iov_base = " ", .iov_len = 1 };
 
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = &io;
-	msg.msg_iovlen = 1;
-	msg.msg_control = buf;
-	msg.msg_controllen = sizeof(buf);
-
-	cmsg = CMSG_FIRSTHDR(&msg);
-	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-	cmsg->cmsg_level = SOL_SOCKET;
-	cmsg->cmsg_type = SCM_RIGHTS;
-	*(int *)CMSG_DATA(cmsg) = fd_to_write;
-
-	if (sendmsg(output_socket, &msg, 0) == -1)
-		err(1, "sendmsg on fd %d", output_socket);
-}
-
-/*
- * Read a file descriptor from socket input_socket and return it.
- */
-STATIC int
-read_fd(int input_socket)
-{
-	struct msghdr msg;
-	struct cmsghdr *cmsg;
-	unsigned char buf[CMSG_SPACE(sizeof(int))];
-	char m_buffer[2];
-	struct iovec io = { .iov_base = m_buffer, .iov_len = sizeof(m_buffer) };
-
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_control = buf;
-	msg.msg_controllen = sizeof(buf);
-	msg.msg_iov = &io;
-	msg.msg_iovlen = 1;
-
-again:
-	if (recvmsg(input_socket, &msg, 0) == -1) {
-		if (errno == EAGAIN) {
-			sleep(1);
-			goto again;
-		}
-		err(1, "recvmsg on fd %d", input_socket);
-	}
-	if ((msg.msg_flags & MSG_TRUNC) || (msg.msg_flags & MSG_CTRUNC))
-		errx(1, "control message truncated on fd %d", input_socket);
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
-	    cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-		if (cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
-		    cmsg->cmsg_level == SOL_SOCKET &&
-		    cmsg->cmsg_type == SCM_RIGHTS)
-			return *(int *)CMSG_DATA(cmsg);
-	}
-	errx(1, "unable to read file descriptor from fd %d", input_socket);
-}
 
 /*
  * Scatter the fds read from the input process to multiple outputs.

@@ -13,6 +13,7 @@
 /* Placeholder: LICENSE. */
 #include <assert.h>		/* assert() */
 #include <errno.h>		/* EAGAIN */
+#include <err.h>		/* err() */
 #include <stdbool.h>		/* bool, true, false */
 #include <stdio.h>		/* fprintf() in DPRINTF() */
 #include <stdlib.h>		/* getenv(), errno */
@@ -820,8 +821,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 /* Transmit file descriptors that will pipe this
  * tool's output to another tool.
  */
-enum op_result
-write_output_fds(int write_fd, int *output_fds)
+static enum op_result
+write_output_fds(int output_socket, int *output_fds)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -852,14 +853,7 @@ write_output_fds(int write_fd, int *output_fds)
 		 * each edge can have more than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_outgoing[i].instances; k++) {
-			struct msghdr msg;
-			union fdmsg cmsg;
-			struct iovec iov[1];
-			struct cmsghdr *h;
-			int ping;
 			int fd[2];
-			memset(&msg, 0, sizeof(struct msghdr));
-
 			/* Create pipe, inject the read side to the msg control
 			 * data and close the read side to let the recipient
 			 * process handle it.
@@ -868,37 +862,15 @@ write_output_fds(int write_fd, int *output_fds)
 				perror("pipe open failed");
 				exit(1);
 			}
-
 			DPRINTF("%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
-			iov[0].iov_base = &ping;
-			iov[0].iov_len = 1;
 
-			msg.msg_iov = iov;
-			msg.msg_iovlen = 1;
-			msg.msg_name = 0;
-			msg.msg_namelen = 0;
-			msg.msg_control = cmsg.buf;
-			msg.msg_controllen = sizeof(union fdmsg);
-			msg.msg_flags = 0;
-
-			h = CMSG_FIRSTHDR(&msg);
-			h->cmsg_level = SOL_SOCKET;
-			h->cmsg_type = SCM_RIGHTS;
-			h->cmsg_len = CMSG_LEN(sizeof(int));
-			*((int*)CMSG_DATA(h)) = fd[0];
-
-			/* Send the message.DEFINE self_node_io_side.fd_write */
-			DPRINTF("%s(): sendmsg: node: %d, from channel: %s (%d).", __func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output", self_node_io_side.fd_direction);
-			if (sendmsg(write_fd, &msg, 0) < 0) {
-				DPRINTF("sendmsg() failed.\n");
-				re = OP_ERROR;
-				break;
-			}
+			write_fd(output_socket, fd[0]);
 			close(fd[0]);
 
 			output_fds[total_edge_instances] = fd[1];
 			total_edge_instances++;
 		}
+		/* XXX */
 		if (re == OP_ERROR)
 			break;
 	}
@@ -1532,9 +1504,75 @@ get_provided_fds_n(pid_t pid)
 	return -1;
 }
 
+/*
+ * Write the file descriptor fd_to_write to
+ * the socket file descriptor output_socket.
+ */
+void
+write_fd(int output_socket, int fd_to_write)
+{
+	struct msghdr    msg;
+	struct cmsghdr  *cmsg;
+	unsigned char    buf[CMSG_SPACE(sizeof(int))];
+	struct iovec io = { .iov_base = " ", .iov_len = 1 };
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
+	msg.msg_control = buf;
+	msg.msg_controllen = sizeof(buf);
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	*(int *)CMSG_DATA(cmsg) = fd_to_write;
+
+	if (sendmsg(output_socket, &msg, 0) == -1)
+		err(1, "sendmsg on fd %d", output_socket);
+}
+
+/*
+ * Read a file descriptor from socket input_socket and return it.
+ */
+int
+read_fd(int input_socket)
+{
+	struct msghdr msg;
+	struct cmsghdr *cmsg;
+	unsigned char buf[CMSG_SPACE(sizeof(int))];
+	char m_buffer[2];
+	struct iovec io = { .iov_base = m_buffer, .iov_len = sizeof(m_buffer) };
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_control = buf;
+	msg.msg_controllen = sizeof(buf);
+	msg.msg_iov = &io;
+	msg.msg_iovlen = 1;
+
+again:
+	if (recvmsg(input_socket, &msg, 0) == -1) {
+		if (errno == EAGAIN) {
+			sleep(1);
+			goto again;
+		}
+		err(1, "recvmsg on fd %d", input_socket);
+	}
+	if ((msg.msg_flags & MSG_TRUNC) || (msg.msg_flags & MSG_CTRUNC))
+		errx(1, "control message truncated on fd %d", input_socket);
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+	    cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
+		    cmsg->cmsg_level == SOL_SOCKET &&
+		    cmsg->cmsg_type == SCM_RIGHTS)
+			return *(int *)CMSG_DATA(cmsg);
+	}
+	errx(1, "unable to read file descriptor from fd %d", input_socket);
+}
+
 /* Read file descriptors piping input from another tool in the sgsh graph. */
-enum op_result
-read_input_fds(int read_fd, int *input_fds)
+static enum op_result
+read_input_fds(int input_socket, int *input_fds)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1549,61 +1587,22 @@ read_input_fds(int read_fd, int *input_fds)
 	int total_edge_instances = 0;
 	enum op_result re = OP_SUCCESS;
 
-	DPRINTF("%d incoming edges to inspect of node %d.", this_nc->n_edges_incoming, self_node.index);
+	DPRINTF("%s(): %d incoming edges to inspect of node %d.", __func__,
+			this_nc->n_edges_incoming, self_node.index);
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
 		int k;
 		/**
-		 * Due to channel constraint flexibility, each edge can have more
-		 * than one instances.
+		 * Due to channel constraint flexibility,
+		 * each edge can have more than one instances.
 		 */
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
-			int fd;
-			int count;
-			int ping;
-			struct msghdr msg;
-			struct iovec vec[1];
-			union fdmsg cmsg;
-			struct cmsghdr *h;
-			//char buffer[256];
-
-			DPRINTF("%d incoming edge instances to inspect.", this_nc->edges_incoming[i].instances);
-			vec[0].iov_base = &ping;
-			vec[0].iov_len = 1;
-
-			msg.msg_iov = vec;
-			msg.msg_iovlen = 1;
-			msg.msg_name = NULL;
-			msg.msg_namelen = 0;
-			msg.msg_control = cmsg.buf;
-			msg.msg_controllen = sizeof(union fdmsg);
-			msg.msg_flags = 0;
-
-			h = CMSG_FIRSTHDR(&msg);
-			h->cmsg_len = CMSG_LEN(sizeof(int));
-			h->cmsg_level = SOL_SOCKET;
-			h->cmsg_type = SCM_RIGHTS;
-			*((int*)CMSG_DATA(h)) = -1;
-
-			DPRINTF("%s(): recvmsg: node: %d, from channel: %s.",
-				__func__, this_nc->node_index, self_node_io_side.fd_direction == 0 ? "input" : "output");
-			if ((count = recvmsg(read_fd, &msg, 0)) < 0) {
-				perror("recvmsg()");
-				re = OP_ERROR;
-				break;
-			}
-			h = CMSG_FIRSTHDR(&msg);
-			if (h == NULL ||
-			    h->cmsg_len != CMSG_LEN(sizeof(int)) ||
-			    h->cmsg_level != SOL_SOCKET ||
-			    h->cmsg_type != SCM_RIGHTS) {
-				perror("Incorrect value in recvmsg");
-				re = OP_ERROR;
-			}
-			fd = *((int*)CMSG_DATA(h));
-			DPRINTF("%s: Node %d received file descriptor %d.", __func__, this_nc->node_index, read_fd);
-			input_fds[total_edge_instances] = fd;
+			input_fds[total_edge_instances] = read_fd(input_socket);
+			DPRINTF("%s: Node %d received file descriptor %d.",
+					__func__, this_nc->node_index,
+					input_fds[total_edge_instances]);
 			total_edge_instances++;
 		}
+		/* XXX */
 		if (re == OP_ERROR)
 			break;
 	}
