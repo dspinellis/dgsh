@@ -1,7 +1,7 @@
 from subprocess import Popen, PIPE, STDOUT
 import sys
 from socket import socketpair, AF_UNIX, SOCK_DGRAM
-from os import pipe, fork, getpid, close, execlp, dup, waitpid, WNOHANG
+from os import pipe, fork, close, execlp, dup, open as osopen, O_WRONLY, O_CREAT
 
 
 class Process:
@@ -17,7 +17,7 @@ class Process:
     fd = -1
     if not self.fileDescriptorsInUse:
       fd = 0
-    elif self.fileDescriptorsInUse[-1] == 0:
+    elif self.fileDescriptorsInUse[-1] in [0, 1]:
       fd = 3
     else:
       fd = self.fileDescriptorsInUse[-1] + 1
@@ -28,7 +28,7 @@ class Process:
     fd = -1
     if not self.fileDescriptorsInUse:
       fd = 1
-    elif self.fileDescriptorsInUse[-1] == 0:
+    elif self.fileDescriptorsInUse[-1] in [0, 1]:
       fd = 3
     else:
       fd = self.fileDescriptorsInUse[-1] + 1
@@ -50,6 +50,12 @@ def setupProcess(index, channel, connector):
              % (connector, processPair[0], processPair[1])
       exit(1)
 
+# Get output file name
+try:
+  outFile = sys.argv[2]
+except IndexError:
+  print "Input error: please specify a file name to store the output."
+  exit(0)
 
 # Read specification of processes and their interconnections
 try:
@@ -88,6 +94,9 @@ for processPair, connector in connectorDict.iteritems():
   setupProcess(out, 'output', connectorPair)
   setupProcess(inp, 'input', connectorPair)
 
+# Open output file
+outfile_fd = osopen(outFile, O_WRONLY | O_CREAT)
+
 # Activate interconnections and execute processes
 for process in Process.processes:
   #print 'process %s, input channels: %d, output channels: %d' \
@@ -107,6 +116,9 @@ for process in Process.processes:
       dup(oc[0].fileno())
       oc[0].close()
       oc[1].close()
+    if not process.outputConnectors:
+      close(1)
+      dup(outfile_fd)
+      close(outfile_fd)
     args = process.command.split()
     execlp(args[0], args[0], *args[1:])
-

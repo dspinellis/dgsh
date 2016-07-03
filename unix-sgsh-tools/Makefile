@@ -30,11 +30,20 @@ install:
 
 test:
 	cd $(PSEUDOSHELLDIR) && \
-	python $(PSEUDOSHELLDIR)/simple-shell.py comm_sort.sgsh && \
-	sleep 1 && \
-	echo "\nThe above output should match the following:\n" && \
-	cat comm_sort.success
-
+	python simple-shell.py comm_sort.sgsh comm_sort.out 2>/dev/null && \
+	diff comm_sort.out comm_sort.success && \
+	echo "Test comm | sort successful" || \
+	echo "Test comm | sort failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py comm_paste.sgsh comm_paste.out 2>/dev/null && \
+	diff comm_paste.out comm_paste.success && \
+	echo "Test comm | paste successful" || \
+	echo "Test comm | paste failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py join_sort.sgsh join_sort.out 2>/dev/null && \
+	diff join_sort.out join_sort.success && \
+	echo "Test join | sort successful" || \
+	echo "Test join | sort failed"
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean
