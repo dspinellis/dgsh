@@ -1,6 +1,3 @@
-[submodule "unix-sgsh-tools/gnulib"]
-	path = unix-sgsh-tools/gnulib
-	url = git://git.savannah.gnu.org/gnulib.git
 [submodule "unix-sgsh-tools/gawk"]
 	path = unix-sgsh-tools/gawk
 	url = git://git.savannah.gnu.org/gawk.git

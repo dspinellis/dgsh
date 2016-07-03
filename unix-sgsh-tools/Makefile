@@ -1,13 +1,18 @@
 PSEUDOSHELLDIR=../simple-shell
 
+# If not cloned repo with --recursive use this target to
+# clone the submodule repos
+get-submodules:
+	git submodule update --init --remote --recursive coreutils diffutils gawk grep parallel sed tar
+
 configure:
-	cd coreutils && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
-	cd diffutils && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
+	cd coreutils && ./bootstrap && ./configure --prefix=`pwd`/..
+	cd diffutils && ./bootstrap && ./configure --prefix=`pwd`/..
 	cd gawk && ./bootstrap.sh && ./configure --prefix=`pwd`/..
-	cd grep && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
+	cd grep && ./bootstrap && ./configure --prefix=`pwd`/..
 	cd parallel && ./configure --prefix=`pwd`/..
-	cd sed && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
-	cd tar && ./bootstrap --gnulib-srcdir=`pwd`/../gnulib && ./configure --prefix=`pwd`/..
+	cd sed && ./bootstrap && ./configure --prefix=`pwd`/..
+	cd tar && ./bootstrap && ./configure --prefix=`pwd`/..
 
 make:
 	cd coreutils && make
