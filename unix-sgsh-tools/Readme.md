@@ -41,7 +41,7 @@ The workflow includes the following steps:
   struct stat stats;
   int re = fstat(fileno(stdout), &stats);
   if (re < 0)
-    error(SORT_FAILURE, errno, "fstat failed\n");
+    error(1, errno, "fstat failed\n");
 
   if (!isatty(fileno(stdin)))
     strcpy(sgshin, "SGSH_IN=1");
