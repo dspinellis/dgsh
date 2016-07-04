@@ -1,0 +1,5 @@
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/paste f1s f2s
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/diff f1s -
+
+%
+socketpipe 1 2

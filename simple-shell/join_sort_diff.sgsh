@@ -1,0 +1,7 @@
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/join f1s f2s
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort
+3 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/diff f3s -
+
+%
+socketpipe 1 2
+socketpipe 2 3

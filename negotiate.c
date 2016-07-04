@@ -1742,7 +1742,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
 	}
-	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Read message block or solution from node %d sent from file descriptor: %s.\n", __func__, (*fresh_mb)->origin_index, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1862,28 +1862,40 @@ leave_negotiation(int run_ntimes_same, int error_ntimes_same)
 int
 set_fds(fd_set *read_fds, fd_set *write_fds)
 {
-	int nfds = 0;
-	if (self_node.sgsh_out) {
+	fd_set *fds;
+
+	/* The next operation is a read or a write */
+	if (read_fds)
+		fds = read_fds;
+	else
+		fds = write_fds;
+
+	if (self_node.sgsh_out && !self_node.sgsh_in) {
+		self_node_io_side.fd_direction = STDOUT_FILENO;
+		FD_SET(STDOUT_FILENO, fds);
+	} else if (!self_node.sgsh_out && self_node.sgsh_in) {
+		self_node_io_side.fd_direction = STDIN_FILENO;
+		FD_SET(STDIN_FILENO, fds);
+	} else {
+		/* We should have all ears open for a read */
 		if (read_fds) {
-			FD_SET(STDOUT_FILENO, read_fds);
-			nfds++;
-		}
-		if (write_fds) {
-			FD_SET(STDOUT_FILENO, write_fds);
-			nfds++;
+			FD_SET(STDIN_FILENO, fds);
+			FD_SET(STDOUT_FILENO, fds);
+		} else {
+			/* But for writing we should pass the message across.
+			 * If mb came from stdout channel, we got it from stdin.
+			 * So we should send it from stdout */
+			if (chosen_mb->origin_fd_direction == STDOUT_FILENO) {
+				FD_SET(STDOUT_FILENO, fds);
+				self_node_io_side.fd_direction = STDOUT_FILENO;
+			} else {
+				FD_SET(STDIN_FILENO, fds);
+				self_node_io_side.fd_direction = STDIN_FILENO;
+			}
 		}
 	}
-	if (self_node.sgsh_in) {
-		if (read_fds) {
-			FD_SET(STDIN_FILENO, read_fds);
-			nfds++;
-		}
-		if (write_fds) {
-			FD_SET(STDIN_FILENO, write_fds);
-			nfds++;
-		}
-	}
-	return nfds == 1 ? nfds + 1 : nfds;
+	/* so that after select() we try both 0 and 1 to see if they are set */
+	return 2;
 }
 
 /**
@@ -1939,12 +1951,12 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 
 
 	/* Start negotiation */
-        if (self_node.sgsh_out && !self_node.sgsh_in) {
-                if (construct_message_block(tool_name, self_pid) == OP_ERROR)
+	if (self_node.sgsh_out && !self_node.sgsh_in) {
+		if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-                self_node_io_side.fd_direction = STDOUT_FILENO;
         } else { /* or wait to receive MB. */
 		chosen_mb = NULL;
+		self_node_io_side.fd_direction = STDIN_FILENO;
 		if (read_message_block(STDIN_FILENO, &fresh_mb) == OP_ERROR) {
 			chosen_mb->state = PS_ERROR;
 			error_ntimes_same++;
@@ -1954,6 +1966,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	
 	/* Either we just read or we are about to write */
 	nfds = set_fds(NULL, &write_fds);
+	DPRINTF("nfds: %d, stdout set for write? %d\n", nfds, FD_ISSET(1, &write_fds));
 
 	/* Create sgsh node representation and add node, edge to the graph. */
 	fill_sgsh_node(tool_name, self_pid, channels_required,
@@ -1967,6 +1980,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	/* Perform phases and rounds. */
 	while (1) {
 again:
+		DPRINTF("%s(): perform round", __func__);
 		if (select(nfds, &read_fds, &write_fds, NULL, NULL) < 0) {
 			if (errno == EINTR)
 				goto again;

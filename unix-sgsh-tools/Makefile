@@ -54,6 +54,11 @@ test:
 	diff paste_diff.out paste_diff.success && \
 	echo "Test paste | diff successful" || \
 	echo "Test paste | diff failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py join_sort_diff.sgsh join_sort_diff.out 2>/dev/null && \
+	diff join_sort_diff.out join_sort_diff.success && \
+	echo "Test join | sort | diff successful" || \
+	echo "Test join| sort | diff failed"
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean

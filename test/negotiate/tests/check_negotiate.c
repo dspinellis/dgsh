@@ -182,6 +182,7 @@ setup_chosen_mb(void)
 	mb_is_updated = 0;
 	chosen_mb->serial_no = 0;
 	chosen_mb->preceding_process_pid = -1;
+	chosen_mb->origin_fd_direction = STDOUT_FILENO;
 }
 
 /* Identical to chosen_mb except for the initiator field. */
@@ -2622,16 +2623,17 @@ END_TEST
 
 START_TEST(test_set_fds)
 {
-	/* nfds == 1, so nfds + 1 = 2 */
+	/* For node 3 which is a terminal node */
 	fd_set read_fds, write_fds;
 	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
 	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
+	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
 
 	/* Make node 1 self node, which is a non terminal node */
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
-
-	/* nfds == 2 */
 	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(self_node_io_side.fd_direction, STDOUT_FILENO);
 	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
 }
 END_TEST
