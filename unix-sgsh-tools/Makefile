@@ -3,7 +3,7 @@ PSEUDOSHELLDIR=../simple-shell
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
-	git submodule update --init --remote --recursive coreutils diffutils gawk grep parallel sed tar
+	git submodule update --init --recursive coreutils diffutils gawk grep parallel sed tar
 
 configure:
 	cd coreutils && ./bootstrap && ./configure --prefix=`pwd`/..
@@ -49,6 +49,11 @@ test:
 	diff join_sort.out join_sort.success && \
 	echo "Test join | sort successful" || \
 	echo "Test join | sort failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py paste_diff.sgsh paste_diff.out 2>/dev/null && \
+	diff paste_diff.out paste_diff.success && \
+	echo "Test paste | diff successful" || \
+	echo "Test paste | diff failed"
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean
