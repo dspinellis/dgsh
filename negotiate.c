@@ -972,7 +972,6 @@ write_message_block(int write_fd)
 			(nodes_size > buf_size) ? "Nodes" : "Edges");
 		return OP_ERROR;
 	}
-	set_dispatcher();
 
 	/**
 	 * Prepare and perform message block transmission.
@@ -1060,8 +1059,10 @@ lookup_sgsh_edge(struct sgsh_edge *e)
 {
 	int i;
 	for (i = 0; i < chosen_mb->n_edges; i++) {
-		if (chosen_mb->edge_array[i].from == e->from &&
-		    chosen_mb->edge_array[i].to == e->to) {
+		if ((chosen_mb->edge_array[i].from == e->from &&
+			chosen_mb->edge_array[i].to == e->to) ||
+		    (chosen_mb->edge_array[i].from == e->to &&
+		     chosen_mb->edge_array[i].to == e->from)) {
 			DPRINTF("%s(): Edge %d to %d exists.", __func__,
 								e->from, e->to);
 			return OP_EXISTS;
@@ -1094,7 +1095,10 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	 * Self (the recipient) is the source of the edge.
          */
 		e->to = chosen_mb->origin_index;
-		assert(self_node.sgsh_out == 1);
+		if (self_node.sgsh_in == 1)
+			self_node_io_side.fd_direction = STDIN_FILENO;
+		else
+			self_node_io_side.fd_direction = STDOUT_FILENO;
 		assert((self_node.sgsh_in &&
 			self_node_io_side.fd_direction == STDIN_FILENO) ||
 			self_node_io_side.fd_direction == STDOUT_FILENO);
@@ -1102,7 +1106,10 @@ fill_sgsh_edge(struct sgsh_edge *e)
 	} else if (chosen_mb->origin_fd_direction == STDOUT_FILENO) {
 		/* Similarly. */
 		e->from = chosen_mb->origin_index;
-		assert(self_node.sgsh_in == 1);
+		if (self_node.sgsh_out == 1)
+			self_node_io_side.fd_direction = STDOUT_FILENO;
+		else
+			self_node_io_side.fd_direction = STDIN_FILENO;
 		assert((self_node.sgsh_out &&
 			self_node_io_side.fd_direction == STDOUT_FILENO) ||
 			self_node_io_side.fd_direction == STDIN_FILENO);
@@ -1735,7 +1742,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
 	}
-	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, (self_node_io_side.fd_direction) ? "stdout" : "stdin");
+	DPRINTF("%s(): Read message block or solution from previous node in graph from file descriptor: %s.\n", __func__, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -1973,6 +1980,7 @@ again:
 				/* Decision to drop message block */
 				if (should_transmit_mb) {	
 					/* Write message block et al. */
+					set_dispatcher();
 					if (write_message_block(i) == OP_ERROR)
 						chosen_mb->state = PS_ERROR;
 					should_transmit_mb = false;
