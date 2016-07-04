@@ -53,9 +53,10 @@ The workflow includes the following steps:
    * then its output channel is part of the sgsh graph
    */
   if (!isatty(fileno(stdout)) &&
-      (S_ISFIFO(stats.st_mode) || S_ISSOCK(stats.st_mode)))
+      (S_ISFIFO(stats.st_mode) || S_ISSOCK(stats.st_mode))) {
     strcpy(sgshout, "SGSH_OUT=1");
-  else
+    noutputfds_expected = 1;
+  } else
     strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
 
