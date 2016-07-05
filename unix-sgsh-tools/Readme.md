@@ -10,7 +10,7 @@ make get-submodules   # download repos of Unix tools if not already cloned
 make configure        # configure tools
 make make             # compile
 make install          # install in ./bin
-make -s test             # run tests
+make -s test          # run tests
 ```
 
 The current collection of Unix tools include *coreutils, diffutils, gawk, grep, parallel, sed, and tar*.
