@@ -20,7 +20,7 @@ class Process:
 
   def selectInputFileDescriptor(self):
     fd = -1
-    if not self.fileDescriptorsInUse:
+    if 0 not in self.fileDescriptorsInUse:
       fd = 0
     elif 0 in self.fileDescriptorsInUse and \
          3 not in self.fileDescriptorsInUse:
@@ -33,7 +33,7 @@ class Process:
 
   def selectOutputFileDescriptor(self):
     fd = -1
-    if not self.fileDescriptorsInUse:
+    if 1 not in self.fileDescriptorsInUse:
       fd = 1
     elif 1 in self.fileDescriptorsInUse and \
          3 not in self.fileDescriptorsInUse:
@@ -126,17 +126,18 @@ for index, process in Process.processes.iteritems():
       fd = process.selectInputFileDescriptor()
       if fd == 0:
         close(fd)
-        fd = dup(ic[1].fileno())
-      debug("%s: close %d, dup %d, gives %d" % (process.command, process.fileDescriptorsInUse[-1], ic[1].fileno(), fd))
+      fd = dup(ic[1].fileno())
+      debug("%s: dup %d, gives %d" % (process.command, ic[1].fileno(), fd))
       ic[1].close()
       ic[0].close()
     debug("outputConnectors: %d" % len(process.outputConnectors))
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
-      debug("%d <--> %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno()))
+      debug("fd selected: %d, fd brought: %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno()))
       if fd == 1:
         close(fd)
-        dup(oc[0].fileno())
+      fd = dup(oc[0].fileno())
+      debug("%s: dup %d, gives %d" % (process.command, oc[0].fileno(), fd))
       oc[0].close()
       oc[1].close()
     if not process.outputConnectors:
