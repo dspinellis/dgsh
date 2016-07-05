@@ -33,29 +33,32 @@ install:
 	cd tar && make install
 
 
-test:
+test-clean:
+	-rm $(PSEUDOSHELLDIR)/*.out
+
+test: test-clean
 	cd $(PSEUDOSHELLDIR) && \
-	python simple-shell.py comm_sort.sgsh comm_sort.out 2>/dev/null && \
+	python simple-shell.py comm_sort.sgsh comm_sort.out >/dev/null 2>/dev/null && \
 	diff comm_sort.out comm_sort.success && \
 	echo "Test comm | sort successful" || \
 	echo "Test comm | sort failed"
 	cd $(PSEUDOSHELLDIR) && \
-	python simple-shell.py comm_paste.sgsh comm_paste.out 2>/dev/null && \
+	python simple-shell.py comm_paste.sgsh comm_paste.out >/dev/null 2>/dev/null && \
 	diff comm_paste.out comm_paste.success && \
 	echo "Test comm | paste successful" || \
 	echo "Test comm | paste failed"
 	cd $(PSEUDOSHELLDIR) && \
-	python simple-shell.py join_sort.sgsh join_sort.out 2>/dev/null && \
+	python simple-shell.py join_sort.sgsh join_sort.out >/dev/null 2>/dev/null && \
 	diff join_sort.out join_sort.success && \
 	echo "Test join | sort successful" || \
 	echo "Test join | sort failed"
 	cd $(PSEUDOSHELLDIR) && \
-	python simple-shell.py paste_diff.sgsh paste_diff.out 2>/dev/null && \
+	python simple-shell.py paste_diff.sgsh paste_diff.out >/dev/null 2>/dev/null && \
 	diff paste_diff.out paste_diff.success && \
 	echo "Test paste | diff successful" || \
 	echo "Test paste | diff failed"
 	cd $(PSEUDOSHELLDIR) && \
-	python simple-shell.py join_sort_diff.sgsh join_sort_diff.out 2>/dev/null && \
+	python simple-shell.py join_sort_diff.sgsh join_sort_diff.out >/dev/null 2>/dev/null && \
 	diff join_sort_diff.out join_sort_diff.success && \
 	echo "Test join | sort | diff successful" || \
 	echo "Test join| sort | diff failed"

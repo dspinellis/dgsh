@@ -5,7 +5,7 @@ from os import pipe, fork, close, execlp, dup, open as osopen, O_WRONLY, O_CREAT
 
 
 class Process:
-  processes = []
+  processes = {}
 
   def __init__(self, command):
     self.command = command
@@ -45,17 +45,12 @@ def setupProcess(index, channel, connector):
   try:
     if channel == 'output':
       # index - 1: offset because index = 1, 2,...
-      Process.processes[index - 1].outputConnectors.append(connector)
+      Process.processes[index].outputConnectors.append(connector)
     elif channel == 'input':
-      Process.processes[index - 1].inputConnectors.append(connector)
-  except IndexError:
-    if len(Process.processes) == index - 1:
-      Process.processes.append(Process(toolDict[index]))
-      setupProcess(index, channel, connector)
-    else:
-      print 'Error in specification of connector: %s %s %s' \
-             % (connector, processPair[0], processPair[1])
-      exit(1)
+      Process.processes[index].inputConnectors.append(connector)
+  except KeyError:
+    Process.processes[index] = Process(toolDict[index])
+    setupProcess(index, channel, connector)
 
 # Get output file name
 try:
@@ -96,34 +91,38 @@ for processPair, connector in connectorDict.iteritems():
   else:
     print 'Do not understand connector %s' % connector
     exit(1)
-  out = int(processPair[0])
-  inp = int(processPair[1])
-  #print "out: %d, inp: %d" % (out, inp)
-  setupProcess(out, 'output', connectorPair)
-  setupProcess(inp, 'input', connectorPair)
+  node_index_out = int(processPair[0])
+  node_index_inp = int(processPair[1])
+  #print "out: %d, inp: %d" % (node_index_out, node_index_inp)
+  setupProcess(node_index_out, 'output', connectorPair)
+  setupProcess(node_index_inp, 'input', connectorPair)
 
 # Open output file
 outfile_fd = osopen(outFile, O_WRONLY | O_CREAT)
 
 # Activate interconnections and execute processes
-for process in Process.processes:
-  #print 'process %s, input channels: %d, output channels: %d, file descriptors in use: %d' \
+for index, process in Process.processes.iteritems():
+  #print 'process %s, input channels: %d, output channels: %d' \
   #       % (process.command, len(process.inputConnectors), \
-  #          len(process.outputConnectors), len(process.fileDescriptorsInUse))
+  #          len(process.outputConnectors))
   pid = fork()
   if pid:
     #print "inputConnectors: %d" % len(process.inputConnectors)
     for ic in process.inputConnectors:
-      close(process.selectInputFileDescriptor())
-      fd = dup(ic[1].fileno())
+      fd = process.selectInputFileDescriptor()
+      if fd == 0:
+        close(fd)
+        fd = dup(ic[1].fileno())
       #print "%s: close %d, dup %d, gives %d" % (process.command, process.fileDescriptorsInUse[-1], ic[1].fileno(), fd)
       ic[1].close()
       ic[0].close()
     #print "outputConnectors: %d" % len(process.outputConnectors)
     for oc in process.outputConnectors:
-      close(process.selectOutputFileDescriptor())
+      fd = process.selectOutputFileDescriptor()
       #print "%d <--> %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno())
-      dup(oc[0].fileno())
+      if fd == 1:
+        close(fd)
+        dup(oc[0].fileno())
       oc[0].close()
       oc[1].close()
     if not process.outputConnectors:
