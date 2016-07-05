@@ -31,7 +31,7 @@ The workflow includes the following steps:
 #include <sys/stat.h>       /* struct stat */
 #include "sgsh-negotiate.h"
 
-  int ninputfds = -1;
+  int ninputfds = -1, ninputfds_expected = -1;
   int noutputfds = -1, noutputfds_expected = 0;
   int *inputfds;
   int *outputfds;
@@ -46,25 +46,31 @@ The workflow includes the following steps:
   if (!isatty(fileno(stdin)))
     strcpy(sgshin, "SGSH_IN=1");
   else
+    {
     strcpy(sgshin, "SGSH_IN=0");
+    ninputfds_expected = 0;
+    }
   putenv(sgshin);
   /* If standard output not connected to terminal and
    * connected to either a socket or a FIFO pipe
    * then its output channel is part of the sgsh graph
    */
   if (!isatty(fileno(stdout)) &&
-      (S_ISFIFO(stats.st_mode) || S_ISSOCK(stats.st_mode))) {
+      (S_ISFIFO(stats.st_mode) || S_ISSOCK(stats.st_mode)))
+    {
     strcpy(sgshout, "SGSH_OUT=1");
     noutputfds_expected = 1;
-  } else
+    }
+  else
     strcpy(sgshout, "SGSH_OUT=0");
   putenv(sgshout);
 
   if ((status = sgsh_negotiate("sort", -1, outputfds_expected, &inputfds,
-                                 &ninputfds, &outputfds, &noutputfds))) {
+                                 &ninputfds, &outputfds, &noutputfds)))
+    {
     printf("sgsh negotiation failed with status code %d.\n", status);
     exit(1);
-  }
+    }
 
   assert(noutputfds == noutputfds_expected); 
 ```
@@ -92,7 +98,7 @@ test:
     python simple-shell.py comm_sort.sgsh comm_sort.out && \
     diff comm_sort.out comm_sort.success && \
     echo "Test comm | sort successful." || \
-    echo "Test comm | sort failed." ||
+    echo "Test comm | sort failed."
 ```
 
 - run tests
