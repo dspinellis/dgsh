@@ -73,10 +73,12 @@ STATIC int nfd;
 
 /**
  * Return the next fd where a read block should be passed
+ * Return whether we should record the origin of the block or
+ * restore it
  */
 #define FREE_FILENO (STDERR_FILENO + 1)
 STATIC int
-next_fd(int fd)
+next_fd(int fd, bool *ro)
 {
 	if (multiple_inputs)
 		switch (fd) {
@@ -85,8 +87,10 @@ next_fd(int fd)
 		case STDOUT_FILENO:
 			return nfd - 1;
 		case FREE_FILENO:
+			*ro = true;
 			return STDIN_FILENO;
 		default:
+			*ro = true;
 			return fd - 1;
 		}
 	else
@@ -94,12 +98,15 @@ next_fd(int fd)
 		case STDIN_FILENO:
 			return STDOUT_FILENO;
 		case STDOUT_FILENO:
+			*ro = true;
 			return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
 				return STDIN_FILENO;
-			else
+			else {
+				*ro = true;
 				return fd + 1;
+			}
 		}
 }
 
@@ -117,6 +124,11 @@ pass_message_blocks(void)
 	int nfds = 0;
 	int i;
 	struct sgsh_negotiation *solution = NULL;
+	int oi = -1;		/* scatter/gather block's origin index */
+	int ofd = -1;		/* scatter/gather block's origin fd direction */
+	bool ro = false;	/* Whether the read block's origin should
+				 * be restored
+				 */
 
 	for (;;) {
 		// Create select(2) masks
@@ -126,7 +138,7 @@ pass_message_blocks(void)
 			if (i == STDERR_FILENO)
 				continue;
 			if (!pi[i].run_ready &&
-					pi[next_fd(i)].to_write == NULL) {
+					pi[next_fd(i, &ro)].to_write == NULL) {
 				FD_SET(i, &readfds);
 				nfds = max(i + 1, nfds);
 			}
@@ -155,12 +167,26 @@ pass_message_blocks(void)
 			}
 			if (FD_ISSET(i, &readfds)) {
 				struct sgsh_negotiation *rb;
-				int next = next_fd(i);
+				ro = false;
+				int next = next_fd(i, &ro);
 
 				assert(!pi[i].run_ready);
 				assert(pi[next].to_write == NULL);
 				read_message_block(i, &pi[next].to_write); // XXX check return
+				if (ro) {
+					pi[next].to_write->origin_index = oi;
+					pi[next].to_write->origin_fd_direction = ofd;
+				}
+
 				rb = pi[next].to_write;
+
+				if (oi == -1)
+					if ((multiple_inputs && i == 1) ||
+							(!multiple_inputs &&
+							 i == 0)) {
+					oi = rb->origin_index;
+					ofd = rb->origin_fd_direction;
+				}
 
 				pi[i].pid = get_origin_pid(rb);
 				// Count # times we see a block on a port
@@ -205,7 +231,8 @@ scatter_input_fds(void)
 		read_fds[i] = read_fd(STDIN_FILENO);
 
 	write_index = 0;
-	for (i = STDOUT_FILENO; i < nfd; i = next_fd(i)) {
+	bool ro = false;	/* Ignore */
+	for (i = STDOUT_FILENO; i < nfd; i = next_fd(i, &ro)) {
 		int n_to_write = get_expected_fds_n(pi[i].pid);
 		for (j = write_index; j < write_index + n_to_write; j++)
 			write_fd(i, read_fds[j]);
@@ -225,7 +252,8 @@ gather_input_fds(void)
 	int i, j, read_index;
 
 	read_index = 0;
-	for (i = nfd - 1; i != STDOUT_FILENO; i = next_fd(i)) {
+	bool ro = false;	/* Ignore */
+	for (i = nfd - 1; i != STDOUT_FILENO; i = next_fd(i, &ro)) {
 		int n_to_read = get_provided_fds_n(pi[i].pid);
 		for (j = read_index; j < read_index + n_to_read; j++)
 			read_fds[j] = read_fd(i);
@@ -265,7 +293,10 @@ main(int argc, char *argv[])
 	if (argc != 1)
 		usage();
 
-	nfd = atoi(argv[0]) + 1;
+	/* +1 for stdin when scatter/stdout when gather
+	 * +1 for stderr which is not used
+	 */
+	nfd = atoi(argv[0]) + 2;
 	pi = (struct portinfo *)calloc(nfd, sizeof(struct portinfo));
 
 	chosen_mb = pass_message_blocks();
