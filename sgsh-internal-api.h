@@ -72,7 +72,7 @@ void write_fd(int output_socket, int fd_to_write);
 
 extern bool multiple_inputs;
 extern int nfd;
-extern int next_fd(int fd);
+extern int next_fd(int fd, bool *ro);
 extern int read_fd(int input_socket);
 extern void write_fd(int output_socket, int fd_to_write);
 

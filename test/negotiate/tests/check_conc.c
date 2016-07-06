@@ -9,16 +9,29 @@ START_TEST (test_next_fd)
 {
 	multiple_inputs = true;
 	nfd = 5;
-	ck_assert_int_eq(next_fd(0), 1);
-	ck_assert_int_eq(next_fd(1), 4);
-	ck_assert_int_eq(next_fd(4), 3);
-	ck_assert_int_eq(next_fd(3), 0);
+	bool ro = false;		/* restore origin */
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 4);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(4, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 0);
+	ck_assert_int_eq(ro, true);
 
 	multiple_inputs = false;
-	ck_assert_int_eq(next_fd(0), 1);
-	ck_assert_int_eq(next_fd(1), 3);
-	ck_assert_int_eq(next_fd(3), 4);
-	ck_assert_int_eq(next_fd(4), 0);
+	ro = false;
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 4);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(4, &ro), 0);
+	ck_assert_int_eq(ro, false);
 }
 END_TEST
 
