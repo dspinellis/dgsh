@@ -62,6 +62,11 @@ test: test-clean
 	diff join_sort_diff.out join_sort_diff.success && \
 	echo "Test join | sort | diff successful" || \
 	echo "Test join| sort | diff failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py sort_sort_comm.sgsh sort_sort_comm.out >/dev/null 2>/dev/null && \
+	diff sort_sort_comm.out sort_sort_comm.success && \
+	echo "Test {{ sort & sort & }} | comm successful" || \
+	echo "Test {{ sort & sort & }} | comm failed"
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean

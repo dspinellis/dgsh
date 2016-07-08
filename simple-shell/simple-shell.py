@@ -70,8 +70,9 @@ except IndexError:
 try:
   outFile = sys.argv[2]
 except IndexError:
-  print "Input error: please specify a file name to store the output."
-  exit(0)
+  outFile = ""
+  #print "Input error: please specify a file name to store the output."
+  #exit(0)
 
 # Read specification of processes and their interconnections
 try:
@@ -112,7 +113,8 @@ for processPair, connector in connectorDict.iteritems():
   setupProcess(node_index_inp, 'input', connectorPair)
 
 # Open output file
-outfile_fd = osopen(outFile, O_WRONLY | O_CREAT)
+if outFile:
+  outfile_fd = osopen(outFile, O_WRONLY | O_CREAT)
 
 # Activate interconnections and execute processes
 for index, process in Process.processes.iteritems():
@@ -140,7 +142,7 @@ for index, process in Process.processes.iteritems():
       debug("%s: dup %d, gives %d" % (process.command, oc[0].fileno(), fd))
       oc[0].close()
       oc[1].close()
-    if not process.outputConnectors:
+    if not process.outputConnectors and outFile:
       close(1)
       dup(outfile_fd)
       close(outfile_fd)

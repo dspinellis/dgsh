@@ -985,16 +985,15 @@ write_message_block(int write_fd)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
+	/* Transmit nodes. */
+	wsize = write(write_fd, p_nodes, nodes_size);
+	if (wsize == -1)
+		return OP_ERROR;
+	DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
+
+	chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
 
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		/* Transmit nodes. */
-		wsize = write(write_fd, p_nodes, nodes_size);
-		if (wsize == -1)
-			return OP_ERROR;
-		DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
-
-		chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
-
 		if (chosen_mb->n_nodes > 1) {
 			/* Transmit edges. */
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
@@ -1462,23 +1461,25 @@ alloc_io_fds()
  * the provided message block.
  */
 pid_t
-get_origin_pid(struct sgsh_negotiation *mb)
+get_origin_pid(struct sgsh_negotiation *mb, bool *node_non_terminal)
 {
-	return mb->node_array[mb->origin_index].pid;
+	struct sgsh_node *n = &mb->node_array[mb->origin_index];
+	*node_non_terminal = n->sgsh_in && n->sgsh_out;
+	return n->pid;
 }
 
 /* Return the number of input file descriptors
  * expected by process with pid PID.
  */
 int
-get_expected_fds_n(pid_t pid)
+get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid)
 {
 	int expected_fds_n = 0;
 	int i = 0, j = 0;
-	for (i = 0; i < chosen_mb->n_nodes; i++) {
-		if (chosen_mb->node_array[i].pid == pid) {
+	for (i = 0; i < mb->n_nodes; i++) {
+		if (mb->node_array[i].pid == pid) {
 			struct sgsh_node_connections *graph_solution =
-				chosen_mb->graph_solution;
+				mb->graph_solution;
 			for (j = 0; j < graph_solution[i].n_edges_incoming; j++)
 				expected_fds_n +=
 					graph_solution[i].edges_incoming[j].instances;
@@ -1493,14 +1494,14 @@ get_expected_fds_n(pid_t pid)
  * provided by process with pid PID.
  */
 int
-get_provided_fds_n(pid_t pid)
+get_provided_fds_n(struct sgsh_negotiation *mb, pid_t pid)
 {
 	int provided_fds_n = 0;
 	int i = 0, j = 0;
-	for (i = 0; i < chosen_mb->n_nodes; i++) {
-		if (chosen_mb->node_array[i].pid == pid) {
+	for (i = 0; i < mb->n_nodes; i++) {
+		if (mb->node_array[i].pid == pid) {
 			struct sgsh_node_connections *graph_solution =
-				chosen_mb->graph_solution;
+				mb->graph_solution;
 			for (j = 0; j < graph_solution[i].n_edges_outgoing; j++)
 				provided_fds_n +=
 					graph_solution[i].edges_outgoing[j].instances;
@@ -1714,15 +1715,14 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
 		return OP_ERROR;
 
-	if ((*fresh_mb)->state == PS_NEGOTIATION) {
-		DPRINTF("%s(): Read negotiation graph nodes.", __func__);
-		if ((error_code = read_chunk(read_fd, buf, buf_size,
-				&bytes_read)) != OP_SUCCESS)
-			return error_code;
-		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
+	if ((error_code = read_chunk(read_fd, buf, buf_size,
+					&bytes_read)) != OP_SUCCESS)
+		return error_code;
+	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
 								== OP_ERROR)
 		return OP_ERROR;
 
+	if ((*fresh_mb)->state == PS_NEGOTIATION) {
         	if ((*fresh_mb)->n_nodes > 1) {
 			DPRINTF("%s(): Read negotiation graph edges.",__func__);
 			if ((error_code = read_chunk(read_fd, buf, buf_size,

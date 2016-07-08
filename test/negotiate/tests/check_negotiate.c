@@ -1794,7 +1794,14 @@ END_TEST
 START_TEST(test_get_origin_pid)
 {
 	chosen_mb->origin_index = 3;
-	ck_assert_int_eq(get_origin_pid(chosen_mb), 103);
+	bool node_non_terminal = true;
+	ck_assert_int_eq(get_origin_pid(chosen_mb, &node_non_terminal), 103);
+	ck_assert_int_eq(node_non_terminal, false);
+
+	chosen_mb->origin_index = 1;
+	node_non_terminal = false;
+	ck_assert_int_eq(get_origin_pid(chosen_mb, &node_non_terminal), 101);
+	ck_assert_int_eq(node_non_terminal, true);
 }
 END_TEST
 
@@ -1806,10 +1813,10 @@ START_TEST(test_get_expected_fds_n)
 	graph_solution[1].edges_incoming[0].instances = 1;
 	graph_solution[3].edges_incoming[0].instances = 1;
 	graph_solution[3].edges_incoming[1].instances = 1;
-	ck_assert_int_eq(get_expected_fds_n(103), 2);
-	ck_assert_int_eq(get_expected_fds_n(100), 1);
-	ck_assert_int_eq(get_expected_fds_n(101), 1);
-	ck_assert_int_eq(get_expected_fds_n(102), 0);
+	ck_assert_int_eq(get_expected_fds_n(chosen_mb, 103), 2);
+	ck_assert_int_eq(get_expected_fds_n(chosen_mb, 100), 1);
+	ck_assert_int_eq(get_expected_fds_n(chosen_mb, 101), 1);
+	ck_assert_int_eq(get_expected_fds_n(chosen_mb, 102), 0);
 }
 END_TEST
 
@@ -1822,10 +1829,10 @@ START_TEST(test_get_provided_fds_n)
 	graph_solution[1].edges_outgoing[1].instances = 1;
 	graph_solution[2].edges_outgoing[0].instances = 1;
 	graph_solution[2].edges_outgoing[1].instances = 1;
-	ck_assert_int_eq(get_provided_fds_n(103), 0);
-	ck_assert_int_eq(get_provided_fds_n(100), 1);
-	ck_assert_int_eq(get_provided_fds_n(101), 2);
-	ck_assert_int_eq(get_provided_fds_n(102), 2);
+	ck_assert_int_eq(get_provided_fds_n(chosen_mb, 103), 0);
+	ck_assert_int_eq(get_provided_fds_n(chosen_mb, 100), 1);
+	ck_assert_int_eq(get_provided_fds_n(chosen_mb, 101), 2);
+	ck_assert_int_eq(get_provided_fds_n(chosen_mb, 102), 2);
 }
 END_TEST
 
