@@ -948,6 +948,11 @@ static void
 set_dispatcher(void)
 {
 	chosen_mb->origin_index = self_node_io_side.index;
+	/* The process preceding the one to find the solution
+	 * will eventually set its PID.
+	 */
+	if (chosen_mb->state == PS_NEGOTIATION)
+		chosen_mb->preceding_process_pid = self_node.pid;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin_fd_direction = self_node_io_side.fd_direction;
 	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin_index,
@@ -2037,8 +2042,6 @@ again:
 						chosen_mb->state = PS_RUN;
 						run_ntimes_same++;
 					}
-					chosen_mb->preceding_process_pid =
-						chosen_mb->node_array[chosen_mb->origin_index].pid;
 				}
 				if (leave_negotiation(run_ntimes_same,
 							error_ntimes_same) &&

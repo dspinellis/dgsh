@@ -1,7 +1,7 @@
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort -rn f4s
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort -rn f5s
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort f4s
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort f5s
 3 /home/mfg/dds/sgsh/sgsh-conc -i 2
-4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm --nocheck-order - -
+4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm - -
 
 %
 socketpipe 1 3

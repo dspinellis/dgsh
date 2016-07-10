@@ -2,11 +2,11 @@ from subprocess import Popen, PIPE, STDOUT
 import sys
 from socket import socketpair, AF_UNIX, SOCK_DGRAM
 from os import pipe, fork, close, execlp, dup, open as osopen, O_WRONLY, O_CREAT
-
+from collections import OrderedDict
 
 def debug(s):
   if DEBUG:
-    print s
+    sys.stderr.write(s)
 
 
 class Process:
@@ -28,7 +28,7 @@ class Process:
     else:
       fd = self.fileDescriptorsInUse[-1] + 1
     self.fileDescriptorsInUse.append(fd)
-    debug("input file descriptor return: %d" % fd)
+    debug("input file descriptor return: %d\n" % fd)
     return fd
 
   def selectOutputFileDescriptor(self):
@@ -41,7 +41,7 @@ class Process:
     else:
       fd = self.fileDescriptorsInUse[-1] + 1
     self.fileDescriptorsInUse.append(fd)
-    debug("output file descriptor return: %d" % fd)
+    debug("output file descriptor return: %d\n" % fd)
     return fd
 
 def setupProcess(index, channel, connector):
@@ -61,7 +61,7 @@ def setupProcess(index, channel, connector):
 # Debug configuration
 DEBUG = False
 try:
-  if sys.argv[3] == "DEBUG":
+  if sys.argv[2] == "DEBUG" or sys.argv[3] == "DEBUG":
     DEBUG = True
 except IndexError:
   pass
@@ -71,8 +71,6 @@ try:
   outFile = sys.argv[2]
 except IndexError:
   outFile = ""
-  #print "Input error: please specify a file name to store the output."
-  #exit(0)
 
 # Read specification of processes and their interconnections
 try:
@@ -88,11 +86,11 @@ tools = toolsConnectors[0].lstrip().rstrip().split('\n')
 for tool in tools:
   toolRecord = tool.split(' ', 1)
   toolDict[int(toolRecord[0])] = toolRecord[1]
-connectorDict = {}
+connectorDict = OrderedDict()
 connectors = toolsConnectors[1].lstrip().rstrip().split('\n')
 for connector in connectors:
   connectorRecord = connector.split()
-  connectorDict['%s%s' % (connectorRecord[1], connectorRecord[2])] = \
+  connectorDict[int('%s%s' % (connectorRecord[1], connectorRecord[2]))] = \
                                                             connectorRecord[0]
 
 # Setup objects that represent objects along with their interconnections
@@ -106,9 +104,9 @@ for processPair, connector in connectorDict.iteritems():
   else:
     print 'Do not understand connector %s' % connector
     exit(1)
-  node_index_out = int(processPair[0])
-  node_index_inp = int(processPair[1])
-  debug("out: %d, inp: %d" % (node_index_out, node_index_inp))
+  node_index_out = processPair / 10
+  node_index_inp = processPair % 10
+  debug("out: %d, inp: %d\n" % (node_index_out, node_index_inp))
   setupProcess(node_index_out, 'output', connectorPair)
   setupProcess(node_index_inp, 'input', connectorPair)
 
@@ -118,28 +116,28 @@ if outFile:
 
 # Activate interconnections and execute processes
 for index, process in Process.processes.iteritems():
-  debug('process %s, input channels: %d, output channels: %d' \
+  debug('process %s, input channels: %d, output channels: %d\n' \
          % (process.command, len(process.inputConnectors), \
             len(process.outputConnectors)))
   pid = fork()
   if pid:
-    debug("inputConnectors: %d" % len(process.inputConnectors))
+    debug("%s: inputConnectors: %d\n" % (process.command, len(process.inputConnectors)))
     for ic in process.inputConnectors:
       fd = process.selectInputFileDescriptor()
       if fd == 0:
         close(fd)
       fd = dup(ic[1].fileno())
-      debug("%s: dup %d, gives %d" % (process.command, ic[1].fileno(), fd))
+      debug("%s: dup %d, gives %d\n" % (process.command, ic[1].fileno(), fd))
       ic[1].close()
       ic[0].close()
-    debug("outputConnectors: %d" % len(process.outputConnectors))
+    debug("%s: outputConnectors: %d\n" % (process.command, len(process.outputConnectors)))
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
-      debug("fd selected: %d, fd brought: %d" % (process.fileDescriptorsInUse[-1], oc[0].fileno()))
+      debug("%s: fd selected: %d, fd brought: %d\n" % (process.command, process.fileDescriptorsInUse[-1], oc[0].fileno()))
       if fd == 1:
-        close(fd)
+        close(1)
       fd = dup(oc[0].fileno())
-      debug("%s: dup %d, gives %d" % (process.command, oc[0].fileno(), fd))
+      debug("%s: dup %d, gives %d\n" % (process.command, oc[0].fileno(), fd))
       oc[0].close()
       oc[1].close()
     if not process.outputConnectors and outFile:
