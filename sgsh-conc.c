@@ -284,8 +284,9 @@ gather_input_fds(struct sgsh_negotiation *mb)
 	int i, j, read_index;
 
 	read_index = 0;
-	bool ro = false;	/* Ignore */
-	for (i = nfd - 1; i != STDOUT_FILENO; i = next_fd(i, &ro)) {
+	//bool ro = false;	/* Ignore */
+	//for (i = nfd - 1; i != STDOUT_FILENO; i = next_fd(i, &ro)) {
+	for (i = 0; i < nfd; i == 0 ? i = 3 : i++) {
 		int n_to_read = get_provided_fds_n(mb, pi[i].pid);
 		DPRINTF("%s(): fds to read for p[%d].pid %d: %d",
 				__func__, i, pi[i].pid, n_to_read);
