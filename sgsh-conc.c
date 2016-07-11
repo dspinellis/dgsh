@@ -54,7 +54,8 @@ usage(void)
 static struct portinfo {
 	pid_t pid;		// The id of the process talking to this port
 	pid_t lowest_pid;	// Lowest pid seen on this port
-	int seen_times;		// Number of times the pid was seen
+	bool seen;		// True when the pid was seen
+	bool written;		// True when we wrote to pid
 	bool run_ready;		// True when the associated process can run
 	struct sgsh_negotiation *to_write; // Block pending a write
 } *pi;
@@ -71,13 +72,12 @@ STATIC bool multiple_inputs;
  */
 STATIC int nfd;
 
+#define FREE_FILENO (STDERR_FILENO + 1)
 
 /**
  * Return the next fd where a read block should be passed
- * Return whether we should record the origin of the block or
- * restore it
+ * Return whether we should restore the origin of the block
  */
-#define FREE_FILENO (STDERR_FILENO + 1)
 STATIC int
 next_fd(int fd, bool *ro)
 {
@@ -111,8 +111,60 @@ next_fd(int fd, bool *ro)
 		}
 }
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
+/**
+ * Return whether the process at port i
+ * is ready to run.
+ * Check whether this is the process whose
+ * pid is set and prepare for exit.
+ */
+STATIC bool
+is_ready(int i, struct sgsh_negotiation *mb)
+{
+	bool ignore = false;
+	/* The process whose id is set does not pass
+	 * the block. Prepare exit.
+	 */
+	if (pi[i].pid == mb->preceding_process_pid) {
+		assert(!pi[i].seen);
+		pi[i].seen = true;	/* Fake that */
+		/* If the solution is also in our territory
+		 * fake writing to it.
+		 */
+		if (!pi[next_fd(i, &ignore)].run_ready) {
+			assert(pi[next_fd(i, &ignore)].seen);
+			pi[next_fd(i, &ignore)].written = true;
+			pi[next_fd(i, &ignore)].run_ready = true;
+		}
+		return true;
+	} else if (pi[i].seen && pi[i].written)
+		return true;
+	return false;
+}
 
+
+STATIC void
+print_state(int i, int var, int pcase)
+{
+	switch (pcase) {
+		case 1:
+			DPRINTF("%s(): pi[%d].pid: %d", 
+					__func__, i, (int)pi[i].pid);
+			DPRINTF("  initiator pid: %d",
+					var);
+			DPRINTF("  pi[%d].lowest_pid %d, pi[%d].seen: %d",
+					i, (int)pi[i].lowest_pid, i, pi[i].seen);
+			DPRINTF("  write: %d", pi[i].written);
+		case 2:
+			DPRINTF("%s(): pi[%d].pid: %d",
+					__func__, i, pi[i].pid);
+			DPRINTF("  run ready?: %d, seen times: %d",
+					(int)pi[i].run_ready, pi[i].seen);
+			DPRINTF("  written: %d, nfds: %d",
+					pi[i].written, var);
+	}
+}
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 /*
  * Pass around the message blocks so that they reach all processes
@@ -126,7 +178,7 @@ pass_message_blocks(void)
 	int i;
 	struct sgsh_negotiation *solution = NULL;
 	int oi = -1;		/* scatter/gather block's origin index */
-	int ofd = -1;		/* scatter/gather block's origin fd direction */
+	int ofd = -1;		/* ... origin fd direction */
 	bool ro = false;	/* Whether the read block's origin should
 				 * be restored
 				 */
@@ -139,13 +191,15 @@ pass_message_blocks(void)
 			if (i == STDERR_FILENO)
 				continue;
 			if (!pi[i].run_ready &&
-					pi[next_fd(i, &ro)].to_write == NULL) {
+					pi[next_fd(i, &ro)].to_write == NULL &&
+					!pi[i].seen) {
 				FD_SET(i, &readfds);
 				nfds = max(i + 1, nfds);
 			}
-			if (pi[i].to_write) {
+			if (pi[i].to_write && !pi[i].written) {
 				FD_SET(i, &writefds);
 				nfds = max(i + 1, nfds);
+				DPRINTF("fd i: %d set for writing", i);
 			}
 		}
 
@@ -164,20 +218,20 @@ pass_message_blocks(void)
 				chosen_mb = pi[i].to_write;
 				write_message_block(i); // XXX check return
 
-				/* The process whose id is set does not pass
-				 * the block. Prepare exit.
-				 */
-				if (pi[i].to_write->state == PS_RUN &&
-						pi[i].to_write->preceding_process_pid == pi[i].pid)
+				if (pi[i].to_write->state == PS_RUN)
+					pi[i].written = true;
+
+				// Write side exit
+				if (is_ready(i, pi[i].to_write)) {
+					solution = pi[i].to_write;
 					pi[i].run_ready = true;
-				else {
-					free_mb(pi[i].to_write);
-					pi[i].to_write = NULL;
+					DPRINTF("%s(): pi[%d] is run ready",
+							__func__, i);
 				}
+				pi[i].to_write = NULL;
 			}
 			if (FD_ISSET(i, &readfds)) {
 				struct sgsh_negotiation *rb;
-				bool nnt = false;	// Node is non terminal
 				ro = false;
 				int next = next_fd(i, &ro);
 
@@ -196,7 +250,7 @@ pass_message_blocks(void)
 					ofd = rb->origin_fd_direction;
 				}
 
-				pi[i].pid = get_origin_pid(rb, &nnt);
+				pi[i].pid = get_origin_pid(rb);
 
 				/* If needed, re-set origin.
 				 * Don't move this block before get_origin_pid()
@@ -206,23 +260,24 @@ pass_message_blocks(void)
 					pi[next].to_write->origin_fd_direction = ofd;
 				}
 
+				if (pi[i].lowest_pid == 0 ||
+						rb->initiator_pid < pi[i].lowest_pid)
+					pi[i].lowest_pid = rb->initiator_pid;
+
 				/* Count # times we see a block on a port
 				 * after a solution has been found
 				 */
 				if (rb->state == PS_NEGOTIATION)
 					continue;
-				if (pi[i].lowest_pid == 0 ||
-						rb->initiator_pid < pi[i].lowest_pid) {
-					pi[i].lowest_pid = rb->initiator_pid;
-					pi[i].seen_times = 1;
-				} else if (rb->initiator_pid == pi[i].lowest_pid)
-					pi[i].seen_times++;
+				if (rb->initiator_pid == pi[i].lowest_pid)
+					pi[i].seen = true;
 
-				DPRINTF("%s(): pi[%d].pid: %d, initiator pid: %d, pi[%d].lowest_pid %d, pi[%d].seen_times: %d", __func__, i, (int)pi[i].pid, (int)rb->initiator_pid, i, (int)pi[i].lowest_pid, i, pi[i].seen_times);
-				if (pi[i].seen_times == 1 + nnt) {
+				print_state(i, (int)rb->initiator_pid, 1);
+				if (pi[i].seen && pi[i].written) {
 					solution = pi[next].to_write;
 					pi[i].run_ready = true;
-					DPRINTF("%s(): pi[%d] is run ready", __func__, i);
+					DPRINTF("%s(): pi[%d] is run ready",
+							__func__, i);
 				}
 			}
 		}
@@ -232,12 +287,14 @@ pass_message_blocks(void)
 		for (i = 0; i < nfd; i++) {
 			if (pi[i].run_ready)
 				nfds++;
-			DPRINTF("%s(): pi[%d].pid: %d run ready?: %d, nfds: %d",
-				__func__, i, pi[i].pid, (int)pi[i].run_ready, nfds);
+			print_state(i, nfds, 2);
 		}
 		if (nfds == nfd - 1) {
 			assert(solution != NULL);
 			return solution;
+		} else if (chosen_mb != NULL) {
+			free_mb(chosen_mb);
+			chosen_mb = NULL;
 		}
 	}
 }
@@ -251,16 +308,16 @@ STATIC void
 scatter_input_fds(struct sgsh_negotiation *mb)
 {
 	int n_to_read = get_provided_fds_n(mb, pi[STDIN_FILENO].pid);
-	DPRINTF("%s(): fds to read: %d", __func__, n_to_read);
 	int *read_fds = (int *)malloc(n_to_read * sizeof(int));
 	int i, j, write_index;
+	bool ignore = false;
+	DPRINTF("%s(): fds to read: %d", __func__, n_to_read);
 
 	for (i = 0; i < n_to_read; i++)
 		read_fds[i] = read_fd(STDIN_FILENO);
 
 	write_index = 0;
-	bool ro = false;	/* Ignore */
-	for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ro)) {
+	for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore)) {
 		int n_to_write = get_expected_fds_n(mb, pi[i].pid);
 		DPRINTF("%s(): fds to write for p[%d].pid %d: %d",
 				__func__, i, pi[i].pid, n_to_write);
@@ -281,9 +338,9 @@ STATIC void
 gather_input_fds(struct sgsh_negotiation *mb)
 {
 	int n_to_write = get_expected_fds_n(mb, pi[STDOUT_FILENO].pid);
-	DPRINTF("%s(): fds to write: %d", __func__, n_to_write);
 	int *read_fds = (int *)malloc(n_to_write * sizeof(int));
 	int i, j, read_index;
+	DPRINTF("%s(): fds to write: %d", __func__, n_to_write);
 
 	read_index = 0;
 	for (i = STDIN_FILENO; i < nfd; i == STDIN_FILENO ? i = FREE_FILENO : i++) {
@@ -304,6 +361,7 @@ gather_input_fds(struct sgsh_negotiation *mb)
 
 }
 
+#ifndef UNIT_TESTING
 
 int
 main(int argc, char *argv[])
@@ -337,11 +395,15 @@ main(int argc, char *argv[])
 	nfd = atoi(argv[0]) + 2;
 	pi = (struct portinfo *)calloc(nfd, sizeof(struct portinfo));
 
+	chosen_mb = NULL;
 	chosen_mb = pass_message_blocks();
 	if (multiple_inputs)
 		gather_input_fds(chosen_mb);
 	else
 		scatter_input_fds(chosen_mb);
 	free_mb(chosen_mb);
+	free(pi);
 	return 0;
 }
+
+#endif

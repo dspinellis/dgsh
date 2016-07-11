@@ -1,7 +1,7 @@
 from subprocess import Popen, PIPE, STDOUT
 import sys
 from socket import socketpair, AF_UNIX, SOCK_DGRAM
-from os import pipe, fork, close, execlp, dup, open as osopen, O_WRONLY, O_CREAT
+from os import pipe, fork, close, execlp, dup, dup2, open as osopen, O_WRONLY, O_CREAT
 from collections import OrderedDict
 
 def debug(s):
@@ -106,7 +106,7 @@ for processPair, connector in connectorDict.iteritems():
     exit(1)
   node_index_out = processPair / 10
   node_index_inp = processPair % 10
-  debug("out: %d, inp: %d\n" % (node_index_out, node_index_inp))
+  debug("out: %d, inp: %d, connector[0]: %d, connector[1]: %d\n" % (node_index_out, node_index_inp, connectorPair[0].fileno(), connectorPair[1].fileno()))
   setupProcess(node_index_out, 'output', connectorPair)
   setupProcess(node_index_inp, 'input', connectorPair)
 
@@ -124,8 +124,12 @@ for index, process in Process.processes.iteritems():
     debug("%s: inputConnectors: %d\n" % (process.command, len(process.inputConnectors)))
     for ic in process.inputConnectors:
       fd = process.selectInputFileDescriptor()
-      if fd == 0:
+      #if fd == 0:
+      try:
         close(fd)
+      except OSError:
+        print "FAIL: close input fd %d for process %s. Discard and move on" \
+                % (fd, process.command)
       fd = dup(ic[1].fileno())
       debug("%s: dup %d, gives %d\n" % (process.command, ic[1].fileno(), fd))
       ic[1].close()
@@ -134,8 +138,12 @@ for index, process in Process.processes.iteritems():
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
       debug("%s: fd selected: %d, fd brought: %d\n" % (process.command, process.fileDescriptorsInUse[-1], oc[0].fileno()))
-      if fd == 1:
-        close(1)
+      #if fd == 1:
+      try:
+        close(fd)
+      except OSError:
+        print "FAIL: close output fd %d for process %s. Discard and move on" \
+                % (fd, process.command)
       fd = dup(oc[0].fileno())
       debug("%s: dup %d, gives %d\n" % (process.command, oc[0].fileno(), fd))
       oc[0].close()

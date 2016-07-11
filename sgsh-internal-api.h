@@ -58,7 +58,7 @@ struct sgsh_negotiation {
 
 };
 
-pid_t get_origin_pid(struct sgsh_negotiation *mb, bool *node_non_terminal);
+pid_t get_origin_pid(struct sgsh_negotiation *mb);
 int get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid);
 int get_provided_fds_n(struct sgsh_negotiation *mb, pid_t pid);
 enum op_result read_message_block(int read_fd,

@@ -1466,10 +1466,9 @@ alloc_io_fds()
  * the provided message block.
  */
 pid_t
-get_origin_pid(struct sgsh_negotiation *mb, bool *node_non_terminal)
+get_origin_pid(struct sgsh_negotiation *mb)
 {
 	struct sgsh_node *n = &mb->node_array[mb->origin_index];
-	*node_non_terminal = n->sgsh_in && n->sgsh_out;
 	return n->pid;
 }
 

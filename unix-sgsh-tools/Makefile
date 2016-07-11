@@ -69,10 +69,16 @@ test: test-clean
 	echo "Test {{ sort & sort & }} | comm failed"
 	cd $(PSEUDOSHELLDIR) && \
 	python simple-shell.py comm_paste_join_diff.sgsh comm_paste_join_diff.out >/dev/null 2>/dev/null && \
-	(diff comm_paste_join_diff.out comm_paste_join_diff.success1 || \
-	diff comm_paste_join_diff.out comm_paste_join_diff.success2) && \
+	(diff comm_paste_join_diff.out comm_paste_join_diff.success1 >/dev/null || \
+	diff comm_paste_join_diff.out comm_paste_join_diff.success2 > /dev/null) && \
 	echo "Test comm | {{ paste & join & diff & }} successful" || \
 	echo "Test comm | {{ paste & join & diff & }} failed"
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py sort_sort_comm_paste_join_diff.sgsh sort_sort_comm_paste_join_diff.out >/dev/null 2>/dev/null && \
+	(diff sort_sort_comm_paste_join_diff.out sort_sort_comm_paste_join_diff.success1 >/dev/null || \
+	diff sort_sort_comm_paste_join_diff.out sort_sort_comm_paste_join_diff.success2 >/dev/null) && \
+	echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} successful" || \
+	echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} failed"
 clean:
 	cd coreutils && make clean
 	cd diffutils && make clean
