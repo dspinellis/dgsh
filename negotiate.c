@@ -1,6 +1,27 @@
+/*
+ * Copyright 2016 Marios Fragkoulis
+ *
+ * A passive component that aids the sgsh negotiation by passing
+ * message blocks among participating processes.
+ * When the negotiation is finished and the processes get connected by
+ * pipes, it exits.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 /* TODO:
- * - adapt tools that work with sgsh
- * - integration testing
+ * - adapt tools to work with sgsh
  * - adapt the bash shell
  * Thinking aloud:
  * - watch out when a tool should exit the negotiation loop: it has to have
@@ -10,7 +31,6 @@
  * - substitute DPRINTF with appropriate error reporting function in case of errors.
  */
 
-/* Placeholder: LICENSE. */
 #include <assert.h>		/* assert() */
 #include <errno.h>		/* EAGAIN */
 #include <err.h>		/* err() */
