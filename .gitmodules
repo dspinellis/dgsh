@@ -24,3 +24,7 @@
 	path = unix-sgsh-tools/sed
 	url = https://github.com/mfragkoulis/sed
 	branch = master
+[submodule "unix-sgsh-tools/bash"]
+	path = unix-sgsh-tools/bash
+	url = https://github.com/mfragkoulis/bash.git
+	branch = master
