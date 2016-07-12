@@ -1,9 +1,11 @@
 PSEUDOSHELLDIR=../simple-shell
+# TOOLDIR
+TD=unix-sgsh-tools
 
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
-	git submodule update --init --recursive coreutils diffutils gawk grep parallel sed tar
+	cd .. && git submodule update --init --recursive $(TD)/bash $(TD)/coreutils $(TD)/diffutils $(TD)/grep $(TD)/parallel $(TD)/sed
 
 configure:
 	cd coreutils && ./bootstrap && ./configure --prefix=`pwd`/..
