@@ -2,6 +2,8 @@ PSEUDOSHELLDIR=../simple-shell
 # TOOLDIR
 TD=unix-sgsh-tools
 
+CFLAGS+=-Wall
+
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
@@ -24,6 +26,7 @@ make:
 	cd parallel && make
 	cd sed && make
 	cd tar && make
+	$(CC) $(CFLAGS) simple_echo.c -o secho
 
 install:
 	cd coreutils && make install
@@ -33,6 +36,7 @@ install:
 	cd parallel && make install
 	cd sed && make install
 	cd tar && make install
+	mv secho bin/
 
 
 test-clean:
