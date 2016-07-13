@@ -2517,31 +2517,6 @@ START_TEST(test_construct_message_block)
 }
 END_TEST
 
-START_TEST(test_get_env_var)
-{
-	DPRINTF("%s()...", __func__);
-	int value = -1;
-	putenv("SGSH_IN=0");
-	ck_assert_int_eq(get_env_var("SGSH_IN", &value), OP_SUCCESS);
-	ck_assert_int_eq(value, 0);
-
-	value = -1;
-	putenv("SGSH_OUT=1");
-	ck_assert_int_eq(get_env_var("SGSH_OUT", &value), OP_SUCCESS);
-	ck_assert_int_eq(value, 1);
-}
-END_TEST
-
-
-START_TEST(test_get_environment_vars)
-{
-	DPRINTF("%s()...", __func__);
-	putenv("SGSH_IN=0");
-	putenv("SGSH_OUT=1");
-	ck_assert_int_eq(get_environment_vars(), OP_SUCCESS);
-}
-END_TEST
-
 START_TEST(test_validate_input)
 {
 	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
@@ -2932,16 +2907,6 @@ suite_broadcast(void)
 	tcase_add_checked_fixture(tc_cnmb, NULL, NULL);
 	tcase_add_test(tc_cnmb, test_construct_message_block);
 	suite_add_tcase(s, tc_cnmb);
-
-	TCase *tc_gev = tcase_create("get environment variable");
-	tcase_add_checked_fixture(tc_gev, NULL, NULL);
-	tcase_add_test(tc_gev, test_get_env_var);
-	suite_add_tcase(s, tc_gev);
-
-	TCase *tc_gevs = tcase_create("get environment variables");
-	tcase_add_checked_fixture(tc_gevs, NULL, NULL);
-	tcase_add_test(tc_gevs, test_get_environment_vars);
-	suite_add_tcase(s, tc_gevs);
 
 	TCase *tc_vi = tcase_create("validate input");
 	tcase_add_checked_fixture(tc_vi, NULL, NULL);

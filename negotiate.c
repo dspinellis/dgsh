@@ -1798,37 +1798,6 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	return OP_SUCCESS;
 }
 
-/* Get environment variable env_var. */
-static enum op_result
-get_env_var(const char *env_var,int *value)
-{
-	char *string_value = getenv(env_var);
-	if (!string_value) {
-		DPRINTF("Getting environment variable %s failed.\n", env_var);
-		return OP_ERROR;
-	} else
-		DPRINTF("getenv() returned string value %s.\n", string_value);
-	*value = atoi(string_value);
-	DPRINTF("Integer form of value is %d.\n", *value);
-	return OP_SUCCESS;
-}
-
-/**
- * Get environment variables SGSH_IN, SGSH_OUT set up by
- * the shell (through execvpe()).
- */
-static enum op_result
-get_environment_vars(void)
-{
-	DPRINTF("Try to get environment variable SGSH_IN.");
-	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR)
-		return OP_ERROR;
-	DPRINTF("Try to get environment variable SGSH_OUT.");
-	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
-		return OP_ERROR;
-	return OP_SUCCESS;
-}
-
 /**
  * Verify tool's I/O channel requirements are sane.
  * We might need some upper barrier for requirements too,
@@ -1883,7 +1852,7 @@ leave_negotiation(int run_ntimes_same, int error_ntimes_same)
 	return false;
 }
 
-int
+static int
 set_fds(fd_set *read_fds, fd_set *write_fds)
 {
 	fd_set *fds;
@@ -1921,6 +1890,23 @@ set_fds(fd_set *read_fds, fd_set *write_fds)
 	/* so that after select() we try both 0 and 1 to see if they are set */
 	return 2;
 }
+
+/**
+ * Set whether process is able to negotiate on its input and output channels
+ */
+static void
+set_sgsh_in_out(int channels_required, int channels_provided)
+{
+	if (channels_required)
+		self_node.sgsh_in = 1;
+	else
+		self_node.sgsh_in = 0;
+	if (channels_provided)
+		self_node.sgsh_out = 1;
+	else
+		self_node.sgsh_out = 0;
+}
+
 
 /**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
@@ -1968,11 +1954,7 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 							== OP_ERROR)
 		return PS_ERROR;
 
-	if (get_environment_vars() == OP_ERROR) {
-		DPRINTF("Failed to extract SGSH_IN, SGSH_OUT environment variables.");
-		return PS_ERROR;
-	}
-
+	set_sgsh_in_out(channels_required, channels_provided);
 
 	/* Start negotiation */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
