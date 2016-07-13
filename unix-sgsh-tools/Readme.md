@@ -87,12 +87,12 @@ main(int argc, char *argv[])
 
 - contribute tests
   - *cd simple_shell*
-  - express a graph of sgsh adapted processes with interconnected inputs and outputs, such as the example that follows. The example has the comm and sort tools connect the former's output to the latter's input. Because they are both sgsh-compatible they use a socketpipe to carry out the sgsh negotiation phase. You can find this file as *comm_sort.sgsh*.
-  - run the test with *python simple_shell.py comm_sort.sgsh comm_sort.success* to produce and store what a successful test output looks like in file *comm_sort.success*.
+  - express a graph of sgsh adapted processes with interconnected inputs and outputs, such as the example that follows. The example has the secho and paste tools connect the former's output to the latter's input. Because they are both sgsh-compatible they use a socketpipe to carry out the sgsh negotiation phase. You can find this file as *secho_paste.sgsh*.
+  - run the test with *python simple_shell.py secho_paste.sgsh secho_paste.out* to produce and store the output in file *secho_paste.out*.
 
 ```bash
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm f1s f2s
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/secho hello
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/paste - world
 
 %
 socketpipe 1 2
@@ -105,10 +105,10 @@ PSEUDOSHELLDIR=../simple-shell
 
 test:
     cd $PSEUDOSHELLDIR && \
-    python simple-shell.py comm_sort.sgsh comm_sort.out && \
-    diff comm_sort.out comm_sort.success && \
-    echo "Test comm | sort successful." || \
-    echo "Test comm | sort failed."
+    python simple-shell.py secho_paste.sgsh secho_paste.out && \
+    diff secho_paste.out secho_paste.success && \
+    echo "Test secho | paste successful." || \
+    echo "Test secho | paste failed."
 ```
 
 - run tests
