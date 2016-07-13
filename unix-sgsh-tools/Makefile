@@ -3,6 +3,8 @@ PSEUDOSHELLDIR=../simple-shell
 TD=unix-sgsh-tools
 
 CFLAGS+=-Wall
+PATHS= -I.. -L..
+LIBS= -lsgsh_negotiate
 
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
@@ -26,7 +28,7 @@ make:
 	cd parallel && make
 	cd sed && make
 	cd tar && make
-	$(CC) $(CFLAGS) simple_echo.c -o secho
+	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 
 install:
 	cd coreutils && make install
@@ -43,6 +45,11 @@ test-clean:
 	-rm $(PSEUDOSHELLDIR)/*.out
 
 test: test-clean
+	cd $(PSEUDOSHELLDIR) && \
+	python simple-shell.py secho_paste.sgsh secho_paste.out >/dev/null 2>/dev/null && \
+	diff secho_paste.out secho_paste.success && \
+	echo "Test secho | paste successful" || \
+	echo "Test secho | paste failed"
 	cd $(PSEUDOSHELLDIR) && \
 	python simple-shell.py comm_sort.sgsh comm_sort.out >/dev/null 2>/dev/null && \
 	diff comm_sort.out comm_sort.success && \
