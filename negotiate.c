@@ -819,8 +819,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 {
 	enum op_result re = OP_SUCCESS;
 
-	if ((!n_input_fds && self_node.sgsh_in) ||
-			(n_input_fds && *n_input_fds > 0)) {
+	if (self_pipe_fds.n_input_fds > 0) {
 		/* Have the first returned file descriptor
 		 * take the place of stdin.
 		 */
@@ -842,10 +841,12 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 			self_pipe_fds.n_input_fds = 0;
 			free(self_pipe_fds.input_fds);
 		}
-	}
+	} else
+		if (n_input_fds)
+			*n_input_fds = 0;
 
-	if ((!n_output_fds && self_node.sgsh_out) ||
-			(n_output_fds && *n_output_fds > 0)) {
+
+	if (self_pipe_fds.n_output_fds > 0) {
 		/* Have the first returned file descriptor
 		 * take the place of stdin.
 		 */
@@ -858,6 +859,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 				__func__,fd_to_dup,self_pipe_fds.output_fds[0]);
 		assert(self_pipe_fds.output_fds[0] == STDOUT_FILENO);
 		close(fd_to_dup);
+
 		if (n_output_fds) {
 			*n_output_fds = self_pipe_fds.n_output_fds;
 			assert(*n_output_fds >= 0);
@@ -866,7 +868,9 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 			self_pipe_fds.n_output_fds = 0;
 			free(self_pipe_fds.output_fds);
 		}
-	}
+	} else
+		if (n_output_fds)
+			*n_output_fds = 0;
 
 	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__,
 			(re == OP_SUCCESS ? "successful" : "failed"),

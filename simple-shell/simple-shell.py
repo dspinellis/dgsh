@@ -1,7 +1,8 @@
 from subprocess import Popen, PIPE, STDOUT
 import sys
 from socket import socketpair, AF_UNIX, SOCK_DGRAM
-from os import pipe, fork, close, execlp, dup, dup2, open as osopen, O_WRONLY, O_CREAT
+from os import pipe, fork, close, execlp, dup, dup2, \
+        open as osopen, O_WRONLY, O_CREAT, environ
 from collections import OrderedDict
 
 def debug(s):
@@ -123,9 +124,9 @@ for index, process in Process.processes.iteritems():
   if pid:
     debug("%s: inputConnectors: %d\n" % (process.command, len(process.inputConnectors)))
     if process.inputConnectors:
-        os.environ["SGSH_IN"] = 1
+        environ["SGSH_IN"] = "1"
     else:
-        os.environ["SGSH_IN"] = 0
+        environ["SGSH_IN"] = "0"
     for ic in process.inputConnectors:
       fd = process.selectInputFileDescriptor()
       try:
@@ -139,9 +140,9 @@ for index, process in Process.processes.iteritems():
       ic[0].close()
     debug("%s: outputConnectors: %d\n" % (process.command, len(process.outputConnectors)))
     if process.outputConnectors:
-        os.environ["SGSH_OUT"] = 1
+        environ["SGSH_OUT"] = "1"
     else:
-        os.environ["SGSH_OUT"] = 0
+        environ["SGSH_OUT"] = "0"
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
       debug("%s: fd selected: %d, fd brought: %d\n" % (process.command, process.fileDescriptorsInUse[-1], oc[0].fileno()))
