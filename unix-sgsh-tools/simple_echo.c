@@ -1,6 +1,4 @@
-#include <stdio.h>		/* printf(), putchar() */
-#include <assert.h>		/* assert */
-#include <unistd.h>		/* isatty() */
+#include <stdio.h>		/* printf() */
 #include <stdlib.h>		/* exit() */
 
 #include "sgsh-negotiate.h"
@@ -11,12 +9,8 @@ main(int argc, char *argv[])
 	int ninputfds, noutputfds;
 	int *inputfds, *outputfds;
 
-	if (sgsh_negotiate("secho", 0, 1, &inputfds, &ninputfds,
-			&outputfds, &noutputfds) != 0)
+	if (sgsh_negotiate("secho", NULL, NULL, NULL, NULL) != 0)
 		exit(1);
-
-	assert(ninputfds == 0);
-	assert(noutputfds == 1);
 
 	++argv;
 	while (*argv) {

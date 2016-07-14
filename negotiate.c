@@ -819,9 +819,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 {
 	enum op_result re = OP_SUCCESS;
 
-	*n_input_fds = self_pipe_fds.n_input_fds;
-	assert(*n_input_fds >= 0);
-	if (*n_input_fds > 0) {
+	if ((!n_input_fds && self_node.sgsh_in) ||
+			(n_input_fds && *n_input_fds > 0)) {
 		/* Have the first returned file descriptor
 		 * take the place of stdin.
 		 */
@@ -834,12 +833,19 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 				__func__,fd_to_dup, self_pipe_fds.input_fds[0]);
 		assert(self_pipe_fds.input_fds[0] == STDIN_FILENO);
 		close(fd_to_dup);
-		*input_fds = self_pipe_fds.input_fds;
+
+		if (n_input_fds) {
+			*n_input_fds = self_pipe_fds.n_input_fds;
+			assert(*n_input_fds >= 0);
+			*input_fds = self_pipe_fds.input_fds;
+		} else {
+			self_pipe_fds.n_input_fds = 0;
+			free(self_pipe_fds.input_fds);
+		}
 	}
 
-	*n_output_fds = self_pipe_fds.n_output_fds;
-	assert(*n_output_fds >= 0);
-	if (*n_output_fds > 0) {
+	if ((!n_output_fds && self_node.sgsh_out) ||
+			(n_output_fds && *n_output_fds > 0)) {
 		/* Have the first returned file descriptor
 		 * take the place of stdin.
 		 */
@@ -852,10 +858,19 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 				__func__,fd_to_dup,self_pipe_fds.output_fds[0]);
 		assert(self_pipe_fds.output_fds[0] == STDOUT_FILENO);
 		close(fd_to_dup);
-		*output_fds = self_pipe_fds.output_fds;
+		if (n_output_fds) {
+			*n_output_fds = self_pipe_fds.n_output_fds;
+			assert(*n_output_fds >= 0);
+			*output_fds = self_pipe_fds.output_fds;
+		} else {
+			self_pipe_fds.n_output_fds = 0;
+			free(self_pipe_fds.output_fds);
+		}
 	}
 
-	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__, (re == OP_SUCCESS ? "successful" : "failed"), *n_input_fds, *n_output_fds);
+	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__,
+			(re == OP_SUCCESS ? "successful" : "failed"),
+			self_pipe_fds.n_input_fds, self_pipe_fds.n_output_fds);
 
 	return re;
 }
@@ -1235,13 +1250,32 @@ try_add_sgsh_node(void)
 
 /* A constructor-like function for struct sgsh_node. */
 static void
-fill_sgsh_node(const char *tool_name, pid_t pid, int requires_channels,
-						int provides_channels)
+fill_sgsh_node(const char *tool_name, pid_t pid, int *n_input_fds,
+						int *n_output_fds)
 {
 	self_node.pid = pid;
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
-	self_node.requires_channels = requires_channels;
-	self_node.provides_channels = provides_channels;
+
+	if (n_input_fds == NULL) {
+		if (self_node.sgsh_in)
+			self_node.requires_channels = 1;
+		else
+			self_node.requires_channels = 0;
+	} else
+		self_node.requires_channels = *n_input_fds;
+	DPRINTF("%s(): sgsh_in: %d, self_node.requires_channels: %d", __func__,
+			self_node.sgsh_in, self_node.requires_channels);
+
+	if (n_output_fds == NULL) {
+		if (self_node.sgsh_out)
+			self_node.provides_channels = 1;
+		else
+			self_node.provides_channels = 0;
+	} else
+		self_node.provides_channels = *n_output_fds;
+	DPRINTF("%s(): sgsh_out: %d, self_node.provides_channels: %d", __func__,
+			self_node.sgsh_out, self_node.provides_channels);
+
 	self_node.index = -1; /* Will be filled in when added to the graph. */
 	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
 }
@@ -1840,33 +1874,16 @@ get_env_var(const char *env_var,int *value)
  * the shell (through execvpe()).
  */
 static enum op_result
-get_environment_vars(int **n_input_fds, int **n_output_fds)
+get_environment_vars()
 {
 	DPRINTF("Try to get environment variable SGSH_IN.");
 	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR)
 		return OP_ERROR;
-	if (*n_input_fds == NULL) {
-		*n_input_fds = (int *)malloc(sizeof(int));
-		if (self_node.sgsh_in)
-			**n_input_fds = 1;
-		else
-			**n_input_fds = 0;
-		DPRINTF("%s(): sgsh_in: %d, n_input_fds: %d",
-				__func__, self_node.sgsh_in, **n_input_fds);
-	}
 
 	DPRINTF("Try to get environment variable SGSH_OUT.");
 	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
 		return OP_ERROR;
-	if (*n_output_fds == NULL) {
-		*n_output_fds = (int *)malloc(sizeof(int));
-		if (self_node.sgsh_out)
-			**n_output_fds = 1;
-		else
-			**n_output_fds = 0;
-		DPRINTF("%s(): sgsh_out: %d, n_output_fds: %d",
-				__func__, self_node.sgsh_out, **n_output_fds);
-	}
+
 	return OP_SUCCESS;
 }
 
@@ -1988,13 +2005,12 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 				       * is implied and no file descriptor
 				       * array is returned. The input file
 				       * descriptor not returned (in case of 1)
-				       * substitutes stdin. If NULL is given,
-				       * the caller has to free n_input_fds.
+				       * substitutes stdin.
 				       */
                     int *n_output_fds, /* Input/Output variable:
 				       * number of output file descriptors
 				       * provided. The semantics for n_input_fds
-				       * apply respectively.
+				       * apply here respectively.
 				       */
                     int **input_fds,  /* Output variable:
 				       * input file descriptor array
@@ -2031,7 +2047,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 							== OP_ERROR)
 		return PS_ERROR;
 
-	if (get_environment_vars(&n_input_fds, &n_output_fds) == OP_ERROR) {
+	if (get_environment_vars() == OP_ERROR) {
 		DPRINTF("Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PS_ERROR;
 	}
@@ -2055,8 +2071,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	DPRINTF("nfds: %d, stdout set for write? %d\n", nfds, FD_ISSET(1, &write_fds));
 
 	/* Create sgsh node representation and add node, edge to the graph. */
-	fill_sgsh_node(tool_name, self_pid, *n_input_fds,
-						*n_output_fds);
+	fill_sgsh_node(tool_name, self_pid, n_input_fds, n_output_fds);
 	if (try_add_sgsh_node() == OP_ERROR)
 		chosen_mb->state = PS_ERROR;
 

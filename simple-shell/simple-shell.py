@@ -122,9 +122,12 @@ for index, process in Process.processes.iteritems():
   pid = fork()
   if pid:
     debug("%s: inputConnectors: %d\n" % (process.command, len(process.inputConnectors)))
+    if process.inputConnectors:
+        os.environ["SGSH_IN"] = 1
+    else:
+        os.environ["SGSH_IN"] = 0
     for ic in process.inputConnectors:
       fd = process.selectInputFileDescriptor()
-      #if fd == 0:
       try:
         close(fd)
       except OSError:
@@ -135,10 +138,13 @@ for index, process in Process.processes.iteritems():
       ic[1].close()
       ic[0].close()
     debug("%s: outputConnectors: %d\n" % (process.command, len(process.outputConnectors)))
+    if process.outputConnectors:
+        os.environ["SGSH_OUT"] = 1
+    else:
+        os.environ["SGSH_OUT"] = 0
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
       debug("%s: fd selected: %d, fd brought: %d\n" % (process.command, process.fileDescriptorsInUse[-1], oc[0].fileno()))
-      #if fd == 1:
       try:
         close(fd)
       except OSError:

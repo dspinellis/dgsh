@@ -617,10 +617,8 @@ void
 setup_test_establish_io_connections(void)
 {
 	setup_pipe_fds();
-	/* More setting up specifically for this function */
-	self_pipe_fds.n_output_fds = 2;
-	self_pipe_fds.output_fds = (int *)malloc(sizeof(int) *
-						self_pipe_fds.n_output_fds);
+	setup_chosen_mb();
+	setup_self_node();
 }
 
 void
@@ -944,6 +942,7 @@ void
 retire_test_establish_io_connections(void)
 {
 	/* See setup_test_establish_io_connections() */
+	retire_chosen_mb();
 	retire_pipe_fds();
 }
 
@@ -1024,36 +1023,43 @@ START_TEST(test_establish_io_connections)
 	/* Should be in the solution propagation test suite. */
 	/* The test case contains an arrangement of 0 fds and another of >0 fds. */
 	int *input_fds = NULL;
-	int n_input_fds;
+	int n_input_fds = 2; 
 	int *output_fds = NULL;
-	int n_output_fds;
-	int fd[2], fd2[2];
+	int n_output_fds = 0;
+	int fd[2];
 
 	if (pipe(fd) == -1) {		/* fd pair: 4 -- 5 */
 		perror("pipe open failed");
 		exit(1);
 	}
 	self_pipe_fds.input_fds[0] = fd[0];
-	self_pipe_fds.output_fds[0] = fd[1];
-	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output_fds[0]: %d",
+	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output: %d",
 			__func__, fd[0], fd[1]);
-	if (pipe(fd2) == -1) {		/* fd pair: 6 -- 7 */
+
+	ck_assert_int_eq(establish_io_connections(NULL, NULL, NULL, NULL),
+			OP_SUCCESS);
+	/* Freed */
+	ck_assert_int_eq(self_pipe_fds.n_input_fds, 0);
+	ck_assert_int_eq(self_pipe_fds.n_output_fds, 0);
+	close(fd[1]);
+	retire_test_establish_io_connections();
+
+	setup_test_establish_io_connections();
+	if (pipe(fd) == -1) {		/* fd pair: 4 -- 5 */
 		perror("pipe open failed");
 		exit(1);
 	}
-	self_pipe_fds.input_fds[1] = fd2[0];
-	self_pipe_fds.output_fds[1] = fd2[1];
-	DPRINTF("%s: Opened pipe pair: input_fds[1]: %d, output_fds[1]: %d",
-			__func__, fd2[0], fd2[1]);
+	self_pipe_fds.input_fds[0] = fd[0];
+	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output: %d",
+			__func__, fd[0], fd[1]);
+	self_pipe_fds.input_fds[1] = 6;
 	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
 					&output_fds, &n_output_fds), OP_SUCCESS);
 	ck_assert_int_eq(n_input_fds, 2);
 	ck_assert_int_eq(input_fds[0], 0);
 	ck_assert_int_eq(input_fds[1], 6);
-	ck_assert_int_eq(n_output_fds, 2);
-	ck_assert_int_eq(output_fds[0], 1);
-	ck_assert_int_eq(output_fds[1], 7);
-	DPRINTF("Leaving %s()", __func__);
+	ck_assert_int_eq(n_output_fds, 0);
+	close(fd[1]);
 }
 END_TEST
 
@@ -2385,9 +2391,16 @@ END_TEST
 
 START_TEST(test_fill_sgsh_node)
 {
-	fill_sgsh_node("test", 1003, 1, 1);
+	/* self node is node at index 3 of chosen_mb */
+	fill_sgsh_node("test", 1003, NULL, NULL);
 	ck_assert_int_eq(strcmp(self_node.name, "test"), 0);
 	ck_assert_int_eq(self_node.pid, 1003);
+	ck_assert_int_eq(self_node.requires_channels, 1);
+	ck_assert_int_eq(self_node.provides_channels, 0);
+
+	int n_input_fds = 1;
+	int n_output_fds = 1;
+	fill_sgsh_node("test", 1003, &n_input_fds, &n_output_fds);
 	ck_assert_int_eq(self_node.requires_channels, 1);
 	ck_assert_int_eq(self_node.provides_channels, 1);
 	ck_assert_int_eq(self_node.index, -1);
@@ -2565,20 +2578,10 @@ START_TEST(test_get_environment_vars)
 	putenv("SGSH_IN=0");
 	putenv("SGSH_OUT=1");
 
-	int *pn_input_fds = NULL;
-	int *pn_output_fds = NULL;
-	ck_assert_int_eq(get_environment_vars(&pn_input_fds, &pn_output_fds),
-			OP_SUCCESS);
-	ck_assert_int_eq(*pn_input_fds, 0);
-	ck_assert_int_eq(*pn_output_fds, 1);
+	ck_assert_int_eq(get_environment_vars(), OP_SUCCESS);
+	ck_assert_int_eq(self_node.sgsh_in, 0);
+	ck_assert_int_eq(self_node.sgsh_out, 1);
 
-	ck_assert_int_eq(get_environment_vars(&pn_input_fds, &pn_output_fds),
-			OP_SUCCESS);
-	ck_assert_int_eq(*pn_input_fds, 0);
-	ck_assert_int_eq(*pn_output_fds, 1);
-
-	free(pn_input_fds);
-	free(pn_output_fds);
 }
 END_TEST
 
