@@ -317,8 +317,8 @@ setup_pipe_fds(void)
 	self_pipe_fds.n_input_fds = 2;
 	self_pipe_fds.input_fds = (int *)malloc(sizeof(int) *
 						self_pipe_fds.n_input_fds);
-	self_pipe_fds.input_fds[0] = 0;
-	self_pipe_fds.input_fds[1] = 3;
+	self_pipe_fds.input_fds[0] = 3;
+	self_pipe_fds.input_fds[1] = 4;
 	self_pipe_fds.n_output_fds = 0;
 }
 
@@ -617,6 +617,12 @@ void
 setup_test_establish_io_connections(void)
 {
 	setup_pipe_fds();
+	/* More setting up specifically for this function */
+	self_pipe_fds.n_output_fds = 2;
+	self_pipe_fds.output_fds = (int *)malloc(sizeof(int) *
+						self_pipe_fds.n_output_fds);
+	self_pipe_fds.output_fds[0] = 5;
+	self_pipe_fds.output_fds[1] = 6;
 }
 
 void
@@ -939,6 +945,8 @@ retire_test_set_dispatcher(void)
 void
 retire_test_establish_io_connections(void)
 {
+	/* See setup_test_establish_io_connections() */
+	free(self_pipe_fds.output_fds);
 	retire_pipe_fds();
 }
 
@@ -1022,12 +1030,32 @@ START_TEST(test_establish_io_connections)
 	int n_input_fds;
 	int *output_fds = NULL;
 	int n_output_fds;
+	int fd[2], fd2[2];
+
+	if (pipe(fd) == -1) {		/* fd pair: 4 -- 5 */
+		perror("pipe open failed");
+		exit(1);
+	}
+	self_pipe_fds.input_fds[0] = fd[0];
+	self_pipe_fds.output_fds[0] = fd[1];
+	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output_fds[0]: %d",
+			__func__, fd[0], fd[1]);
+	if (pipe(fd2) == -1) {		/* fd pair: 6 -- 7 */
+		perror("pipe open failed");
+		exit(1);
+	}
+	self_pipe_fds.input_fds[1] = fd2[0];
+	self_pipe_fds.output_fds[1] = fd2[1];
+	DPRINTF("%s: Opened pipe pair: input_fds[1]: %d, output_fds[1]: %d",
+			__func__, fd2[0], fd2[1]);
 	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
 					&output_fds, &n_output_fds), OP_SUCCESS);
 	ck_assert_int_eq(n_input_fds, 2);
-	ck_assert_int_ne(input_fds, 0);
-	ck_assert_int_eq(n_output_fds, 0);
-	ck_assert_int_eq(output_fds, 0);
+	ck_assert_int_eq(input_fds[0], 0);
+	ck_assert_int_eq(input_fds[1], 6);
+	ck_assert_int_eq(n_output_fds, 2);
+	ck_assert_int_eq(output_fds[0], 1);
+	ck_assert_int_eq(output_fds[1], 7);
 }
 END_TEST
 

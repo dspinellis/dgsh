@@ -24,10 +24,6 @@
  * - adapt tools to work with sgsh
  * - adapt the bash shell
  * Thinking aloud:
- * - watch out when a tool should exit the negotiation loop: it has to have
- * gathered all input pipes required. How many rounds could this take at the
- * worst case?
- * - assert edge constraint, i.e. channels required, provided, is rational.
  * - substitute DPRINTF with appropriate error reporting function in case of errors.
  */
 
@@ -825,13 +821,40 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 
 	*n_input_fds = self_pipe_fds.n_input_fds;
 	assert(*n_input_fds >= 0);
-	if (*n_input_fds > 0)
+	if (*n_input_fds > 0) {
+		/* Have the first returned file descriptor
+		 * take the place of stdin.
+		 */
+		int fd_to_dup = self_pipe_fds.input_fds[0];
+		if (close(STDIN_FILENO) == -1)
+			err(1, "Close stdin failed");
+		if ((self_pipe_fds.input_fds[0] = dup(fd_to_dup)) == -1)
+			err(1, "dup failed with errno %d", errno);
+		DPRINTF("%s(): closed STDIN, dup %d returned %d",
+				__func__,fd_to_dup, self_pipe_fds.input_fds[0]);
+		assert(self_pipe_fds.input_fds[0] == STDIN_FILENO);
+		close(fd_to_dup);
 		*input_fds = self_pipe_fds.input_fds;
+	}
 
 	*n_output_fds = self_pipe_fds.n_output_fds;
 	assert(*n_output_fds >= 0);
-	if (*n_output_fds > 0)
+	if (*n_output_fds > 0) {
+		/* Have the first returned file descriptor
+		 * take the place of stdin.
+		 */
+		int fd_to_dup = self_pipe_fds.output_fds[0];
+		DPRINTF("%s: fd_to_dup output: %d", __func__, fd_to_dup);
+		if (close(STDOUT_FILENO) == -1)
+			err(1, "Close stdout failed");
+		if ((self_pipe_fds.output_fds[0] = dup(fd_to_dup)) == -1)
+			err(1, "dup failed with errno %d", errno);
+		DPRINTF("%s(): closed STDOUT, dup %d returned %d",
+				__func__,fd_to_dup,self_pipe_fds.output_fds[0]);
+		assert(self_pipe_fds.output_fds[0] == STDOUT_FILENO);
+		close(fd_to_dup);
 		*output_fds = self_pipe_fds.output_fds;
+	}
 
 	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__, (re == OP_SUCCESS ? "successful" : "failed"), *n_input_fds, *n_output_fds);
 
