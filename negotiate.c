@@ -1827,25 +1827,28 @@ construct_message_block(const char *tool_name, pid_t self_pid)
  * such as, not more than 100 or 1000.
  */
 STATIC enum op_result
-validate_input(int channels_required, int channels_provided, const char *tool_name)
+validate_input(int *channels_required, int *channels_provided, const char *tool_name)
 {
+
 	if (!tool_name) {
 		DPRINTF("NULL pointer provided as tool name.\n");
 		return OP_ERROR;
 	}
-	if (channels_required < -1 || channels_provided < -1) {
+	if (channels_required == NULL || channels_provided == NULL)
+		return OP_SUCCESS;
+	if (*channels_required < -1 || *channels_provided < -1) {
 		DPRINTF("I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
-			tool_name, channels_required, channels_provided);
+			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
-	if (channels_required == 0 && channels_provided == 0) {
+	if (*channels_required == 0 && *channels_provided == 0) {
 		DPRINTF("I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d",
-			tool_name, channels_required, channels_provided);
+			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
-	if (channels_required > 1000 || channels_provided > 1000) {
+	if (*channels_required > 1000 || *channels_provided > 1000) {
 		DPRINTF("I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d",
-			tool_name, channels_required, channels_provided);
+			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -1943,15 +1946,33 @@ set_sgsh_in_out(int channels_required, int channels_provided)
  * negotiation phase.
  */
 enum prot_state
-sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
-                    int channels_required, /* How many input channels can take. */
-                    int channels_provided, /* How many output channels can
-						provide. */
-                                     /* Output: to fill. */
-                    int **input_fds,  /* Input file descriptors. */
-                    int *n_input_fds, /* Number of input file descriptors. */
-                    int **output_fds, /* Output file descriptors. */
-                    int *n_output_fds) /* Number of output file descriptors. */
+sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
+                    int *n_input_fds, /* Input/Output variable:
+				       * number of input file descriptors
+				       * required. The number may be changed
+				       * by the API and will reflect the size
+				       * of the input file descriptor array
+				       * If NULL is provided, then 0 or 1
+				       * is implied and no file descriptor
+				       * array is returned. The input file
+				       * descriptor to return (in case of 1)
+				       *
+				       */
+                    int *n_output_fds, /* Input/Output variable:
+				       * number of output file descriptors
+				       * provided. The semantics for n_input_fds
+				       * apply here too.
+				       */
+                    int **input_fds,  /* Output variable:
+				       * input file descriptor array
+				       * The caller has the responsbility
+				       * to free the array.
+				       */
+                    int **output_fds) /* Output variable:
+				       * output file descriptor array
+				       * The caller has the responsbility
+				       * to free the array.
+				       */
 {
 	int i = 0;
 	int serialno_ntimes_same = 0;
@@ -1973,11 +1994,11 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	DPRINTF("%s(): Tool %s with pid %d entered sgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
-	if (validate_input(channels_required, channels_provided, tool_name)
+	if (validate_input(n_input_fds, n_output_fds, tool_name)
 							== OP_ERROR)
 		return PS_ERROR;
 
-	set_sgsh_in_out(channels_required, channels_provided);
+	//set_sgsh_in_out(channels_required, channels_provided);
 
 	/* Start negotiation */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
@@ -1998,8 +2019,8 @@ sgsh_negotiate(const char *tool_name, /* Input. Try remove. */
 	DPRINTF("nfds: %d, stdout set for write? %d\n", nfds, FD_ISSET(1, &write_fds));
 
 	/* Create sgsh node representation and add node, edge to the graph. */
-	fill_sgsh_node(tool_name, self_pid, channels_required,
-						channels_provided);
+	fill_sgsh_node(tool_name, self_pid, *n_input_fds,
+						*n_output_fds);
 	if (try_add_sgsh_node() == OP_ERROR)
 		chosen_mb->state = PS_ERROR;
 

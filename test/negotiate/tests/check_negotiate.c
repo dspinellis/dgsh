@@ -2547,16 +2547,37 @@ END_TEST
 
 START_TEST(test_validate_input)
 {
-	ck_assert_int_eq(validate_input(0, 0, NULL), OP_ERROR); 
-	ck_assert_int_eq(validate_input(0, 0, "test"), OP_ERROR); 
-	ck_assert_int_eq(validate_input(0, 1, "test"), OP_SUCCESS); 
-	ck_assert_int_eq(validate_input(1, 0, "test"), OP_SUCCESS); 
-	ck_assert_int_eq(validate_input(-1, -1, "test"), OP_SUCCESS); 
-	ck_assert_int_eq(validate_input(-2, -1, "test"), OP_ERROR); 
-	ck_assert_int_eq(validate_input(-1, -2, "test"), OP_ERROR); 
-	ck_assert_int_eq(validate_input(1000, 1000, "test"), OP_SUCCESS); 
-	ck_assert_int_eq(validate_input(1000, 1001, "test"), OP_ERROR); 
-	ck_assert_int_eq(validate_input(1001, 1000, "test"), OP_ERROR); 
+	int i = 0;
+	int o = 0;
+	ck_assert_int_eq(validate_input(&i, &o, NULL), OP_ERROR); 
+	ck_assert_int_eq(validate_input(NULL, &o, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(&i, NULL, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(NULL, NULL, "test"), OP_SUCCESS); 
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
+	i = 0;
+	o = 1;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
+	i = 1;
+	o = 0;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
+	i = -1;
+	o = -1;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
+	i = -2;
+	o = -1;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
+	i = -1;
+	o = -2;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
+	i = 1000;
+	o = 1000;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
+	i = 1000;
+	o = 1001;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
+	i = 1001;
+	o = 1000;
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
 }
 END_TEST
 
@@ -2647,11 +2668,11 @@ END_TEST
 START_TEST(test_sgsh_negotiate)
 {
 	int *input_fds;
-	int n_input_fds;
+	int n_input_fds = 0;
 	int *output_fds;
-	int n_output_fds;
-	ck_assert_int_eq(sgsh_negotiate("test", 0, 0, &input_fds, &n_input_fds, 
-				&output_fds, &n_output_fds), PS_ERROR);
+	int n_output_fds = 0;
+	ck_assert_int_eq(sgsh_negotiate("test", &n_input_fds, &n_output_fds,
+				&input_fds, &output_fds), PS_ERROR);
 }
 END_TEST
 
