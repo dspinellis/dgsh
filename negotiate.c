@@ -844,7 +844,6 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		 * take the place of stdin.
 		 */
 		int fd_to_dup = self_pipe_fds.output_fds[0];
-		DPRINTF("%s: fd_to_dup output: %d", __func__, fd_to_dup);
 		if (close(STDOUT_FILENO) == -1)
 			err(1, "Close stdout failed");
 		if ((self_pipe_fds.output_fds[0] = dup(fd_to_dup)) == -1)
@@ -1818,6 +1817,37 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->graph_solution = NULL;
 	DPRINTF("Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
+	return OP_SUCCESS;
+}
+
+/* Get environment variable env_var. */
+static enum op_result
+get_env_var(const char *env_var,int *value)
+{
+	char *string_value = getenv(env_var);
+	if (!string_value) {
+		DPRINTF("Getting environment variable %s failed.\n", env_var);
+		return OP_ERROR;
+	} else
+		DPRINTF("getenv() returned string value %s.\n", string_value);
+	*value = atoi(string_value);
+	DPRINTF("Integer form of value is %d.\n", *value);
+	return OP_SUCCESS;
+}
+
+/**
+ * Get environment variables SGSH_IN, SGSH_OUT set up by
+ * the shell (through execvpe()).
+ */
+static enum op_result
+get_environment_vars(void)
+{
+	DPRINTF("Try to get environment variable SGSH_IN.");
+	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR)
+		return OP_ERROR;
+	DPRINTF("Try to get environment variable SGSH_OUT.");
+	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
+		return OP_ERROR;
 	return OP_SUCCESS;
 }
 
