@@ -2564,7 +2564,21 @@ START_TEST(test_get_environment_vars)
 	DPRINTF("%s()...", __func__);
 	putenv("SGSH_IN=0");
 	putenv("SGSH_OUT=1");
-	ck_assert_int_eq(get_environment_vars(), OP_SUCCESS);
+
+	int *pn_input_fds = NULL;
+	int *pn_output_fds = NULL;
+	ck_assert_int_eq(get_environment_vars(&pn_input_fds, &pn_output_fds),
+			OP_SUCCESS);
+	ck_assert_int_eq(*pn_input_fds, 0);
+	ck_assert_int_eq(*pn_output_fds, 1);
+
+	ck_assert_int_eq(get_environment_vars(&pn_input_fds, &pn_output_fds),
+			OP_SUCCESS);
+	ck_assert_int_eq(*pn_input_fds, 0);
+	ck_assert_int_eq(*pn_output_fds, 1);
+
+	free(pn_input_fds);
+	free(pn_output_fds);
 }
 END_TEST
 

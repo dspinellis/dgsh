@@ -1840,14 +1840,33 @@ get_env_var(const char *env_var,int *value)
  * the shell (through execvpe()).
  */
 static enum op_result
-get_environment_vars(void)
+get_environment_vars(int **n_input_fds, int **n_output_fds)
 {
 	DPRINTF("Try to get environment variable SGSH_IN.");
 	if (get_env_var("SGSH_IN", &self_node.sgsh_in) == OP_ERROR)
 		return OP_ERROR;
+	if (*n_input_fds == NULL) {
+		*n_input_fds = (int *)malloc(sizeof(int));
+		if (self_node.sgsh_in)
+			**n_input_fds = 1;
+		else
+			**n_input_fds = 0;
+		DPRINTF("%s(): sgsh_in: %d, n_input_fds: %d",
+				__func__, self_node.sgsh_in, **n_input_fds);
+	}
+
 	DPRINTF("Try to get environment variable SGSH_OUT.");
 	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
 		return OP_ERROR;
+	if (*n_output_fds == NULL) {
+		*n_output_fds = (int *)malloc(sizeof(int));
+		if (self_node.sgsh_out)
+			**n_output_fds = 1;
+		else
+			**n_output_fds = 0;
+		DPRINTF("%s(): sgsh_out: %d, n_output_fds: %d",
+				__func__, self_node.sgsh_out, **n_output_fds);
+	}
 	return OP_SUCCESS;
 }
 
@@ -1948,23 +1967,6 @@ set_fds(fd_set *read_fds, fd_set *write_fds)
 }
 
 /**
- * Set whether process is able to negotiate on its input and output channels
- */
-static void
-set_sgsh_in_out(int channels_required, int channels_provided)
-{
-	if (channels_required)
-		self_node.sgsh_in = 1;
-	else
-		self_node.sgsh_in = 0;
-	if (channels_provided)
-		self_node.sgsh_out = 1;
-	else
-		self_node.sgsh_out = 0;
-}
-
-
-/**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
  * and is filled with tools' I/O requirements. When all requirements are in
@@ -1981,17 +1983,18 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 				       * number of input file descriptors
 				       * required. The number may be changed
 				       * by the API and will reflect the size
-				       * of the input file descriptor array
-				       * If NULL is provided, then 0 or 1
+				       * of the input file descriptor array.
+				       * If NULL is given, then 0 or 1
 				       * is implied and no file descriptor
 				       * array is returned. The input file
-				       * descriptor to return (in case of 1)
-				       *
+				       * descriptor not returned (in case of 1)
+				       * substitutes stdin. If NULL is given,
+				       * the caller has to free n_input_fds.
 				       */
                     int *n_output_fds, /* Input/Output variable:
 				       * number of output file descriptors
 				       * provided. The semantics for n_input_fds
-				       * apply here too.
+				       * apply respectively.
 				       */
                     int **input_fds,  /* Output variable:
 				       * input file descriptor array
@@ -2028,7 +2031,10 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 							== OP_ERROR)
 		return PS_ERROR;
 
-	//set_sgsh_in_out(channels_required, channels_provided);
+	if (get_environment_vars(&n_input_fds, &n_output_fds) == OP_ERROR) {
+		DPRINTF("Failed to extract SGSH_IN, SGSH_OUT environment variables.");
+		return PS_ERROR;
+	}
 
 	/* Start negotiation */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
