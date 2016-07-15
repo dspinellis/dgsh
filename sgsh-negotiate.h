@@ -39,7 +39,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 				       * number of input file descriptors
 				       * required. The number may be changed
 				       * by the API and will reflect the size
-				       * of the input file descriptor array
+				       * of the input file descriptor array.
 				       * If NULL is provided, then 0 or 1
 				       * is implied and no file descriptor
 				       * array is returned. The input file

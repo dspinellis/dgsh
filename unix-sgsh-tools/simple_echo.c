@@ -1,7 +1,5 @@
 #include <stdio.h>		/* printf() */
 #include <stdlib.h>		/* exit() */
-#include <unistd.h>
-
 #include "sgsh-negotiate.h"
 
 int
