@@ -23,7 +23,7 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
-	sgsh-ps sgsh-merge-sum sgsh-conc
+	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -59,6 +59,8 @@ sgsh-readval: sgsh-readval.c kvstore.c
 sgsh-httpval: sgsh-httpval.c kvstore.c
 
 sgsh-conc: sgsh-conc.o negotiate.o
+
+sgsh-wrap: sgsh-wrap.o negotiate.o
 
 test-sgsh: $(EXECUTABLES)
 	./test-sgsh.sh
