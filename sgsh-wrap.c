@@ -52,7 +52,7 @@ main(int argc, char *argv[])
 	if (sgsh_negotiate(program_name, NULL, NULL, NULL, NULL) != 0)
 		exit(1);
 
-	int i = 0;
+	int i;
 	char *exec_argv[argc - 1];
 	for (i = 1; i < argc; i++)
 		exec_argv[i-1] = argv[i];
