@@ -46,13 +46,20 @@ main(int argc, char *argv[])
 {
 	program_name = argv[0];
 
-	if (argc != 1)
+	if (argc == 1)
 		usage();
 
 	if (sgsh_negotiate(program_name, NULL, NULL, NULL, NULL) != 0)
 		exit(1);
-	if (argv[0][0] == '/')
-		execv(argv[0], argv);
+
+	int i = 0;
+	char *exec_argv[argc - 1];
+	for (i = 1; i < argc; i++)
+		exec_argv[i-1] = argv[i];
+
+	if (argv[1][0] == '/')
+		execv(argv[1], exec_argv);
 	else
-		execvp(argv[0], argv);
+		execvp(argv[1], exec_argv);
+	return 0;
 }

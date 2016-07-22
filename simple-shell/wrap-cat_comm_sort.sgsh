@@ -1,0 +1,7 @@
+1 /home/mfg/dds/sgsh/sgsh-wrap cat f1s
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm - f2s
+3 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort
+
+%
+socketpipe 1 2
+socketpipe 2 3
