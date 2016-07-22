@@ -44,7 +44,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	program_name = argv[0];
+	program_name = argv[1];
 
 	if (argc == 1)
 		usage();
