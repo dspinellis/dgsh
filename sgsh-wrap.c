@@ -30,13 +30,14 @@
 
 #include "sgsh-negotiate.h"
 
-static const char *program_name;
+static const char *sgwr_program_name;
+static const char *guest_program_name;
 
 static void
 usage(void)
 {
 	fprintf(stderr, "Usage: %s program [arguments ...]\n",
-		program_name);
+		sgwr_program_name);
 	exit(1);
 }
 
@@ -44,12 +45,13 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	program_name = argv[1];
+	sgwr_program_name = argv[0];
+	guest_program_name = argv[1];
 
 	if (argc == 1)
 		usage();
 
-	if (sgsh_negotiate(program_name, NULL, NULL, NULL, NULL) != 0)
+	if (sgsh_negotiate(guest_program_name, NULL, NULL, NULL, NULL) != 0)
 		exit(1);
 
 	int i;
@@ -58,8 +60,8 @@ main(int argc, char *argv[])
 		exec_argv[i-1] = argv[i];
 
 	if (argv[1][0] == '/')
-		execv(argv[1], exec_argv);
+		execv(guest_program_name, exec_argv);
 	else
-		execvp(argv[1], exec_argv);
+		execvp(guest_program_name, exec_argv);
 	return 0;
 }
