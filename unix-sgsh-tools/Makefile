@@ -8,6 +8,14 @@ CFLAGS+=-Wall
 PATHS= -I.. -L..
 LIBS= -lsgsh_negotiate
 
+# Color
+GR=\033[0;32m	# Green
+R=\033[0;31m	# Red
+B=\033[0;34m	# Blue
+EC=\033[0m	# End color
+S=${GR}successful${EC}
+F=${R}failed${EC}
+
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
@@ -49,74 +57,108 @@ install:
 	mv secho bin/
 
 
+test-clean-bash:
+	-rm $(PSDIR)/*.outb
+
 test-clean:
 	-rm $(PSDIR)/*.out
 
-test: test-clean test-bash test-pseudo
+test: test-bash test-pseudo
 
 test-bash: test-clean
+	echo "$B\nBash tests:${EC}"
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/secho hello \
 		| $(BIN)/paste - $(PSDIR)/world \
-		> $(PSDIR)/secho_paste.out' 2>/dev/null \
-	&& diff $(PSDIR)/secho_paste.out $(PSDIR)/secho_paste.success \
-	&& echo "Test secho | paste successful" \
-	|| echo "Test secho | paste failed"
-	
+		> $(PSDIR)/secho_paste.outb' 2>/dev/null \
+	&& diff $(PSDIR)/secho_paste.outb $(PSDIR)/secho_paste.success \
+	&& echo 'secho | paste $S' \
+	|| echo 'secho | paste $F'
+
 	$(BIN)/bash --sgsh -c ' \
 		$(SGSH)/sgsh-wrap cat $(PSDIR)/f1s \
 		| $(BIN)/comm - $(PSDIR)/f2s \
 		| $(BIN)/sort \
-		> $(PSDIR)/wrap-cat_comm_sort.out' 2>/dev/null \
-	&& diff $(PSDIR)/wrap-cat_comm_sort.out $(PSDIR)/wrap-cat_comm_sort.success \
-	&& echo "Test sgsh-wrap cat | comm | sort successful" \
-	|| echo "Test sgsh-wrap cat | comm | sort failed"
+		> $(PSDIR)/wrap-cat_comm_sort.outb' 2>/dev/null \
+	&& diff $(PSDIR)/wrap-cat_comm_sort.outb $(PSDIR)/wrap-cat_comm_sort.success \
+	&& echo 'sgsh-wrap cat | comm | sort $S' \
+	|| echo 'sgsh-wrap cat | comm | sort $F'
 	
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/comm $(PSDIR)/f1s $(PSDIR)/f2s \
-		| $(BIN)/sort > $(PSDIR)/comm_sort.out' 2>/dev/null \
-	&& diff $(PSDIR)/comm_sort.out $(PSDIR)/comm_sort.success \
-	&& echo "Test comm | sort successful" \
-	|| echo "Test comm | sort failed"
+		| $(BIN)/sort > $(PSDIR)/comm_sort.outb' 2>/dev/null \
+	&& diff $(PSDIR)/comm_sort.outb $(PSDIR)/comm_sort.success \
+	&& echo 'comm | sort $S' \
+	|| echo 'comm | sort $F'
 	
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| $(BIN)/paste - - - \
-		> $(PSDIR)/comm_paste.out' 2>/dev/null \
-	&& diff $(PSDIR)/comm_paste.out \
+		> $(PSDIR)/comm_paste.outb' 2>/dev/null \
+	&& diff $(PSDIR)/comm_paste.outb \
 		$(PSDIR)/comm_paste.success \
-	&& echo "Test comm | paste successful" \
-	|| echo "Test comm | paste failed"
+	&& echo 'comm | paste $S' \
+	|| echo 'comm | paste $F'
 	
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| $(BIN)/sort \
-		> $(PSDIR)/join_sort.out' 2>/dev/null \
-	&& diff $(PSDIR)/join_sort.out \
+		> $(PSDIR)/join_sort.outb' 2>/dev/null \
+	&& diff $(PSDIR)/join_sort.outb \
 		$(PSDIR)/join_sort.success \
-	&& echo "Test join | sort successful" \
-	|| echo "Test join | sort failed"
+	&& echo 'join | sort $S' \
+	|| echo 'join | sort $F'
 	
 	# || instead of && in the following test because diff's exit 
 	# status becomes the command's exit status
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/paste $(PSDIR)/f1s $(PSDIR)/f2s \
 		| $(BIN)/diff $(PSDIR)/f1s - \
-		> $(PSDIR)/paste_diff.out' 2>/dev/null \
-	|| diff $(PSDIR)/paste_diff.out $(PSDIR)/paste_diff.success \
-	&& echo "Test paste | diff successful" \
-	|| echo "Test paste | diff failed"
+		> $(PSDIR)/paste_diff.outb' 2>/dev/null \
+	|| diff $(PSDIR)/paste_diff.outb $(PSDIR)/paste_diff.success \
+	&& echo 'paste | diff $S' \
+	|| echo 'paste | diff $F'
+	
+	#ditto
+	$(BIN)/bash --sgsh -c ' \
+		$(BIN)/grep -v -w match $(PSDIR)/f $(PSDIR)/F \
+		| $(BIN)/diff - - \
+		> $(PSDIR)/grep_diff.outb' 2>/dev/null \
+	|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
+	&& echo 'grep | diff $S' \
+	|| echo 'grep | diff $F'
+	
+	#ditto
+	$(BIN)/bash --sgsh -c ' \
+		$(BIN)/grep -l -L match $(PSDIR)/f $(PSDIR)/F \
+		| $(BIN)/comm - - \
+		> $(PSDIR)/grep_comm.outb' 2>/dev/null \
+	|| diff $(PSDIR)/grep_comm.outb $(PSDIR)/grep_comm.success \
+	&& echo 'grep | comm $S' \
+	|| echo 'grep | comm $F'
 	
 	# ditto
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| $(BIN)/sort \
 		| $(BIN)/diff $(PSDIR)/f3s - \
-		> $(PSDIR)/join_sort_diff.out' 2>/dev/null \
-	|| diff $(PSDIR)/join_sort_diff.out \
+		> $(PSDIR)/join_sort_diff.outb' 2>/dev/null \
+	|| diff $(PSDIR)/join_sort_diff.outb \
 		$(PSDIR)/join_sort_diff.success \
-	&& echo "Test join | sort | diff successful" \
-	|| echo "Test join | sort | diff failed"
+	&& echo 'join | sort | diff $S' \
+	|| echo 'join | sort | diff $F'
+	
+	# ditto
+	$(BIN)/bash --sgsh -c ' \
+		$(BIN)/grep -l -L -w -v match $(PSDIR)/f $(PSDIR)/F \
+		| {{ \
+			$(BIN)/diff - - & \
+			$(BIN)/comm - - & \
+		}} > $(PSDIR)/grep_diff_comm.outb' 2>/dev/null \
+	&& (diff $(PSDIR)/grep_diff_comm.outb $(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
+	    || diff $(PSDIR)/grep_diff_comm.outb $(PSDIR)/grep_diff_comm.success2-bash >/dev/null) \
+	&& echo 'grep | {{ diff & comm & }} $S' \
+	|| echo 'grep | {{ diff & comm & }} $F'
 	
 	bin/bash --sgsh -c ' \
 		bin/comm ../simple-shell/f4ss ../simple-shell/f5ss \
@@ -124,13 +166,13 @@ test-bash: test-clean
 			bin/paste - ../simple-shell/p1 & \
 			bin/join - ../simple-shell/j2 & \
 			bin/diff - ../simple-shell/d3 & \
-		}} > $(PSDIR)/comm_paste_join_diff.out' 2>/dev/null \
-	&& (diff $(PSDIR)/comm_paste_join_diff.out \
+		}} > $(PSDIR)/comm_paste_join_diff.outb' 2>/dev/null \
+	&& (diff $(PSDIR)/comm_paste_join_diff.outb \
 		$(PSDIR)/comm_paste_join_diff.success1 >/dev/null \
-	|| diff $(PSDIR)/comm_paste_join_diff.out \
+	|| diff $(PSDIR)/comm_paste_join_diff.outb \
 		$(PSDIR)/comm_paste_join_diff.success2 > /dev/null) \
-	&& echo "Test comm | {{ paste & join & diff & }} successful" \
-	|| echo "Test comm | {{ paste & join & diff & }} failed"
+	&& echo 'comm | {{ paste & join & diff & }} $S' \
+	|| echo 'comm | {{ paste & join & diff & }} $F'
 	
 	bin/bash --sgsh -c ' \
 		{{ \
@@ -138,11 +180,11 @@ test-bash: test-clean
 			bin/sort ../simple-shell/f5s 2>/dev/null & \
 		}} \
 		| bin/comm - - \
-		> $(PSDIR)/sort_sort_comm.out' 2>/dev/null \
-	&& diff $(PSDIR)/sort_sort_comm.out \
+		> $(PSDIR)/sort_sort_comm.outb' 2>/dev/null \
+	&& diff $(PSDIR)/sort_sort_comm.outb \
 		$(PSDIR)/sort_sort_comm.success \
-	&& echo "Test {{ sort & sort & }} | comm successful" \
-	|| echo "Test {{ sort & sort & }} | comm failed"
+	&& echo '{{ sort & sort & }} | comm $S' \
+	|| echo '{{ sort & sort & }} | comm $F'
 	
 	bin/bash --sgsh -c ' \
 		{{ \
@@ -154,71 +196,94 @@ test-bash: test-clean
 			bin/paste - ../simple-shell/p1 & \
 			bin/join - ../simple-shell/j2 & \
 			bin/diff - ../simple-shell/d3 & \
-		}} > $(PSDIR)/sort_sort_comm_paste_join_diff.out' \
+		}} > $(PSDIR)/sort_sort_comm_paste_join_diff.outb' \
 			2>/dev/null \
-	&& (diff $(PSDIR)/sort_sort_comm_paste_join_diff.out \
+	&& (diff $(PSDIR)/sort_sort_comm_paste_join_diff.outb \
 		$(PSDIR)/sort_sort_comm_paste_join_diff.success1 >/dev/null \
-	|| diff $(PSDIR)/sort_sort_comm_paste_join_diff.out \
+	|| diff $(PSDIR)/sort_sort_comm_paste_join_diff.outb \
 		$(PSDIR)/sort_sort_comm_paste_join_diff.success2 >/dev/null) \
-	&& echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} successful" \
-	|| echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} failed"
+	&& echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $S' \
+	|| echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F'
 
 test-pseudo: test-clean
+	echo "$B\nPseudo shell tests:${EC}"
 	cd $(PSDIR) && \
 	python simple-shell.py secho_paste.sgsh secho_paste.out \
 		>/dev/null 2>/dev/null \
 	&& diff secho_paste.out secho_paste.success \
-	&& echo "Test secho | paste successful" \
-	|| echo "Test secho | paste failed"
+	&& echo 'secho | paste $S' \
+	|| echo 'secho | paste $F'
 
 	cd $(PSDIR) && \
 	python simple-shell.py wrap-cat_comm_sort.sgsh wrap-cat_comm_sort.out \
 		>/dev/null 2>/dev/null \
 	&& diff wrap-cat_comm_sort.out wrap-cat_comm_sort.success \
-	&& echo "Test sgsh-wrap cat | comm | sort successful" \
-	|| echo "Test sgsh-wrap cat | comm | sort failed"
+	&& echo 'sgsh-wrap cat | comm | sort $S' \
+	|| echo 'sgsh-wrap cat | comm | sort $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py comm_sort.sgsh comm_sort.out \
 		>/dev/null 2>/dev/null \
 	&& diff comm_sort.out comm_sort.success \
-	&& echo "Test comm | sort successful" \
-	|| echo "Test comm | sort failed"
+	&& echo 'comm | sort $S' \
+	|| echo 'comm | sort $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py comm_paste.sgsh comm_paste.out \
 		>/dev/null 2>/dev/null \
 	&& diff comm_paste.out comm_paste.success \
-	&& echo "Test comm | paste successful" \
-	|| echo "Test comm | paste failed"
+	&& echo 'comm | paste $S' \
+	|| echo 'comm | paste $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py join_sort.sgsh join_sort.out \
 		>/dev/null 2>/dev/null \
 	&& diff join_sort.out join_sort.success \
-	&& echo "Test join | sort successful" \
-	|| echo "Test join | sort failed"
+	&& echo 'join | sort $S' \
+	|| echo 'join | sort $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py paste_diff.sgsh paste_diff.out \
 		>/dev/null 2>/dev/null \
 	&& diff paste_diff.out paste_diff.success \
-	&& echo "Test paste | diff successful" \
-	|| echo "Test paste | diff failed"
+	&& echo 'paste | diff $S' \
+	|| echo 'paste | diff $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py grep_diff.sgsh grep_diff.out \
+		>/dev/null 2>/dev/null \
+	&& diff grep_diff.out grep_diff.success \
+	&& echo 'grep | diff $S' \
+	|| echo 'grep | diff $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py grep_comm.sgsh grep_comm.out \
+		>/dev/null 2>/dev/null \
+	&& diff grep_comm.out grep_comm.success \
+	&& echo 'grep | comm $S' \
+	|| echo 'grep | comm $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py join_sort_diff.sgsh join_sort_diff.out \
 		>/dev/null 2>/dev/null \
 	&& diff join_sort_diff.out join_sort_diff.success \
-	&& echo "Test join | sort | diff successful" \
-	|| echo "Test join | sort | diff failed"
+	&& echo 'join | sort | diff $S' \
+	|| echo 'join | sort | diff $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py grep_diff_comm.sgsh grep_diff_comm.out \
+		>/dev/null 2>/dev/null \
+	&& (diff grep_diff_comm.out grep_diff_comm.success1 >/dev/null \
+	    || diff grep_diff_comm.out grep_diff_comm.success2 >/dev/null) \
+	&& echo 'grep | {{ diff & comm & }} $S' \
+	|| echo 'grep | {{ diff & comm & }} $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py sort_sort_comm.sgsh sort_sort_comm.out \
 		>/dev/null 2>/dev/null \
 	&& diff sort_sort_comm.out sort_sort_comm.success \
-	&& echo "Test {{ sort & sort & }} | comm successful" \
-	|| echo "Test {{ sort & sort & }} | comm failed"
+	&& echo '{{ sort & sort & }} | comm $S' \
+	|| echo '{{ sort & sort & }} | comm $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py comm_paste_join_diff.sgsh \
@@ -227,8 +292,8 @@ test-pseudo: test-clean
 		comm_paste_join_diff.success1 >/dev/null \
 	|| diff comm_paste_join_diff.out \
 		comm_paste_join_diff.success2 > /dev/null) \
-	&& echo "Test comm | {{ paste & join & diff & }} successful" \
-	|| echo "Test comm | {{ paste & join & diff & }} failed"
+	&& echo 'comm | {{ paste & join & diff & }} $S' \
+	|| echo 'comm | {{ paste & join & diff & }} $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py \
@@ -239,8 +304,8 @@ test-pseudo: test-clean
 		sort_sort_comm_paste_join_diff.success1 >/dev/null \
 	|| diff sort_sort_comm_paste_join_diff.out \
 		sort_sort_comm_paste_join_diff.success2 >/dev/null) \
-	&& echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} successful" \
-	|| echo "Test {{ sort & sort & }} | comm | {{ paste & join & diff & }} failed"
+	&& echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $S' \
+	|| echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F'
 
 clean:
 	cd coreutils && make clean
