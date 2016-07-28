@@ -1,0 +1,9 @@
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/grep -l -L -w -v match f F
+2 /home/mfg/dds/sgsh/sgsh-conc -o 2
+3 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/diff - -
+4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm - -
+
+%
+socketpipe 1 2
+socketpipe 2 3
+socketpipe 2 4
