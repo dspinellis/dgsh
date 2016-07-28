@@ -1,0 +1,9 @@
+1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/secho match
+2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/secho not
+3 /home/mfg/dds/sgsh/sgsh-conc -i 2
+4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/grep -F -h match - -
+
+%
+socketpipe 1 3
+socketpipe 2 3
+socketpipe 3 4

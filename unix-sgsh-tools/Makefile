@@ -150,13 +150,28 @@ test-bash: test-clean
 	
 	# ditto
 	$(BIN)/bash --sgsh -c ' \
+		{{ \
+			$(BIN)/secho match & \
+			$(BIN)/secho not & \
+		}} \
+		| $(BIN)/grep -F -h match - - \
+	> $(PSDIR)/secho_secho_fgrep.outb' 2>/dev/null \
+	&& diff $(PSDIR)/secho_secho_fgrep.outb \
+		$(PSDIR)/secho_secho_fgrep.success \
+	&& echo '{{ secho & secho & }} | grep -F $S' \
+	|| echo '{{ secho & secho & }} | grep -F $F'
+	
+	# ditto
+	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/grep -l -L -w -v match $(PSDIR)/f $(PSDIR)/F \
 		| {{ \
 			$(BIN)/diff - - & \
 			$(BIN)/comm - - & \
 		}} > $(PSDIR)/grep_diff_comm.outb' 2>/dev/null \
-	&& (diff $(PSDIR)/grep_diff_comm.outb $(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
-	    || diff $(PSDIR)/grep_diff_comm.outb $(PSDIR)/grep_diff_comm.success2-bash >/dev/null) \
+	&& (diff $(PSDIR)/grep_diff_comm.outb \
+		$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
+	    || diff $(PSDIR)/grep_diff_comm.outb \
+		$(PSDIR)/grep_diff_comm.success2-bash >/dev/null) \
 	&& echo 'grep | {{ diff & comm & }} $S' \
 	|| echo 'grep | {{ diff & comm & }} $F'
 	
@@ -269,6 +284,14 @@ test-pseudo: test-clean
 	&& diff join_sort_diff.out join_sort_diff.success \
 	&& echo 'join | sort | diff $S' \
 	|| echo 'join | sort | diff $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py secho_secho_fgrep.sgsh secho_secho_fgrep.out \
+		>/dev/null 2>/dev/null \
+	&& diff $(PSDIR)/secho_secho_fgrep.out \
+		$(PSDIR)/secho_secho_fgrep.success \
+	&& echo '{{ secho & secho & }} | grep -F $S' \
+	|| echo '{{ secho & secho & }} | grep -F $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py grep_diff_comm.sgsh grep_diff_comm.out \
