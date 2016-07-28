@@ -25,7 +25,8 @@ get-submodules:
 		$(TD)/diffutils \
 		$(TD)/grep \
 		$(TD)/parallel \
-		$(TD)/sed
+		$(TD)/sed \
+		$(TD)/tar
 
 configure:
 	cd coreutils && ./bootstrap && ./configure --prefix=`pwd`/..
@@ -80,7 +81,8 @@ test-bash: test-clean
 		| $(BIN)/comm - $(PSDIR)/f2s \
 		| $(BIN)/sort \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' 2>/dev/null \
-	&& diff $(PSDIR)/wrap-cat_comm_sort.outb $(PSDIR)/wrap-cat_comm_sort.success \
+	&& diff $(PSDIR)/wrap-cat_comm_sort.outb \
+		$(PSDIR)/wrap-cat_comm_sort.success \
 	&& echo 'sgsh-wrap cat | comm | sort $S' \
 	|| echo 'sgsh-wrap cat | comm | sort $F'
 	
