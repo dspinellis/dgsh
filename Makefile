@@ -62,6 +62,8 @@ sgsh-conc: sgsh-conc.o negotiate.o
 
 sgsh-wrap: sgsh-wrap.o negotiate.o
 
+sgsh-tee: sgsh-tee.o negotiate.o
+
 test-sgsh: $(EXECUTABLES)
 	./test-sgsh.sh
 

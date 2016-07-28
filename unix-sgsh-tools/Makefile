@@ -163,6 +163,32 @@ test-bash: test-clean
 	&& echo '{{ secho & secho & }} | grep -F $S' \
 	|| echo '{{ secho & secho & }} | grep -F $F'
 	
+	$(BIN)/bash --sgsh -c ' \
+		$(SGSH)/sgsh-tee -i $(PSDIR)/hello \
+		| {{ \
+			$(BIN)/diff $(PSDIR)/world - & \
+			$(BIN)/comm $(PSDIR)/hello - & \
+		}} > $(PSDIR)/tee-copy_diff_comm.outb' 2>/dev/null \
+	&& (diff $(PSDIR)/tee-copy_diff_comm.outb \
+			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
+		|| diff $(PSDIR)/tee-copy_diff_comm.outb \
+			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
+	&& echo 'sgsh-tee | {{ diff & comm & }} $S' \
+	|| echo 'sgsh-tee | {{ diff & comm & }} $F'
+	
+	$(BIN)/bash --sgsh -c ' \
+		$(SGSH)/sgsh-tee -i $(PSDIR)/hello -s \
+		| {{ \
+			$(BIN)/diff $(PSDIR)/world - & \
+			$(BIN)/comm $(PSDIR)/hello - & \
+		}} > $(PSDIR)/tee-scatter_diff_comm.outb' 2>/dev/null \
+	&& (diff $(PSDIR)/tee-scatter_diff_comm.outb \
+			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
+		|| diff $(PSDIR)/tee-scatter_diff_comm.outb \
+			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
+	&& echo 'sgsh-tee -s | {{ diff & comm & }} $S' \
+	|| echo 'sgsh-tee -s | {{ diff & comm & }} $F'
+	
 	# ditto
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/grep -l -L -w -v match $(PSDIR)/f $(PSDIR)/F \
@@ -294,6 +320,26 @@ test-pseudo: test-clean
 		$(PSDIR)/secho_secho_fgrep.success \
 	&& echo '{{ secho & secho & }} | grep -F $S' \
 	|| echo '{{ secho & secho & }} | grep -F $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py tee-copy_diff_comm.sgsh tee-copy_diff_comm.out \
+		>/dev/null 2>/dev/null \
+	&& (diff $(PSDIR)/tee-copy_diff_comm.out \
+			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
+		|| diff $(PSDIR)/tee-copy_diff_comm.out \
+			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
+	&& echo 'sgsh-tee | {{ diff & comm & }} $S' \
+	|| echo 'sgsh-tee | {{ diff & comm & }} $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py tee-scatter_diff_comm.sgsh tee-scatter_diff_comm.out \
+		>/dev/null 2>/dev/null \
+	&& (diff $(PSDIR)/tee-scatter_diff_comm.out \
+			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
+		|| diff $(PSDIR)/tee-scatter_diff_comm.out \
+			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
+	&& echo 'sgsh-tee -s | {{ diff & comm & }} $S' \
+	|| echo 'sgsh-tee -s | {{ diff & comm & }} $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py grep_diff_comm.sgsh grep_diff_comm.out \

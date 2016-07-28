@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include "sgsh.h"
+#include "sgsh-negotiate.h"
 
 #if defined(DEBUG_DATA)
 #define DATA_DUMP 1
@@ -981,6 +982,29 @@ main(int argc, char *argv[])
 
 	if (argc)
 		usage(progname);
+
+	/* sgsh */
+	int j = 0;
+	int noutputfds = -1;
+	int *outputfds;
+
+	sgsh_negotiate("scatter", NULL, &noutputfds, NULL, &outputfds);
+	assert(noutputfds >= 0);
+
+	for (j = 0; j < noutputfds; j++) {
+		DPRINTF("New ofp assigned fd %d", outputfds[j]);
+		if (j == 0) {
+			ofp = new_sink_info("standard output");
+			ofp->fd = STDOUT_FILENO;
+		} else {
+			ofp = new_sink_info("sgsh");
+			ofp->fd = outputfds[j];
+		}
+		max_fd = MAX(ofp->fd, max_fd);
+		non_block(ofp->fd, ofp->name);
+		ofp->next = ofiles;
+		ofiles = ofp;
+	}
 
 	if (buffer_size > max_mem)
 		errx(1, "Buffer size %d is larger than the program's maximum memory limit %lu", buffer_size, max_mem);
