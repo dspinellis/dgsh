@@ -4,6 +4,7 @@ from socket import socketpair, AF_UNIX, SOCK_DGRAM
 from os import pipe, fork, close, execlp, dup, dup2, \
         open as osopen, O_WRONLY, O_CREAT, environ
 from collections import OrderedDict
+import re
 
 def debug(s):
   if DEBUG:
@@ -58,6 +59,34 @@ def setupProcess(index, channel, connector):
     Process.processes[index] = Process(toolDict[index])
     setupProcess(index, channel, connector)
 
+def parse(command):
+  if '\'' and '"' not in command:
+    return command.split()
+  else:
+    splits = []
+    splitS = True
+    splitD = True
+    for pos, letter in enumerate(command):
+      if letter == "'":
+        if splitS:
+          splitS = False
+        else:
+          splitS = True
+      elif letter == '"':
+        if splitD:
+          splitD = False
+        else:
+          splitD = True
+      elif letter is ' ' and splitS and splitD:
+        splits.append(pos)
+    print splits
+    args = []
+    prev = 0
+    for pos in splits:
+      args.append(command[prev:pos].replace("'", ""))
+      prev = pos+1
+    args.append(command[prev:].replace("'", ""))
+    return args
 
 # Debug configuration
 DEBUG = False
@@ -80,19 +109,44 @@ except IndexError:
   print "Input error: please specify an input file with tool and pipe specifications."
   exit(1)
 with open(sgshGraph, 'r') as f:
-  lines = f.read()
-toolsConnectors = lines.split('%')
+  lines = f.readlines()
+
+toolDefsEnd = 0
+for index, line in enumerate(lines):
+  if line == "%\n":
+    toolDefsEnd = index
+    break
+if toolDefsEnd == 0:
+  print "Failed to find tool definition end line (\n%\n)"
+  exit(1)
+debug("toolDefsEnd: %s\n" % toolDefsEnd)
+
 toolDict = {}
-tools = toolsConnectors[0].lstrip().rstrip().split('\n')
-for tool in tools:
-  toolRecord = tool.split(' ', 1)
-  toolDict[int(toolRecord[0])] = toolRecord[1]
+for line in lines[:toolDefsEnd]:
+  if line == '\n':
+    continue
+  match = re.match(r'^(\d+) (.+)\n$', line)
+  if not match:
+    print "Did not match command index and description: %s\n" % line
+    exit(1)
+  toolIndex = match.group(1)
+  toolCommand = match.group(2)
+  toolDict[int(toolIndex)] = toolCommand
+  debug("index: %s, command: %s\n" % \
+          (toolIndex, toolCommand))
+
 connectorDict = OrderedDict()
-connectors = toolsConnectors[1].lstrip().rstrip().split('\n')
-for connector in connectors:
-  connectorRecord = connector.split()
-  connectorDict[int('%s%s' % (connectorRecord[1], connectorRecord[2]))] = \
-                                                            connectorRecord[0]
+for line in lines[toolDefsEnd+1:]:
+  match = re.match(r'^(\w+) (\d+) (\d+)\n$', line)
+  if not match:
+    print "Did not match connector description and endpoints: %s\n" % line
+    exit(1)
+  connector = match.group(1)
+  fromIndex = match.group(2)
+  toIndex = match.group(3)
+  connectorDict[int('%s%s' % (fromIndex, toIndex))] = connector
+  debug("connector: %s, from index: %s, to_index: %s\n" % \
+          (connector, fromIndex, toIndex))
 
 # Setup objects that represent objects along with their interconnections
 for processPair, connector in connectorDict.iteritems():
@@ -159,5 +213,5 @@ for index, process in Process.processes.iteritems():
       close(1)
       dup(outfile_fd)
       close(outfile_fd)
-    args = process.command.split()
+    args = parse(process.command)
     execlp(args[0], args[0], *args[1:])

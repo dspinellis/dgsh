@@ -130,7 +130,6 @@ test-bash: test-clean
 	&& echo 'grep | diff $S' \
 	|| echo 'grep | diff $F'
 	
-	#ditto
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/grep -l -L match $(PSDIR)/f $(PSDIR)/F \
 		| $(BIN)/comm - - \
@@ -149,6 +148,20 @@ test-bash: test-clean
 		$(PSDIR)/join_sort_diff.success \
 	&& echo 'join | sort | diff $S' \
 	|| echo 'join | sort | diff $F'
+	
+	# No diff, just check execution exit status
+	# Escape parentheses in awk inline script
+	$(BIN)/bash --sgsh -c ' \
+		$(SGSH)/sgsh-wrap ls -n \
+		| $(SGSH)/sgsh-tee \
+		| {{ \
+			$(SGSH)/sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf\("%8d", $5\), $9}' & \
+			$(SGSH)/sgsh-wrap awk '{s += $5} END {printf\("%d bytes", s\)}' & \
+		}} > $(PSDIR)/dir-plain.outb'
+	exit 1
+	#\
+	#&& echo 'wc -l | {{ awk & awk & }} $S' \
+	#|| echo 'wc -l | {{ awk & awk & }} $F'
 	
 	# ditto
 	$(BIN)/bash --sgsh -c ' \
@@ -312,6 +325,12 @@ test-pseudo: test-clean
 	&& diff join_sort_diff.out join_sort_diff.success \
 	&& echo 'join | sort | diff $S' \
 	|| echo 'join | sort | diff $F'
+	
+	cd $(PSDIR) && \
+	python simple-shell.py dir-plain.sgsh dir-plain.out \
+		>/dev/null 2>/dev/null \
+	&& echo 'ls -n | {{ awk & awk & }} $S' \
+	|| echo 'ls -n | {{ awk & awk & }} $F'
 	
 	cd $(PSDIR) && \
 	python simple-shell.py secho_secho_fgrep.sgsh secho_secho_fgrep.out \

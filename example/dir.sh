@@ -26,15 +26,15 @@ FREE=`df -h . | awk '!/Use%/{print $4}'`
 ls -n |
 scatter | {{
 	# Reorder fields in DIR-like way
-	awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
+	./sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
 
 	# Count number of files
-	{ wc -l >/stream/nfiles | tr -d \\n ; echo -n ' File(s) ' ; } &
+	{ ./sgsh-wrap wc -l >/stream/nfiles | ./sgsh-wrap tr -d \\n ; ./sgsh-wrap echo -n ' File(s) ' ; } &
 
 	# Tally number of bytes
-	awk '{s += $5} END {printf("%d bytes", s)}' &
+	./sgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}' &
 
 	# Count number of directories
-	{ grep -c '^d' | tr -d \\n ; echo -n " Dir(s) $FREE bytes free" ; } &
+	{ ./sgsh-wrap grep -c '^d' | ./sgsh-wrap tr -d \\n ; ./sgsh-wrap echo -n " Dir(s) $FREE bytes free" ; } &
 }} |
 gather

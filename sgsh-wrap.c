@@ -56,7 +56,6 @@ main(int argc, char *argv[])
 
 	int i;
 	char *exec_argv[argc];
-	fprintf(stderr, "argc: %d\n", argc);
 	for (i = 1; i < argc; i++)
 		exec_argv[i - 1] = argv[i];
 	exec_argv[argc - 1] = NULL;
