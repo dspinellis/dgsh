@@ -151,17 +151,10 @@ test-bash: test-clean
 	
 	# No diff, just check execution exit status
 	# Escape parentheses in awk inline script
-	$(BIN)/bash --sgsh -c ' \
-		$(SGSH)/sgsh-wrap ls -n \
-		| $(SGSH)/sgsh-tee \
-		| {{ \
-			$(SGSH)/sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf\("%8d", $5\), $9}' & \
-			$(SGSH)/sgsh-wrap awk '{s += $5} END {printf\("%d bytes", s\)}' & \
-		}} > $(PSDIR)/dir-plain.outb'
-	exit 1
-	#\
-	#&& echo 'wc -l | {{ awk & awk & }} $S' \
-	#|| echo 'wc -l | {{ awk & awk & }} $F'
+	$(BIN)/bash --sgsh $(PSDIR)/dir-plain.sh \
+		>$(PSDIR)/dir-plain.outb 2>/dev/null \
+	&& echo 'ls -n | {{ awk & awk & }} $S' \
+	|| echo 'ls -n | {{ awk & awk & }} $F'
 	
 	# ditto
 	$(BIN)/bash --sgsh -c ' \
