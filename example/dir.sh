@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Directory listing
 # DESCRIPTION
@@ -21,20 +20,22 @@
 #  limitations under the License.
 #
 
-FREE=`df -h . | awk '!/Use%/{print $4}'`
+SGSH=..
+FREE=`$SGSH/sgsh-wrap df -h . | $SGSH/sgsh-wrap awk '!/Use%/{print $4}'`
 
-ls -n |
-scatter | {{
+$SGSH/sgsh-wrap ls -n |
+$SGSH/sgsh-tee | {{
 	# Reorder fields in DIR-like way
-	./sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
+	$SGSH/sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
 
 	# Count number of files
-	{ ./sgsh-wrap wc -l >/stream/nfiles | ./sgsh-wrap tr -d \\n ; ./sgsh-wrap echo -n ' File(s) ' ; } &
+	{ $SGSH/sgsh-wrap wc -l | $SGSH/sgsh-wrap tr -d \\n ; echo -n ' File(s) ' ; } &
 
 	# Tally number of bytes
-	./sgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}' &
+	$SGSH/sgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}' &
 
 	# Count number of directories
-	{ ./sgsh-wrap grep -c '^d' | ./sgsh-wrap tr -d \\n ; ./sgsh-wrap echo -n " Dir(s) $FREE bytes free" ; } &
-}} |
-gather
+	{ $SGSH/sgsh-wrap grep -c '^d' | $SGSH/sgsh-wrap tr -d \\n ; echo -n " Dir(s) $FREE bytes free" ; } &
+}}
+#|
+#gather
