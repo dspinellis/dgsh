@@ -270,23 +270,29 @@ test-bash: test-clean
 	&& echo 'dir.sh $S' \
 	|| echo 'dir.sh $F'
 	
-	# No diff, just check execution exit status
+	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/compress-compare.sh Readme.md \
 		>$(PSDIR)/compress-compare.outb 2>/dev/null \
 	&& echo 'compress-compare.sh $S' \
 	|| echo 'compress-compare.sh $F'
 	
-	# No diff, just check execution exit status
+	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/commit-stats.sh Readme.md \
 		>$(PSDIR)/commit-stats.outb 2>/dev/null \
 	&& echo 'commit-stats.sh $S' \
 	|| echo 'commit-stats.sh $F'
 	
-	# No diff, just check execution exit status
+	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/duplicate-files.sh \
 		>$(PSDIR)/duplicate-files.outb 2>/dev/null \
 	&& echo 'duplicate-files.sh $S' \
 	|| echo 'duplicate-files.sh $F'
+	
+	# ditto
+	$(BIN)/bash --sgsh $(XDIR)/word-properties.sh Readme.md \
+		>$(PSDIR)/word-properties.outb 2>/dev/null \
+	&& echo 'word-properties.sh $S' \
+	|| echo 'word-properties.sh $F'
 	
 
 test-pseudo: test-clean

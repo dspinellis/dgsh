@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Word properties
 # DESCRIPTION
@@ -29,27 +28,31 @@
 # Consitent sorting across machines
 export LC_ALL=C
 
+# Stream input from file
+sgsh-wrap cat $1 |
+
 # Split input one word per line
-tr -cs a-zA-Z \\n |
+sgsh-wrap tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
-scatter | {{
+sgsh-tee | {{
 	# Pass through the original words
-	cat &
+	pecho &
 
 	# List two-letter palindromes
-	sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
+	sgsh-wrap sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
 		g' &
 
 	# List four consecutive consonants
-	sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
+	sgsh-wrap sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
 		g' &
 
 	# List length of words longer than 12 characters
-	awk '{if (length($1) > 12) print "l:", length($1);
+	sgsh-wrap awk '{if (length($1) > 12) print "l:", length($1);
 		else print ""}' &
 }} |
 # Paste the four streams side-by-side
-sgsh-paste |
+# XXX make the streaming input arguments transparent to users
+paste - - - - |
 # List only words satisfying one or more properties
 grep :
