@@ -282,6 +282,12 @@ test-bash: test-clean
 	&& echo 'commit-stats.sh $S' \
 	|| echo 'commit-stats.sh $F'
 	
+	# No diff, just check execution exit status
+	$(BIN)/bash --sgsh $(XDIR)/duplicate-files.sh \
+		>$(PSDIR)/duplicate-files.outb 2>/dev/null \
+	&& echo 'duplicate-files.sh $S' \
+	|| echo 'duplicate-files.sh $F'
+	
 
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"

@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Find duplicate files
 # DESCRIPTION
@@ -21,30 +20,34 @@
 #
 
 # Create list of files
-find "$@" -type f |
+sgsh-wrap find "$@" -type f |
 
 # Produce lines of the form
 # MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
-xargs openssl md5 |
+sgsh-wrap xargs openssl md5 |
 
 # Convert each line into a "filename md5sum" pair
-sed 's/^MD5(//;s/)= / /' |
+sgsh-wrap sed 's/^MD5(//;s/)= / /' |
 
 # Sort by MD5 sum
 sort -k2 |
 
-scatter | {{
+sgsh-tee | {{
 
 	# Print an MD5 sum for each file that appears more than once
-	awk '{print $2}' |
-	uniq -d |
-	# Join the repeated MD5 sums with the corresponding file names
-	# Join expects two inputs, second will come from scatter
-	join -2 2 |
-	# Output same files on a single line
-	awk '
-	BEGIN {ORS=""}
-	$1 != prev && prev {print "\n"}
-	END {if (prev) print "\n"}
-	{if (prev) print " "; prev = $1; print $2}'
-}}
+	sgsh-wrap awk '{print $2}' | sgsh-wrap uniq -d &
+
+	# Promote the stream to gather it
+	pecho &
+}} |
+# Join the repeated MD5 sums with the corresponding file names
+# Join expects two inputs, second will come from scatter
+# XXX make streaming input identifiers transparent to users
+join -2 2 - - |
+
+# Output same files on a single line
+sgsh-wrap awk '
+BEGIN {ORS=""}
+$1 != prev && prev {print "\n"}
+END {if (prev) print "\n"}
+{if (prev) print " "; prev = $1; print $2}'
