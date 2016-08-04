@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Compression benchmark
 # DESCRIPTION
@@ -22,11 +21,20 @@
 #  limitations under the License.
 #
 
-scatter | {{
-	{ echo -n 'File type:' ;	file - ; } &
-	{ echo -n 'Original size:' ;	wc -c ; } &
-	{ echo -n 'xz:'	;		xz -c | wc -c ; }
-	{ echo -n 'bzip2:' ;		bzip2 -c | wc -c ; } &
-	{ echo -n 'gzip:' ;		gzip -c | wc -c ; } &
-}} |
-gather
+sgsh-wrap cat $1 |
+sgsh-tee | {{
+	sgsh-wrap echo -n 'File type:' &
+	sgsh-wrap file - &
+
+	sgsh-wrap echo -n 'Original size:' &
+	sgsh-wrap wc -c &
+
+	sgsh-wrap echo -n 'xz:' &
+	sgsh-wrap xz -c | sgsh-wrap wc -c &
+
+	sgsh-wrap echo -n 'bzip2:' &
+	sgsh-wrap bzip2 -c | sgsh-wrap wc -c &
+
+	sgsh-wrap echo -n 'gzip:' &
+	sgsh-wrap gzip -c | sgsh-wrap wc -c &
+}} | sgsh-tee

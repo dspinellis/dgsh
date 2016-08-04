@@ -270,6 +270,12 @@ test-bash: test-clean
 	&& echo 'dir.sh $S' \
 	|| echo 'dir.sh $F'
 	
+	# No diff, just check execution exit status
+	$(BIN)/bash --sgsh $(XDIR)/compress-compare.sh Readme.md \
+		>$(PSDIR)/compress-compare.outb 2>/dev/null \
+	&& echo 'compress-compare.sh $S' \
+	|| echo 'compress-compare.sh $F'
+	
 
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
