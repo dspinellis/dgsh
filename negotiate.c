@@ -604,7 +604,10 @@ prepare_solution(void)
 		current_connections->edges_outgoing = NULL;
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
-		DPRINTF("%s(): Node %s, connections in: %d, connections out: %d.",__func__, chosen_mb->node_array[i].name, *n_edges_incoming, *n_edges_outgoing);
+		DPRINTF("%s(): Node %s, pid: %d, connections in: %d, connections out: %d.",
+				__func__, chosen_mb->node_array[i].name,
+				chosen_mb->node_array[i].pid,
+				*n_edges_incoming, *n_edges_outgoing);
 
 		if (*n_edges_incoming > 0) {
 			if (exit_state == OP_SUCCESS)
@@ -818,6 +821,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 							int *n_output_fds)
 {
 	enum op_result re = OP_SUCCESS;
+	DPRINTF("%s(): input fds: %d, output fds: %d", __func__,
+			self_pipe_fds.n_input_fds, self_pipe_fds.n_output_fds);
 
 	if (self_pipe_fds.n_input_fds > 0) {
 		/* Have the first returned file descriptor
@@ -872,9 +877,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_output_fds)
 			*n_output_fds = 0;
 
-	DPRINTF("%s(): %s. input fds: %d, output fds: %d", __func__,
-			(re == OP_SUCCESS ? "successful" : "failed"),
-			self_pipe_fds.n_input_fds, self_pipe_fds.n_output_fds);
+	DPRINTF("%s(): %s", __func__,
+			(re == OP_SUCCESS ? "successful" : "failed"));
 
 	return re;
 }
@@ -1310,7 +1314,9 @@ analyse_read(struct sgsh_negotiation *fresh_mb,
 			bool *should_transmit_mb,
 			int *serialno_ntimes_same,
 			int *run_ntimes_same,
-			int *error_ntimes_same)
+			int *error_ntimes_same,
+			const char *tool_name,
+			pid_t pid, int *n_input_fds, int *n_output_fds)
 {
         *should_transmit_mb = false; /* Default value. */
 	mb_is_updated = false; /* Default value. */
@@ -1353,8 +1359,13 @@ analyse_read(struct sgsh_negotiation *fresh_mb,
 			*should_transmit_mb = true;
 	} else if (fresh_mb->state == PS_NEGOTIATION) {
 		/* New chosen message block */
-        	if (fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
-			free_mb(chosen_mb);
+		if (chosen_mb == NULL ||
+				fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
+			if (chosen_mb)
+				free_mb(chosen_mb);
+			else
+				fill_sgsh_node(tool_name, pid, n_input_fds,
+						n_output_fds);
 			chosen_mb = fresh_mb;
 			mb_is_updated = true; /*Substituting chosen_mb is an update.*/
 			if (try_add_sgsh_node() == OP_ERROR)
@@ -1367,21 +1378,23 @@ analyse_read(struct sgsh_negotiation *fresh_mb,
 		else {
                 	*should_transmit_mb = true;
 			DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
-			if (fresh_mb->serial_no > chosen_mb->serial_no) {
-				DPRINTF("%s(): Fresh vs chosen message block: serial no updated.", __func__);
-				free_mb(chosen_mb);
-				chosen_mb = fresh_mb;
-				mb_is_updated = true;
-				if (try_add_sgsh_edge() == OP_ERROR)
-					return OP_ERROR;
-			} else { /* serial_no of the mb has not changed
-			 	  * in the interim, but we accept it to
-			  	  * receive the id of the dispatcher.
-			  	  */
-				DPRINTF("Fresh vs chosen message block: serial no not updated.");
+			free_mb(chosen_mb);
+			chosen_mb = fresh_mb;
+			/* check if there is a new edge to be included
+			 * and if serial no of the mb has changed
+			 * even if serial_no has not changed
+			 * in the interim, we accept it to
+			 * receive the id of the dispatcher.
+			 */
+			int re = try_add_sgsh_edge();
+			if (re == OP_ERROR)
+				return OP_ERROR;
+			else if (re == OP_SUCCESS)
+				DPRINTF("%s serial no updated.", __func__);
+			else if (re == OP_EXISTS &&
+					chosen_mb->serial_no == fresh_mb->serial_no) {
 				(*serialno_ntimes_same)++;
-				free_mb(chosen_mb);
-				chosen_mb = fresh_mb;
+				DPRINTF("%s serial no not updated.", __func__);
 			}
 		}
 	}
@@ -1949,12 +1962,15 @@ leave_negotiation(int run_ntimes_same, int error_ntimes_same)
 }
 
 static int
-set_fds(fd_set *read_fds, fd_set *write_fds)
+set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 {
 	fd_set *fds;
+	FD_ZERO(read_fds);
+	FD_ZERO(write_fds);
 
+	DPRINTF("Next operation is a %s", isread ? "read" : "write");
 	/* The next operation is a read or a write */
-	if (read_fds)
+	if (isread)
 		fds = read_fds;
 	else
 		fds = write_fds;
@@ -1967,7 +1983,7 @@ set_fds(fd_set *read_fds, fd_set *write_fds)
 		FD_SET(STDIN_FILENO, fds);
 	} else {
 		/* We should have all ears open for a read */
-		if (read_fds) {
+		if (isread) {
 			FD_SET(STDIN_FILENO, fds);
 			FD_SET(STDOUT_FILENO, fds);
 		} else {
@@ -1985,6 +2001,21 @@ set_fds(fd_set *read_fds, fd_set *write_fds)
 	}
 	/* so that after select() we try both 0 and 1 to see if they are set */
 	return 2;
+}
+
+enum op_result
+register_node_edge(const char *tool_name, pid_t self_pid, int *n_input_fds,
+		int *n_output_fds)
+{
+	/* Create sgsh node representation and add node, edge to the graph. */
+	fill_sgsh_node(tool_name, self_pid, n_input_fds, n_output_fds);
+	if (try_add_sgsh_node() == OP_ERROR)
+		return OP_ERROR;
+
+	if (try_add_sgsh_edge() == OP_ERROR)
+		return OP_ERROR;
+
+	return OP_SUCCESS;
 }
 
 /**
@@ -2036,9 +2067,8 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 
 	int nfds = 0;
+	bool isread = false;
 	fd_set read_fds, write_fds;
-	FD_ZERO(&read_fds);
-	FD_ZERO(&write_fds);
 
 #ifndef UNIT_TESTING
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
@@ -2060,32 +2090,20 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
 		if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-        } else { /* or wait to receive MB. */
-		chosen_mb = NULL;
-		self_node_io_side.fd_direction = STDIN_FILENO;
-		if (read_message_block(STDIN_FILENO, &fresh_mb) == OP_ERROR) {
+		if (register_node_edge(tool_name, self_pid, n_input_fds,
+				n_output_fds) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-			error_ntimes_same++;
-		}
-		chosen_mb = fresh_mb;
+		isread = false;
+        } else { /* or wait to receive MB. */
+		isread = true;
+		chosen_mb = NULL;
 	}
-	
-	/* Either we just read or we are about to write */
-	nfds = set_fds(NULL, &write_fds);
-	DPRINTF("nfds: %d, stdout set for write? %d\n", nfds, FD_ISSET(1, &write_fds));
-
-	/* Create sgsh node representation and add node, edge to the graph. */
-	fill_sgsh_node(tool_name, self_pid, n_input_fds, n_output_fds);
-	if (try_add_sgsh_node() == OP_ERROR)
-		chosen_mb->state = PS_ERROR;
-
-	if (try_add_sgsh_edge() == OP_ERROR)
-		chosen_mb->state = PS_ERROR;
 
 	/* Perform phases and rounds. */
 	while (1) {
 again:
 		DPRINTF("%s(): perform round", __func__);
+		nfds = set_fds(&read_fds, &write_fds, isread);
 		if (select(nfds, &read_fds, &write_fds, NULL, NULL) < 0) {
 			if (errno == EINTR)
 				goto again;
@@ -2111,20 +2129,21 @@ again:
 					DPRINTF("%s(): leave after write with state %d.", __func__, chosen_mb->state);
 					goto exit;
 				}
-				FD_ZERO(&write_fds);
-				nfds = set_fds(&read_fds, NULL);
+				isread = true;
 			}
 			if (FD_ISSET(i, &read_fds)) {
 				DPRINTF("read on fd %d is active.", i);
 				/* Read message block et al. */
 				if (read_message_block(i, &fresh_mb)
 						== OP_ERROR)
-					chosen_mb->state = PS_ERROR;
+					fresh_mb->state = PS_ERROR;
 				/* Accept? message block, check state */
 				if (analyse_read(fresh_mb, &should_transmit_mb,
 						&serialno_ntimes_same,
 						&run_ntimes_same,
-						&error_ntimes_same) == OP_ERROR)
+						&error_ntimes_same, tool_name,
+						self_pid, n_input_fds,
+						n_output_fds) == OP_ERROR)
 					chosen_mb->state = PS_ERROR;
 
 				check_negotiation_round(serialno_ntimes_same);
@@ -2151,8 +2170,7 @@ again:
 					DPRINTF("%s(): leave after read with state %d.", __func__, chosen_mb->state);
 					goto exit;
 				}
-				FD_ZERO(&read_fds);
-				nfds = set_fds(NULL, &write_fds);
+				isread = false;
 			}
 		}
 	}

@@ -44,12 +44,12 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 				       * is implied and no file descriptor
 				       * array is returned. The input file
 				       * descriptor to return (in case of 1)
-				       *
+				       * substitutes stdin.
 				       */
                     int *n_output_fds,/* Input/Output variable:
 				       * number of output file descriptors
 				       * provided. The semantics for n_input_fds
-				       * apply here too.
+				       * apply here respectively.
 				       */
                     int **input_fds,  /* Output variable:
 				       * input file descriptor array

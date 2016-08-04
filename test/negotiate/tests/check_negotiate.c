@@ -2183,7 +2183,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_ERROR;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
 	ck_assert_int_eq(error_ntimes_same, 1);
@@ -2202,7 +2204,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_ERROR;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
 	ck_assert_int_eq(error_ntimes_same, 1);
@@ -2222,7 +2226,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_ERROR;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
 	ck_assert_int_eq(error_ntimes_same, 2);
@@ -2242,7 +2248,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_ERROR;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
 	ck_assert_int_eq(error_ntimes_same, 2);
@@ -2261,7 +2269,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
 	ck_assert_int_eq(run_ntimes_same, 1);
@@ -2280,7 +2290,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
 	ck_assert_int_eq(run_ntimes_same, 1);
@@ -2300,7 +2312,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
 	ck_assert_int_eq(run_ntimes_same, 2);
@@ -2320,7 +2334,9 @@ START_TEST(test_analyse_read)
 	run_ntimes_same = 1;
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
 	ck_assert_int_eq(run_ntimes_same, 2);
@@ -2340,7 +2356,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, false);
 	ck_assert_int_eq(mb_is_updated, 0);
 	ck_assert_int_eq(serialno_ntimes_same, 0);
@@ -2356,7 +2374,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->serial_no = 1; /* fresh_mb prevails */
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(mb_is_updated, 1);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
@@ -2375,7 +2395,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->serial_no = 0; /* fresh_mb does not prevail */
 	ck_assert_int_eq(analyse_read(fresh_mb, &should_transmit_mb,
 				&serialno_ntimes_same, &run_ntimes_same,
-				&error_ntimes_same), OP_SUCCESS);
+				&error_ntimes_same, self_node.name,
+				self_node.pid, &self_node.requires_channels,
+				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(should_transmit_mb, true);
 	ck_assert_int_eq(serialno_ntimes_same, 1);
 	ck_assert_int_eq(mb_is_updated, 0);
@@ -2692,16 +2714,16 @@ START_TEST(test_set_fds)
 {
 	/* For node 3 which is a terminal node */
 	fd_set read_fds, write_fds;
-	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(set_fds(&read_fds, &write_fds, 0), 2);
 	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
-	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
+	ck_assert_int_eq(set_fds(&read_fds, &write_fds, 1), 2);
 	ck_assert_int_eq(self_node_io_side.fd_direction, STDIN_FILENO);
 
 	/* Make node 1 self node, which is a non terminal node */
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct sgsh_node));
-	ck_assert_int_eq(set_fds(NULL, &write_fds), 2);
+	ck_assert_int_eq(set_fds(&read_fds, &write_fds, 0), 2);
 	ck_assert_int_eq(self_node_io_side.fd_direction, STDOUT_FILENO);
-	ck_assert_int_eq(set_fds(&read_fds, NULL), 2);
+	ck_assert_int_eq(set_fds(&read_fds, &write_fds, 1), 2);
 }
 END_TEST
 

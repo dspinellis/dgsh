@@ -1,4 +1,5 @@
 PSDIR=../simple-shell
+XDIR=../example
 # TOOLDIR
 TD=unix-sgsh-tools
 BIN=bin
@@ -40,21 +41,21 @@ configure:
 make:
 	cd coreutils && make
 	cd diffutils && make
-	cd gawk && make
+	#cd gawk && make
 	cd grep && make
-	cd parallel && make
-	cd sed && make
-	cd tar && make
+	#cd parallel && make
+	#cd sed && make
+	#cd tar && make
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 
 install:
 	cd coreutils && make install
 	cd diffutils && make install
-	cd gawk && make install
+	#cd gawk && make install
 	cd grep && make install
-	cd parallel && make install
-	cd sed && make install
-	cd tar && make install
+	#cd parallel && make install
+	#cd sed && make install
+	#cd tar && make install
 	mv secho bin/
 
 
@@ -68,6 +69,7 @@ test: test-bash test-pseudo
 
 test-bash: test-clean
 	echo "$B\nBash tests:${EC}"
+	
 	$(BIN)/bash --sgsh -c ' \
 		$(BIN)/secho hello \
 		| $(BIN)/paste - $(PSDIR)/world \
@@ -150,7 +152,6 @@ test-bash: test-clean
 	|| echo 'join | sort | diff $F'
 	
 	# No diff, just check execution exit status
-	# Escape parentheses in awk inline script
 	$(BIN)/bash --sgsh $(PSDIR)/dir-plain.sh \
 		>$(PSDIR)/dir-plain.outb 2>/dev/null \
 	&& echo 'ls -n | {{ awk & awk & }} $S' \
@@ -253,9 +254,19 @@ test-bash: test-clean
 		$(PSDIR)/sort_sort_comm_paste_join_diff.success2 >/dev/null) \
 	&& echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $S' \
 	|| echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F'
+	
+	echo " $BPaper examples under ../example:${EC}"
+
+	# No diff, just check execution exit status
+	$(BIN)/bash --sgsh $(XDIR)/dir.sh \
+		>$(PSDIR)/dir.outb 2>/dev/null \
+	&& echo 'dir.sh $S' \
+	|| echo 'dir.sh $F'
+	
 
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
+	
 	cd $(PSDIR) && \
 	python simple-shell.py secho_paste.sgsh secho_paste.out \
 		>/dev/null 2>/dev/null \

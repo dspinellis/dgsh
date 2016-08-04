@@ -40,9 +40,10 @@ static const char *program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s -i|-o nprog\n"
+	fprintf(stderr, "Usage: %s -i|-o nprog [-r]\n"
 		"-i"		"\tInput concentrator: multiple inputs to single output\n"
-		"-o"		"\tOutput concentrator: single input to multiple outputs\n",
+		"-o"		"\tOutput concentrator: single input to multiple outputs\n"
+		"-r"		"\tPass the block to origin (except for stdin, stdout); used with input concentrator\n",
 		program_name);
 	exit(1);
 }
@@ -66,6 +67,19 @@ static struct portinfo {
  */
 STATIC bool multiple_inputs;
 
+/* True when input concentrator is the gather endpoint
+ * of a scatter-first-gather-then block.
+ * In this case using the default route of the input
+ * concentrator results in complex cycles and ruins
+ * the algorithms that decide when negotiation should
+ * end both for concentrators and participating processes.
+ * The favored scheme in this case is:
+ * stdin -> stdout
+ * stdout -> stdin
+ * fd -> fd
+ */
+STATIC bool pass_origin;
+
 /*
  * Total number of file descriptors on which the process performs I/O
  * (including stderr).  The last fd used in nfd - 1.
@@ -82,18 +96,29 @@ STATIC int
 next_fd(int fd, bool *ro)
 {
 	if (multiple_inputs)
-		switch (fd) {
-		case STDIN_FILENO:
-			return STDOUT_FILENO;
-		case STDOUT_FILENO:
-			return nfd - 1;
-		case FREE_FILENO:
-			*ro = true;
-			return STDIN_FILENO;
-		default:
-			*ro = true;
-			return fd - 1;
-		}
+		if (pass_origin)
+			switch (fd) {
+			case STDIN_FILENO:
+				return STDOUT_FILENO;
+			case STDOUT_FILENO:
+				return STDIN_FILENO;
+			default:
+				*ro = true;
+				return fd;
+			}
+		else
+			switch (fd) {
+			case STDIN_FILENO:
+				return STDOUT_FILENO;
+			case STDOUT_FILENO:
+				return nfd - 1;
+			case FREE_FILENO:
+				*ro = true;
+				return STDIN_FILENO;
+			default:
+				*ro = true;
+				return fd - 1;
+			}
 	else
 		switch (fd) {
 		case STDIN_FILENO:
@@ -124,6 +149,10 @@ is_ready(int i, struct sgsh_negotiation *mb)
 	/* The process whose id is set does not pass
 	 * the block. Prepare exit.
 	 */
+	DPRINTF("%s: pi[%d].pid: %d, mb->preceding_process_pid: %d\n",
+			__func__, i, pi[i].pid, mb->preceding_process_pid);
+	if (mb->state != PS_RUN)
+		return false;
 	if (pi[i].pid == mb->preceding_process_pid) {
 		assert(!pi[i].seen);
 		pi[i].seen = true;	/* Fake that */
@@ -369,14 +398,21 @@ main(int argc, char *argv[])
 	int ch;
 
 	program_name = argv[0];
+	pass_origin = false;
 
-	while ((ch = getopt(argc, argv, "io")) != -1) {
+	while ((ch = getopt(argc, argv, "ior")) != -1) {
 		switch (ch) {
 		case 'i':
 			multiple_inputs = true;
 			break;
 		case 'o':
 			multiple_inputs = false;
+			break;
+		case 'r':
+			if (multiple_inputs)
+				pass_origin = true;
+			else
+				usage();
 			break;
 		case '?':
 		default:

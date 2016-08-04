@@ -36,6 +36,4 @@ $SGSH/sgsh-tee | {{
 
 	# Count number of directories
 	{ $SGSH/sgsh-wrap grep -c '^d' | $SGSH/sgsh-wrap tr -d \\n ; echo -n " Dir(s) $FREE bytes free" ; } &
-}}
-#|
-#gather
+}} | $SGSH/sgsh-tee

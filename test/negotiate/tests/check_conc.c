@@ -19,6 +19,7 @@ setup_test_is_ready(void)
 
 	chosen_mb = (struct sgsh_negotiation *)
 		malloc(sizeof(struct sgsh_negotiation));
+	chosen_mb->state = PS_RUN;
 	chosen_mb->preceding_process_pid = 101;
 }
 
@@ -58,6 +59,19 @@ START_TEST (test_next_fd)
 	ro = false;
 	ck_assert_int_eq(next_fd(3, &ro), 0);
 	ck_assert_int_eq(ro, true);
+
+	pass_origin = true;
+	ro = false;		/* restore origin */
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 0);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(4, &ro), 4);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	pass_origin = false;
 
 	multiple_inputs = false;
 	ro = false;

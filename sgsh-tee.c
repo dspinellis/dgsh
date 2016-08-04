@@ -987,9 +987,13 @@ main(int argc, char *argv[])
 	int j = 0;
 	int noutputfds = -1;
 	int *outputfds;
+	int ninputfds = -1;
+	int *inputfds;
 
-	sgsh_negotiate("scatter", NULL, &noutputfds, NULL, &outputfds);
+	sgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds,
+			&outputfds);
 	assert(noutputfds >= 0);
+	assert(ninputfds >= 0);
 
 	for (j = 0; j < noutputfds; j++) {
 		DPRINTF("New ofp assigned fd %d", outputfds[j]);
@@ -1004,6 +1008,26 @@ main(int argc, char *argv[])
 		non_block(ofp->fd, ofp->name);
 		ofp->next = ofiles;
 		ofiles = ofp;
+	}
+
+	for (j = 0; j < ninputfds; j++) {
+		DPRINTF("New ifp assigned fd %d", inputfds[j]);
+		if (j == 0) {
+			ifp = new_source_info("standard input");
+			ifp->fd = STDIN_FILENO;
+		} else {
+			ifp = new_source_info("sgsh");
+			ifp->fd = inputfds[j];
+		}
+		max_fd = MAX(ifp->fd, max_fd);
+		non_block(ifp->fd, ifp->name);
+		/* Add file at the end of the linked list */
+		ifp->next = NULL;
+		if (end)
+			end->next = ifp;
+		else
+			ifiles = ifp;
+		end = ifp;
 	}
 
 	if (buffer_size > max_mem)
