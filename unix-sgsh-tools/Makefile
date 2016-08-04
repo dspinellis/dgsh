@@ -276,6 +276,12 @@ test-bash: test-clean
 	&& echo 'compress-compare.sh $S' \
 	|| echo 'compress-compare.sh $F'
 	
+	# No diff, just check execution exit status
+	$(BIN)/bash --sgsh $(XDIR)/commit-stats.sh Readme.md \
+		>$(PSDIR)/commit-stats.outb 2>/dev/null \
+	&& echo 'commit-stats.sh $S' \
+	|| echo 'commit-stats.sh $F'
+	
 
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"

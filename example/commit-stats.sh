@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Git commit statistics
 # DESCRIPTION
@@ -21,24 +20,15 @@
 #  limitations under the License.
 #
 
-# Order by frequency
-forder()
-{
-	sort |
-	uniq -c |
-	sort -rn
-}
-
-git log --format="%an:%ad" --date=default "$@" |
-scatter |
+sgsh-wrap git log --format="%an:%ad" --date=default "$@" |
+sgsh-tee |
 {{
-	{
-		echo "Authors ordered by number of commits"
-		awk -F: '{print $1}' | forder
-	} &
-	{
-		echo "Days ordered by number of commits"
-		awk -F: '{print substr($2, 1, 3)}' | forder
-	} &
+	sgsh-wrap echo "Authors ordered by number of commits" &
+	# Order by frequency
+	sgsh-wrap awk -F: '{print $1}' | sort | sgsh-wrap uniq -c | sort -rn &
+
+	sgsh-wrap echo "Days ordered by number of commits" &
+	# Order by frequency
+	sgsh-wrap awk -F: '{print substr($2, 1, 3)}' | sort | sgsh-wrap uniq -c | sort -rn &
 }} |
-gather
+sgsh-tee
