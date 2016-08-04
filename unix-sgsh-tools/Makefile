@@ -2,10 +2,12 @@ PSDIR=../simple-shell
 XDIR=../example
 # TOOLDIR
 TD=unix-sgsh-tools
-BIN=bin
-SGSH=..
 STD=/usr/bin
 PWD=$(shell pwd)
+
+# Can be removed since make path puts us on the path
+BIN=bin
+SGSH=..
 
 CFLAGS+=-Wall
 PATHS= -I.. -L..
