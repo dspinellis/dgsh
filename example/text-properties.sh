@@ -34,7 +34,8 @@ export LC_ALL=C
 ranked_frequency()
 {
 	awk '{count[$1]++} END {for (i in count) print count[i], i}' |
-	sort -rn
+	# We want the standard sort here
+	/usr/bin/sort -rn
 }
 
 # Convert standard input to a ranked frequency list of specified n-grams
@@ -48,24 +49,28 @@ ngram()
 	ranked_frequency
 }
 
-scatter | {{
+export -f ranked_frequency
+export -f ngram
+
+sgsh-wrap cat $1 |
+sgsh-tee | {{
 	# Split input one word per line
-	tr -cs a-zA-Z \\n |
-	scatter {{
+	sgsh-wrap tr -cs a-zA-Z \\n |
+	sgsh-tee | {{
 		# Digram frequency
-		{ ngram 2 >digram.txt ; } &
+		sgsh-wrap bash -c 'ngram 2 >digram.txt' &
 		# Trigram frequency
-		{ ngram 3 >trigram.txt ; } &
+		sgsh-wrap bash -c 'ngram 3 >trigram.txt' &
 		# Word frequency
-		{ ranked_frequency >words.txt ; } &
+		sgsh-wrap bash -c 'ranked_frequency >words.txt' &
 	}} &
 
 	# Character frequency
-	sed 's/./&\
+	sgsh-wrap sed 's/./&\
 /g' |
 	# Print absolute and percentage
-	ranked_frequency |
+	sgsh-wrap bash -c 'ranked_frequency' |
 	# The wc forms a second input to count total characters
-	awk 'BEGIN {OFMT = "%.2g%%"}
+	sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
 	{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
 }}

@@ -3,7 +3,6 @@ XDIR=../example
 # TOOLDIR
 TD=unix-sgsh-tools
 STD=/usr/bin
-PWD=$(shell pwd)
 
 # Can be removed since make path puts us on the path
 BIN=bin
@@ -20,6 +19,8 @@ B=\033[0;34m	# Blue
 EC=\033[0m	# End color
 S=${GR}successful${EC}
 F=${R}failed${EC}
+
+export PATH := $(shell pwd)/..:$(shell pwd)/bin:$(PATH)
 
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
@@ -74,7 +75,8 @@ test-clean:
 test: test-bash test-pseudo
 
 path:
-	PATH=$(PWD)/..:$(PWD)/bin:$$PATH
+	export PATH
+	echo $(PATH)
 
 test-bash: test-clean
 	echo "$B\nBash tests:${EC}"
@@ -295,6 +297,12 @@ test-bash: test-clean
 		>$(PSDIR)/word-properties.outb 2>/dev/null \
 	&& echo 'word-properties.sh $S' \
 	|| echo 'word-properties.sh $F'
+	
+	# ditto
+	$(BIN)/bash --sgsh $(XDIR)/text-properties.sh Readme.md \
+		>$(PSDIR)/text-properties.outb 2>/dev/null \
+	&& echo 'text-properties.sh $S' \
+	|| echo 'text-properties.sh $F'
 	
 
 test-pseudo: test-clean
