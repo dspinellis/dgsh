@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Text properties
 # DESCRIPTION

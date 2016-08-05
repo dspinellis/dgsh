@@ -20,15 +20,24 @@
 #  limitations under the License.
 #
 
+forder()
+{
+	/usr/bin/sort |
+	uniq -c |
+	/usr/bin/sort -rn
+}
+
+export -f forder
+
 sgsh-wrap git log --format="%an:%ad" --date=default "$@" |
 sgsh-tee |
 {{
 	sgsh-wrap echo "Authors ordered by number of commits" &
 	# Order by frequency
-	sgsh-wrap awk -F: '{print $1}' | sort | sgsh-wrap uniq -c | sort -rn &
+	sgsh-wrap awk -F: '{print $1}' | sgsh-wrap bash -c 'forder' &
 
 	sgsh-wrap echo "Days ordered by number of commits" &
 	# Order by frequency
-	sgsh-wrap awk -F: '{print substr($2, 1, 3)}' | sort | sgsh-wrap uniq -c | sort -rn &
+	sgsh-wrap awk -F: '{print substr($2, 1, 3)}' | sgsh-wrap bash -c 'forder' &
 }} |
 sgsh-tee

@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Hierarchy map
 # DESCRIPTION
@@ -47,30 +46,34 @@ line_signatures()
     # The fields are separated by ^A and ^B
     sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
   done |
-  sort -t -k 2
+  # Error: multi-character tab '\001\001'
+  /usr/bin/sort -t -k 2
 }
+
+
+export -f line_signatures
 
 
 {{
   # Generate the signatures for the two hierarchies
-  line_signatures $1 &
-  line_signatures $2 &
+  sgsh-wrap bash -c 'line_signatures "$1"' -- "$1" &
+  sgsh-wrap bash -c 'line_signatures "$1"' -- "$2" &
 }} |
 
 # Join signatures on file name and content
-sgsh-join -t -1 2 -2 2 |
+join -t -1 2 -2 2 - - |
 
 # Print filename dir1 dir2
-sed 's///g' |
-awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
+sgsh-wrap sed 's///g' |
+sgsh-wrap awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
-scatter | {{
+sgsh-tee | {{
   # Commands to copy
-  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
-  awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
+  sgsh-wrap awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
+  sgsh-wrap awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
 }} |
 # Order: first make directories, then copy files
-gather |
-sh
+sgsh-tee |
+sgsh-wrap sh

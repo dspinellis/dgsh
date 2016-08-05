@@ -304,6 +304,12 @@ test-bash: test-clean
 	&& echo 'text-properties.sh $S' \
 	|| echo 'text-properties.sh $F'
 	
+	# ditto
+	$(BIN)/bash --sgsh $(XDIR)/map-hierarchy.sh tar tar-p100 tarp \
+		>$(PSDIR)/map-hierarchy.outb 2>/dev/null \
+	&& echo 'map-hierarchy.sh $S' \
+	|| echo 'map-hierarchy.sh $F'
+	
 
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
