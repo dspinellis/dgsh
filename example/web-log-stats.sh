@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh -s /bin/bash
 #
 # SYNOPSIS Web log statistics
 # DESCRIPTION
@@ -44,7 +43,10 @@ change()
 	awk "END {OFMT=\"%.2f%%\"; print ($2 - $1) * 100 / $1}" </dev/null
 }
 
-if [ "$1" = "-s" ]
+export -f sum
+export -f change
+
+sgsh-wrap bash -c 'if [ "$1" = "-s" ]
 then
 	# Simulate log lines coming from a file
 	while read line
@@ -54,51 +56,62 @@ then
 	done  <"$2"
 else
 	tail -f "$1"
-fi |
-scatter |{
+fi' -- "$1" "$2" |
+sgsh-tee |
+{{
 	# Window of accessed pages
-	-| awk -Winteractive '{print $7}' |store:page -b $WINDOW -u s
+	#|store:page -b $WINDOW -u s
+	sgsh-wrap awk -Winteractive '{print $7}' &
 
 	# Get the bytes requested
-	-| awk -Winteractive '{print $10}' |{
+	sgsh-wrap awk -Winteractive '{print $10}' |
+	sgsh-tee |
+	{{
 		# Store total number of bytes
-		-| awk -Winteractive '{ s += $1; print s}' |store:total_bytes
+		sgsh-wrap awk -Winteractive '{ s += $1; print s}' &
+
 		# Store total number of pages requested
-		-| awk -Winteractive '{print ++n}' |store:total_pages
+		sgsh-wrap awk -Winteractive '{print ++n}' &
+
 		# Window of bytes requested
-		-||store:bytes -b $WINDOW -u s
+		#-||store:bytes -b $WINDOW -u s
+		sgsh-wrap cat &
+
 		# Previous window of bytes requested
-		-||store:bytes_old -b $WINDOW_OLD -e $WINDOW -u s
-	|}
+		#-||store:bytes_old -b $WINDOW_OLD -e $WINDOW -u s
+		sgsh-wrap cat &
+	}} |
+	sgsh-tee &
+}} | sgsh-tee
+# Pseudo-gather
+#|
+#sgsh-wrap cat |
+#sgsh-tee -s |
+# Produce periodic reports
+#sgsh-wrap bash -c while :
+#do
+#	WINDOW_PAGES=$(cat bytes | wc -l)
+#	WINDOW_BYTES=$(cat bytes | sum )
+#	WINDOW_PAGES_OLD=$(cat bytes_old | wc -l)
+#	WINDOW_BYTES_OLD=$(cat bytes_old | sum)
+#	clear
+#	cat <<EOF
+#Total
+#-----
+#Pages: $(cat total_pages)
+#Bytes: $(cat total_bytes)
 
-# Gather and print the results
-|} gather |{
-	# Produce periodic reports
-	while :
-	do
-		WINDOW_PAGES=$(store:bytes -c | wc -l)
-		WINDOW_BYTES=$(store:bytes -c | sum )
-		WINDOW_PAGES_OLD=$(store:bytes_old -c | wc -l)
-		WINDOW_BYTES_OLD=$(store:bytes_old -c | sum)
-		clear
-		cat <<EOF
-Total
------
-Pages: $(store:total_pages -c)
-Bytes: $(store:total_bytes -c)
+#Over last ${WINDOW}s
+#--------------------
+#Pages: $WINDOW_PAGES
+#Bytes: $WINDOW_BYTES
+#kBytes/s: $(awk "END {OFMT=\"%.0f\"; print $WINDOW_BYTES / $WINDOW / 1000}" </dev/null )
+#Top page: $(cat page | /usr/bin/sort | uniq -c | /usr/bin/sort -rn | head -1)
 
-Over last ${WINDOW}s
---------------------
-Pages: $WINDOW_PAGES
-Bytes: $WINDOW_BYTES
-kBytes/s: $(awk "END {OFMT=\"%.0f\"; print $WINDOW_BYTES / $WINDOW / 1000}" </dev/null )
-Top page: $(store:page -c | sort | uniq -c | sort -rn | head -1)
-
-Change
-------
-Requests: $(change $WINDOW_PAGES_OLD $WINDOW_PAGES)
-Data bytes: $(change $WINDOW_BYTES_OLD $WINDOW_BYTES)
-EOF
-	sleep $UPDATE
-	done
-|}
+#Change
+#------
+#Requests: $(change $WINDOW_PAGES_OLD $WINDOW_PAGES)
+#Data bytes: $(change $WINDOW_BYTES_OLD $WINDOW_BYTES)
+#EOF
+#	sleep $UPDATE
+#done'

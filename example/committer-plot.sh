@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh -s /bin/bash
 #
 # SYNOPSIS Plot git committer activity over time
 # DESCRIPTION
@@ -24,48 +23,56 @@
 #  limitations under the License.
 #
 
+bash -c 'set $(
+  sgsh-tee |
+  {{
+    # Calculate number of committers
+    sgsh-wrap awk '"'"'{print $2}'"'"' |
+    sort -u |
+    sgsh-wrap wc -l &
+
+    # Calculate number of days in window
+    sgsh-wrap tail -1 |
+    sgsh-wrap awk '"'"'{print $1}'"'"' &
+
+    sgsh-wrap head -1 |
+    sgsh-wrap awk '"'"'{print $1}'"'"' &
+  }} |
+  sgsh-tee
+)'
+NCOMMITTERS="$1"
+LAST="$2"
+FIRST="$3"
+
+NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
 
 # Commit history in the form of ascending Unix timestamps, emails
-git log --pretty=tformat:'%at %ae' |
-awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
+sgsh-wrap git log --pretty=tformat:'%at %ae' |
+sgsh-wrap awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
-scatter | {{
-  set $(
-    scatter | {{
-      # Calculate number of committers
-      awk '{print $2}' | sort -u | wc -l
-
-      # Calculate number of days in window
-      tail -1 | awk '{print $1}'
-      head -1 | awk '{print $1}'
-    }} |
-    gather
-  )
-  NCOMMITTERS="$1"
-  LAST="$2"
-  FIRST="$3"
-
-  NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
-
+sgsh-tee |
+{{
   # Place committers left/right according to the number of their commits
-  awk '{print $2}' |
+  sgsh-wrap awk '{print $2}' |
   sort |
-  uniq -c |
+  sgsh-wrap uniq -c |
   sort -n |
-  awk 'BEGIN {l = 0; r = '$NCOMMITTERS';}
+  sgsh-wrap awk 'BEGIN {l = 0; r = '"'"'$NCOMMITTERS'"'"';}
        {print NR % 2 ? l++ : --r, $2}' |
   sort -k2 &
 
   sort -k2 &
 }} |
 # Join committer positions with commit time stamps
-sgsh-join -j 2 |
+join -j 2 - - |
 # Order by time
-sort -k 2n | {
+sort -k 2n |
+sgsh-tee |
+{{
   # Create portable bitmap
-  echo 'P1'
-  echo "$NCOMMITTERS $NDAYS"
-  perl -na -e '
+  sgsh-wrap echo 'P1' &
+  sgsh-wrap echo "$NCOMMITTERS $NDAYS" &
+  sgsh-wrap bash -c 'perl -na -e '"'"'
   BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
   sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
@@ -81,10 +88,11 @@ sort -k 2n | {
   $committers[$F[2]] = 1;
 
   END { out(); }
-  '
-} |
+  '"'"'' &
+}} |
+sgsh-tee |
 # Enlarge points into discs through morphological convolution
-pgmmorphconv -erode <(
+sgsh-wrap pgmmorphconv -erode <(
 cat <<EOF
 P1
 7 7
@@ -97,10 +105,11 @@ P1
 0 0 0 1 0 0 0
 EOF
 ) |
-scatter | {{
+sgsh-tee |
+{{
     # Full-scale image
-    pnmtopng >large.png &
+    sgsh-wrap pnmtopng & #>large.png &
     # A smaller image
-    pamscale -width 640 |
-    pnmtopng >small.png &
+    sgsh-wrap pamscale -width 640 |
+    sgsh-wrap pnmtopng & #>small.png &
 }}

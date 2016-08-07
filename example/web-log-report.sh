@@ -41,126 +41,158 @@ header()
 # Consistent sorting
 export LC_ALL=C
 
-scatter |{
+export -f toplist
+export -f header
+
+sgsh-tee |
+{{
 
 	# Number of transferred bytes
-	-|  awk '{s += $NF} END {print s}' |store:nXBytes
+	sgsh-wrap awk '{s += $NF} END {print s}' |store:nXBytes
 
 	# Number of log file bytes
-	-|  wc -c |store:nLogBytes
+	sgsh-wrap wc -c |store:nLogBytes
 
 	# Host names
-	-|  awk '{print $1}' |{
+	sgsh-wrap awk '{print $1}' |
+	sgsh-tee |
+	{{
 		# Number of accesses
-		-| wc -l |store:nAccess
+		sgsh-wrap wc -l |store:nAccess
 
 		# Sorted hosts
-		-| sort |{
+		sort |
+		sgsh-tee |
+		{{
 
 			# Unique hosts
-			-| uniq |{
+			sgsh-wrap uniq |
+			sgsh-tee |
+			{{
 				# Number of hosts
-				-| wc -l |store:nHosts
+				sgsh-wrap wc -l |store:nHosts
 
 				# Number of TLDs
-				-| awk -F. '$NF !~ /[0-9]/ {print $NF}' |
-					sort -u | wc -l |store:nTLD
-			|}
+				sgsh-wrap awk -F. '$NF !~ /[0-9]/ {print $NF}' |
+				sort -u |
+				wc -l |store:nTLD
+			}}
 
 			# Top 10 hosts
-			-| {
-				header 'Top 10 Hosts'
-				toplist 10
-			} |>/stream/top10HostsByN
-		|}
+			sgsh-tee |
+			{{
+				sgsh-wrap bash -c 'header "Top 10 Hosts"' &
+				sgsh-wrap bash -c 'toplist 10' &
+			}} |>/stream/top10HostsByN
+		}}
 
 		# Top 20 TLDs
-		-| {
-			header 'Top 20 Level Domain Accesses'
-			awk -F. '$NF !~ /^[0-9]/ {print $NF}' |
+		sgsh-tee |
+		{{
+			sgsh-wrap bash -c 'header "Top 20 Level Domain Accesses"' &
+			sgsh-wrap awk -F. '$NF !~ /^[0-9]/ {print $NF}' |
 			sort |
-			toplist 20
-		} |>/stream/top20TLD
+			sgsh-wrap bash -c 'toplist 20' &
+		}} |>/stream/top20TLD
 
 		# Domains
-		-| awk -F. 'BEGIN {OFS = "."}
-		            $NF !~ /^[0-9]/ {$1 = ""; print}' | sort |{
+		sgsh-wrap awk -F. 'BEGIN {OFS = "."}
+		            $NF !~ /^[0-9]/ {$1 = ""; print}' |
+		sort |
+		sgsh-tee |
+		{{
 			# Number of domains
-			-| uniq | wc -l |store:nDomain
+			sgsh-wrap uniq |
+			sgsh-wrap wc -l |store:nDomain
 
 			# Top 10 domains
-			-| {
-				header 'Top 10 Domains'
-				toplist 10
-			} |>/stream/top10Domain
-		|}
-	|}
+			sgsh-tee |
+			{{
+				sgsh-wrap bash -c 'header "Top 10 Domains"'
+				sgsh-wrap bash -c 'toplist 10'
+			}} |>/stream/top10Domain
+		}}
+	}}
 
 	# Hosts by volume
-	-| {
-		header 'Top 10 Hosts by Transfer'
-		awk '    {bytes[$1] += $NF}
+	sgsh-tee |
+	{{
+		sgsh-wrap bash -c 'header "Top 10 Hosts by Transfer"' &
+		sgsh-wrap awk '    {bytes[$1] += $NF}
 		END {for (h in bytes) print bytes[h], h}' |
 		sort -rn |
-		head -10
-	} |>/stream/top10HostsByVol
+		sgsh-wrap head -10 &
+	}} |>/stream/top10HostsByVol
 
 	# Sorted page name requests
-	-| awk '{print $7}' | sort |{
+	sgsh-wrap awk '{print $7}' |
+	sort |
+	sgsh-tee |
+	{{
 
 		# Top 20 area requests (input is already sorted)
-		-| {
-			header 'Top 20 Area Requests'
-			awk -F/ '{print $2}' |
-			toplist 20
-		} |>/stream/top20Area
+		sgsh-tee |
+		{{
+			sgsh-wrap bash -c 'header "Top 20 Area Requests"' &
+			sgsh-wrap awk -F/ '{print $2}' |
+			sgsh-wrap bash -c 'toplist 20' &
+		}} |>/stream/top20Area
 
 		# Number of different pages
-		-| uniq | wc -l |store:nPages
+		sgsh-wrap uniq |
+		sgsh-wrap wc -l |store:nPages
 
 		# Top 20 requests
-		-| {
-			header 'Top 20 Requests'
-			toplist 20
-		} |>/stream/top20Request
-	|}
+		sgsh-tee |
+		{{
+			sgsh-wrap bash -c 'header "Top 20 Requests"' &
+			sgsh-wrap bash -c 'toplist 20'
+		}} |>/stream/top20Request
+	}}
 
 	# Access time: dd/mmm/yyyy:hh:mm:ss
-	-| awk '{print substr($4, 2)}' |{
+	sgsh-wrap awk '{print substr($4, 2)}' |
+	sgsh-tee |
+	{{
 
 		# Just dates
-		-| awk -F: '{print $1}' |{
+		sgsh-wrap awk -F: '{print $1}' |
+		sgsh-tee |
+		{{
 
 			# Number of days
-			-| uniq | wc -l |store:nDays
+			sgsh-wrap uniq |
+			wc -l |store:nDays
 
-			-| {
-				header 'Accesses by Date'
-				uniq -c
-			} |>/stream/accessByDate
+			sgsh-tee |
+			{{
+				sgsh-wrap bash -c 'header "Accesses by Date"' &
+				sgsh-wrap uniq -c &
+			}} |>/stream/accessByDate
 
 			# Accesses by day of week
-			-| {
-				header 'Accesses by Day of Week'
-				sed 's|/|-|g' |
-				(date -f - +%a 2>/dev/null || gdate -f - +%a) |
+			| sgsh-tee |
+			{{
+				sgsh-wrap bash -c 'header "Accesses by Day of Week"' &
+				sgsh-wrap sed 's|/|-|g' |
+				sgsh-wrap bash -c '(date -f - +%a 2>/dev/null || gdate -f - +%a)' |
 				sort |
-				uniq -c |
+				sgsh-wrap uniq -c |
 				sort -rn
-			} |>/stream/accessByDoW
-		|}
+			}} |>/stream/accessByDoW
+		}}
 
 		# Hour
-		-| {
-			header 'Accesses by Local Hour'
-			awk -F: '{print $2}' |
+		sgsh-tee |
+		{{
+			sgsh-wrap 'header "Accesses by Local Hour"' &
+			sgsh-wrap awk -F: '{print $2}' |
 			sort |
-			uniq -c
-		} |>/stream/accessByHour
-	|}
-
-	.|
-		cat <<EOF
+			sgsh-wrap uniq -c
+		}} |>/stream/accessByHour
+	}} |
+	sgsh-tee |
+	sgsh-wrap cat <<EOF
 			WWW server statistics
 			=====================
 
