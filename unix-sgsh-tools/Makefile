@@ -287,6 +287,12 @@ test-bash: test-clean
 	|| echo 'commit-stats.sh $F'
 	
 	# ditto
+	$(BIN)/bash --sgsh $(XDIR)/spell-highlight.sh Readme.md \
+		>$(PSDIR)/spell-highlight.outb 2>/dev/null \
+	&& echo 'spell-highlight.sh $S' \
+	|| echo 'spell-highlight.sh $F'
+	
+	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/duplicate-files.sh \
 		>$(PSDIR)/duplicate-files.outb 2>/dev/null \
 	&& echo 'duplicate-files.sh $S' \
@@ -299,18 +305,17 @@ test-bash: test-clean
 	|| echo 'word-properties.sh $F'
 	
 	# ditto
-	$(BIN)/bash --sgsh $(XDIR)/text-properties.sh Readme.md \
-		>$(PSDIR)/text-properties.outb 2>/dev/null \
-	&& echo 'text-properties.sh $S' \
-	|| echo 'text-properties.sh $F'
-	
-	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/map-hierarchy.sh tar tar-p100 tarp \
 		>$(PSDIR)/map-hierarchy.outb 2>/dev/null \
 	&& echo 'map-hierarchy.sh $S' \
 	|| echo 'map-hierarchy.sh $F'
 	
-
+	# ditto
+	$(BIN)/bash --sgsh $(XDIR)/text-properties.sh Readme.md \
+		>$(PSDIR)/text-properties.outb 2>/dev/null \
+	&& echo 'text-properties.sh $S' \
+	|| echo 'text-properties.sh $F'
+	
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
 	

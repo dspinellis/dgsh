@@ -2,10 +2,10 @@
 #
 # SYNOPSIS Highlight misspelled words
 # DESCRIPTION
-# Highlight the words that are misspelled in the command's standard
-# input.
-# Demonstrates stream buffering, the avoidance of pass-through
-# constructs to avoid deadlocks, and the use of named streams.
+# Highlight the words that are misspelled in the command's first
+# argument.
+# Demonstrates stream processing with multipipes and
+# the avoidance of pass-through constructs to avoid deadlocks.
 #
 #  Copyright 2013 Diomidis Spinellis
 #
@@ -25,16 +25,19 @@
 export LC_ALL=C
 
 # Ensure dictionary is sorted consistently with our settings
-scatter | {{
+{{
+	{{
+		sgsh-wrap cat $1 |
+		# Find errors
+		sgsh-wrap tr -cs A-Za-z \\n |
+		sgsh-wrap tr A-Z a-z |
+		sort -u &
 
-  # Find errors
-  tr -cs A-Za-z \\n |
-  tr A-Z a-z |
-  sort -u |
-  comm -13 <(sort /usr/share/dict/words) &
+		sort /usr/share/dict/words &
+	}} |
+	comm -13 - - &
 
-  # Pass through text
-  cat
-
+	# Pass through text
+	sgsh-wrap cat $1 &
 }} |
-sgsh-fgrep -f - -i --color -w -C 2
+grep -F -f - -i --color -w -C 2
