@@ -69,7 +69,8 @@ sgsh-wrap awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
-sgsh-tee | {{
+sgsh-tee |
+{{
   # Commands to copy
   sgsh-wrap awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
   sgsh-wrap awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &

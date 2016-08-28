@@ -32,13 +32,14 @@ sgsh-wrap sed 's/^MD5(//;s/)= / /' |
 # Sort by MD5 sum
 sort -k2 |
 
-sgsh-tee | {{
+sgsh-tee |
+{{
 
 	# Print an MD5 sum for each file that appears more than once
 	sgsh-wrap awk '{print $2}' | sgsh-wrap uniq -d &
 
 	# Promote the stream to gather it
-	pecho &
+	sgsh-wrap cat &
 }} |
 # Join the repeated MD5 sums with the corresponding file names
 # Join expects two inputs, second will come from scatter

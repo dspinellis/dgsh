@@ -4,7 +4,12 @@
 # Report file type, length, and compression performance for
 # data received from the standard input.  The data never touches the
 # disk.
-# Demonstrates the use of stores.
+# Demonstrates the use of an output multipipe to source many commands
+# from one followed by an input multipipe to sink to one command
+# the output of many and the use of sgsh-tee that is used both to
+# propagate the same input to many commands and collect output from
+# many commands orderly in a way that is transparent to users.
+#
 #
 #  Copyright 2012-2013 Diomidis Spinellis
 #
@@ -21,8 +26,8 @@
 #  limitations under the License.
 #
 
-sgsh-wrap cat $1 |
-sgsh-tee | {{
+sgsh-tee |
+{{
 	sgsh-wrap echo -n 'File type:' &
 	sgsh-wrap file - &
 
@@ -37,4 +42,5 @@ sgsh-tee | {{
 
 	sgsh-wrap echo -n 'gzip:' &
 	sgsh-wrap gzip -c | sgsh-wrap wc -c &
-}} | sgsh-tee
+}} |
+sgsh-tee

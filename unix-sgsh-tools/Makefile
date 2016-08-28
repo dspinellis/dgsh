@@ -34,15 +34,17 @@ get-submodules:
 		$(TD)/sed \
 		$(TD)/tar
 
+# TODO: add bash
 configure:
 	cd coreutils && ./bootstrap && ./configure --prefix=`pwd`/..
 	cd diffutils && ./bootstrap && ./configure --prefix=`pwd`/..
-	cd gawk && ./bootstrap.sh && ./configure --prefix=`pwd`/..
+	#cd gawk && ./bootstrap.sh && ./configure --prefix=`pwd`/..
 	cd grep && ./bootstrap && ./configure --prefix=`pwd`/..
 	cd parallel && ./configure --prefix=`pwd`/..
 	cd sed && ./bootstrap && ./configure --prefix=`pwd`/..
 	cd tar && ./bootstrap && ./configure --prefix=`pwd`/..
 
+# TODO: add bash
 make:
 	cd coreutils && make
 	cd diffutils && make
@@ -54,6 +56,7 @@ make:
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 
+# TODO: add bash
 install:
 	cd coreutils && make install
 	cd diffutils && make install
@@ -275,7 +278,7 @@ test-bash: test-clean
 	|| echo 'dir.sh $F'
 	
 	# ditto
-	$(BIN)/bash --sgsh $(XDIR)/compress-compare.sh Readme.md \
+	cat Readme.md | $(BIN)/bash --sgsh $(XDIR)/compress-compare.sh \
 		>$(PSDIR)/compress-compare.outb 2>/dev/null \
 	&& echo 'compress-compare.sh $S' \
 	|| echo 'compress-compare.sh $F'
@@ -287,16 +290,16 @@ test-bash: test-clean
 	|| echo 'commit-stats.sh $F'
 	
 	# ditto
-	$(BIN)/bash --sgsh $(XDIR)/spell-highlight.sh Readme.md \
-		>$(PSDIR)/spell-highlight.outb 2>/dev/null \
-	&& echo 'spell-highlight.sh $S' \
-	|| echo 'spell-highlight.sh $F'
-	
-	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/duplicate-files.sh \
 		>$(PSDIR)/duplicate-files.outb 2>/dev/null \
 	&& echo 'duplicate-files.sh $S' \
 	|| echo 'duplicate-files.sh $F'
+	
+	# ditto
+	cat Readme.md | $(BIN)/bash --sgsh $(XDIR)/spell-highlight.sh \
+		>$(PSDIR)/spell-highlight.outb 2>/dev/null \
+	&& echo 'spell-highlight.sh $S' \
+	|| echo 'spell-highlight.sh $F'
 	
 	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/word-properties.sh Readme.md \

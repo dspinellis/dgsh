@@ -284,7 +284,12 @@ satisfy_io_constraints(int *free_instances,
 			weight = this_channel_constraint / n_edges;
 			modulo = this_channel_constraint % n_edges;
 		}
-	else			/* Flexible constraint */
+	/* Edges that have no place in actual execution */
+	else if (this_channel_constraint == 0) {
+			*free_instances = 0;
+			weight = 0;
+			modulo = 0;
+	} else	/* Flexible constraint */
 		*free_instances = -1;
 
 	/* Aggregate the constraints for the node's channel. */
@@ -534,7 +539,13 @@ cross_match_io_constraints(int *free_instances,
 		struct sgsh_edge *e = edges[i];
 		int *from = &e->from_instances;
 		int *to = &e->to_instances;
-		if (*from == -1 || *to == -1) {
+		/* Edges that have no place in actual execution */
+		if (*from == 0 || *to == 0) {
+			e->instances = 0;
+			*from = 0;
+			*to = 0;
+			(*edges_matched)++;
+		} else if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 			if (*from == -1 && *to == -1)
 				e->instances = 5;
@@ -772,6 +783,7 @@ static enum op_result
 solve_sgsh_graph(void)
 {
 	enum op_result exit_state = OP_SUCCESS;
+	int retries = 0;
 
 	/**
 	 * The initial layout of the solution plays an important
@@ -793,9 +805,15 @@ solve_sgsh_graph(void)
 
 	/* Optimise solution using flexible constraints */
 	exit_state = OP_RETRY;
-	while (exit_state == OP_RETRY)
-		if ((exit_state = cross_match_constraints()) == OP_ERROR)
+
+	while (exit_state == OP_RETRY) {
+		if ((exit_state = cross_match_constraints()) == OP_ERROR ||
+				retries > 10) {
+			exit_state = OP_ERROR;
 			goto exit;
+		}
+		retries++;
+	}
 
 
 	/**
@@ -947,6 +965,24 @@ write_output_fds(int output_socket, int *output_fds)
 	return re;
 }
 
+static enum op_result
+write_concs(int write_fd)
+{
+	int wsize, buf_size = getpagesize();
+	char buf[buf_size];
+	int conc_size = sizeof(struct sgsh_conc) * chosen_mb->n_concs;
+
+	if (!chosen_mb->conc_array)
+		return OP_SUCCESS;
+
+	memcpy(buf, chosen_mb->conc_array, conc_size);
+	wsize = write(write_fd, buf, conc_size);
+	if (wsize == -1)
+		return OP_ERROR;
+	DPRINTF("%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
+	return OP_SUCCESS;
+}
+
 /* Transmit sgsh negotiation graph solution to the next tool on the graph. */
 static enum op_result
 write_graph_solution(int write_fd)
@@ -1020,6 +1056,8 @@ set_dispatcher(void)
 		chosen_mb->preceding_process_pid = self_node.pid;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin_fd_direction = self_node_io_side.fd_direction;
+	chosen_mb->is_origin_conc = false;
+	chosen_mb->conc_pid = -1;
 	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin_index,
 	(chosen_mb->origin_fd_direction == 0) ? "input" : "output");
 }
@@ -1078,6 +1116,8 @@ write_message_block(int write_fd)
 	} else if (chosen_mb->state == PS_RUN) {
 		/* Transmit solution. */
 		if (write_graph_solution(write_fd) == OP_ERROR)
+			return OP_ERROR;
+		if (write_concs(write_fd) == OP_ERROR)
 			return OP_ERROR;
 	}
 
@@ -1415,6 +1455,18 @@ check_read(int bytes_read, int buf_size, int expected_read_size) {
 	return OP_SUCCESS;
 }
 
+static enum op_result
+alloc_copy_concs(struct sgsh_negotiation *mb, char *buf, int bytes_read,
+		int buf_size)
+{
+	int expected_read_size = sizeof(struct sgsh_conc) * mb->n_concs;
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR)
+		return OP_ERROR;
+	mb->conc_array = (struct sgsh_conc *)malloc(bytes_read);
+	memcpy(mb->conc_array, buf, bytes_read);
+	return OP_SUCCESS;
+}
+
 /* Allocate memory for graph solution and copy from buffer. */
 static enum op_result
 alloc_copy_graph_solution(struct sgsh_negotiation *mb, char *buf, int bytes_read,
@@ -1567,6 +1619,7 @@ get_origin_pid(struct sgsh_negotiation *mb)
 
 /* Return the number of input file descriptors
  * expected by process with pid PID.
+ * It is applicable to concentrators too.
  */
 int
 get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid)
@@ -1583,12 +1636,18 @@ get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid)
 			return expected_fds_n;
 		}
 	}
+	/* pid may belong to another conc */
+	for (i = 0; i < mb->n_concs; i++) {
+		if (mb->conc_array[i].pid == pid)
+			return mb->conc_array[i].input_fds;
+	}
 	/* Invalid pid */
 	return -1;
 }
 
 /* Return the number of output file descriptors
  * provided by process with pid PID.
+ * It is applicable to concentrators too.
  */
 int
 get_provided_fds_n(struct sgsh_negotiation *mb, pid_t pid)
@@ -1599,12 +1658,17 @@ get_provided_fds_n(struct sgsh_negotiation *mb, pid_t pid)
 		if (mb->node_array[i].pid == pid) {
 			struct sgsh_node_connections *graph_solution =
 				mb->graph_solution;
-			for (j = 0; j < graph_solution[i].n_edges_outgoing; j++)
+			for (j = 0; j < graph_solution[i].n_edges_outgoing; j++) {
 				provided_fds_n +=
 					graph_solution[i].edges_outgoing[j].instances;
+			}
 			return provided_fds_n;
 		}
 	}
+	/* pid may belong to another conc */
+	for (i = 0; i < mb->n_concs; i++)
+		if (mb->conc_array[i].pid == pid)
+			return mb->conc_array[i].output_fds;
 	/* Invalid pid */
 	return -1;
 }
@@ -1718,6 +1782,22 @@ read_input_fds(int input_socket, int *input_fds)
 	return re;
 }
 
+static enum op_result
+read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
+{
+	int bytes_read, buf_size = getpagesize();	/* Page-wide buffer */
+	char buf[buf_size];
+	enum op_result error_code = OP_SUCCESS;
+
+	if (!fresh_mb->conc_array)
+		return error_code;
+
+	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
+			!= OP_SUCCESS)
+		return error_code;
+	return alloc_copy_concs(fresh_mb, buf, bytes_read, buf_size);
+}
+
 /* Try read solution to the sgsh negotiation graph. */
 static enum op_result
 read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
@@ -1733,8 +1813,8 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
 			!= OP_SUCCESS)
 		return error_code;
-	if (alloc_copy_graph_solution(fresh_mb, buf, bytes_read, buf_size) ==
-									OP_ERROR)
+	if ((error_code = alloc_copy_graph_solution(fresh_mb, buf, bytes_read,
+					buf_size)) == OP_ERROR)
 		return error_code;
 
 	struct sgsh_node_connections *graph_solution =
@@ -1838,6 +1918,8 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
                  */
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
+		if (read_concs(read_fd, *fresh_mb) == OP_ERROR)
+			return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from node %d sent from file descriptor: %s.\n", __func__, (*fresh_mb)->origin_index, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
@@ -1865,7 +1947,11 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->serial_no = 0;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
+	chosen_mb->is_origin_conc = false;
+	chosen_mb->conc_pid = -1;
 	chosen_mb->graph_solution = NULL;
+	chosen_mb->conc_array = NULL;
+	chosen_mb->n_concs = 0;
 	DPRINTF("Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
 	return OP_SUCCESS;

@@ -35,9 +35,10 @@ sgsh-wrap cat $1 |
 sgsh-wrap tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
-sgsh-tee | {{
+sgsh-tee |
+{{
 	# Pass through the original words
-	pecho &
+	sgsh-wrap cat &
 
 	# List two-letter palindromes
 	sgsh-wrap sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t

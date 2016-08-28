@@ -10,7 +10,9 @@
 #include <sys/socket.h> /* socket */
 #include <sys/un.h> /* sockaddr_un */
 #include "../src/sgsh-negotiate.h"
-#include "../src/negotiate.c" /* struct definitions, static structures */
+#include "../src/negotiate.c"	/* struct definitions, static structures */
+#include "../src/sgsh-conc.c"			/* pi */
+//#include "../src/sgsh-internal-api.h"		/* chosen_mb */
 
 
 struct sgsh_negotiation *fresh_mb;
@@ -24,6 +26,19 @@ int *args;
  * sequence of actions.
  */
 int exit_state = 0;
+
+void
+setup_concs(struct sgsh_negotiation *mb)
+{
+	mb->n_concs = 2;
+	mb->conc_array = (struct sgsh_conc *)malloc(sizeof(struct sgsh_conc) * mb->n_concs);
+	mb->conc_array[0].pid = 2000;
+	mb->conc_array[0].input_fds = 2;
+	mb->conc_array[0].output_fds = 2;
+	mb->conc_array[1].pid = 2001;
+	mb->conc_array[1].input_fds = 3;
+	mb->conc_array[1].output_fds = 3;
+}
 
 
 void
@@ -183,6 +198,8 @@ setup_chosen_mb(void)
 	chosen_mb->serial_no = 0;
 	chosen_mb->preceding_process_pid = -1;
 	chosen_mb->origin_fd_direction = STDOUT_FILENO;
+	chosen_mb->n_concs = 0;
+	chosen_mb->conc_array = NULL;
 }
 
 /* Identical to chosen_mb except for the initiator field. */
@@ -275,6 +292,8 @@ setup_mb(struct sgsh_negotiation **mb)
 	temp_mb->serial_no = 0;
 	temp_mb->origin_index = 2;
 	temp_mb->origin_fd_direction = STDOUT_FILENO;
+	temp_mb->n_concs = 0;
+	temp_mb->conc_array = NULL;
 
 	*mb = temp_mb;
 }
@@ -444,6 +463,12 @@ setup_test_alloc_copy_graph_solution(void)
 }
 
 void
+setup_test_alloc_copy_concs(void)
+{
+	setup_mb(&fresh_mb);
+}
+
+void
 setup_test_alloc_copy_edges(void)
 {
 	setup_mb(&fresh_mb);
@@ -506,10 +531,27 @@ setup_test_read_graph_solution(void)
 }
 
 void
+setup_test_read_concs(void)
+{
+	setup_mb(&fresh_mb);
+	setup_chosen_mb();
+	setup_concs(chosen_mb);
+	setup_self_node_io_side();
+}
+
+void
 setup_test_write_graph_solution(void)
 {
 	setup_chosen_mb();
 	setup_graph_solution();
+	setup_self_node_io_side();
+}
+
+void
+setup_test_write_concs(void)
+{
+	setup_chosen_mb();
+	setup_concs(chosen_mb);
 	setup_self_node_io_side();
 }
 
@@ -621,6 +663,44 @@ setup_test_establish_io_connections(void)
 	setup_self_node();
 }
 
+void setup_pi(void)
+{
+	pi = (struct portinfo *)calloc(5, sizeof(struct portinfo));
+	pi[0].pid = 101;
+	pi[0].seen = false;
+	pi[0].written = true;
+	pi[1].pid = 100;
+	pi[1].seen = true;
+	pi[1].written = false;
+	pi[3].pid = 103;
+	pi[3].seen = true;
+	pi[3].written = true;
+}
+
+void
+setup_test_is_ready(void)
+{
+	setup_pi();
+	setup_chosen_mb();
+}
+
+void
+setup_test_set_io(void)
+{
+	setup_pi();
+	setup_chosen_mb();
+	setup_graph_solution();
+	setup_concs(chosen_mb);
+}
+
+void
+setup_test_set_io_channels(void)
+{
+	setup_pi();
+	setup_chosen_mb();
+	setup_graph_solution();
+}
+
 void
 retire_pointers_to_edges(void)
 {
@@ -640,6 +720,11 @@ retire_graph_solution(struct sgsh_node_connections *graph_solution,
                 free(graph_solution[i].edges_outgoing);
         }
         free(graph_solution);
+}
+
+void retire_concs(struct sgsh_negotiation *mb)
+{
+	free(mb->conc_array);
 }
 
 void
@@ -768,6 +853,13 @@ retire_test_alloc_copy_graph_solution(void)
 }
 
 void
+retire_test_alloc_copy_concs(void)
+{
+	retire_concs(fresh_mb);
+	retire_mb(fresh_mb);
+}
+
+void
 retire_test_alloc_copy_edges(void)
 {
 	retire_mb(fresh_mb);
@@ -838,10 +930,25 @@ retire_test_read_graph_solution(void)
 }
 
 void
+retire_test_read_concs(void)
+{
+	retire_concs(chosen_mb);
+	retire_chosen_mb();
+	retire_mb(fresh_mb);
+}
+
+void
 retire_test_write_graph_solution(void)
 {
 	retire_graph_solution(chosen_mb->graph_solution,
 			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+}
+
+void
+retire_test_write_concs(void)
+{
+	retire_concs(chosen_mb);
 	retire_chosen_mb();
 }
 
@@ -944,6 +1051,39 @@ retire_test_establish_io_connections(void)
 	/* See setup_test_establish_io_connections() */
 	retire_chosen_mb();
 	retire_pipe_fds();
+}
+
+void
+retire_pi(void)
+{
+	free(pi);
+}
+
+void
+retire_test_is_ready(void)
+{
+	retire_pi();
+	retire_chosen_mb();
+}
+
+void
+retire_test_set_io(void)
+{
+	retire_concs(chosen_mb);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+	retire_pi();
+}
+
+void
+retire_test_set_io_channels(void)
+{
+	retire_concs(chosen_mb);
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
+	retire_chosen_mb();
+	retire_pi();
 }
 
 START_TEST(test_solve_sgsh_graph)
@@ -1495,6 +1635,47 @@ START_TEST(test_alloc_node_connections)
 }
 END_TEST
 
+START_TEST(test_write_concs)
+{
+	int fd[2];
+	int buf_size = getpagesize();
+	int pid;
+	int i;
+        int n_concs = chosen_mb->n_concs;
+        int concs_size = sizeof(struct sgsh_conc) * n_concs;
+	struct sgsh_conc *conc_array = 
+		(struct sgsh_conc *)malloc(concs_size);
+
+	if (pipe(fd) == -1) {
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("%s()...", __func__);
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+
+	pid = fork();
+	if (pid <= 0) {
+		int rsize = -1;
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+
+		close(fd[1]);
+		DPRINTF("Child reads concs of size %d.",
+					concs_size);
+		rsize = read(fd[0], conc_array, concs_size);
+		if (rsize == -1) {
+			DPRINTF("Write concs failed.");
+			exit(1);
+		}
+
+		DPRINTF("Child: closes fd %d.", fd[0]);
+		close(fd[0]);
+		DPRINTF("Child with pid %d exits.", (int)getpid());
+	} else {
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(write_concs(fd[1]), OP_SUCCESS);
+	}
+}
+END_TEST
 
 /* Incomplete? */
 START_TEST(test_write_graph_solution)
@@ -1793,6 +1974,46 @@ START_TEST(test_read_graph_solution)
 	} else {
 		DPRINTF("Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_graph_solution(fd[0],
+					fresh_mb), OP_SUCCESS);
+	}
+}
+END_TEST
+
+START_TEST(test_read_concs)
+{
+	int fd[2];
+	int pid;
+	int i;
+        int n_concs = fresh_mb->n_concs;
+	int buf_size = getpagesize();
+        int concs_size = sizeof(struct sgsh_conc) * n_concs;
+	DPRINTF("%s()", __func__);
+
+	if(pipe(fd) == -1){
+		perror("pipe open failed");
+		exit(1);
+	}
+	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+
+	pid = fork();
+	if (pid <= 0) {
+		int wsize = -1;
+		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		setup_graph_solution();
+		struct sgsh_conc *concs =
+			chosen_mb->conc_array;
+
+		close(fd[0]);
+		DPRINTF("Child writes concs of size %d.",
+					concs_size);
+		wsize = write(fd[1], concs, concs_size);
+		if (wsize == -1) {
+			DPRINTF("Write concs failed.");
+			exit(1);
+		}
+	} else {
+		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		ck_assert_int_eq(read_concs(fd[0],
 					fresh_mb), OP_SUCCESS);
 	}
 }
@@ -2097,6 +2318,23 @@ START_TEST(test_alloc_copy_mb)
 
 	ck_assert_int_eq(alloc_copy_mb(&mb, buf, size, 512), OP_SUCCESS);
 	free(mb);
+}
+END_TEST
+
+START_TEST(test_alloc_copy_concs)
+{
+	const int n_concs = fresh_mb->n_concs = 2;
+	const int size = sizeof(struct sgsh_conc) * n_concs;
+	char buf[512];
+	ck_assert_int_eq(alloc_copy_concs(fresh_mb, buf, 86, 512),
+			OP_ERROR);
+
+	char buf2[8];
+	ck_assert_int_eq(alloc_copy_concs(fresh_mb, buf2, size, 8),
+			OP_ERROR);
+
+	ck_assert_int_eq(alloc_copy_concs(fresh_mb, buf, size, 512),
+			OP_SUCCESS);
 }
 END_TEST
 
@@ -2738,6 +2976,144 @@ START_TEST(test_sgsh_negotiate)
 }
 END_TEST
 
+/* Suite conc */
+START_TEST(test_is_ready)
+{
+	chosen_mb->state = PS_RUN;
+	chosen_mb->preceding_process_pid = 101;
+	ck_assert_int_eq(is_ready(3, chosen_mb), true);
+
+	ck_assert_int_eq(is_ready(1, chosen_mb), false);
+
+	chosen_mb->preceding_process_pid = 101;
+	ck_assert_int_eq(is_ready(0, chosen_mb), true);
+	ck_assert_int_eq(pi[0].seen, true);
+	ck_assert_int_eq(pi[1].written, true);
+	ck_assert_int_eq(pi[1].run_ready, true);
+}
+END_TEST
+
+START_TEST (test_next_fd)
+{
+	multiple_inputs = true;
+	nfd = 5;
+	bool ro = false;		/* restore origin */
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 4);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(4, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 0);
+	ck_assert_int_eq(ro, true);
+
+	pass_origin = true;
+	ro = false;		/* restore origin */
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 0);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(4, &ro), 4);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	pass_origin = false;
+
+	multiple_inputs = false;
+	ro = false;
+	ck_assert_int_eq(next_fd(0, &ro), 1);
+	ck_assert_int_eq(ro, false);
+	ck_assert_int_eq(next_fd(1, &ro), 3);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(3, &ro), 4);
+	ck_assert_int_eq(ro, true);
+	ro = false;
+	ck_assert_int_eq(next_fd(4, &ro), 0);
+	ck_assert_int_eq(ro, false);
+}
+END_TEST
+
+START_TEST(test_set_io)
+{
+	struct sgsh_conc *c = (struct sgsh_conc *)malloc(sizeof(struct sgsh_conc));
+	pid = 2000;	/* static in sgsh-conc.c */
+	nfd = 4;	/* ditto */
+	multiple_inputs = false;	/* ditto */
+	c->pid = 2000;
+	c->input_fds = -1;
+	c->output_fds = -1;
+	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 1;
+	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 1;
+	chosen_mb->graph_solution[0].edges_incoming[0].instances = 1;
+	chosen_mb->graph_solution[3].edges_incoming[0].instances = 1;
+	ck_assert_int_eq(set_io(chosen_mb, c), 0);
+	ck_assert_int_eq(c->pid, 2000);
+	ck_assert_int_eq(c->input_fds, 2);
+	ck_assert_int_eq(c->output_fds, 2);
+
+	pid = 2001;
+	nfd = 5;
+	c->pid = 2001;
+	c->input_fds = -1;
+	c->output_fds = -1;
+	pi[4].pid = 2000;	/* conc to conc */
+	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 2;
+	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 2;
+	ck_assert_int_eq(set_io(chosen_mb, c), 0);
+	ck_assert_int_eq(c->pid, 2001);
+	ck_assert_int_eq(c->input_fds, 4);
+	ck_assert_int_eq(c->output_fds, 4);
+
+	c->pid = 2001;
+	c->input_fds = -1;
+	c->output_fds = -1;
+	pi[4].pid = 2000;	/* conc to conc */
+	chosen_mb->conc_array[1].input_fds = -1;
+	ck_assert_int_eq(set_io(chosen_mb, c), 0);
+	ck_assert_int_eq(c->pid, 2001);
+	ck_assert_int_eq(c->input_fds, 4);
+	ck_assert_int_eq(c->output_fds, 4);
+
+	free(c);
+}
+END_TEST
+
+START_TEST(test_set_io_channels)
+{
+	pid = 2000;	/* static in sgsh-conc.c */
+	nfd = 4;	/* ditto */
+	multiple_inputs = false;	/* ditto */
+	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 1;
+	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 1;
+	chosen_mb->graph_solution[0].edges_incoming[0].instances = 1;
+	chosen_mb->graph_solution[3].edges_incoming[0].instances = 1;
+	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
+	ck_assert_int_eq(chosen_mb->n_concs, 1);
+	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 2);
+
+	/* Exists with channels set: keep as it is */
+	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
+	ck_assert_int_eq(chosen_mb->n_concs, 1);
+	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 2);
+
+	/* Not exists: set channels (same pi, same channels as before */
+	pid = 2001;	/* static in sgsh-conc.c */
+	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
+	ck_assert_int_eq(chosen_mb->n_concs, 2);
+	DPRINTF("%d", chosen_mb->conc_array[0].pid);
+	ck_assert_int_eq(chosen_mb->conc_array[1].pid, 2001);
+	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, 2);
+}
+END_TEST
+
 Suite *
 suite_connect(void)
 {
@@ -2814,6 +3190,18 @@ Suite *
 suite_solve(void)
 {
 	Suite *s = suite_create("Solve");
+
+	TCase *tc_wc = tcase_create("write concs");
+	tcase_add_checked_fixture(tc_wc, setup_test_write_concs,
+					  retire_test_write_concs);
+	tcase_add_test(tc_wc, test_write_concs);
+	suite_add_tcase(s, tc_wc);
+
+	TCase *tc_rc = tcase_create("read concs");
+	tcase_add_checked_fixture(tc_rc, setup_test_read_concs,
+					  retire_test_read_concs);
+	tcase_add_test(tc_rc, test_read_concs);
+	suite_add_tcase(s, tc_rc);
 
 	TCase *tc_rgs = tcase_create("read graph solution");
 	tcase_add_checked_fixture(tc_rgs, setup_test_read_graph_solution,
@@ -2950,6 +3338,12 @@ suite_broadcast(void)
 	tcase_add_test(tc_acg, test_alloc_copy_graph_solution);
 	suite_add_tcase(s, tc_acg);
 
+	TCase *tc_acc = tcase_create("alloc copy concs");
+	tcase_add_checked_fixture(tc_acc, setup_test_alloc_copy_concs,
+				retire_test_alloc_copy_concs);
+	tcase_add_test(tc_acc, test_alloc_copy_concs);
+	suite_add_tcase(s, tc_acc);
+
 	TCase *tc_cr = tcase_create("check read");
 	tcase_add_checked_fixture(tc_cr, NULL, NULL);
 	tcase_add_test(tc_cr, test_check_read);
@@ -3059,7 +3453,36 @@ suite_broadcast(void)
 	return s;
 }
 
-int run_suite(Suite *s) {
+Suite *
+suite_conc(void)
+{
+	Suite *s = suite_create("Concentrator");
+	TCase *tc_tn = tcase_create("test next_fd");
+	TCase *tc_ir = tcase_create("test is_ready");
+	TCase *tc_si = tcase_create("set io");
+	TCase *tc_sich = tcase_create("set io channels");
+
+	tcase_add_checked_fixture(tc_tn, NULL, NULL);
+	tcase_add_test(tc_tn, test_next_fd);
+	suite_add_tcase(s, tc_tn);
+	tcase_add_checked_fixture(tc_ir, setup_test_is_ready,
+			retire_test_is_ready);
+	tcase_add_test(tc_ir, test_is_ready);
+	suite_add_tcase(s, tc_ir);
+	tcase_add_checked_fixture(tc_si, setup_test_set_io,
+					  retire_test_set_io);
+	tcase_add_test(tc_si, test_set_io);
+	suite_add_tcase(s, tc_si);
+	tcase_add_checked_fixture(tc_sich, setup_test_set_io_channels,
+					  retire_test_set_io_channels);
+	tcase_add_test(tc_sich, test_set_io_channels);
+	suite_add_tcase(s, tc_sich);
+
+	return s;
+}
+
+int run_suite(Suite *s)
+{
 	int number_failed;
 	SRunner *sr = srunner_create(s);
 	srunner_run_all(sr, CK_VERBOSE);
@@ -3069,28 +3492,40 @@ int run_suite(Suite *s) {
 }
 
 int
-run_suite_connect(void) {
+run_suite_connect(void)
+{
 	Suite *s = suite_connect();
 	return run_suite(s);
 }
 
 int
-run_suite_solve(void) {
+run_suite_solve(void)
+{
 	Suite *s = suite_solve();
 	return run_suite(s);
 }
 
 int
-run_suite_broadcast(void) {
+run_suite_broadcast(void)
+{
 	Suite *s = suite_broadcast();
 	return run_suite(s);
 }
 
+int
+run_suite_conc(void)
+{
+	Suite *s = suite_conc();
+	return run_suite(s);
+}
+
 /* Output is not appropriate; only pass fail. */
-int main() {
-	int failed_neg, failed_sol, failed_con;
+int main()
+{
+	int failed_neg, failed_sol, failed_conn, failed_conc;
 	failed_neg = run_suite_broadcast();
 	failed_sol = run_suite_solve();
-	failed_con = run_suite_connect();
-	return (failed_neg && failed_sol && failed_con) ? EXIT_SUCCESS : EXIT_FAILURE;
+	failed_conn = run_suite_connect();
+	failed_conc = run_suite_conc();
+	return (failed_neg && failed_sol && failed_conn && failed_conc) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

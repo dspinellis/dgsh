@@ -16,6 +16,13 @@ struct node_io_side {
 				 */
 };
 
+/* Stores the number of a conc's IO fds */
+struct sgsh_conc {
+	pid_t pid;
+	int input_fds;
+	int output_fds;
+};
+
 /* The message block structure that provides the vehicle for negotiation. */
 struct sgsh_negotiation {
 	int version;			/* Protocol version. */
@@ -51,10 +58,22 @@ struct sgsh_negotiation {
 					 */
 	int origin_fd_direction;	/* The origin's input or output channel
 					 */
+	bool is_origin_conc;		/* True if origin is a concentrator */
+	pid_t conc_pid;			/* Concentrator pid, otherwise -1 */
 	struct sgsh_node_connections *graph_solution; /* The solution to the
 						       * I/O constraint problem
 						       * at hand.
 						       */
+	struct sgsh_conc *conc_array;	/* Array of concentrators facilitating
+					 * the negotiation. The need for this
+					 * array emerged in cases where a conc
+					 * is directly connected to another
+					 * conc. The array stores a conc's
+					 * inputs/outputs so that a conc can
+					 * retrieve another conc's
+					 * inputs/outputs.
+					 */
+	int n_concs;
 
 };
 

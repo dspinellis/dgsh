@@ -1,4 +1,3 @@
-#!/usr/bin/env sgsh
 #
 # SYNOPSIS Highlight misspelled words
 # DESCRIPTION
@@ -24,20 +23,19 @@
 
 export LC_ALL=C
 
-# Ensure dictionary is sorted consistently with our settings
+sgsh-tee |
 {{
 	{{
-		sgsh-wrap cat $1 |
 		# Find errors
 		sgsh-wrap tr -cs A-Za-z \\n |
 		sgsh-wrap tr A-Z a-z |
 		sort -u &
 
+		# Ensure dictionary is sorted consistently with our settings
 		sort /usr/share/dict/words &
 	}} |
 	comm -13 - - &
 
-	# Pass through text
-	sgsh-wrap cat $1 &
+	sgsh-wrap cat &
 }} |
 grep -F -f - -i --color -w -C 2

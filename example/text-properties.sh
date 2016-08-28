@@ -52,10 +52,12 @@ export -f ranked_frequency
 export -f ngram
 
 sgsh-wrap cat $1 |
-sgsh-tee | {{
+sgsh-tee |
+{{
 	# Split input one word per line
 	sgsh-wrap tr -cs a-zA-Z \\n |
-	sgsh-tee | {{
+	sgsh-tee |
+	{{
 		# Digram frequency
 		sgsh-wrap bash -c 'ngram 2 >digram.txt' &
 		# Trigram frequency

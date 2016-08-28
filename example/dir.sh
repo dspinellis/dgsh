@@ -23,7 +23,8 @@
 FREE=`sgsh-wrap df -h . | sgsh-wrap awk '!/Use%/{print $4}'`
 
 sgsh-wrap ls -n |
-sgsh-tee | {{
+sgsh-tee |
+{{
 	# Reorder fields in DIR-like way
 	sgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
 
@@ -41,4 +42,5 @@ sgsh-tee | {{
 
 	# Print label for number of dirs and calculate free bytes
 	sgsh-wrap echo " Dir(s) $FREE bytes free" &
-}} | sgsh-tee
+}} |
+sgsh-tee

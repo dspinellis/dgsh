@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h>		/* getpid() */
 #include <sys/select.h>
 
 #include "sgsh-negotiate.h"
@@ -36,6 +36,7 @@
 #include "sgsh.h"		/* DPRINTF */
 
 static const char *program_name;
+static pid_t pid;
 
 static void
 usage(void)
@@ -170,6 +171,116 @@ is_ready(int i, struct sgsh_negotiation *mb)
 	return false;
 }
 
+STATIC struct sgsh_conc *
+find_conc(struct sgsh_negotiation *mb, pid_t pid)
+{
+	int i;
+	struct sgsh_conc *ca = mb->conc_array;
+	for (i = 0; i < mb->n_concs; i++)
+		if (ca[i].pid == pid)
+			return &ca[i];
+	return NULL;
+}
+
+/**
+ * Retrieve from message block the current concentrator's input and
+ * output channels.
+ * This is required in cases where a concentrator is directly
+ * connected to another concentrator.
+ */
+STATIC int
+set_io(struct sgsh_negotiation *mb, struct sgsh_conc *c)
+{
+	bool ignore = false;
+	int i, n_to_read, n_to_write;
+
+	assert(c->pid == pid);
+	if (c->input_fds > 0 && c->output_fds > 0)
+		return 0;
+
+	c->input_fds = 0;
+	c->output_fds = 0;
+
+	if (multiple_inputs) {		// gather
+		for (i = STDIN_FILENO; i < nfd; i == STDIN_FILENO ? i = FREE_FILENO : i++) {
+			n_to_read = get_provided_fds_n(mb, pi[i].pid);
+			DPRINTF("%s(): fds to read for p[%d].pid %d: %d",
+				__func__, i, pi[i].pid, n_to_read);
+			if (n_to_read == -1) {
+				c->input_fds = -1;
+				break;
+			} else
+				c->input_fds += n_to_read;
+		}
+
+		c->output_fds = get_expected_fds_n(mb, pi[STDOUT_FILENO].pid);
+		/* If we know how many fds to read in the gather end, then
+		 * we have to write equal number of fds.
+		 * We have to make this estimation in cases of conc-to-conc
+		 * communication.
+		 */
+		if (c->input_fds > 0 && (c->output_fds == -1 ||
+					c->output_fds != c->input_fds))
+			c->output_fds = c->input_fds;
+		DPRINTF("%s(): fds to write: %d", __func__, c->output_fds);
+	} else {		// scatter
+		for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore)) {
+			n_to_write = get_expected_fds_n(mb, pi[i].pid);
+			DPRINTF("%s(): fds to write for p[%d].pid %d: %d",
+				__func__, i, pi[i].pid, n_to_write);
+			if (n_to_write == -1) {
+				c->output_fds = -1;
+				break;
+			} else
+				c->output_fds += n_to_write;
+		}
+
+		c->input_fds = get_provided_fds_n(mb, pi[STDIN_FILENO].pid);
+		/* If we know how many fds to write in the scatter end, then
+		 * we have to read equal number of fds.
+		 * We have to make this estimation in cases of conc-to-conc
+		 * communication.
+		 */
+		if (c->output_fds > 0 && (c->input_fds == -1 ||
+					c->input_fds != c->output_fds))
+			c->input_fds = c->output_fds;
+		DPRINTF("%s(): fds to read: %d", __func__, c->input_fds);
+	}
+	return 0;
+}
+
+/**
+ * Register current concentrator to message block's
+ * concentrator array
+ */
+STATIC int
+set_io_channels(struct sgsh_negotiation *mb)
+{
+	bool exists = false;
+	struct sgsh_conc *c;
+	if (!mb->conc_array) {
+		mb->conc_array = (struct sgsh_conc *)malloc(sizeof(struct sgsh_conc));
+		mb->n_concs = 1;
+	} else {
+		if (!(c = find_conc(mb, pid))) {
+			mb->n_concs++;
+			mb->conc_array = (struct sgsh_conc *)realloc(mb->conc_array,
+					sizeof(struct sgsh_conc) * mb->n_concs);
+		} else
+			exists = true;
+	}
+	if (!exists) {
+		int i = mb->n_concs - 1;
+		c = &mb->conc_array[i];
+		c->pid = pid;
+		c->input_fds = -1;
+		c->output_fds = -1;
+		DPRINTF("%s(): Added conc with pid: %d, now n_concs: %d",
+				__func__, c->pid, mb->n_concs);
+	}
+	return set_io(mb, c);
+}
+
 
 STATIC void
 print_state(int i, int var, int pcase)
@@ -228,6 +339,9 @@ pass_message_blocks(void)
 			if (pi[i].to_write && !pi[i].written) {
 				FD_SET(i, &writefds);
 				nfds = max(i + 1, nfds);
+				pi[i].to_write->is_origin_conc = true;
+				pi[i].to_write->conc_pid = pid;
+				DPRINTF("Origin: conc with pid %d", pid);
 				DPRINTF("fd i: %d set for writing", i);
 			}
 		}
@@ -279,7 +393,14 @@ pass_message_blocks(void)
 					ofd = rb->origin_fd_direction;
 				}
 
-				pi[i].pid = get_origin_pid(rb);
+				/* If conc talks to conc, set conc's pid
+				 * Required in order to allocate fds correctly
+				 * in the end
+				 */
+				if (rb->is_origin_conc)
+					pi[i].pid = rb->conc_pid;
+				else
+					pi[i].pid = get_origin_pid(rb);
 
 				/* If needed, re-set origin.
 				 * Don't move this block before get_origin_pid()
@@ -298,6 +419,8 @@ pass_message_blocks(void)
 				 */
 				if (rb->state == PS_NEGOTIATION)
 					continue;
+				/* Set a conc's required/provided IO in mb */
+				set_io_channels(pi[next].to_write);
 				if (rb->initiator_pid == pi[i].lowest_pid)
 					pi[i].seen = true;
 
@@ -336,16 +459,21 @@ pass_message_blocks(void)
 STATIC void
 scatter_input_fds(struct sgsh_negotiation *mb)
 {
-	int n_to_read = get_provided_fds_n(mb, pi[STDIN_FILENO].pid);
+	struct sgsh_conc *this_conc = find_conc(mb, pid);
+	if (!this_conc) {
+		printf("%s(): Concentrator with pid %d not registered",
+				__func__, pid);
+		exit(1);	// XXX
+	}
+	int n_to_read = this_conc->input_fds;
 	int *read_fds = (int *)malloc(n_to_read * sizeof(int));
-	int i, j, write_index;
+	int i, j, write_index = 0;
 	bool ignore = false;
 	DPRINTF("%s(): fds to read: %d", __func__, n_to_read);
 
 	for (i = 0; i < n_to_read; i++)
 		read_fds[i] = read_fd(STDIN_FILENO);
 
-	write_index = 0;
 	for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore)) {
 		int n_to_write = get_expected_fds_n(mb, pi[i].pid);
 		DPRINTF("%s(): fds to write for p[%d].pid %d: %d",
@@ -366,7 +494,13 @@ scatter_input_fds(struct sgsh_negotiation *mb)
 STATIC void
 gather_input_fds(struct sgsh_negotiation *mb)
 {
-	int n_to_write = get_expected_fds_n(mb, pi[STDOUT_FILENO].pid);
+	struct sgsh_conc *this_conc = find_conc(mb, pid);
+	if (!this_conc) {
+		printf("%s(): Concentrator with pid %d not registered",
+				__func__, pid);
+		exit(1);	// XXX
+	}
+	int n_to_write = this_conc->output_fds;
 	int *read_fds = (int *)malloc(n_to_write * sizeof(int));
 	int i, j, read_index;
 	DPRINTF("%s(): fds to write: %d", __func__, n_to_write);
@@ -398,6 +532,7 @@ main(int argc, char *argv[])
 	int ch;
 
 	program_name = argv[0];
+	pid = getpid();
 	pass_origin = false;
 
 	while ((ch = getopt(argc, argv, "ior")) != -1) {
