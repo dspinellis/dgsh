@@ -21,7 +21,6 @@
  */
 
 /* TODO:
- * - adapt tools to work with sgsh
  * - adapt the bash shell
  * Thinking aloud:
  * - substitute DPRINTF with appropriate error reporting function in case of errors.
