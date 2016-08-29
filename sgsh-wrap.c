@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "sgsh-negotiate.h"
 
@@ -36,7 +37,7 @@ static const char *guest_program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s program [arguments ...]\n",
+	fprintf(stderr, "Usage: %s [-noinput | -nooutput] program [arguments ...]\n",
 		program_name);
 	exit(1);
 }
@@ -45,24 +46,45 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	program_name = argv[0];
-	guest_program_name = argv[1];
+	int arg = 1;
+	int *ninputs = NULL, *noutputs = NULL;
 
 	if (argc == 1)
 		usage();
 
-	if (sgsh_negotiate(guest_program_name, NULL, NULL, NULL, NULL) != 0)
+	program_name = argv[0];
+	if (argv[1][0] == '-') {
+		if (!strcmp(argv[1], "-noinput")) {
+			ninputs = (int *)malloc(sizeof(int));
+			*ninputs = 0;
+			arg++;
+		} else if (!strcmp(argv[1], "-nooutput")) {
+			noutputs = (int *)malloc(sizeof(int));
+			*noutputs = 0;
+			arg++;
+		} else
+			usage();
+	}
+	guest_program_name = argv[arg];
+
+	if (sgsh_negotiate(guest_program_name, ninputs, noutputs, NULL, NULL) != 0)
 		exit(1);
 
-	int i;
+	int i, j = 0;
 	char *exec_argv[argc];
-	for (i = 1; i < argc; i++)
-		exec_argv[i - 1] = argv[i];
-	exec_argv[argc - 1] = NULL;
+	for (i = arg; i < argc; i++, j++)
+		exec_argv[j] = argv[i];
+	exec_argv[j] = NULL;
 
 	if (exec_argv[0][0] == '/')
 		execv(guest_program_name, exec_argv);
 	else
 		execvp(guest_program_name, exec_argv);
+
+	if (ninputs)
+		free(ninputs);
+	if (noutputs)
+		free(noutputs);
+
 	return 0;
 }
