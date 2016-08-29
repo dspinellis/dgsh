@@ -1,6 +1,7 @@
+sgsh-tee |
 {{
-	sgsh-wrap cut -f2 $1 &
+	sgsh-wrap cut -f2 - &
 
-	sgsh-wrap cut -f1 $1 &
+	sgsh-wrap cut -f1 - &
 }} |
 paste - -

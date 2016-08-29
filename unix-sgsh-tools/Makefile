@@ -272,6 +272,12 @@ test-bash: test-clean
 	echo " $BPaper examples under ../example:${EC}"
 
 	# No diff, just check execution exit status
+	cat $(PSDIR)/columns.dat | $(BIN)/bash --sgsh $(XDIR)/reorder-columns.sh \
+		>$(PSDIR)/reorder-columns.outb 2>/dev/null \
+	&& echo 'reorder-columns.sh $S' \
+	|| echo 'reorder-columns.sh $F'
+	
+	# ditto
 	$(BIN)/bash --sgsh $(XDIR)/dir.sh \
 		>$(PSDIR)/dir.outb 2>/dev/null \
 	&& echo 'dir.sh $S' \
