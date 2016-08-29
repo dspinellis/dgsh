@@ -23,28 +23,6 @@
 #  limitations under the License.
 #
 
-bash -c 'set $(
-  sgsh-tee |
-  {{
-    # Calculate number of committers
-    sgsh-wrap awk '"'"'{print $2}'"'"' |
-    sort -u |
-    sgsh-wrap wc -l &
-
-    # Calculate number of days in window
-    sgsh-wrap tail -1 |
-    sgsh-wrap awk '"'"'{print $1}'"'"' &
-
-    sgsh-wrap head -1 |
-    sgsh-wrap awk '"'"'{print $1}'"'"' &
-  }} |
-  sgsh-tee
-)'
-NCOMMITTERS="$1"
-LAST="$2"
-FIRST="$3"
-
-NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
 
 # Commit history in the form of ascending Unix timestamps, emails
 sgsh-wrap git log --pretty=tformat:'%at %ae' |
@@ -52,43 +30,61 @@ sgsh-wrap awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
 sgsh-tee |
 {{
-  # Place committers left/right according to the number of their commits
-  sgsh-wrap awk '{print $2}' |
-  sort |
-  sgsh-wrap uniq -c |
-  sort -n |
-  sgsh-wrap awk 'BEGIN {l = 0; r = '"'"'$NCOMMITTERS'"'"';}
-       {print NR % 2 ? l++ : --r, $2}' |
-  sort -k2 &
+	{{
+		# Calculate number of committers
+		sgsh-wrap awk '"'"'{print $2}'"'"' |
+		sort -u |
+		sgsh-wrap wc -l & #>committers &
 
-  sort -k2 &
+		# Calculate number of days in window
+		sgsh-wrap tail -1 |
+		sgsh-wrap awk '"'"'{print $1}'"'"' & #>last &
+
+		sgsh-wrap head -1 |
+		sgsh-wrap awk '"'"'{print $1}'"'"' & #>first &
+	}}
+	#NCOMMITTERS="$(cat committers)"
+	#LAST="$(cat last)"
+	#FIRST="$(cat first)"
+	#NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
+
+	# Place committers left/right according to the number of their commits
+	sgsh-wrap awk '{print $2}' |
+	sort |
+	sgsh-wrap uniq -c |
+	sort -n |
+	sgsh-wrap awk 'BEGIN {l = 0; r = '"'"'$(cat committers)'"'"';}
+			{print NR % 2 ? l++ : --r, $2}' |
+	sort -k2 &
+
+	sort -k2 &
 }} |
 # Join committer positions with commit time stamps
-join -j 2 - - |
+join -j 2 - - #|
 # Order by time
 sort -k 2n |
 sgsh-tee |
 {{
-  # Create portable bitmap
-  sgsh-wrap echo 'P1' &
-  sgsh-wrap echo "$NCOMMITTERS $NDAYS" &
-  sgsh-wrap bash -c 'perl -na -e '"'"'
-  BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
-  sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
+	# Create portable bitmap
+	sgsh-wrap echo 'P1' &
+	sgsh-wrap echo "$NCOMMITTERS $NDAYS" &
+	sgsh-wrap bash -c 'perl -na -e '"'"'
+		BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
+		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
-  $day = int($F[1] / 60 / 60 / 24);
-  $pday = $day if (!defined($pday));
+		$day = int($F[1] / 60 / 60 / 24);
+		$pday = $day if (!defined($pday));
 
-  while ($day != $pday) {
-    out();
-    @committers = @empty;
-    $pday++;
-  }
+		while ($day != $pday) {
+			out();
+			@committers = @empty;
+			$pday++;
+		}
 
-  $committers[$F[2]] = 1;
+		$committers[$F[2]] = 1;
 
-  END { out(); }
-  '"'"'' &
+		END { out(); }
+		'"'"'' &
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
@@ -107,9 +103,9 @@ EOF
 ) |
 sgsh-tee |
 {{
-    # Full-scale image
-    sgsh-wrap pnmtopng & #>large.png &
-    # A smaller image
-    sgsh-wrap pamscale -width 640 |
-    sgsh-wrap pnmtopng & #>small.png &
+	# Full-scale image
+	sgsh-wrap pnmtopng & #>large.png &
+	# A smaller image
+	sgsh-wrap pamscale -width 640 |
+	sgsh-wrap pnmtopng & #>small.png &
 }}
