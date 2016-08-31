@@ -34,15 +34,15 @@ sgsh-tee |
 		# Calculate number of committers
 		sgsh-wrap awk '"'"'{print $2}'"'"' |
 		sort -u |
-		sgsh-wrap wc -l & #>committers &
+		sgsh-wrap -nooutput bash -c 'wc -l >committers' &
 
 		# Calculate number of days in window
 		sgsh-wrap tail -1 |
-		sgsh-wrap awk '"'"'{print $1}'"'"' & #>last &
+		sgsh-wrap -nooutput bash -c 'awk '"'"'{print $1}'"'"' >last' &
 
 		sgsh-wrap head -1 |
-		sgsh-wrap awk '"'"'{print $1}'"'"' & #>first &
-	}}
+		sgsh-wrap -nooutput bash -c 'awk '"'"'{print $1}'"'"' >first' &
+	}} &
 	#NCOMMITTERS="$(cat committers)"
 	#LAST="$(cat last)"
 	#FIRST="$(cat first)"
@@ -60,52 +60,4 @@ sgsh-tee |
 	sort -k2 &
 }} |
 # Join committer positions with commit time stamps
-join -j 2 - - #|
-# Order by time
-sort -k 2n |
-sgsh-tee |
-{{
-	# Create portable bitmap
-	sgsh-wrap echo 'P1' &
-	sgsh-wrap echo "$NCOMMITTERS $NDAYS" &
-	sgsh-wrap bash -c 'perl -na -e '"'"'
-		BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
-		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
-
-		$day = int($F[1] / 60 / 60 / 24);
-		$pday = $day if (!defined($pday));
-
-		while ($day != $pday) {
-			out();
-			@committers = @empty;
-			$pday++;
-		}
-
-		$committers[$F[2]] = 1;
-
-		END { out(); }
-		'"'"'' &
-}} |
-sgsh-tee |
-# Enlarge points into discs through morphological convolution
-sgsh-wrap pgmmorphconv -erode <(
-cat <<EOF
-P1
-7 7
-0 0 0 1 0 0 0
-0 0 1 1 1 0 0
-0 1 1 1 1 1 0
-1 1 1 1 1 1 1
-0 1 1 1 1 1 0
-0 0 1 1 1 0 0
-0 0 0 1 0 0 0
-EOF
-) |
-sgsh-tee |
-{{
-	# Full-scale image
-	sgsh-wrap pnmtopng & #>large.png &
-	# A smaller image
-	sgsh-wrap pamscale -width 640 |
-	sgsh-wrap pnmtopng & #>small.png &
-}}
+join -j 2 - -

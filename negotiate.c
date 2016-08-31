@@ -274,17 +274,13 @@ satisfy_io_constraints(int *free_instances,
 	int i;
 	int weight = -1, modulo = 0;
 
-	/* We can't possibly solve this situation. */
-	if (this_channel_constraint > 0)
-		if (this_channel_constraint < n_edges)
-			return OP_ERROR;
-		else {
-			*free_instances = this_channel_constraint;
-			weight = this_channel_constraint / n_edges;
-			modulo = this_channel_constraint % n_edges;
-		}
+	if (this_channel_constraint > 0) {
+		*free_instances = this_channel_constraint;
+		weight = this_channel_constraint / n_edges;
+		modulo = this_channel_constraint % n_edges;
+
 	/* Edges that have no place in actual execution */
-	else if (this_channel_constraint == 0) {
+	} else if (this_channel_constraint == 0) {
 			*free_instances = 0;
 			weight = 0;
 			modulo = 0;
@@ -530,6 +526,7 @@ cross_match_io_constraints(int *free_instances,
 							 */
 		       int n_edges,		/* Number of edges */
                        bool is_edge_incoming,	/* Incoming or outgoing edges*/
+		       int *constraints_matched,
 		       int *edges_matched)
 {
 	int i;
@@ -538,16 +535,10 @@ cross_match_io_constraints(int *free_instances,
 		struct sgsh_edge *e = edges[i];
 		int *from = &e->from_instances;
 		int *to = &e->to_instances;
-		/* Edges that have no place in actual execution */
-		if (*from == 0 || *to == 0) {
-			e->instances = 0;
-			*from = 0;
-			*to = 0;
-			(*edges_matched)++;
-		} else if (*from == -1 || *to == -1) {
+		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 			if (*from == -1 && *to == -1)
-				e->instances = 5;
+				e->instances = 1;	// TODO
 			else if (*from == -1)
 				e->instances = *to;
 			else if (*to == -1)
@@ -585,6 +576,21 @@ cross_match_io_constraints(int *free_instances,
 		}
         	DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 	}
+
+	/* Is the matching for this channel in line with the (fixed)
+	 * constraint? */
+	if (this_channel_constraint == -1)
+		return OP_SUCCESS;
+	int fds = 0;
+	for (i = 0; i < n_edges; i++) {
+		struct sgsh_edge *e = edges[i];
+		fds += e->instances;
+	}
+	DPRINTF("%s communication endpoints to setup: %d, constraint: %d",
+			is_edge_incoming ? "Incoming" : "Outgoing",
+			fds, this_channel_constraint);
+	*constraints_matched -= (fds != this_channel_constraint);
+
 	return OP_SUCCESS;
 }
 
@@ -652,6 +658,7 @@ cross_match_constraints(void)
 	int n_nodes = chosen_mb->n_nodes;
 	int n_edges = chosen_mb->n_edges;
 	int edges_matched = 0;
+	int constraints_matched = n_nodes;
 	struct sgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 
@@ -680,7 +687,7 @@ cross_match_constraints(void)
 		    	    &current_connections->n_instances_outgoing_free,
 			    out_constraint,
 		    	    edges_outgoing, *n_edges_outgoing, 0,
-			    &edges_matched) == OP_ERROR) {
+			    &constraints_matched, &edges_matched) == OP_ERROR) {
 			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
@@ -695,7 +702,7 @@ cross_match_constraints(void)
 		    	    &current_connections->n_instances_incoming_free,
 			    in_constraint,
 		    	    edges_incoming, *n_edges_incoming, 1,
-			    &edges_matched) == OP_ERROR) {
+			    &constraints_matched, &edges_matched) == OP_ERROR) {
 			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
@@ -706,8 +713,11 @@ cross_match_constraints(void)
 				return OP_ERROR;
 		}
 	}
-	DPRINTF("%s(): Cross matched constraints for %d edges out of %d edges.", __func__, edges_matched / 2, n_edges);
-	return (edges_matched / 2 == n_edges ? OP_SUCCESS : OP_RETRY);
+	DPRINTF("%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, constraints_matched, n_nodes, edges_matched / 2, n_edges);
+	if (edges_matched / 2 == n_edges && constraints_matched == n_nodes)
+		return OP_SUCCESS;
+	else
+		return OP_RETRY;
 }
 
 
@@ -807,10 +817,12 @@ solve_sgsh_graph(void)
 
 	while (exit_state == OP_RETRY) {
 		if ((exit_state = cross_match_constraints()) == OP_ERROR ||
-				retries > 10) {
+				(exit_state == OP_RETRY && retries > 10)) {
 			exit_state = OP_ERROR;
 			goto exit;
 		}
+		DPRINTF("%s(): exit_state: %d, retries: %d",
+				__func__, exit_state, retries);
 		retries++;
 	}
 

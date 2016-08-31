@@ -1088,6 +1088,7 @@ retire_test_set_io_channels(void)
 
 START_TEST(test_solve_sgsh_graph)
 {
+	DPRINTF("%s", __func__);
         /* A normal case with fixed, tight constraints. */
 	ck_assert_int_eq(solve_sgsh_graph(), OP_SUCCESS);
 	struct sgsh_node_connections *graph_solution =
@@ -1136,12 +1137,13 @@ START_TEST(test_solve_sgsh_graph)
 	graph_solution = chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
-	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 5);
-	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 5);
-	ck_assert_int_eq(graph_solution[3].edges_incoming[0].instances, 5);
-	ck_assert_int_eq(graph_solution[0].edges_outgoing[0].instances, 5);
-	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 5);
-	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 5);
+	/* Flexible both sides: instances previously set to 5 */
+	ck_assert_int_eq(chosen_mb->edge_array[3].instances, 1);
+	ck_assert_int_eq(chosen_mb->edge_array[4].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[0].instances, 1);
+	ck_assert_int_eq(graph_solution[0].edges_outgoing[0].instances, 1);
+	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 1);
+	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 1);
 	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
 	/* Collateral impact. Node 1 (flex) -> Node 0 (tight) */
 	ck_assert_int_eq(chosen_mb->edge_array[2].instances, 1);
@@ -1220,10 +1222,7 @@ retire_dmic(void)
 
 START_TEST(test_node_match_constraints)
 {
-	/* Impossible case: channels: 2 -> 1 for node 3 */
 	DPRINTF("%s()\n", __func__);
-	chosen_mb->node_array[3].requires_channels = 1;
-	ck_assert_int_eq(node_match_constraints(), OP_ERROR);
 
 	/* Default topology; take a look at setup_chosen_mb() */
 	chosen_mb->node_array[3].requires_channels = 2;
@@ -1258,6 +1257,8 @@ END_TEST
 	
 START_TEST(test_dry_match_io_constraints)
 {
+	DPRINTF("%s", __func__);
+
 	struct sgsh_node_connections *graph_solution =
 		chosen_mb->graph_solution;
         /* A normal case with fixed, tight constraints. */
@@ -1270,13 +1271,14 @@ START_TEST(test_dry_match_io_constraints)
 	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
 	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 
-	/* An impossible case. */
+	/* A case not matching at first sight; match result will
+	 * be decided in cross_match_constraints() */
 	current_connections->n_edges_incoming = 0;
 	current_connections->n_edges_outgoing = 0;
-	chosen_mb->node_array[3].requires_channels = 1;
+	chosen_mb->node_array[3].requires_channels = 3;
 	ck_assert_int_eq(dry_match_io_constraints(&chosen_mb->node_array[3],
 				current_connections,
-			&edges_in, &edges_out), OP_ERROR);
+			&edges_in, &edges_out), OP_SUCCESS);
 	ck_assert_int_eq(current_connections->n_edges_incoming, 2);
 	ck_assert_int_eq(current_connections->n_edges_outgoing, 0);
 
@@ -1307,9 +1309,11 @@ START_TEST(test_satisfy_io_constraints)
 	ck_assert_int_eq(satisfy_io_constraints(&free_instances, 
 				2, pointers_to_edges, 2, true), OP_SUCCESS);
 	ck_assert_int_eq(free_instances, 0);
-        /* Fixed constraint both sides, inadequate. */
+        /* Fixed constraint both sides, not matching at
+	 * first sight, but will leave it to cross_match_constraints()
+	 * to decide */
 	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
-				1, pointers_to_edges, 2, true), OP_ERROR);
+				1, pointers_to_edges, 2, true), OP_SUCCESS);
 	ck_assert_int_eq(free_instances, 0);
         /* Fixed constraint bith sides, plenty. */
 	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
@@ -1320,10 +1324,11 @@ START_TEST(test_satisfy_io_constraints)
 	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
 				2, pointers_to_edges, 2, true), OP_SUCCESS);
 	ck_assert_int_eq(free_instances, 0);
-        /* Fixed constraint node, flexible pair, inadequate. */
+        /* Fixed constraint node, flexible pair,
+	 * cross_match_constraints() will decide */
         chosen_mb->node_array[0].provides_channels = -1;
 	ck_assert_int_eq(satisfy_io_constraints(&free_instances,
-				1, pointers_to_edges, 2, true), OP_ERROR);
+				1, pointers_to_edges, 2, true), OP_SUCCESS);
 	ck_assert_int_eq(free_instances, 0);
 	retire_test_satisfy_io_constraints();
 
@@ -1462,105 +1467,6 @@ START_TEST(test_record_move_unbalanced)
 
 }
 END_TEST
-/*
-*START_TEST(test_eval_constraints)
-{
-	// 0 flexible constraints.
-	ck_assert_int_eq(eval_constraints(2, 3, 0, &args[0], &args[1],
-                                                              &args[2]), OP_ERROR);
-	ck_assert_int_eq(eval_constraints(2, 2, 0, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 0);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 2);
-
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(3, 2, 0, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 0);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 2);
-
-	// Pair nodes have flexible constraints; the test node has fixed.
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(2, 2, 1, &args[0], &args[1],
-                                                              &args[2]), OP_ERROR);
-	ck_assert_int_eq(eval_constraints(2, 1, 1, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 1);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 2);
-
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(3, 1, 1, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 2);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 3);
-
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(5, 2, 2, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 1);
-	ck_assert_int_eq(args[1], 1);
-	ck_assert_int_eq(args[2], 5); // remaining free channels included
-
-	// The test node has flexible constraints; the pair nodes have fixed.
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(-1, 2, 0, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 0);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 2);
-
-	// The test node has flexible constraints; so do the pair nodes.
-        args[0] = -1;
-        args[1] = -1;
-        args[2] = -1;
-	ck_assert_int_eq(eval_constraints(-1, 2, 3, &args[0], &args[1],
-                                                              &args[2]), OP_SUCCESS);
-	ck_assert_int_eq(args[0], 5);
-	ck_assert_int_eq(args[1], 0);
-	ck_assert_int_eq(args[2], 17);
-
-}
-END_TEST
-
-*START_TEST(test_assign_edge_instances)
-{
-	//   No flexible.
-	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 0, 0, 0, 2), OP_SUCCESS);
-
-	//   Flexible with standard instances.
-        chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 2, 1, 1, 1, 0, 2), OP_SUCCESS);
-	retire_test_assign_edge_instances();
-
-        // Flexible with extra instances, but no remaining.
-	setup_test_assign_edge_instances();
-        chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, -1, 1, 1, 5, 0, 6), OP_SUCCESS);
-	retire_test_assign_edge_instances();
-
-        // Flexible with extra instances, including remaining.
-	setup_test_assign_edge_instances();
-        chosen_mb->node_array[0].provides_channels = -1;
-        chosen_mb->node_array[0].provides_channels = -1;
-	ck_assert_int_eq(assign_edge_instances(pointers_to_edges, n_ptedges, 7, 1, 1, 5, 1, 7), OP_SUCCESS);
-
-}
-END_TEST
-*/
 
 START_TEST(test_reallocate_edge_pointer_array)
 {
@@ -1574,7 +1480,6 @@ START_TEST(test_reallocate_edge_pointer_array)
 	ck_assert_int_eq(reallocate_edge_pointer_array(&pointers_to_edges, n_ptedges + 1), OP_SUCCESS);
 }
 END_TEST
-
 
 START_TEST(test_make_compact_edge_array)
 {
