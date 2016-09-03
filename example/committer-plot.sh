@@ -32,16 +32,19 @@ sgsh-tee |
 {{
 	{{
 		# Calculate number of committers
-		sgsh-wrap awk '"'"'{print $2}'"'"' |
+		sgsh-wrap awk '{print $2}' |
 		sort -u |
-		sgsh-wrap -nooutput bash -c 'wc -l >committers' &
+		sgsh-wrap wc -l |
+		sgsh-writeval -s committers &
 
 		# Calculate number of days in window
 		sgsh-wrap tail -1 |
-		sgsh-wrap -nooutput bash -c 'awk '"'"'{print $1}'"'"' >last' &
+		sgsh-wrap awk '{print $1}' |
+		sgsh-writeval -s last &
 
 		sgsh-wrap head -1 |
-		sgsh-wrap -nooutput bash -c 'awk '"'"'{print $1}'"'"' >first' &
+		sgsh-wrap awk '{print $1}' |
+		sgsh-writeval -s first &
 	}} &
 	#NCOMMITTERS="$(cat committers)"
 	#LAST="$(cat last)"
@@ -53,7 +56,7 @@ sgsh-tee |
 	sort |
 	sgsh-wrap uniq -c |
 	sort -n |
-	sgsh-wrap awk 'BEGIN {l = 0; r = '"'"'$(cat committers)'"'"';}
+	sgsh-wrap awk 'BEGIN {l = 0; r = "$(sgsh-readval -x -s committers)";}
 			{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &
 

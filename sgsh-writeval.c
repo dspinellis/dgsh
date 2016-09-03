@@ -40,6 +40,7 @@
 #include <unistd.h>
 
 #include "sgsh.h"
+#include "sgsh-negotiate.h"
 
 #ifdef DEBUG
 /* Small buffer size to catch errors with data spanning buffers */
@@ -1218,8 +1219,13 @@ main(int argc, char *argv[])
 	int sock;
 	socklen_t len;
 	struct sockaddr_un local;
+	int ninputs = 1;
+	int noutputs = 0;
 
 	parse_arguments(argc, argv);
+
+        if (sgsh_negotiate(program_name, &ninputs, &noutputs, NULL, NULL) != 0)
+		                exit(1);
 
 	if (strlen(socket_path) >= sizeof(local.sun_path) - 1)
 		errx(6, "Socket name [%s] must be shorter than %lu characters",

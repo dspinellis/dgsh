@@ -155,7 +155,6 @@ is_ready(int i, struct sgsh_negotiation *mb)
 	if (mb->state != PS_RUN)
 		return false;
 	if (pi[i].pid == mb->preceding_process_pid) {
-		assert(!pi[i].seen);
 		pi[i].seen = true;	/* Fake that */
 		/* If the solution is also in our territory
 		 * fake writing to it.
@@ -219,7 +218,7 @@ set_io(struct sgsh_negotiation *mb, struct sgsh_conc *c)
 		 * We have to make this estimation in cases of conc-to-conc
 		 * communication.
 		 */
-		if (c->input_fds > 0 && (c->output_fds == -1 ||
+		if (c->input_fds >= 0 && (c->output_fds == -1 ||
 					c->output_fds != c->input_fds))
 			c->output_fds = c->input_fds;
 		DPRINTF("%s(): fds to write: %d", __func__, c->output_fds);
@@ -241,7 +240,7 @@ set_io(struct sgsh_negotiation *mb, struct sgsh_conc *c)
 		 * We have to make this estimation in cases of conc-to-conc
 		 * communication.
 		 */
-		if (c->output_fds > 0 && (c->input_fds == -1 ||
+		if (c->output_fds >= 0 && (c->input_fds == -1 ||
 					c->input_fds != c->output_fds))
 			c->input_fds = c->output_fds;
 		DPRINTF("%s(): fds to read: %d", __func__, c->input_fds);
@@ -359,6 +358,8 @@ pass_message_blocks(void)
 			if (FD_ISSET(i, &writefds)) {
 				assert(pi[i].to_write);
 				chosen_mb = pi[i].to_write;
+				if (chosen_mb->state == PS_NEGOTIATION)
+					chosen_mb->preceding_process_pid = pid;
 				write_message_block(i); // XXX check return
 
 				if (pi[i].to_write->state == PS_RUN)
@@ -443,7 +444,20 @@ pass_message_blocks(void)
 		}
 		if (nfds == nfd - 1) {
 			assert(solution != NULL);
+			DPRINTF("%s(): conc leaves negotiation", __func__);
 			return solution;
+		} else if (nfds == nfd - 2 &&
+				solution->preceding_process_pid == pid) {
+			for (i = 0; i < nfd; i++) {
+				if (!pi[i].run_ready && pi[i].seen) {
+					DPRINTF("conc is the preceding process");
+					DPRINTF("No write to pi[%d].pid %d",
+							i, pi[i].pid);
+					assert(solution != NULL);
+					DPRINTF("%s(): conc leaves negotiation", __func__);
+					return solution;
+				}
+			}
 		} else if (chosen_mb != NULL) {
 			free_mb(chosen_mb);
 			chosen_mb = NULL;

@@ -54,7 +54,9 @@ png/%-pretty.png: example/%.sh
 
 all: $(EXECUTABLES)
 
-sgsh-readval: sgsh-readval.c kvstore.c
+sgsh-readval: sgsh-readval.c kvstore.c negotiate.o
+
+sgsh-writeval: sgsh-writeval.c negotiate.o
 
 sgsh-httpval: sgsh-httpval.c kvstore.c
 

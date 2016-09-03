@@ -32,6 +32,7 @@
 
 #include "sgsh.h"
 #include "kvstore.h"
+#include "sgsh-negotiate.h"
 
 static const char *program_name;
 
@@ -44,6 +45,7 @@ usage(void)
 		"-l"		"\tRead the last (before EOF) value from the store (default)\n"
 		"-n"		"\tDo not retry failed connection to write store\n"
 		"-q"		"\tAsk the write-end to quit\n"
+		"-x"		"\tDo not participate in sgsh negotiation\n"
 		"-s path"	"\tSpecify the socket to connect to\n",
 		program_name);
 	exit(1);
@@ -57,6 +59,9 @@ main(int argc, char *argv[])
 	char cmd = 0;
 	const char *socket_path = NULL;
 	bool retry_connection = true;
+	bool should_negotiate = true;
+	int ninputs = 0;
+	int noutputs = 1;
 
 	program_name = argv[0];
 
@@ -64,7 +69,7 @@ main(int argc, char *argv[])
 	if (argc == 3)
 		cmd = 'L';
 
-	while ((ch = getopt(argc, argv, "celnqs:")) != -1) {
+	while ((ch = getopt(argc, argv, "celnqsx:")) != -1) {
 		switch (ch) {
 		case 'c':	/* Read current value */
 			cmd = 'C';
@@ -84,6 +89,9 @@ main(int argc, char *argv[])
 		case 's':
 			socket_path = optarg;
 			break;
+		case 'x':
+			should_negotiate = false;
+			break;
 		case '?':
 		default:
 			usage();
@@ -94,6 +102,10 @@ main(int argc, char *argv[])
 
 	if (argc != 0 || socket_path == NULL)
 		usage();
+
+	if (should_negotiate)
+		if (sgsh_negotiate(program_name, &ninputs, &noutputs, NULL, NULL) != 0)
+			exit(1);
 
 	sgsh_send_command(socket_path, cmd, retry_connection, quit, STDOUT_FILENO);
 
