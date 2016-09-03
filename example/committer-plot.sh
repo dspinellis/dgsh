@@ -46,10 +46,6 @@ sgsh-tee |
 		sgsh-wrap awk '{print $1}' |
 		sgsh-writeval -s first &
 	}} &
-	#NCOMMITTERS="$(cat committers)"
-	#LAST="$(cat last)"
-	#FIRST="$(cat first)"
-	#NDAYS=$(( \( $LAST - $FIRST \) / 60 / 60  / 24))
 
 	# Place committers left/right according to the number of their commits
 	sgsh-wrap awk '{print $2}' |
@@ -63,4 +59,52 @@ sgsh-tee |
 	sort -k2 &
 }} |
 # Join committer positions with commit time stamps
-join -j 2 - -
+join -j 2 - - |
+# Order by time
+sort -k 2n |
+sgsh-tee |
+{{
+	# Create portable bitmap
+	sgsh-wrap -noinput echo 'P1' &
+	sgsh-wrap -noinput echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
+	sgsh-wrap bash -c 'perl -na -e '"'"'
+	BEGIN { @empty['$(sgsh-readval -x -s committers)' - 1] = 0; @committers = @empty; }
+		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
+
+		$day = int($F[1] / 60 / 60 / 24);
+		$pday = $day if (!defined($pday));
+
+		while ($day != $pday) {
+			out();
+			@committers = @empty;
+			$pday++;
+		}
+
+		$committers[$F[2]] = 1;
+
+		END { out(); }
+		'"'"'' &
+}} |
+sgsh-tee |
+# Enlarge points into discs through morphological convolution
+sgsh-wrap pgmmorphconv -erode <(
+cat <<EOF
+P1
+7 7
+0 0 0 1 0 0 0
+0 0 1 1 1 0 0
+0 1 1 1 1 1 0
+1 1 1 1 1 1 1
+0 1 1 1 1 1 0
+0 0 1 1 1 0 0
+0 0 0 1 0 0 0
+EOF
+) |
+sgsh-tee |
+{{
+	# Full-scale image
+	sgsh-wrap pnmtopng & #>large.png &
+	# A smaller image
+	sgsh-wrap pamscale -width 640 |
+	sgsh-wrap pnmtopng & #>small.png &
+}}
