@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 
-INSTPREFIX?=/usr/local
+INSTPREFIX?=/usr/local/sgsh
 
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
@@ -23,7 +23,9 @@ CFLAGS=-O -Wall
 endif
 
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
-	sgsh-ps sgsh-merge-sum sgsh-negotiate sgsh-conc sgsh-wrap
+	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
+
+LIBS=libsgsh_negotiate.a
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -52,7 +54,7 @@ png/%-pretty.png: example/%.sh
 %.html: %.1
 	groff -man -Thtml $< >$@
 
-all: $(EXECUTABLES)
+all: $(EXECUTABLES) $(LIBS)
 
 sgsh-readval: sgsh-readval.c kvstore.c negotiate.o
 
@@ -115,9 +117,8 @@ sgsh-merge-sum: sgsh-merge-sum.pl
 	perl -c sgsh-merge-sum.pl
 	install sgsh-merge-sum.pl sgsh-merge-sum
 
-sgsh-negotiate: negotiate.c
-	$(CC) $(CFLAGS) -c $^ -o $@
-	ar rcs libsgsh_negotiate.a $@
+libsgsh_negotiate.a: negotiate.c
+	ar rcs $@ -o negotiate.o
 
 charcount: charcount.sh
 	install charcount.sh charcount
@@ -175,8 +176,11 @@ seed-regression:
 clean:
 	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG)
 
-install: $(EXECUTABLES)
+install: $(EXECUTABLES) $(LIBS)
+	-mkdir $(INSTPREFIX)/bin
+	-mkdir $(INSTPREFIX)/lib
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
+	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 
 web: $(MANPDF) $(MANHTML) $(WEBPNG)

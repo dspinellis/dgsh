@@ -1,5 +1,5 @@
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/join f1s f2s
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort
+1 join f1s f2s
+2 sort
 
 %
 socketpipe 1 2

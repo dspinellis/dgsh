@@ -1,5 +1,5 @@
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/grep -l -L match f F
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm - -
+1 grep -l -L match f F
+2 comm - -
 
 %
 socketpipe 1 2

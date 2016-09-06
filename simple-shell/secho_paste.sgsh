@@ -1,5 +1,5 @@
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/secho hello
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/paste - world
+1 secho hello
+2 paste - world
 
 %
 socketpipe 1 2

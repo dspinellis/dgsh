@@ -38,7 +38,7 @@ sgsh-tee |
 	sgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}' &
 
 	# Count number of directories
-	sgsh-wrap grep -c '^d' | sgsh-wrap tr -d \\n &
+	grep -c '^d' - | sgsh-wrap tr -d \\n &
 
 	# Print label for number of dirs and calculate free bytes
 	sgsh-wrap -noinput echo " Dir(s) $FREE bytes free" &

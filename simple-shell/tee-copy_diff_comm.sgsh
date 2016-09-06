@@ -1,7 +1,7 @@
-1 /home/mfg/dds/sgsh/sgsh-tee -i hello
-2 /home/mfg/dds/sgsh/sgsh-conc -o 2
-3 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/diff world -
-4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm hello -
+1 sgsh-tee -i hello
+2 sgsh-conc -o 2
+3 diff world -
+4 comm hello -
 
 %
 socketpipe 1 2

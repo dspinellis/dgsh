@@ -25,7 +25,7 @@
 #  limitations under the License.
 #
 
-# Consitent sorting across machines
+# Consistent sorting across machines
 export LC_ALL=C
 
 # Stream input from file

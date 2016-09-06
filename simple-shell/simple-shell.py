@@ -6,6 +6,8 @@ from os import pipe, fork, close, execlp, dup, dup2, \
 from collections import OrderedDict
 import re
 
+instprefix = '/usr/local/sgsh/bin'
+
 def debug(s):
   if DEBUG:
     sys.stderr.write(s)
@@ -131,6 +133,8 @@ for line in lines[:toolDefsEnd]:
     exit(1)
   toolIndex = match.group(1)
   toolCommand = match.group(2)
+  if not toolCommand.startswith('/') and not toolCommand.startswith('.'):
+    toolCommand = instprefix + '/' + toolCommand
   toolDict[int(toolIndex)] = toolCommand
   debug("index: %s, command: %s\n" % \
           (toolIndex, toolCommand))
@@ -186,8 +190,8 @@ for index, process in Process.processes.iteritems():
       try:
         close(fd)
       except OSError:
-        print "FAIL: close input fd %d for process %s. Discard and move on" \
-                % (fd, process.command)
+        debug("FAIL: close input fd %d for process %s. Discard and move on" \
+                % (fd, process.command))
       fd = dup(ic[1].fileno())
       debug("%s: dup %d, gives %d\n" % (process.command, ic[1].fileno(), fd))
       ic[1].close()

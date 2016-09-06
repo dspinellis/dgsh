@@ -1,11 +1,11 @@
-1 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort f4s
-2 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/sort f5s
-3 /home/mfg/dds/sgsh/sgsh-conc -i 2
-4 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/comm - -
-5 /home/mfg/dds/sgsh/sgsh-conc -o 3
-6 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/paste - p1
-7 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/join - j2
-8 /home/mfg/dds/sgsh/unix-sgsh-tools/bin/diff - d3
+1 sort f4s
+2 sort f5s
+3 sgsh-conc -i 2
+4 comm - -
+5 sgsh-conc -o 3
+6 paste - p1
+7 join - j2
+8 diff - d3
 
 %
 socketpipe 1 3
