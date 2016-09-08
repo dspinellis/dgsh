@@ -39,7 +39,7 @@ static const char *program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-c|e|l] [-n] [-q] -s path\n"
+	fprintf(stderr, "Usage: %s [-c|e|l] [-n] [-q] [-x] -s path\n"
 		"-c"		"\tRead the current value from the store\n"
 		"-e"		"\tRead current value or empty from the store\n"
 		"-l"		"\tRead the last (before EOF) value from the store (default)\n"
@@ -69,7 +69,7 @@ main(int argc, char *argv[])
 	if (argc == 3)
 		cmd = 'L';
 
-	while ((ch = getopt(argc, argv, "celnqsx:")) != -1) {
+	while ((ch = getopt(argc, argv, "celnqxs:")) != -1) {
 		switch (ch) {
 		case 'c':	/* Read current value */
 			cmd = 'C';

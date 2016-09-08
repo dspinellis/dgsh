@@ -51,6 +51,10 @@ ngram()
 export -f ranked_frequency
 export -f ngram
 
+# The wc forms a second input to count total characters
+#sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
+#{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
+
 sgsh-wrap cat $1 |
 sgsh-tee |
 {{
@@ -71,9 +75,12 @@ sgsh-tee |
 /g' |
 	# Print absolute and percentage
 	sgsh-wrap bash -c 'ranked_frequency' |
-	# The wc forms a second input to count total characters
-	#sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-	#{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
-	sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-	{print $1, $2}' >character.txt &
+	sgsh-tee |
+	{{
+		sgsh-wrap wc -c |
+		sgsh-writeval -s mfg &
+
+		sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
+		{print $1, $2, $1 / 100}' > character.txt &
+	}} &
 }}
