@@ -78,9 +78,9 @@ sgsh-tee |
 	sgsh-tee |
 	{{
 		sgsh-wrap wc -c |
-		sgsh-writeval -s mfg &
+		sgsh-writeval -s chars &
 
 		sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-		{print $1, $2, $1 / 100}' > character.txt &
+		{print $1, $2, $1 / '"`sgsh-readval -x -s chars)`"' * 100}' > character.txt &
 	}} &
 }}
