@@ -72,6 +72,8 @@ sgsh-tee |
 	# Print absolute and percentage
 	sgsh-wrap bash -c 'ranked_frequency' |
 	# The wc forms a second input to count total characters
+	#sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
+	#{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
 	sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-	{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
+	{print $1, $2}' >character.txt &
 }}

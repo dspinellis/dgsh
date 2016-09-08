@@ -169,10 +169,12 @@ test-bash: test-clean
 	|| echo 'ls -n | {{ awk & awk & }} $F'
 	
 	# ditto
+	# `date`: Check that command substitution
+	# does not mess pipe substitution
 	$(SGSHPATH)/bash --sgsh -c ' \
 		{{ \
 			secho match & \
-			secho not & \
+			secho "not `date`" & \
 		}} \
 		| grep -F -h match - - \
 	> $(PSDIR)/secho_secho_fgrep.outb' 2>/dev/null \
