@@ -17,7 +17,9 @@
 .SH NAME
 sgsh-wrap \- allow any filter program to participate in an sgsh pipeline
 .SH SYNOPSIS
-\fBsgsh-wrap\fP \fIprogram\fP [...]
+\fBsgsh-wrap\fP
+[\fB\-d\fP | \fB-m\fP]
+\fIprogram\fP [...]
 .SH DESCRIPTION
 \fIsgsh-wrap\fP takes as arguments an absolute path or the name
 of a program to execute and its arguments.
@@ -26,6 +28,13 @@ and then execute the specified program connected to the negotiated
 input and output pipes.
 If the program is not specified through an absolute path,
 it will be executed by searching the existing path.
+
+.SH OPTIONS
+.IP "\fB\-d\fP
+Do not read input; d for deaf.
+
+.IP "\fB\-m\fP
+Do not write output; m for mute.
 
 .SH "SEE ALSO"
 \fIsgsh\fP(1)

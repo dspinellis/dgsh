@@ -20,6 +20,7 @@ sgsh-readval \- data store client
 \fBsgsh-readval\fP
 [\fB\-c\fP | \fB-e\fP | \fB-l\fP]
 [\fB\-nq\fP]
+[\fB\-x\fP]
 \fB\-s\fP \fIpath\fP
 .SH DESCRIPTION
 \fIsgsh-readval\fP is a data store client.
@@ -63,6 +64,9 @@ operations from them.
 Ask the write store (the corresponding \fIsgsh-writeval\fP process)
 to terminate its operation.
 No value is read.
+
+.IP "\fB\-x\fP
+Do not participate in sgsh negotiation.
 
 .IP "\fB\-s\fP \fIpath\fP"
 This mandatory option must be used to specify the path of the Unix-domain socket

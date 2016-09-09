@@ -32,7 +32,7 @@ sgsh-tee |
 	sgsh-wrap wc -l | sgsh-wrap tr -d \\n &
 
 	# Print label for number of files
-	sgsh-wrap -s echo -n ' File(s) ' &
+	sgsh-wrap -d echo -n ' File(s) ' &
 
 	# Tally number of bytes
 	sgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}' &
@@ -41,6 +41,6 @@ sgsh-tee |
 	grep -c '^d' - | sgsh-wrap tr -d \\n &
 
 	# Print label for number of dirs and calculate free bytes
-	sgsh-wrap -s echo " Dir(s) $FREE bytes free" &
+	sgsh-wrap -d echo " Dir(s) $FREE bytes free" &
 }} |
 sgsh-tee
