@@ -870,7 +870,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_input_fds) {
 			*n_input_fds = self_pipe_fds.n_input_fds;
 			assert(*n_input_fds >= 0);
-			*input_fds = self_pipe_fds.input_fds;
+			if (input_fds)
+				*input_fds = self_pipe_fds.input_fds;
 		} else {
 			self_pipe_fds.n_input_fds = 0;
 			free(self_pipe_fds.input_fds);
@@ -897,7 +898,8 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_output_fds) {
 			*n_output_fds = self_pipe_fds.n_output_fds;
 			assert(*n_output_fds >= 0);
-			*output_fds = self_pipe_fds.output_fds;
+			if (output_fds)
+				*output_fds = self_pipe_fds.output_fds;
 		} else {
 			self_pipe_fds.n_output_fds = 0;
 			free(self_pipe_fds.output_fds);

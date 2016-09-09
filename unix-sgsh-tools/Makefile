@@ -326,6 +326,8 @@ test-bash: test-clean
 		>$(PSDIR)/text-properties.outb 2>/dev/null \
 	&& echo 'text-properties.sh $S' \
 	|| echo 'text-properties.sh $F'
+	# XXX: sgsh-writeval hangs
+	pkill -f sgsh-writeval
 	
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"

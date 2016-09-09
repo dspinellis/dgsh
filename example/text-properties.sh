@@ -77,10 +77,18 @@ sgsh-tee |
 	sgsh-wrap bash -c 'ranked_frequency' |
 	sgsh-tee |
 	{{
+		# Store number of characters to use in awk below
 		sgsh-wrap wc -c |
-		sgsh-writeval -s chars &
+		sgsh-writeval -s nchars &
 
-		sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-		{print $1, $2, $1 / '"`sgsh-readval -x -s chars)`"' * 100}' > character.txt &
+		# Have awk command in bash to avoid sgsh-readval's
+		# command substitution before awk's execution.
+		# sgsh-readval would not be able to connect to the
+		# socket (it's negotiation time), so awk would never
+		# start to join negotiation.
+		# sgsh-readval is not considered part of the sgsh graph
+		# and, thus, does not participate in negotiation (-x argument)
+		sgsh-wrap bash -c "awk 'BEGIN {OFMT = \"%.2g%%\"}
+			{print \$1, \$2, \$1 / '\"\`sgsh-readval -l -x -s nchars\`\"' * 100}' > character.txt" &
 	}} &
 }}
