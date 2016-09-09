@@ -37,7 +37,7 @@ static const char *guest_program_name;
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s [-noinput | -nooutput] program [arguments ...]\n",
+	fprintf(stderr, "Usage: %s [-s | -x] program [arguments ...]\n",
 		program_name);
 	exit(1);
 }
@@ -54,11 +54,11 @@ main(int argc, char *argv[])
 
 	program_name = argv[0];
 	if (argv[1][0] == '-') {
-		if (!strcmp(argv[1], "-noinput")) {
+		if (!strcmp(argv[1], "-s")) {
 			ninputs = (int *)malloc(sizeof(int));
 			*ninputs = 0;
 			arg++;
-		} else if (!strcmp(argv[1], "-nooutput")) {
+		} else if (!strcmp(argv[1], "-x")) {
 			noutputs = (int *)malloc(sizeof(int));
 			*noutputs = 0;
 			arg++;
