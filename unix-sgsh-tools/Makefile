@@ -6,6 +6,7 @@ XDIR=../example
 # TOOLDIR
 TD=unix-sgsh-tools
 STD=/usr/bin
+SCRIPTDIR=tool_scripts
 
 CFLAGS+=-Wall
 PATHS= -I.. -L..
@@ -62,8 +63,20 @@ install:
 	#cd parallel && make install
 	#cd sed && make install
 	#cd tar && make install
-	cp secho /usr/local/sgsh/bin
-	cp pecho /usr/local/sgsh/bin
+	cp secho $(INSTPREFIX)/bin
+	cp pecho $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/df $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/file $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/git $(INSTPREFIX)/bin
 
 
 test-clean-bash:

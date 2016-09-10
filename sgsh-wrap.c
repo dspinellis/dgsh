@@ -32,7 +32,7 @@
 #include "sgsh-negotiate.h"
 
 static const char *program_name;
-static const char *guest_program_name;
+static char *guest_program_name = NULL;
 
 static void
 usage(void)
@@ -44,39 +44,69 @@ usage(void)
 	exit(1);
 }
 
-
 int
 main(int argc, char *argv[])
 {
-	int arg = 1;
+	int pos = 1;
 	int *ninputs = NULL, *noutputs = NULL;
+
+	fprintf(stderr, "argc: %d\n", argc);
+	int k = 0;
+	for (k = 0; k < argc; k++)
+		fprintf(stderr, "argv[%d]: %s\n", k, argv[k]);
 
 	if (argc == 1)
 		usage();
 
 	program_name = argv[0];
 	if (argv[1][0] == '-') {
-		if (!strcmp(argv[1], "-d")) {
+		if (argv[1][1] == 'd') {
 			ninputs = (int *)malloc(sizeof(int));
 			*ninputs = 0;
-			arg++;
-		} else if (!strcmp(argv[1], "-m")) {
+			pos++;
+			// XXX argv[1] may carry also the guest program's name
+			if (argv[1][2] == ' ')
+				guest_program_name = &argv[1][3];
+		} else if (argv[1][1] == 'm') {
 			noutputs = (int *)malloc(sizeof(int));
 			*noutputs = 0;
-			arg++;
+			pos++;
+			if (argv[1][2] == ' ')
+				guest_program_name = &argv[1][3];
 		} else
 			usage();
 	}
-	guest_program_name = argv[arg];
+
+	if (!guest_program_name) {
+		guest_program_name = argv[pos];
+		pos++;
+	}
+	fprintf(stderr, "guest_program_name: %s\n", guest_program_name);
 
 	if (sgsh_negotiate(guest_program_name, ninputs, noutputs, NULL, NULL) != 0)
 		exit(1);
 
-	int i, j = 0;
-	char *exec_argv[argc];
-	for (i = arg; i < argc; i++, j++)
+	int exec_argv_len = argc - 1;
+	char *exec_argv[exec_argv_len];
+	int i, j;
+
+	exec_argv[0] = guest_program_name;
+
+	int compare_chars = strlen(argv[0]) - strlen("sgsh-wrap");
+	fprintf(stderr, "argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
+			argv[0], argv[2], compare_chars);
+	// Wrapper script to executable?
+	int cmp;
+	if (!(cmp = strncmp(argv[2], argv[0], compare_chars)))
+		pos++;
+	fprintf(stderr, "cmp: %d, pos: %d\n", cmp, pos);
+
+	for (i = pos, j = 1; i < argc; i++, j++)
 		exec_argv[j] = argv[i];
 	exec_argv[j] = NULL;
+
+	for (k = 0; k < argc -1; k++)
+		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
 
 	if (exec_argv[0][0] == '/')
 		execv(guest_program_name, exec_argv);

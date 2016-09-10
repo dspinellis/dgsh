@@ -29,15 +29,15 @@ forder()
 
 export -f forder
 
-sgsh-wrap git log --format="%an:%ad" --date=default "$@" |
+git log --format="%an:%ad" --date=default "$@" |
 sgsh-tee |
 {{
-	sgsh-wrap -d echo "Authors ordered by number of commits" &
+	env echo "Authors ordered by number of commits" &
 	# Order by frequency
-	sgsh-wrap awk -F: '{print $1}' | sgsh-wrap bash -c 'forder' &
+	awk -F: '{print $1}' | sgsh-wrap bash -c 'forder' &
 
-	sgsh-wrap -d echo "Days ordered by number of commits" &
+	env echo "Days ordered by number of commits" &
 	# Order by frequency
-	sgsh-wrap awk -F: '{print substr($2, 1, 3)}' | sgsh-wrap bash -c 'forder' &
+	awk -F: '{print substr($2, 1, 3)}' | sgsh-wrap bash -c 'forder' &
 }} |
 sgsh-tee
