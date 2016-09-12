@@ -1,19 +1,21 @@
-PSDIR=../simple-shell
+PSDIR=$1
+
+cp results res
 
 # Sort result files
 {{
-	sort $(PSDIR)/f4s &
-	sort $(PSDIR)/f5s &
-}}
-# Find common records
-| comm - - |
+	sort $PSDIR/f4s &
+	sort $PSDIR/f5s &
+}} |
+# Remove noise
+comm - - |
 {{
 	# Paste to master results file
-	paste - $(PSDIR)/p1 &
+	paste - $PSDIR/res > results &
 
-	# Join with top records
-	join - $(PSDIR)/j2 &
+	# Join with selected records
+	join - $PSDIR/top > top_results &
 
 	# Diff from previous results file
-	diff - $(PSDIR)/d3 &
+	diff - $PSDIR/last > diff_last &
 }}

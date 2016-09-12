@@ -271,6 +271,12 @@ test-bash: test-clean
 	echo " $BPaper examples under ../example:${EC}"
 
 	# No diff, just check execution exit status
+	$(SGSHPATH)/bash --sgsh $(XDIR)/dir.sh \
+		>$(PSDIR)/dir.outb 2>/dev/null \
+	&& echo 'dir.sh $S' \
+	|| echo 'dir.sh $F'
+	
+	# ditto
 	cat $(PSDIR)/data.csv | \
 	$(SGSHPATH)/bash --sgsh $(XDIR)/reorder-columns.sh \
 		>$(PSDIR)/reorder-columns.outb 2>/dev/null \
@@ -278,10 +284,10 @@ test-bash: test-clean
 	|| echo 'reorder-columns.sh $F'
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/dir.sh \
-		>$(PSDIR)/dir.outb 2>/dev/null \
-	&& echo 'dir.sh $S' \
-	|| echo 'dir.sh $F'
+	$(SGSHPATH)/bash --sgsh $(XDIR)/manage-results.sh \
+		>$(PSDIR)/manage-results.outb 2>/dev/null \
+	&& echo 'manage-results.sh $S' \
+	|| echo 'manage-results.sh $F'
 	
 	# ditto
 	cat Readme.md | \
