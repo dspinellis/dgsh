@@ -284,7 +284,7 @@ test-bash: test-clean
 	|| echo 'reorder-columns.sh $F'
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/manage-results.sh \
+	$(SGSHPATH)/bash --sgsh $(XDIR)/manage-results.sh $(PSDIR) \
 		>$(PSDIR)/manage-results.outb 2>/dev/null \
 	&& echo 'manage-results.sh $S' \
 	|| echo 'manage-results.sh $F'
