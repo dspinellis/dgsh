@@ -1,6 +1,6 @@
 PSDIR=$1
 
-cp results res
+cp $PSDIR/results $PSDIR/res
 
 # Sort result files
 {{
