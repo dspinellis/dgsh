@@ -332,6 +332,12 @@ test-bash: test-clean
 		>$(PSDIR)/text-properties.outb 2>/dev/null \
 	&& echo 'text-properties.sh $S' \
 	|| echo 'text-properties.sh $F'
+	
+	# ditto
+	$(SGSHPATH)/bash --sgsh $(XDIR)/committer-plot.sh \
+		>$(PSDIR)/committer-plot.outb 2>/dev/null \
+	&& echo 'committer-plot.sh $S' \
+	|| echo 'committer-plot.sh $F'
 	# XXX: sgsh-writeval hangs
 	pkill -f sgsh-writeval
 	
