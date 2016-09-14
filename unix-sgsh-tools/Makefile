@@ -109,7 +109,7 @@ test-bash: test-clean
 	|| echo 'secho | paste $F'
 
 	$(SGSHPATH)/bash --sgsh -c ' \
-		sgsh-wrap cat $(PSDIR)/f1s \
+		sgsh-wrap /bin/cat $(PSDIR)/f1s \
 		| comm - $(PSDIR)/f2s \
 		| sort \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' 2>/dev/null \
