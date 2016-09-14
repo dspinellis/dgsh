@@ -55,9 +55,6 @@ main(int argc, char *argv[])
 	for (k = 0; k < argc; k++)
 		fprintf(stderr, "argv[%d]: %s\n", k, argv[k]);
 
-	if (argc == 1)
-		usage();
-
 	program_name = argv[0];
 	if (argv[1][0] == '-') {
 		if (argv[1][1] == 'd') {
@@ -95,9 +92,12 @@ main(int argc, char *argv[])
 	int compare_chars = strlen(argv[0]) - strlen("sgsh-wrap");
 	fprintf(stderr, "argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
 			argv[0], argv[2], compare_chars);
-	// Wrapper script to executable?
+	/* Wrapper script to executable?
+	 * Then skip argv position that contains the wrapper script
+	 */
 	int cmp;
-	if (!(cmp = strncmp(argv[2], argv[0], compare_chars)))
+	if (compare_chars > 0 &&
+			!(cmp = strncmp(argv[2], argv[0], compare_chars)))
 		pos++;
 	fprintf(stderr, "cmp: %d, pos: %d\n", cmp, pos);
 
