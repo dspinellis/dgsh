@@ -27,8 +27,8 @@ sgsh-tee |
 {{
 	{{
 		# Find errors
-		sgsh-wrap tr -cs A-Za-z \\n |
-		sgsh-wrap tr A-Z a-z |
+		tr -cs A-Za-z \\n |
+		tr A-Z a-z |
 		sort -u &
 
 		# Ensure dictionary is sorted consistently with our settings
@@ -36,6 +36,6 @@ sgsh-tee |
 	}} |
 	comm -13 - - &
 
-	sgsh-wrap cat &
+	cat &
 }} |
 grep -F -f - -i --color -w -C 2

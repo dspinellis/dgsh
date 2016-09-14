@@ -20,14 +20,14 @@
 #
 
 # Create list of files
-sgsh-wrap find "$@" -type f |
+find "$@" -type f |
 
 # Produce lines of the form
 # MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
-sgsh-wrap xargs openssl md5 |
+xargs openssl md5 |
 
 # Convert each line into a "filename md5sum" pair
-sgsh-wrap sed 's/^MD5(//;s/)= / /' |
+sed 's/^MD5(//;s/)= / /' |
 
 # Sort by MD5 sum
 sort -k2 |
@@ -36,10 +36,10 @@ sgsh-tee |
 {{
 
 	# Print an MD5 sum for each file that appears more than once
-	sgsh-wrap awk '{print $2}' | sgsh-wrap uniq -d &
+	awk '{print $2}' | uniq -d &
 
 	# Promote the stream to gather it
-	sgsh-wrap cat &
+	cat &
 }} |
 # Join the repeated MD5 sums with the corresponding file names
 # Join expects two inputs, second will come from scatter
@@ -47,7 +47,7 @@ sgsh-tee |
 join -2 2 - - |
 
 # Output same files on a single line
-sgsh-wrap awk '
+awk '
 BEGIN {ORS=""}
 $1 != prev && prev {print "\n"}
 END {if (prev) print "\n"}

@@ -29,27 +29,27 @@
 export LC_ALL=C
 
 # Stream input from file
-sgsh-wrap cat $1 |
+cat $1 |
 
 # Split input one word per line
-sgsh-wrap tr -cs a-zA-Z \\n |
+tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
 sgsh-tee |
 {{
 	# Pass through the original words
-	sgsh-wrap cat &
+	cat &
 
 	# List two-letter palindromes
-	sgsh-wrap sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
+	sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
 		g' &
 
 	# List four consecutive consonants
-	sgsh-wrap sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
+	sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
 		g' &
 
 	# List length of words longer than 12 characters
-	sgsh-wrap awk '{if (length($1) > 12) print "l:", length($1);
+	awk '{if (length($1) > 12) print "l:", length($1);
 		else print ""}' &
 }} |
 # Paste the four streams side-by-side
