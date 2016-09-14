@@ -36,15 +36,15 @@ export LC_ALL=C
 
 line_signatures()
 {
-  find $1 -type f -name '*.[chly]' -print |
+  /usr/bin/find $1 -type f -name '*.[chly]' -print |
   # Split path name into directory and file
-  sed 's|\(.*\)/\([^/]*\)|\1 \2|' |
+  /usr/bin/sed 's|\(.*\)/\([^/]*\)|\1 \2|' |
   while read dir file
   do
     # Print "directory filename content" of lines with
     # at least one alphabetic character
     # The fields are separated by ^A and ^B
-    sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
+    /usr/bin/sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
   done |
   # Error: multi-character tab '\001\001'
   /usr/bin/sort -t -k 2
@@ -64,17 +64,17 @@ export -f line_signatures
 join -t -1 2 -2 2 - - |
 
 # Print filename dir1 dir2
-sgsh-wrap sed 's///g' |
-sgsh-wrap awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
+sed 's///g' |
+awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
 sgsh-tee |
 {{
   # Commands to copy
-  sgsh-wrap awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
-  sgsh-wrap awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
+  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
+  awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
 }} |
 # Order: first make directories, then copy files
 sgsh-tee |
-sgsh-wrap sh
+sh

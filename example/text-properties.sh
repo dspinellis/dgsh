@@ -32,7 +32,7 @@ export LC_ALL=C
 # Convert input into a ranked frequency list
 ranked_frequency()
 {
-	awk '{count[$1]++} END {for (i in count) print count[i], i}' |
+	/usr/bin/awk '{count[$1]++} END {for (i in count) print count[i], i}' |
 	# We want the standard sort here
 	/usr/bin/sort -rn
 }
@@ -55,11 +55,11 @@ export -f ngram
 #sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
 #{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
 
-sgsh-wrap cat $1 |
+cat $1 |
 sgsh-tee |
 {{
 	# Split input one word per line
-	sgsh-wrap tr -cs a-zA-Z \\n |
+	tr -cs a-zA-Z \\n |
 	sgsh-tee |
 	{{
 		# Digram frequency
@@ -71,14 +71,14 @@ sgsh-tee |
 	}} &
 
 	# Character frequency
-	sgsh-wrap sed 's/./&\
+	sed 's/./&\
 /g' |
 	# Print absolute and percentage
 	sgsh-wrap bash -c 'ranked_frequency' |
 	sgsh-tee |
 	{{
 		# Store number of characters to use in awk below
-		sgsh-wrap wc -c |
+		wc -c |
 		sgsh-writeval -s nchars &
 
 		# Have awk command in bash to avoid sgsh-readval's
@@ -88,7 +88,7 @@ sgsh-tee |
 		# start to join negotiation.
 		# sgsh-readval is not considered part of the sgsh graph
 		# and, thus, does not participate in negotiation (-x argument)
-		sgsh-wrap bash -c "awk 'BEGIN {OFMT = \"%.2g%%\"}
+		sgsh-wrap bash -c "/usr/bin/awk 'BEGIN {OFMT = \"%.2g%%\"}
 			{print \$1, \$2, \$1 / '\"\`sgsh-readval -l -x -s nchars\`\"' * 100}' > character.txt" &
 	}} &
 }}

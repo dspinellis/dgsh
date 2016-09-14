@@ -65,18 +65,24 @@ install:
 	#cd tar && make install
 	cp secho $(INSTPREFIX)/bin
 	cp pecho $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/df $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/file $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/find $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/git $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
 
 
 test-clean-bash:
