@@ -75,9 +75,14 @@ install:
 	cp $(SCRIPTDIR)/find $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/git $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/head $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin

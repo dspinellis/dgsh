@@ -25,34 +25,34 @@
 
 
 # Commit history in the form of ascending Unix timestamps, emails
-sgsh-wrap git log --pretty=tformat:'%at %ae' |
-sgsh-wrap awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
+git log --pretty=tformat:'%at %ae' |
+awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
 sgsh-tee |
 {{
 	{{
 		# Calculate number of committers
-		sgsh-wrap awk '{print $2}' |
+		awk '{print $2}' |
 		sort -u |
-		sgsh-wrap wc -l |
+		wc -l |
 		sgsh-writeval -s committers &
 
 		# Calculate number of days in window
-		sgsh-wrap tail -1 |
-		sgsh-wrap awk '{print $1}' |
+		tail -1 |
+		awk '{print $1}' |
 		sgsh-writeval -s last &
 
-		sgsh-wrap head -1 |
-		sgsh-wrap awk '{print $1}' |
+		head -1 |
+		awk '{print $1}' |
 		sgsh-writeval -s first &
 	}} &
 
 	# Place committers left/right according to the number of their commits
-	sgsh-wrap awk '{print $2}' |
+	awk '{print $2}' |
 	sort |
-	sgsh-wrap uniq -c |
+	uniq -c |
 	sort -n |
-	sgsh-wrap awk 'BEGIN {l = 0; r = "$(sgsh-readval -x -s committers)";}
+	awk 'BEGIN {l = 0; r = "$(sgsh-readval -x -s committers)";}
 			{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &
 
@@ -65,8 +65,8 @@ sort -k 2n |
 sgsh-tee |
 {{
 	# Create portable bitmap
-	sgsh-wrap -d echo 'P1' &
-	sgsh-wrap -d echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
+	env echo 'P1' &
+	env echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
 	sgsh-wrap bash -c 'perl -na -e '"'"'
 	BEGIN { @empty['$(sgsh-readval -x -s committers)' - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
@@ -87,8 +87,8 @@ sgsh-tee |
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
-sgsh-wrap pgmmorphconv -erode <(
-cat <<EOF
+pgmmorphconv -erode <(
+/bin/cat <<EOF
 P1
 7 7
 0 0 0 1 0 0 0
@@ -103,8 +103,8 @@ EOF
 sgsh-tee |
 {{
 	# Full-scale image
-	sgsh-wrap pnmtopng & #>large.png &
+	pnmtopng & #>large.png &
 	# A smaller image
-	sgsh-wrap pamscale -width 640 |
-	sgsh-wrap pnmtopng & #>small.png &
+	pamscale -width 640 |
+	pnmtopng & #>small.png &
 }}
