@@ -32,11 +32,11 @@ export -f forder
 git log --format="%an:%ad" --date=default "$@" |
 sgsh-tee |
 {{
-	env echo "Authors ordered by number of commits" &
+	echo "Authors ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print $1}' | sgsh-wrap bash -c 'forder' &
 
-	env echo "Days ordered by number of commits" &
+	echo "Days ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print substr($2, 1, 3)}' | sgsh-wrap bash -c 'forder' &
 }} |

@@ -65,8 +65,8 @@ sort -k 2n |
 sgsh-tee |
 {{
 	# Create portable bitmap
-	env echo 'P1' &
-	env echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
+	echo 'P1' &
+	echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
 	sgsh-wrap bash -c 'perl -na -e '"'"'
 	BEGIN { @empty['$(sgsh-readval -x -s committers)' - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }

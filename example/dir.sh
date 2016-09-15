@@ -32,7 +32,7 @@ sgsh-tee |
 	wc -l | tr -d \\n &
 
 	# Print label for number of files
-	env echo -n ' File(s) ' &
+	echo -n ' File(s) ' &
 
 	# Tally number of bytes
 	awk '{s += $5} END {printf("%d bytes", s)}' &
@@ -41,6 +41,6 @@ sgsh-tee |
 	grep -c '^d' - | tr -d \\n &
 
 	# Print label for number of dirs and calculate free bytes
-	env echo " Dir(s) $FREE bytes free" &
+	echo " Dir(s) $FREE bytes free" &
 }} |
 sgsh-tee

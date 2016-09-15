@@ -28,19 +28,19 @@
 
 sgsh-tee |
 {{
-	env echo -n 'File type:' &
+	echo -n 'File type:' &
 	file - &
 
-	env echo -n 'Original size:' &
+	echo -n 'Original size:' &
 	wc -c &
 
-	env echo -n 'xz:' &
+	echo -n 'xz:' &
 	xz -c | wc -c &
 
-	env echo -n 'bzip2:' &
-	sgsh-wrap bzip2 -c | wc -c &
+	echo -n 'bzip2:' &
+	bzip2 -c | wc -c &
 
-	env echo -n 'gzip:' &
+	echo -n 'gzip:' &
 	gzip -c | wc -c &
 }} |
 sgsh-tee
