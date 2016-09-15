@@ -34,10 +34,12 @@ sgsh-tee |
 {{
 	echo "Authors ordered by number of commits" &
 	# Order by frequency
-	awk -F: '{print $1}' | sgsh-wrap bash -c 'forder' &
+	awk -F: '{print $1}' |
+	bash --sgsh-negotiate -c 'forder' &
 
 	echo "Days ordered by number of commits" &
 	# Order by frequency
-	awk -F: '{print substr($2, 1, 3)}' | sgsh-wrap bash -c 'forder' &
+	awk -F: '{print substr($2, 1, 3)}' |
+	bash --sgsh-negotiate -c 'forder' &
 }} |
 sgsh-tee

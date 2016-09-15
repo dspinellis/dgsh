@@ -56,8 +56,8 @@ export -f line_signatures
 
 {{
   # Generate the signatures for the two hierarchies
-  sgsh-wrap bash -c 'line_signatures "$1"' -- "$1" &
-  sgsh-wrap bash -c 'line_signatures "$1"' -- "$2" &
+  bash --sgsh-negotiate -c 'line_signatures "$1"' -- "$1" &
+  bash --sgsh-negotiate -c 'line_signatures "$1"' -- "$2" &
 }} |
 
 # Join signatures on file name and content
@@ -72,7 +72,9 @@ sort -u |
 sgsh-tee |
 {{
   # Commands to copy
-  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' | sort -u &
+  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' |
+  sort -u &
+
   awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
 }} |
 # Order: first make directories, then copy files

@@ -63,18 +63,18 @@ sgsh-tee |
 	sgsh-tee |
 	{{
 		# Digram frequency
-		sgsh-wrap bash -c 'ngram 2 >digram.txt' &
+		bash --sgsh-negotiate -c 'ngram 2 >digram.txt' &
 		# Trigram frequency
-		sgsh-wrap bash -c 'ngram 3 >trigram.txt' &
+		bash --sgsh-negotiate -c 'ngram 3 >trigram.txt' &
 		# Word frequency
-		sgsh-wrap bash -c 'ranked_frequency >words.txt' &
+		bash --sgsh-negotiate -c 'ranked_frequency >words.txt' &
 	}} &
 
 	# Character frequency
 	sed 's/./&\
 /g' |
 	# Print absolute and percentage
-	sgsh-wrap bash -c 'ranked_frequency' |
+	bash --sgsh-negotiate -c 'ranked_frequency' |
 	sgsh-tee |
 	{{
 		# Store number of characters to use in awk below
@@ -88,7 +88,7 @@ sgsh-tee |
 		# start to join negotiation.
 		# sgsh-readval is not considered part of the sgsh graph
 		# and, thus, does not participate in negotiation (-x argument)
-		sgsh-wrap bash -c "/usr/bin/awk 'BEGIN {OFMT = \"%.2g%%\"}
+		bash --sgsh-negotiate -c "/usr/bin/awk 'BEGIN {OFMT = \"%.2g%%\"}
 			{print \$1, \$2, \$1 / '\"\`sgsh-readval -l -x -s nchars\`\"' * 100}' > character.txt" &
 	}} &
 }}
