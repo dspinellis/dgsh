@@ -52,8 +52,8 @@ sgsh-tee |
 	sort |
 	uniq -c |
 	sort -n |
-	awk 'BEGIN {l = 0; r = "$(sgsh-readval -x -s committers)";}
-			{print NR % 2 ? l++ : --r, $2}' |
+	bash --sgsh-negotiate -c '/usr/bin/awk "BEGIN {l = 0; r = "`sgsh-readval -l -x -s committers`";}
+			{print NR % 2 ? l++ : --r, \$2}"' |
 	sort -k2 &
 
 	sort -k2 &
@@ -66,24 +66,24 @@ sgsh-tee |
 {{
 	# Create portable bitmap
 	echo 'P1' &
-	echo "$(sgsh-readval -x -s committers) $(sgsh-readval -x -s last) $(sgsh-readval -x -s first)" &
-	bash --sgsh-negotiate -c 'perl -na -e '"'"'
-	BEGIN { @empty['$(sgsh-readval -x -s committers)' - 1] = 0; @committers = @empty; }
-		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
+	bash --sgsh-negotiate -c '/bin/echo "`sgsh-readval -l -x -s committers` `sgsh-readval -l -x -s last` `sgsh-readval -l -x -s first`"' &
+	bash --sgsh-negotiate -c 'perl -na -e "
+	BEGIN { @empty["`sgsh-readval -l -x -s committers`" - 1] = 0; @committers = @empty; }
+		sub out { print join(\"\", map(\$_ ? \"1\" : \"0\", @committers)), \"\n\"; }
 
-		$day = int($F[1] / 60 / 60 / 24);
-		$pday = $day if (!defined($pday));
+		\$day = int(\$F[1] / 60 / 60 / 24);
+		\$pday = \$day if (!defined(\$pday));
 
-		while ($day != $pday) {
+		while (\$day != \$pday) {
 			out();
 			@committers = @empty;
-			$pday++;
+			\$pday++;
 		}
 
-		$committers[$F[2]] = 1;
+		\$committers[\$F[2]] = 1;
 
 		END { out(); }
-		'"'"'' &
+		"' &
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
