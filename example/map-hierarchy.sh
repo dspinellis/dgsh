@@ -56,8 +56,8 @@ export -f line_signatures
 
 {{
   # Generate the signatures for the two hierarchies
-  bash --sgsh-negotiate -c 'line_signatures "$1"' -- "$1" &
-  bash --sgsh-negotiate -c 'line_signatures "$1"' -- "$2" &
+  call 'line_signatures "$1"' -- "$1" &
+  call 'line_signatures "$1"' -- "$2" &
 }} |
 
 # Join signatures on file name and content

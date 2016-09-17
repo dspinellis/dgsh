@@ -23,7 +23,7 @@
 forder()
 {
 	/usr/bin/sort |
-	uniq -c |
+	/usr/bin/uniq -c |
 	/usr/bin/sort -rn
 }
 
@@ -35,11 +35,11 @@ sgsh-tee |
 	echo "Authors ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print $1}' |
-	bash --sgsh-negotiate -c 'forder' &
+	call 'forder' &
 
 	echo "Days ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print substr($2, 1, 3)}' |
-	bash --sgsh-negotiate -c 'forder' &
+	call 'forder' &
 }} |
 sgsh-tee

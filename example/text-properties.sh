@@ -63,18 +63,18 @@ sgsh-tee |
 	sgsh-tee |
 	{{
 		# Digram frequency
-		bash --sgsh-negotiate -c 'ngram 2 >digram.txt' &
+		call 'ngram 2 >digram.txt' &
 		# Trigram frequency
-		bash --sgsh-negotiate -c 'ngram 3 >trigram.txt' &
+		call 'ngram 3 >trigram.txt' &
 		# Word frequency
-		bash --sgsh-negotiate -c 'ranked_frequency >words.txt' &
+		call 'ranked_frequency >words.txt' &
 	}} &
 
 	# Character frequency
 	sed 's/./&\
 /g' |
 	# Print absolute and percentage
-	bash --sgsh-negotiate -c 'ranked_frequency' |
+	call 'ranked_frequency' |
 	sgsh-tee |
 	{{
 		# Store number of characters to use in awk below
