@@ -88,7 +88,7 @@ sgsh-tee |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
 pgmmorphconv -erode <(
-/bin/cat <<EOF
+cat <<EOF
 P1
 7 7
 0 0 0 1 0 0 0

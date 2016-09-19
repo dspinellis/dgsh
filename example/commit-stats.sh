@@ -22,9 +22,9 @@
 
 forder()
 {
-	/usr/bin/sort |
-	/usr/bin/uniq -c |
-	/usr/bin/sort -rn
+	sort |
+	uniq -c |
+	sort -rn
 }
 
 export -f forder

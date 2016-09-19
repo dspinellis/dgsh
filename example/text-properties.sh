@@ -32,9 +32,9 @@ export LC_ALL=C
 # Convert input into a ranked frequency list
 ranked_frequency()
 {
-	/usr/bin/awk '{count[$1]++} END {for (i in count) print count[i], i}' |
+	awk '{count[$1]++} END {for (i in count) print count[i], i}' |
 	# We want the standard sort here
-	/usr/bin/sort -rn
+	sort -rn
 }
 
 # Convert standard input to a ranked frequency list of specified n-grams
@@ -88,7 +88,7 @@ sgsh-tee |
 		# start to join negotiation.
 		# sgsh-readval is not considered part of the sgsh graph
 		# and, thus, does not participate in negotiation (-x argument)
-		bash --sgsh-negotiate -c "/usr/bin/awk 'BEGIN {OFMT = \"%.2g%%\"}
-			{print \$1, \$2, \$1 / '\"\`sgsh-readval -l -x -s nchars\`\"' * 100}' > character.txt" &
+		bash --sgsh-negotiate -c '/usr/bin/awk "BEGIN {OFMT = \"%.2g%%\"}
+			{print \$1, \$2, \$1 / "`sgsh-readval -l -x -s nchars`" * 100}" > character.txt' &
 	}} &
 }}

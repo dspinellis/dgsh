@@ -26,7 +26,7 @@
 
 if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
 then
-  /bin/echo "Usage: $0 dir-1 dir-2 new-dir-name" 1>&2
+  echo "Usage: $0 dir-1 dir-2 new-dir-name" 1>&2
   exit 1
 fi
 
@@ -36,18 +36,18 @@ export LC_ALL=C
 
 line_signatures()
 {
-  /usr/bin/find $1 -type f -name '*.[chly]' -print |
+  find $1 -type f -name '*.[chly]' -print |
   # Split path name into directory and file
-  /usr/bin/sed 's|\(.*\)/\([^/]*\)|\1 \2|' |
+  sed 's|\(.*\)/\([^/]*\)|\1 \2|' |
   while read dir file
   do
     # Print "directory filename content" of lines with
     # at least one alphabetic character
     # The fields are separated by ^A and ^B
-    /usr/bin/sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
+    sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
   done |
   # Error: multi-character tab '\001\001'
-  /usr/bin/sort -t -k 2
+  sort -t -k 2
 }
 
 
