@@ -78,6 +78,7 @@ install:
 	cp $(SCRIPTDIR)/head $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin

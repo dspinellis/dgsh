@@ -23,9 +23,15 @@
 #  limitations under the License.
 #
 
+# TODO: replace hard-coded values
+NCOMMITTERS=2
+FIRST=1356948224
+LAST=1474357133
+NDAYS=$(( ( $LAST - $FIRST ) / 60 / 60  / 24))
 
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |
+# Filter records according to timestamp: keep (100000, now) seconds
 awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
 sgsh-tee |
@@ -37,53 +43,56 @@ sgsh-tee |
 		wc -l |
 		sgsh-writeval -s committers &
 
-		# Calculate number of days in window
+		# Calculate last commit timestamp in seconds
 		tail -1 |
 		awk '{print $1}' |
 		sgsh-writeval -s last &
 
+		# Calculate first commit timestamp in seconds
 		head -1 |
 		awk '{print $1}' |
 		sgsh-writeval -s first &
 	}} &
 
-	# Place committers left/right according to the number of their commits
+	# Place committers left/right of the median
+	# according to the number of their commits
 	awk '{print $2}' |
 	sort |
 	uniq -c |
 	sort -n |
-	bash --sgsh-negotiate -c '/usr/bin/awk "BEGIN {l = 0; r = "`sgsh-readval -l -x -s committers`";}
-			{print NR % 2 ? l++ : --r, \$2}"' |
-	sort -k2 &
+	awk 'BEGIN {l = 0; r = '$NCOMMITTERS';}
+		{print NR % 2 ? l++ : --r, $2}' |
+	sort -k2 &	# <left/right, email>
 
-	sort -k2 &
+	sort -k2 &	# <timestamp, email>
 }} |
 # Join committer positions with commit time stamps
-join -j 2 - - |
-# Order by time
-sort -k 2n |
+# based on committer email
+join -j 2 - - |		# <email, left/right, timestamp>
+# Order by timestamp
+sort -k 3n |
 sgsh-tee |
 {{
 	# Create portable bitmap
 	echo 'P1' &
-	bash --sgsh-negotiate -c '/bin/echo "`sgsh-readval -l -x -s committers` `sgsh-readval -l -x -s last` `sgsh-readval -l -x -s first`"' &
-	bash --sgsh-negotiate -c 'perl -na -e "
-	BEGIN { @empty["`sgsh-readval -l -x -s committers`" - 1] = 0; @committers = @empty; }
-		sub out { print join(\"\", map(\$_ ? \"1\" : \"0\", @committers)), \"\n\"; }
+	echo "$NCOMMITTERS $NDAYS" &
+	perl -na -e '
+	BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
+		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
-		\$day = int(\$F[1] / 60 / 60 / 24);
-		\$pday = \$day if (!defined(\$pday));
+		$day = int($F[1] / 60 / 60 / 24);
+		$pday = $day if (!defined($pday));
 
-		while (\$day != \$pday) {
+		while ($day != $pday) {
 			out();
 			@committers = @empty;
-			\$pday++;
+			$pday++;
 		}
 
-		\$committers[\$F[2]] = 1;
+		$committers[$F[2]] = 1;
 
 		END { out(); }
-		"' &
+		' &
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
