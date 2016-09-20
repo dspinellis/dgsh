@@ -43,11 +43,11 @@ line_signatures()
   do
     # Print "directory filename content" of lines with
     # at least one alphabetic character
-    # The fields are separated by ^A and ^B
-    sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
+    # The fields are separated by  and 
+    sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
   done |
   # Error: multi-character tab '\001\001'
-  sort -t -k 2
+  sort -t -k 2
 }
 
 
@@ -61,22 +61,23 @@ export -f line_signatures
 }} |
 
 # Join signatures on file name and content
-join -t -1 2 -2 2 - - |
+join -t -1 2 -2 2 - - |
 
 # Print filename dir1 dir2
-sed 's///g' |
-awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
+sed 's///g' |
+awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
 sgsh-tee |
 {{
   # Commands to copy
-  awk '{print "mkdir -p \"'$NEWDIR'/" $3 "\""}' |
+  awk '{print "mkdir -p '$NEWDIR'/" $3 ""}' |
   sort -u &
 
-  awk '{print "cp \"" $2 "/" $1 "\" \"'$NEWDIR'/" $3 "/" $1 "\""}' &
+  awk '{print "cp " $2 "/" $1 " '$NEWDIR'/" $3 "/" $1 ""}' &
 }} |
 # Order: first make directories, then copy files
+# TODO: sgsh-tee does not pass along first incoming stream
 sgsh-tee |
 sh
