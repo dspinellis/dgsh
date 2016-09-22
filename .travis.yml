@@ -1,0 +1,12 @@
+dist: trusty
+
+language: c
+
+install:
+- sudo apt-get -qq update
+- sudo apt-get install -y check make gcc
+- make
+
+compiler: gcc
+
+script: make test-regression
