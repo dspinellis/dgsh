@@ -187,6 +187,7 @@ new_source_info(const char *name)
 	ifp->name = strdup(name);
 	ifp->bp = new_buffer_pool();
 	ifp->source_pos_read = 0;
+	ifp->reached_eof = false;
 	return ifp;
 }
 
@@ -496,8 +497,8 @@ sink_buffer(struct sink_info *ofp)
 			page_in(ofp->ifp->bp, pool);
 		b.p = ofp->ifp->bp->buffers[pool].p + pool_offset;
 	}
-	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
-		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p);
+	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p for input fd: %s",
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p, ofp->ifp->name);
 	return b;
 }
 
@@ -590,6 +591,8 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 			    ofp->ifp->reached_eof &&
 			    ofp->ifp->next) {
 				ofp->ifp = ofp->ifp->next;
+				DPRINTF("%s(): advance to input file %s\n",
+						__func__, ofp->ifp->name);
 				ofp->pos_written = 0;
 			}
 			ofp->pos_to_write = ofp->ifp->source_pos_read;
@@ -769,11 +772,14 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 
 	allocate_data_to_sinks(sink_fds, ofiles);
 	for (ofp = ofiles; ofp; ofp = ofp->next) {
+		DPRINTF("\n%s(): try write to file %s", __func__, ofp->name);
 		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
 			struct io_buffer b;
 
 			b = sink_buffer(ofp);
+			DPRINTF("\n%s(): sink buffer returned %d bytes to write",
+					__func__, (int)b.size);
 			if (b.size == 0)
 				/* Can happen when a line spans a buffer */
 				n = 0;
