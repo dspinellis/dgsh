@@ -51,10 +51,6 @@ ngram()
 export -f ranked_frequency
 export -f ngram
 
-# The wc forms a second input to count total characters
-#sgsh-wrap awk 'BEGIN {OFMT = "%.2g%%"}
-#{print $1, $2, $1 / '"`wc -c`"' * 100}' >character.txt &
-
 cat $1 |
 sgsh-tee |
 {{
@@ -73,7 +69,7 @@ sgsh-tee |
 	# Character frequency
 	sed 's/./&\
 /g' |
-	# Print absolute and percentage
+	# Print absolute
 	call 'ranked_frequency' |
 	sgsh-tee |
 	{{
@@ -81,14 +77,7 @@ sgsh-tee |
 		wc -c |
 		sgsh-writeval -s nchars &
 
-		# Have awk command in bash to avoid sgsh-readval's
-		# command substitution before awk's execution.
-		# sgsh-readval would not be able to connect to the
-		# socket (it's negotiation time), so awk would never
-		# start to join negotiation.
-		# sgsh-readval is not considered part of the sgsh graph
-		# and, thus, does not participate in negotiation (-x argument)
-		bash --sgsh-negotiate -c '/usr/bin/awk "BEGIN {OFMT = \"%.2g%%\"}
-			{print \$1, \$2, \$1 / "`sgsh-readval -l -x -s nchars`" * 100}" > character.txt' &
+		awk 'BEGIN {OFMT = "%.2g%%"}
+			{print $1, $2}' > character.txt &
 	}} &
 }}
