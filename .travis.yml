@@ -9,4 +9,4 @@ install:
 
 compiler: gcc
 
-script: make test-regression
+script: make test-tee test-merge-sum test-kvstore test-sgsh
