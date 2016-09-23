@@ -54,6 +54,8 @@ sgsh-tee |
 	# Store number of days
 	sgsh-writeval -s days &
 
+	sort -k2 &	# <timestamp, email>
+
 	# Place committers left/right of the median
 	# according to the number of their commits
 	awk '{print $2}' |
@@ -67,13 +69,12 @@ sgsh-tee |
 		{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &	# <left/right, email>
 
-	sort -k2 &	# <timestamp, email>
 }} |
 # Join committer positions with commit time stamps
 # based on committer email
-join -j 2 - - |		# <email, left/right, timestamp>
+join -j 2 - - |		# <email, timestamp, left/right>
 # Order by timestamp
-sort -k 3n |
+sort -k 2n |
 sgsh-tee |
 {{
 	# Create portable bitmap
