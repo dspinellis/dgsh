@@ -23,12 +23,6 @@
 #  limitations under the License.
 #
 
-# TODO: replace hard-coded values
-NCOMMITTERS=2
-FIRST=1356948224
-LAST=1474357133
-NDAYS=$(( ( $LAST - $FIRST ) / 60 / 60  / 24))
-
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |
 # Filter records according to timestamp: keep (100000, now) seconds
@@ -45,14 +39,20 @@ sgsh-tee |
 
 		# Calculate last commit timestamp in seconds
 		tail -1 |
-		awk '{print $1}' |
-		sgsh-writeval -s last &
+		awk '{print $1}' &
 
 		# Calculate first commit timestamp in seconds
 		head -1 |
-		awk '{print $1}' |
-		sgsh-writeval -s first &
-	}} &
+		awk '{print $1}' &
+	}} |
+	# Gather last and first commit timestamp
+	sgsh-tee |
+	# Make one space-delimeted record
+	tr '\n' ' ' |
+	# Compute the difference in days
+	awk '{print ($1 - $2) / 60 / 60 / 24}' |
+	# Store number of days
+	sgsh-writeval -s days &
 
 	# Place committers left/right of the median
 	# according to the number of their commits
@@ -60,7 +60,10 @@ sgsh-tee |
 	sort |
 	uniq -c |
 	sort -n |
-	awk 'BEGIN {l = 0; r = '$NCOMMITTERS';}
+	awk '
+		BEGIN {
+			"sgsh-readval -l -x -q -s committers" | getline NCOMMITTERS
+			l = 0; r = NCOMMITTERS;}
 		{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &	# <left/right, email>
 
@@ -75,9 +78,13 @@ sgsh-tee |
 {{
 	# Create portable bitmap
 	echo 'P1' &
-	echo "$NCOMMITTERS $NDAYS" &
+	sgsh-readval -l -q -s committers &
+	sgsh-readval -l -q -s days &
+	# TODO: perl outputs nothing
 	perl -na -e '
-	BEGIN { @empty['$NCOMMITTERS' - 1] = 0; @committers = @empty; }
+	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -q -s committers");
+		$ncommitters = <$ncf>;
+		@empty[$ncommitters - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
 		$day = int($F[1] / 60 / 60 / 24);
@@ -96,6 +103,7 @@ sgsh-tee |
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
+# TODO: double stream to stdin; not going to work
 pgmmorphconv -erode <(
 cat <<EOF
 P1
