@@ -50,7 +50,7 @@ sgsh-tee |
 	# Make one space-delimeted record
 	tr '\n' ' ' |
 	# Compute the difference in days
-	awk '{print ($1 - $2) / 60 / 60 / 24}' |
+	awk '{print int(($1 - $2) / 60 / 60 / 24)}' |
 	# Store number of days
 	sgsh-writeval -s days &
 
@@ -64,7 +64,7 @@ sgsh-tee |
 	sort -n |
 	awk '
 		BEGIN {
-			"sgsh-readval -l -x -q -s committers" | getline NCOMMITTERS
+			"sgsh-readval -l -x -s committers" | getline NCOMMITTERS
 			l = 0; r = NCOMMITTERS;}
 		{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &	# <left/right, email>
@@ -79,11 +79,17 @@ sgsh-tee |
 {{
 	# Create portable bitmap
 	echo 'P1' &
-	sgsh-readval -l -q -s committers &
-	sgsh-readval -l -q -s days &
-	# TODO: perl outputs nothing
+
+	{{
+		sgsh-readval -l -s committers &
+		sgsh-readval -l -q -s days &
+	}} |
+	sgsh-tee |
+	tr '\n' ' ' |
+	awk '{print $1, $2}' &
+
 	perl -na -e '
-	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -q -s committers");
+	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -s committers");
 		$ncommitters = <$ncf>;
 		@empty[$ncommitters - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
@@ -121,8 +127,8 @@ EOF
 sgsh-tee |
 {{
 	# Full-scale image
-	pnmtopng & #>large.png &
+	pnmtopng >large.png &
 	# A smaller image
 	pamscale -width 640 |
-	pnmtopng & #>small.png &
+	pnmtopng >small.png &
 }}

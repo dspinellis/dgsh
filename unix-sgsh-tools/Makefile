@@ -359,8 +359,8 @@ test-bash: test-clean
 	|| echo 'text-properties.sh $F'
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/committer-plot.sh \
-		>$(PSDIR)/committer-plot.outb 2>/dev/null \
+	cd coreutils && $(SGSHPATH)/bash --sgsh ../$(XDIR)/committer-plot.sh \
+		>../$(PSDIR)/committer-plot.outb 2>/dev/null \
 	&& echo 'committer-plot.sh $S' \
 	|| echo 'committer-plot.sh $F'
 	# XXX: sgsh-writeval hangs

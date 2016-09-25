@@ -981,7 +981,7 @@ write_output_fds(int output_socket, int *output_fds)
 static enum op_result
 write_concs(int write_fd)
 {
-	int wsize, buf_size = getpagesize();
+	int wsize, buf_size = 2 * getpagesize();
 	char buf[buf_size];
 	int conc_size = sizeof(struct sgsh_conc) * chosen_mb->n_concs;
 
@@ -1001,7 +1001,7 @@ static enum op_result
 write_graph_solution(int write_fd)
 {
 	int i;
-	int buf_size = getpagesize();
+	int buf_size = 2 * getpagesize();
 	char buf[buf_size];
 	int n_nodes = chosen_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
@@ -1082,7 +1082,7 @@ enum op_result
 write_message_block(int write_fd)
 {
 	int wsize = -1;
-	int buf_size = getpagesize(); /* Make buffer page-wide. */
+	int buf_size = 2 * getpagesize(); /* Make buffer page-wide. */
 	int mb_size = sizeof(struct sgsh_negotiation);
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
@@ -1798,7 +1798,7 @@ read_input_fds(int input_socket, int *input_fds)
 static enum op_result
 read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 {
-	int bytes_read, buf_size = getpagesize();	/* Page-wide buffer */
+	int bytes_read, buf_size = 2 * getpagesize();	/* Page-wide buffer */
 	char buf[buf_size];
 	enum op_result error_code = OP_SUCCESS;
 
@@ -1816,7 +1816,7 @@ static enum op_result
 read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 {
 	int i;
-	int buf_size = getpagesize();		/* Make buffer page-wide. */
+	int buf_size = 2 * getpagesize();	/* Make buffer page-wide. */
 	char buf[buf_size];
 	int bytes_read = 0;
 	int n_nodes = fresh_mb->n_nodes;
@@ -1891,7 +1891,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 enum op_result
 read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 {
-	int buf_size = getpagesize();		/* Make buffer page-wide. */
+	int buf_size = 2 * getpagesize();	/* Make buffer page-wide. */
 	char buf[buf_size];
 	int bytes_read = 0;
 	enum op_result error_code = 0;
