@@ -110,7 +110,6 @@ sgsh-tee |
 }} |
 sgsh-tee |
 # Enlarge points into discs through morphological convolution
-# TODO: double stream to stdin; not going to work
 pgmmorphconv -erode <(
 cat <<EOF
 P1
