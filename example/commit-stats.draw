@@ -1,0 +1,22 @@
+digraph {
+	n0 [label="/usr/bin/git"];
+	n0 -> n1;
+	n1 [label="scatter-gather"];
+	n1 -> n2;
+	n1 -> n4;
+	n1 -> n6;
+	n1 -> n7;
+	n2 [label="/bin/echo"];
+	n2 -> n3;
+	n3 [label="scatter-gather"];
+	n4 [label="/usr/bin/awk"];
+	n4 -> n5;
+	n5 [label="bash"];
+	n5 -> n3;
+	n6 [label="/bin/echo"];
+	n6 -> n3;
+	n7 [label="/usr/bin/awk"];
+	n7 -> n8;
+	n8 [label="bash"];
+	n8 -> n3;
+}

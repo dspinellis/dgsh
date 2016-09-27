@@ -1,0 +1,13 @@
+digraph {
+	n0 [label="sort"];
+	n0 -> n1;
+	n1 [label="comm"];
+	n1 -> n2;
+	n1 -> n3;
+	n1 -> n4;
+	n2 [label="paste"];
+	n3 [label="join"];
+	n4 [label="diff"];
+	n5 [label="sort"];
+	n5 -> n1;
+}

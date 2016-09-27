@@ -1,0 +1,22 @@
+digraph {
+	n0 [label="/usr/bin/find"];
+	n0 -> n1;
+	n1 [label="/usr/bin/xargs"];
+	n1 -> n2;
+	n2 [label="/bin/sed"];
+	n2 -> n3;
+	n3 [label="sort"];
+	n3 -> n4;
+	n4 [label="scatter-gather"];
+	n4 -> n5;
+	n4 -> n9;
+	n5 [label="/usr/bin/awk"];
+	n5 -> n6;
+	n6 [label="/usr/bin/uniq"];
+	n6 -> n7;
+	n7 [label="join"];
+	n7 -> n8;
+	n8 [label="/usr/bin/awk"];
+	n9 [label="/bin/cat"];
+	n9 -> n7;
+}

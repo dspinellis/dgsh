@@ -138,6 +138,45 @@ static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
 							 * at execution.
 							 */
 
+STATIC void
+output_graph(char *filename)
+{
+	FILE *f = fopen(filename, "w");
+	int i, j;
+	int n_nodes = chosen_mb->n_nodes;
+	struct sgsh_node_connections *graph_solution =
+					chosen_mb->graph_solution;
+
+	DPRINTF("Output graph in file %s for %d nodes and %d edges",
+			filename, n_nodes, chosen_mb->n_edges);
+
+	fprintf(f, "digraph {\n");
+
+	for (i = 0; i < n_nodes; i++) {
+		struct sgsh_node *node = &chosen_mb->node_array[i];
+		struct sgsh_node_connections *connections =
+						&graph_solution[i];
+		int n_edges_outgoing = connections->n_edges_outgoing;
+
+		fprintf(f, "	n%d [label=\"%s\"];\n", node->index, node->name);
+		DPRINTF("Node: (%d) %s", node->index, node->name);
+
+		for (j = 0; j < n_edges_outgoing; j++) {
+			fprintf(f, "	n%d -> n%d;\n",
+				node->index,
+				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
+			DPRINTF("Edge: (%d) %s -> %s (%d)",
+				node->index, node->name,
+				chosen_mb->node_array[connections->edges_outgoing[j].to].name,
+				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
+		}
+	}
+
+	fprintf(f, "}");
+
+	fclose(f);
+}
+
 /**
  * Allocate node indexes to store a node's (at node_index)
  * node outgoing or incoming connections (nc_edges).
@@ -791,6 +830,7 @@ node_match_constraints(void)
 static enum op_result
 solve_sgsh_graph(void)
 {
+	char *filename;
 	enum op_result exit_state = OP_SUCCESS;
 	int retries = 0;
 
@@ -833,6 +873,9 @@ solve_sgsh_graph(void)
 	 */
 	if ((exit_state = prepare_solution()) == OP_ERROR)
 		goto exit;
+
+	if ((filename = getenv("SGSH_DOT_DRAW")))
+		output_graph(filename);
 
 exit:
 	if (exit_state == OP_ERROR)

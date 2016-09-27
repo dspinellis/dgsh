@@ -1,0 +1,27 @@
+digraph {
+	n0 [label="/bin/cat"];
+	n0 -> n1;
+	n1 [label="scatter-gather"];
+	n1 -> n2;
+	n1 -> n7;
+	n2 [label="/usr/bin/tr"];
+	n2 -> n3;
+	n3 [label="scatter-gather"];
+	n3 -> n4;
+	n3 -> n5;
+	n3 -> n6;
+	n4 [label="bash"];
+	n5 [label="bash"];
+	n6 [label="bash"];
+	n7 [label="/bin/sed"];
+	n7 -> n8;
+	n8 [label="bash"];
+	n8 -> n9;
+	n9 [label="scatter-gather"];
+	n9 -> n10;
+	n9 -> n12;
+	n10 [label="/usr/bin/wc"];
+	n10 -> n11;
+	n11 [label="sgsh-writeval"];
+	n12 [label="/usr/bin/awk"];
+}

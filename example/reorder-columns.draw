@@ -1,0 +1,10 @@
+digraph {
+	n0 [label="scatter-gather"];
+	n0 -> n1;
+	n0 -> n3;
+	n1 [label="/usr/bin/cut"];
+	n1 -> n2;
+	n2 [label="paste"];
+	n3 [label="/usr/bin/cut"];
+	n3 -> n2;
+}

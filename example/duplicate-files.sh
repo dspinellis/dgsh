@@ -19,6 +19,8 @@
 #  limitations under the License.
 #
 
+export SGSH_DOT_DRAW="duplicate-files.draw"
+
 # Create list of files
 find "$@" -type f |
 

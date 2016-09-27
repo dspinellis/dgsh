@@ -25,7 +25,9 @@
 #  limitations under the License.
 #
 
-# Consitent sorting across machines
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+
+# Consistent sorting across machines
 export LC_ALL=C
 
 

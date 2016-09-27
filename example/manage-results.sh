@@ -1,3 +1,5 @@
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+
 PSDIR=$1
 
 cp $PSDIR/results $PSDIR/res

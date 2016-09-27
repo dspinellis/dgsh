@@ -26,6 +26,8 @@
 #  limitations under the License.
 #
 
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+
 sgsh-tee |
 {{
 	echo -n 'File type:' &

@@ -24,6 +24,8 @@
 #  limitations under the License.
 #
 
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+
 if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
 then
   echo "Usage: $0 dir-1 dir-2 new-dir-name" 1>&2

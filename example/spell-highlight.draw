@@ -1,0 +1,19 @@
+digraph {
+	n0 [label="scatter-gather"];
+	n0 -> n1;
+	n0 -> n6;
+	n0 -> n7;
+	n1 [label="/usr/bin/tr"];
+	n1 -> n2;
+	n2 [label="/usr/bin/tr"];
+	n2 -> n3;
+	n3 [label="sort"];
+	n3 -> n4;
+	n4 [label="comm"];
+	n4 -> n5;
+	n5 [label="grep"];
+	n6 [label="sort"];
+	n6 -> n4;
+	n7 [label="/bin/cat"];
+	n7 -> n5;
+}

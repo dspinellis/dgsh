@@ -22,6 +22,8 @@
 
 FREE=`df -h . | awk '!/Use%/{print $4}'`
 
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+
 ls -n |
 sgsh-tee |
 {{
@@ -35,7 +37,7 @@ sgsh-tee |
 	echo -n ' File(s) ' &
 
 	# Tally number of bytes
-	awk '{s += $5} END {printf("%d bytes", s)}' &
+	awk '{s += $5} END {printf("%d bytes\n", s)}' &
 
 	# Count number of directories
 	grep -c '^d' - | tr -d \\n &
