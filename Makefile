@@ -46,7 +46,8 @@ NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h \
 	./sgsh -g pretty $< | dot -Tpng >$@
 
 png/%-pretty.png: example/%.dot
-	dot -Tpng $< >$@
+	# The sed removes the absolute path from the command label
+	sed 's|label="/[^"]*/\([^/"]*\)"|label="\1"|' $< | dot -Tpng >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
