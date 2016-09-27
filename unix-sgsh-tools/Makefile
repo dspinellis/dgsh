@@ -341,6 +341,12 @@ test-bash: test-clean
 	|| echo 'spell-highlight.sh $F'
 	
 	# ditto
+	$(SGSHPATH)/bash --sgsh $(XDIR)/static-functions.sh diffutils \
+		>$(PSDIR)/static-functions.outb 2>/dev/null \
+	&& echo 'static-functions.sh $S' \
+	|| echo 'static-functions.sh $F'
+	
+	# ditto
 	$(SGSHPATH)/bash --sgsh $(XDIR)/word-properties.sh Readme.md \
 		>$(PSDIR)/word-properties.outb 2>/dev/null \
 	&& echo 'word-properties.sh $S' \
