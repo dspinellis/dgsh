@@ -45,8 +45,8 @@ NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h \
 %.png: %.sh
 	./sgsh -g pretty $< | dot -Tpng >$@
 
-png/%-pretty.png: example/%.sh
-	./sgsh -g pretty $< | dot -Tpng >$@
+png/%-pretty.png: example/%.dot
+	dot -Tpng $< >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
