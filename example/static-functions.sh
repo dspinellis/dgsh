@@ -22,7 +22,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 
 # Find object files
 find "$1" -name \*.o |

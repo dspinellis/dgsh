@@ -24,7 +24,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 
 if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
 then
