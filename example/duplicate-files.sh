@@ -19,7 +19,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="duplicate-files.draw"
+export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
 
 # Create list of files
 find "$@" -type f |
