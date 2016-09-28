@@ -1024,15 +1024,13 @@ write_output_fds(int output_socket, int *output_fds)
 static enum op_result
 write_concs(int write_fd)
 {
-	int wsize, buf_size = 2 * getpagesize();
-	char buf[buf_size];
+	int wsize;
 	int conc_size = sizeof(struct sgsh_conc) * chosen_mb->n_concs;
 
 	if (!chosen_mb->conc_array)
 		return OP_SUCCESS;
 
-	memcpy(buf, chosen_mb->conc_array, conc_size);
-	wsize = write(write_fd, buf, conc_size);
+	wsize = write(write_fd, chosen_mb->conc_array, conc_size);
 	if (wsize == -1)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
@@ -1044,22 +1042,15 @@ static enum op_result
 write_graph_solution(int write_fd)
 {
 	int i;
-	int buf_size = 2 * getpagesize();
-	char buf[buf_size];
 	int n_nodes = chosen_mb->n_nodes;
 	int graph_solution_size = sizeof(struct sgsh_node_connections) *
 								n_nodes;
 	struct sgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 	int wsize = -1;
-	if (graph_solution_size > buf_size) {
-		DPRINTF("Sgsh negotiation graph solution of size %d does not fit to buffer of size %d.\n", graph_solution_size, buf_size);
-		return OP_ERROR;
-	}
 
 	/* Transmit node connection structures. */
-	memcpy(buf, graph_solution, graph_solution_size);
-	wsize = write(write_fd, buf, graph_solution_size);
+	wsize = write(write_fd, graph_solution, graph_solution_size);
 	if (wsize == -1)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
@@ -1070,15 +1061,9 @@ write_graph_solution(int write_fd)
 		struct sgsh_node_connections *nc = &graph_solution[i];
 		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
-		if (in_edges_size > buf_size || out_edges_size > buf_size) {
-			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
-			return OP_ERROR;
-		}
-
 		if (nc->n_edges_incoming) {
 			/* Transmit a node's incoming connections. */
-			memcpy(buf, nc->edges_incoming, in_edges_size);
-			wsize = write(write_fd, buf, in_edges_size);
+			wsize = write(write_fd, nc->edges_incoming, in_edges_size);
 			if (wsize == -1)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
@@ -1086,8 +1071,7 @@ write_graph_solution(int write_fd)
 
 		if (nc->n_edges_outgoing) {
 			/* Transmit a node's outgoing connections. */
-			memcpy(buf, nc->edges_outgoing, out_edges_size);
-			wsize = write(write_fd, buf, out_edges_size);
+			wsize = write(write_fd, nc->edges_outgoing, out_edges_size);
 			if (wsize == -1)
 				return OP_ERROR;
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
@@ -1125,17 +1109,10 @@ enum op_result
 write_message_block(int write_fd)
 {
 	int wsize = -1;
-	int buf_size = 2 * getpagesize(); /* Make buffer page-wide. */
 	int mb_size = sizeof(struct sgsh_negotiation);
 	int nodes_size = chosen_mb->n_nodes * sizeof(struct sgsh_node);
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
-
-	if (nodes_size > buf_size || edges_size > buf_size) {
-		DPRINTF("%s size exceeds buffer size.\n",
-			(nodes_size > buf_size) ? "Nodes" : "Edges");
-		return OP_ERROR;
-	}
 
 	/**
 	 * Prepare and perform message block transmission.
@@ -1841,8 +1818,9 @@ read_input_fds(int input_socket, int *input_fds)
 static enum op_result
 read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 {
-	int bytes_read, buf_size = 2 * getpagesize();	/* Page-wide buffer */
-	char buf[buf_size];
+	int bytes_read;
+	size_t buf_size = sizeof(struct sgsh_conc) * fresh_mb->n_concs;
+	char *buf = (char *)malloc(buf_size);
 	enum op_result error_code = OP_SUCCESS;
 
 	if (!fresh_mb->conc_array)
@@ -1851,7 +1829,9 @@ read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
 			!= OP_SUCCESS)
 		return error_code;
-	return alloc_copy_concs(fresh_mb, buf, bytes_read, buf_size);
+	error_code = alloc_copy_concs(fresh_mb, buf, bytes_read, buf_size);
+	free(buf);
+	return error_code;
 }
 
 /* Try read solution to the sgsh negotiation graph. */
@@ -1859,10 +1839,10 @@ static enum op_result
 read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 {
 	int i;
-	int buf_size = 2 * getpagesize();	/* Make buffer page-wide. */
-	char buf[buf_size];
 	int bytes_read = 0;
 	int n_nodes = fresh_mb->n_nodes;
+	size_t buf_size = sizeof(struct sgsh_node_connections) * n_nodes;
+	char *buf = (char *)malloc(buf_size);
 	enum op_result error_code = OP_SUCCESS;
 
 	/* Read node connection structures of the solution. */
@@ -1872,6 +1852,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 	if ((error_code = alloc_copy_graph_solution(fresh_mb, buf, bytes_read,
 					buf_size)) == OP_ERROR)
 		return error_code;
+	free(buf);
 
 	struct sgsh_node_connections *graph_solution =
 					fresh_mb->graph_solution;
@@ -1880,14 +1861,11 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 		DPRINTF("Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
 		int in_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
-		if (in_edges_size > buf_size || out_edges_size > buf_size) {
-			DPRINTF("Sgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
-			return OP_ERROR;
-		}
 
 		/* Read a node's incoming connections. */
 		if (nc->n_edges_incoming > 0) {
-			if ((error_code = read_chunk(read_fd, buf, buf_size,
+			buf = (char *)malloc(in_edges_size);
+			if ((error_code = read_chunk(read_fd, buf, in_edges_size,
 				&bytes_read)) != OP_SUCCESS)
 				return error_code;
 			if (in_edges_size != bytes_read) {
@@ -1899,11 +1877,13 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 				nc->n_edges_incoming, 0, i) == OP_ERROR)
 				return OP_ERROR;
 			memcpy(nc->edges_incoming, buf, in_edges_size);
+			free(buf);
 		}
 
 		/* Read a node's outgoing connections. */
 		if (nc->n_edges_outgoing) {
-			if ((error_code = read_chunk(read_fd, buf, buf_size,
+			buf = (char *)malloc(out_edges_size);
+			if ((error_code = read_chunk(read_fd, buf, out_edges_size,
 				&bytes_read)) != OP_SUCCESS)
 				return error_code;
 			if (out_edges_size != bytes_read) {
@@ -1915,6 +1895,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 				nc->n_edges_outgoing, 1, i) == OP_ERROR)
 				return OP_ERROR;
 			memcpy(nc->edges_outgoing, buf, out_edges_size);
+			free(buf);
 		}
 	}
 	return OP_SUCCESS;
@@ -1934,8 +1915,8 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 enum op_result
 read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 {
-	int buf_size = 2 * getpagesize();	/* Make buffer page-wide. */
-	char buf[buf_size];
+	size_t buf_size = sizeof(struct sgsh_negotiation);
+	char *buf = (char *)malloc(buf_size);
 	int bytes_read = 0;
 	enum op_result error_code = 0;
 
@@ -1947,23 +1928,30 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		return error_code;
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
 		return OP_ERROR;
+	free(buf);
 
+	buf_size = sizeof(struct sgsh_node) * (*fresh_mb)->n_nodes;
+	buf = (char *)malloc(buf_size);
 	if ((error_code = read_chunk(read_fd, buf, buf_size,
 					&bytes_read)) != OP_SUCCESS)
 		return error_code;
 	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
 								== OP_ERROR)
 		return OP_ERROR;
+	free(buf);
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
         	if ((*fresh_mb)->n_nodes > 1) {
 			DPRINTF("%s(): Read negotiation graph edges.",__func__);
+			buf_size = sizeof(struct sgsh_edge) * (*fresh_mb)->n_edges;
+			buf = (char *)malloc(buf_size);
 			if ((error_code = read_chunk(read_fd, buf, buf_size,
 			     &bytes_read)) != OP_SUCCESS)
 				return error_code;
 			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
 			    buf_size) == OP_ERROR)
 				return OP_ERROR;
+			free(buf);
 		}
 	} else if ((*fresh_mb)->state == PS_RUN) {
 		/**
