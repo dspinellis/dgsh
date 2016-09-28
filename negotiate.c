@@ -186,22 +186,22 @@ alloc_node_connections(struct sgsh_edge **nc_edges, int nc_n_edges, int type,
 								int node_index)
 {
 	if (!nc_edges) {
-		DPRINTF("Double pointer to node connection edges is NULL.\n");
+		DPRINTF("ERROR: Double pointer to node connection edges is NULL.\n");
 		return OP_ERROR;
 	}
 	if (node_index < 0) {
-		DPRINTF("Index of node whose connections will be allocated is negative number.\n");
+		DPRINTF("ERROR: Index of node whose connections will be allocated is negative number.\n");
 		return OP_ERROR;
 	}
 	if (type > 1 || type < 0) {
-		DPRINTF("Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
+		DPRINTF("ERROR: Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
 		return OP_ERROR;
 	}
 
 	*nc_edges = (struct sgsh_edge *)malloc(sizeof(struct sgsh_edge) *
 								nc_n_edges);
 	if (!*nc_edges) {
-		DPRINTF("Memory allocation for node's index %d %s connections \
+		DPRINTF("ERROR: Memory allocation for node's index %d %s connections \
 failed.\n", node_index, (type) ? "incoming" : "outgoing");
 
 		return OP_ERROR;
@@ -222,21 +222,21 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 	int array_size = sizeof(struct sgsh_edge) * nc_n_edges;
 
 	if (nc_n_edges <= 0) {
-		DPRINTF("Size identifier to be used in malloc() is non-positive number: %d.\n", nc_n_edges);
+		DPRINTF("ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", nc_n_edges);
 		return OP_ERROR;
 	}
 	if (nc_edges == NULL) {
-		DPRINTF("Compact edge array to put edges (connections) is NULL.\n");
+		DPRINTF("ERROR: Compact edge array to put edges (connections) is NULL.\n");
 		return OP_ERROR;
 	}
 	if (p_edges == NULL) {
-		DPRINTF("Pointer to edge array is NULL.\n");
+		DPRINTF("ERROR: Pointer to edge array is NULL.\n");
 		return OP_ERROR;
 	}
 
 	*nc_edges = (struct sgsh_edge *)malloc(array_size);
 	if (!(*nc_edges)) {
-		DPRINTF("Memory allocation of size %d for edge array failed.\n",
+		DPRINTF("ERROR: Memory allocation of size %d for edge array failed.\n",
 								array_size);
 		return OP_ERROR;
 	}
@@ -247,7 +247,7 @@ make_compact_edge_array(struct sgsh_edge **nc_edges, int nc_n_edges,
 	 */
 	for (i = 0; i < nc_n_edges; i++) {
 		if (p_edges[i] == NULL) {
-			DPRINTF("Pointer to edge array contains NULL pointer.\n");
+			DPRINTF("ERROR: Pointer to edge array contains NULL pointer.\n");
 			return OP_ERROR;
 		}
 		/**
@@ -269,11 +269,11 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 {
 	void **p = NULL;
 	if (edge_array == NULL) {
-		DPRINTF("Edge array is NULL pointer.\n");
+		DPRINTF("ERROR: Edge array is NULL pointer.\n");
 		return OP_ERROR;
 	}
 	if (n_elements <= 0) {
-		DPRINTF("Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
+		DPRINTF("ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
 		return OP_ERROR;
 	} else if (n_elements == 1)
 		p = malloc(sizeof(struct sgsh_edge *) * n_elements);
@@ -281,7 +281,7 @@ reallocate_edge_pointer_array(struct sgsh_edge ***edge_array, int n_elements)
 		p = realloc(*edge_array,
 				sizeof(struct sgsh_edge *) * n_elements);
 	if (!p) {
-		DPRINTF("Memory reallocation for edge failed.\n");
+		DPRINTF("ERROR: Memory reallocation for edge failed.\n");
 		return OP_ERROR;
 	} else
 		*edge_array = (struct sgsh_edge **)p;
@@ -574,6 +574,7 @@ cross_match_io_constraints(int *free_instances,
 		struct sgsh_edge *e = edges[i];
 		int *from = &e->from_instances;
 		int *to = &e->to_instances;
+		int matched = *edges_matched;
 		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 			if (*from == -1 && *to == -1)
@@ -613,6 +614,9 @@ cross_match_io_constraints(int *free_instances,
 					(*edges_matched)++;
 				}
 		}
+		if (matched == *edges_matched)
+			DPRINTF("%s(): WARNING: did not manage to match...",
+					__func__);
         	DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 	}
 
@@ -727,7 +731,7 @@ cross_match_constraints(void)
 			    out_constraint,
 		    	    edges_outgoing, *n_edges_outgoing, 0,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -742,7 +746,7 @@ cross_match_constraints(void)
 			    in_constraint,
 		    	    edges_incoming, *n_edges_incoming, 1,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -778,7 +782,7 @@ node_match_constraints(void)
 	struct sgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 	if (!graph_solution) {
-		DPRINTF("Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
+		DPRINTF("ERROR: Failed to allocate memory of size %d for sgsh negotiation graph solution structure.\n", graph_solution_size);
 		return OP_ERROR;
 	}
 
@@ -800,7 +804,7 @@ node_match_constraints(void)
 		 */
 		if (dry_match_io_constraints(current_node, current_connections,
 			&edges_incoming, &edges_outgoing) == OP_ERROR) {
-			DPRINTF("Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -1014,7 +1018,7 @@ write_output_fds(int output_socket, int *output_fds)
 			break;
 	}
 	if (re == OP_ERROR) {
-		DPRINTF("%s(): OP_ERROR. Aborting.", __func__);
+		DPRINTF("%s(): ERROR. Aborting.", __func__);
 		free_graph_solution(chosen_mb->n_nodes - 1);
 		free(self_pipe_fds.output_fds);
 	}
@@ -1180,7 +1184,7 @@ add_node(void)
 	void *p = realloc(chosen_mb->node_array,
 		sizeof(struct sgsh_node) * (n_nodes + 1));
 	if (!p) {
-		DPRINTF("Node array expansion for adding a new node failed.\n");
+		DPRINTF("ERROR: Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->node_array = (struct sgsh_node *)p;
@@ -1226,7 +1230,7 @@ fill_sgsh_edge(struct sgsh_edge *e)
 		if (i == chosen_mb->origin_index)
 			break;
 	if (i == n_nodes) {
-		DPRINTF("Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin_index);
+		DPRINTF("ERROR: Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin_index);
 		return OP_ERROR;
 	}
 	if (chosen_mb->origin_fd_direction == STDIN_FILENO) {
@@ -1272,7 +1276,7 @@ add_edge(struct sgsh_edge *edge)
 	void *p = realloc(chosen_mb->edge_array,
 			sizeof(struct sgsh_edge) * (n_edges + 1));
 	if (!p) {
-		DPRINTF("Edge array expansion for adding a new edge failed.\n");
+		DPRINTF("ERROR: Edge array expansion for adding a new edge failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->edge_array = (struct sgsh_edge *)p;
@@ -1477,12 +1481,13 @@ analyse_read(struct sgsh_negotiation *fresh_mb,
 static enum op_result
 check_read(int bytes_read, int buf_size, int expected_read_size) {
 	if (bytes_read != expected_read_size) {
-		DPRINTF("Read %d bytes of message block, expected to read %d.\n",
-			bytes_read, expected_read_size);
+		DPRINTF("%s(): ERROR: Read %d bytes of message block, expected to read %d.\n",
+			__func__, bytes_read, expected_read_size);
 		return OP_ERROR;
 	}
 	if (bytes_read > buf_size) {
-		DPRINTF("Read %d bytes of message block, but buffer can hold up to %d.", bytes_read, buf_size);
+		DPRINTF("%s(): ERROR: Read %d bytes of message block, but buffer can hold up to %d.",
+				__func__, bytes_read, buf_size);
 		return OP_ERROR;
 	}
 	return OP_SUCCESS;
@@ -1869,7 +1874,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 				&bytes_read)) != OP_SUCCESS)
 				return error_code;
 			if (in_edges_size != bytes_read) {
-				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
+				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
 						in_edges_size, bytes_read);
 				return OP_ERROR;
 			}
@@ -1887,7 +1892,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 				&bytes_read)) != OP_SUCCESS)
 				return error_code;
 			if (out_edges_size != bytes_read) {
-				DPRINTF("%s(): Expected %d bytes, got %d.", __func__,
+				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
 						out_edges_size, bytes_read);
 				return OP_ERROR;
 			}
@@ -1977,7 +1982,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb = (struct sgsh_negotiation *)malloc(
 				memory_allocation_size);
 	if (!chosen_mb) {
-		DPRINTF("Memory allocation of message block failed.");
+		DPRINTF("ERROR: Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
 	chosen_mb->version = 1;
@@ -2007,7 +2012,7 @@ get_env_var(const char *env_var,int *value)
 {
 	char *string_value = getenv(env_var);
 	if (!string_value) {
-		DPRINTF("Getting environment variable %s failed.\n", env_var);
+		DPRINTF("ERROR: Getting environment variable %s failed.\n", env_var);
 		return OP_ERROR;
 	} else
 		DPRINTF("getenv() returned string value %s.\n", string_value);
@@ -2044,23 +2049,23 @@ validate_input(int *channels_required, int *channels_provided, const char *tool_
 {
 
 	if (!tool_name) {
-		DPRINTF("NULL pointer provided as tool name.\n");
+		DPRINTF("ERROR: NULL pointer provided as tool name.\n");
 		return OP_ERROR;
 	}
 	if (channels_required == NULL || channels_provided == NULL)
 		return OP_SUCCESS;
 	if (*channels_required < -1 || *channels_provided < -1) {
-		DPRINTF("I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
+		DPRINTF("ERROR: I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
 			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
 	if (*channels_required == 0 && *channels_provided == 0) {
-		DPRINTF("I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d",
+		DPRINTF("ERROR: I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d",
 			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
 	if (*channels_required > 1000 || *channels_provided > 1000) {
-		DPRINTF("I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d",
+		DPRINTF("ERROR: I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d",
 			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
@@ -2212,7 +2217,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 		return PS_ERROR;
 
 	if (get_environment_vars() == OP_ERROR) {
-		DPRINTF("Failed to extract SGSH_IN, SGSH_OUT environment variables.");
+		DPRINTF("ERROR: Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PS_ERROR;
 	}
 
@@ -2286,7 +2291,7 @@ again:
 				if (chosen_mb->state == PS_NEGOTIATION_END) {
 					if (solve_sgsh_graph() == OP_ERROR) {
 						chosen_mb->state = PS_ERROR;
-							fprintf(stderr, "No solution was found to satisfy the I/O requirements of the participating processes.");
+							fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the participating processes.");
 					} else {
 						chosen_mb->state = PS_RUN;
 						run_ntimes_same++;
