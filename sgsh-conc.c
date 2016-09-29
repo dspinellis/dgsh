@@ -369,7 +369,7 @@ pass_message_blocks(void)
 				if (is_ready(i, pi[i].to_write)) {
 					solution = pi[i].to_write;
 					pi[i].run_ready = true;
-					DPRINTF("%s(): pi[%d] is run ready",
+					DPRINTF("**%s(): pi[%d] is run ready",
 							__func__, i);
 				}
 				pi[i].to_write = NULL;
@@ -429,7 +429,7 @@ pass_message_blocks(void)
 				if (pi[i].seen && pi[i].written) {
 					solution = pi[next].to_write;
 					pi[i].run_ready = true;
-					DPRINTF("%s(): pi[%d] is run ready",
+					DPRINTF("**%s(): pi[%d] is run ready",
 							__func__, i);
 				}
 			}
