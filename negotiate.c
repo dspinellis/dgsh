@@ -130,6 +130,8 @@ static bool mb_is_updated;			/* Boolean value that signals
 static struct sgsh_node self_node;		/* The sgsh node that models
 						 * this tool.
 						 */
+char program_name[100];
+
 static struct node_io_side self_node_io_side;	/* Dispatch info for this tool.
 						 */
 static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
@@ -162,6 +164,9 @@ output_graph(char *filename)
 		DPRINTF("Node: (%d) %s", node->index, node->name);
 
 		for (j = 0; j < n_edges_outgoing; j++) {
+			if (connections->edges_outgoing[j].instances == 0)
+				continue;
+
 			fprintf(f, "	n%d -> n%d;\n",
 				node->index,
 				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
@@ -955,7 +960,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_output_fds)
 			*n_output_fds = 0;
 
-	DPRINTF("%s(): %s", __func__,
+	DPRINTF("**%s(): %s", __func__,
 			(re == OP_SUCCESS ? "successful" : "failed"));
 
 	return re;
@@ -1118,6 +1123,8 @@ write_message_block(int write_fd)
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
 
+	DPRINTF("**%s(): %s (%d)", __func__, program_name, self_node.index);
+
 	/**
 	 * Prepare and perform message block transmission.
 	 * Formally invalidate pointers to nodes and edges
@@ -1192,7 +1199,7 @@ add_node(void)
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node,
 					sizeof(struct sgsh_node));
 		self_node_io_side.index = n_nodes;
-		DPRINTF("%s(): Added node %s in position %d on sgsh graph.\n",
+		DPRINTF("**%s(): Added node %s in position %d on sgsh graph.\n",
 				__func__, self_node.name, self_node_io_side.index);
 		chosen_mb->n_nodes++;
 	}
@@ -1423,8 +1430,8 @@ analyse_read(struct sgsh_negotiation *fresh_mb,
 		chosen_mb = fresh_mb;
 		/* Records whether process is terminal or non-terminal */
 		int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
-		/* The second time terminals processes
-		 * and first time non-terminal processes see the run
+		/* The first time terminal processes
+		 * and second time non-terminal processes see the run
 		 * flag in the message block is time to exit.
 		 * All processes but the preceding process to the one
 		 * found the solution pass the block before exiting.
@@ -1925,6 +1932,8 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 	int bytes_read = 0;
 	enum op_result error_code = 0;
 
+	DPRINTF("**%s(): %s (%d)", __func__, program_name, self_node.index);
+
 	memset(buf, 0, buf_size);
 
 	/* Try read core message block: struct negotiation state fields. */
@@ -2209,6 +2218,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
+	strcpy(program_name, tool_name);
 	DPRINTF("%s(): Tool %s with pid %d entered sgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
@@ -2261,7 +2271,7 @@ again:
 							error_ntimes_same)) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("%s(): leave after write with state %d.", __func__, chosen_mb->state);
+					DPRINTF("**%s(): %s (%d) leaves after write with state %d.", __func__, program_name, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = true;
@@ -2302,7 +2312,7 @@ again:
 						!should_transmit_mb) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("%s(): leave after read with state %d.", __func__, chosen_mb->state);
+					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, program_name, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = false;
