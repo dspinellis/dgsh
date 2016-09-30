@@ -56,6 +56,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "argv[%d]: %s\n", k, argv[k]);
 
 	program_name = argv[0];
+
 	if (argv[1][0] == '-') {
 		if (argv[1][1] == 'd') {
 			ninputs = (int *)malloc(sizeof(int));
@@ -79,9 +80,6 @@ main(int argc, char *argv[])
 		pos++;
 	}
 	fprintf(stderr, "guest_program_name: %s\n", guest_program_name);
-
-	if (sgsh_negotiate(guest_program_name, ninputs, noutputs, NULL, NULL) != 0)
-		exit(1);
 
 	int exec_argv_len = argc - 1;
 	char *exec_argv[exec_argv_len];
@@ -108,6 +106,19 @@ main(int argc, char *argv[])
 	for (k = 0; k < argc -1; k++)
 		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
 
+	fprintf(stderr, "argc: %d\n", argc);
+	char negotiation_title[100];
+	if (argc >= 5)	// [4] does not exist, [3] is NULL
+		snprintf(negotiation_title, 100, "%s %s %s",
+				guest_program_name, exec_argv[1], exec_argv[2]);
+	else if (argc == 4) // [3] does not exist, [2] is NULL
+		snprintf(negotiation_title, 100, "%s %s",
+				guest_program_name, exec_argv[1]);
+	else
+		snprintf(negotiation_title, 100, "%s", guest_program_name);
+
+	if (sgsh_negotiate(negotiation_title, ninputs, noutputs, NULL, NULL) != 0)
+		exit(1);
 	if (exec_argv[0][0] == '/')
 		execv(guest_program_name, exec_argv);
 	else

@@ -318,6 +318,7 @@ pass_message_blocks(void)
 	struct sgsh_negotiation *solution = NULL;
 	int oi = -1;		/* scatter/gather block's origin index */
 	int ofd = -1;		/* ... origin fd direction */
+	int oinit = -1;		/* initiator pid of origin */
 	bool ro = false;	/* Whether the read block's origin should
 				 * be restored
 				 */
@@ -341,7 +342,7 @@ pass_message_blocks(void)
 				pi[i].to_write->is_origin_conc = true;
 				pi[i].to_write->conc_pid = pid;
 				DPRINTF("Origin: conc with pid %d", pid);
-				DPRINTF("fd i: %d set for writing", i);
+				DPRINTF("**fd i: %d set for writing", i);
 			}
 		}
 
@@ -386,12 +387,22 @@ pass_message_blocks(void)
 				DPRINTF("%s(): next write via fd %d to pid %d",
 						__func__, next, pi[next].pid);
 
-				if (oi == -1)
+				if (oi == -1 || rb->initiator_pid < oinit) {
 					if ((multiple_inputs && i == 1) ||
 							(!multiple_inputs &&
 							 i == 0)) {
-					oi = rb->origin_index;
-					ofd = rb->origin_fd_direction;
+						oi = rb->origin_index;
+						ofd = rb->origin_fd_direction;
+						oinit = rb->initiator_pid;
+						DPRINTF("**Store origin: %d, fd: %s, initiator: %d",
+							oi, ofd ? "stdout" : "stdin", oinit);
+					} else {
+						DPRINTF("**Reset origin from %d",
+								oinit);
+						oi = -1;
+						ofd = -1;
+						oinit = -1;
+					}
 				}
 
 				/* If conc talks to conc, set conc's pid
@@ -407,6 +418,8 @@ pass_message_blocks(void)
 				 * Don't move this block before get_origin_pid()
 				 */
 				if (ro) {
+					DPRINTF("**Restore origin: %d, fd: %s",
+							oi, ofd ? "stdout" : "stdin");
 					pi[next].to_write->origin_index = oi;
 					pi[next].to_write->origin_fd_direction = ofd;
 				}

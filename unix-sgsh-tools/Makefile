@@ -372,6 +372,12 @@ test-bash: test-clean
 	# XXX: sgsh-writeval hangs
 	pkill -f sgsh-writeval
 	
+	# ditto
+	$(SGSHPATH)/bash --sgsh $(XDIR)/code-metrics.sh \
+		>$(PSDIR)/code-metrics.outb 2>/dev/null \
+	&& echo 'code-metrics.sh $S' \
+	|| echo 'code-metrics.sh $F'
+	
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
 	

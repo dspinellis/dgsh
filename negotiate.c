@@ -130,7 +130,7 @@ static bool mb_is_updated;			/* Boolean value that signals
 static struct sgsh_node self_node;		/* The sgsh node that models
 						 * this tool.
 						 */
-char program_name[100];
+static char programname[100];
 
 static struct node_io_side self_node_io_side;	/* Dispatch info for this tool.
 						 */
@@ -160,7 +160,8 @@ output_graph(char *filename)
 						&graph_solution[i];
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
-		fprintf(f, "	n%d [label=\"%s\"];\n", node->index, node->name);
+		fprintf(f, "	n%d [label=\"%d %s\"];\n",
+				node->index, node->index, node->name);
 		DPRINTF("Node: (%d) %s", node->index, node->name);
 
 		for (j = 0; j < n_edges_outgoing; j++) {
@@ -960,8 +961,9 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_output_fds)
 			*n_output_fds = 0;
 
-	DPRINTF("**%s(): %s", __func__,
-			(re == OP_SUCCESS ? "successful" : "failed"));
+	DPRINTF("**%s(): %s for node %s at index %d", __func__,
+			(re == OP_SUCCESS ? "successful" : "failed"),
+			self_node.name, self_node.index);
 
 	return re;
 }
@@ -1123,7 +1125,7 @@ write_message_block(int write_fd)
 	int edges_size = chosen_mb->n_edges * sizeof(struct sgsh_edge);
 	struct sgsh_node *p_nodes = chosen_mb->node_array;
 
-	DPRINTF("**%s(): %s (%d)", __func__, program_name, self_node.index);
+	DPRINTF("**%s(): %s (%d)", __func__, programname, self_node.index);
 
 	/**
 	 * Prepare and perform message block transmission.
@@ -1174,11 +1176,12 @@ static void
 check_negotiation_round(int serialno_ntimes_same)
 {
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (serialno_ntimes_same == 3) {
+		if (serialno_ntimes_same == 3 + chosen_mb->n_nodes / 30) {
 			chosen_mb->state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = true;
-			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
+			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase. serialno_ntimes_same: %d***\n",
+					__func__, serialno_ntimes_same);
 		}
 	}
 }
@@ -1199,8 +1202,9 @@ add_node(void)
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node,
 					sizeof(struct sgsh_node));
 		self_node_io_side.index = n_nodes;
-		DPRINTF("**%s(): Added node %s in position %d on sgsh graph.\n",
-				__func__, self_node.name, self_node_io_side.index);
+		DPRINTF("**%s(): Added node %s in position %d on sgsh graph, initiator: %d\n",
+				__func__, self_node.name, self_node_io_side.index,
+				chosen_mb->initiator_pid);
 		chosen_mb->n_nodes++;
 	}
 	return OP_SUCCESS;
@@ -1216,7 +1220,7 @@ lookup_sgsh_edge(struct sgsh_edge *e)
 			chosen_mb->edge_array[i].to == e->to) ||
 		    (chosen_mb->edge_array[i].from == e->to &&
 		     chosen_mb->edge_array[i].to == e->from)) {
-			DPRINTF("%s(): Edge %d to %d exists.", __func__,
+			DPRINTF("**%s(): Edge %d to %d exists.", __func__,
 								e->from, e->to);
 			return OP_EXISTS;
 		}
@@ -1289,7 +1293,7 @@ add_edge(struct sgsh_edge *edge)
 		chosen_mb->edge_array = (struct sgsh_edge *)p;
 		memcpy(&chosen_mb->edge_array[n_edges], edge,
 						sizeof(struct sgsh_edge));
-		DPRINTF("Added edge (%d -> %d) in sgsh graph.\n",
+		DPRINTF("**Added edge (%d -> %d) in sgsh graph.\n",
 					edge->from, edge->to);
 		chosen_mb->n_edges++;
 	}
@@ -1306,7 +1310,7 @@ try_add_sgsh_edge(void)
 		if (lookup_sgsh_edge(&new_edge) == OP_CREATE) {
 			if (add_edge(&new_edge) == OP_ERROR)
 				return OP_ERROR;
-			DPRINTF("Sgsh graph now has %d edges.\n",
+			DPRINTF("**Sgsh graph now has %d edges.\n",
 							chosen_mb->n_edges);
 			chosen_mb->serial_no++; /* Message block updated. */
 			mb_is_updated = true;
@@ -1932,7 +1936,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 	int bytes_read = 0;
 	enum op_result error_code = 0;
 
-	DPRINTF("**%s(): %s (%d)", __func__, program_name, self_node.index);
+	DPRINTF("**%s(): %s (%d)", __func__, programname, self_node.index);
 
 	memset(buf, 0, buf_size);
 
@@ -2218,7 +2222,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
-	strcpy(program_name, tool_name);
+	strcpy(programname, tool_name);
 	DPRINTF("%s(): Tool %s with pid %d entered sgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
@@ -2271,7 +2275,7 @@ again:
 							error_ntimes_same)) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("**%s(): %s (%d) leaves after write with state %d.", __func__, program_name, self_node.index, chosen_mb->state);
+					DPRINTF("**%s(): %s (%d) leaves after write with state %d.", __func__, programname, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = true;
@@ -2312,7 +2316,7 @@ again:
 						!should_transmit_mb) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, program_name, self_node.index, chosen_mb->state);
+					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, programname, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = false;

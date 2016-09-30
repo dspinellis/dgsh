@@ -42,7 +42,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+			cpp -P |
 			sgsh-tee |
 			{{
 				# Structure definitions
@@ -81,7 +81,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 			# testing
 			echo -n 'NCCHAR: ' &
 			sed 's/#/@/g' |
-			cpp -traditional -P 2>/dev/null |
+			cpp -traditional -P |
 			wc -c |
 			awk '{OFMT = "%.0f"; print $1/1000}' &
 
@@ -125,7 +125,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+			cpp -P |
 			sgsh-tee |
 			{{
 				# Number of functions
