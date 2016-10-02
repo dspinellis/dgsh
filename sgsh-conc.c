@@ -137,6 +137,21 @@ next_fd(int fd, bool *ro)
 		}
 }
 
+/* Search for conc with pid in message block mb
+ * and return a pointer to the structure or
+ * NULL if not found.
+ */
+STATIC struct sgsh_conc *
+find_conc(struct sgsh_negotiation *mb, pid_t pid)
+{
+	int i;
+	struct sgsh_conc *ca = mb->conc_array;
+	for (i = 0; i < mb->n_concs; i++)
+		if (ca[i].pid == pid)
+			return &ca[i];
+	return NULL;
+}
+
 /**
  * Return whether the process at port i
  * is ready to run.
@@ -154,7 +169,8 @@ is_ready(int i, struct sgsh_negotiation *mb)
 			__func__, i, pi[i].pid, mb->preceding_process_pid);
 	if (mb->state != PS_RUN)
 		return false;
-	if (pi[i].pid == mb->preceding_process_pid) {
+	if (pi[i].pid == mb->preceding_process_pid &&
+			!find_conc(mb, pi[i].pid)) {
 		pi[i].seen = true;	/* Fake that */
 		/* If the solution is also in our territory
 		 * fake writing to it.
@@ -168,17 +184,6 @@ is_ready(int i, struct sgsh_negotiation *mb)
 	} else if (pi[i].seen && pi[i].written)
 		return true;
 	return false;
-}
-
-STATIC struct sgsh_conc *
-find_conc(struct sgsh_negotiation *mb, pid_t pid)
-{
-	int i;
-	struct sgsh_conc *ca = mb->conc_array;
-	for (i = 0; i < mb->n_concs; i++)
-		if (ca[i].pid == pid)
-			return &ca[i];
-	return NULL;
 }
 
 /**
