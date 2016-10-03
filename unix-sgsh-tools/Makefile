@@ -378,6 +378,13 @@ test-bash: test-clean
 	&& echo 'code-metrics.sh $S' \
 	|| echo 'code-metrics.sh $F'
 	
+	# ditto
+	cat $(PSDIR)/access.log | \
+	$(SGSHPATH)/bash --sgsh $(XDIR)/web-log-report.sh \
+		>$(PSDIR)/web-log-report.outb 2>/dev/null \
+	&& echo 'web-log-report.sh $S' \
+	|| echo 'web-log-report.sh $F'
+	
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
 	

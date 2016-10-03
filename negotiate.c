@@ -1304,7 +1304,7 @@ static void
 check_negotiation_round(int serialno_ntimes_same)
 {
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (serialno_ntimes_same == 3 + chosen_mb->n_nodes / 30) {
+		if (serialno_ntimes_same == 3) {
 			chosen_mb->state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = true;

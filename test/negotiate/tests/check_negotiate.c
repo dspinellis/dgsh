@@ -1165,10 +1165,10 @@ END_TEST
 START_TEST(test_calculate_conc_fds)
 {
 	DPRINTF("%s()", __func__);
-	chosen_mb->conc_array[0].input_fds = 0;
-	chosen_mb->conc_array[0].output_fds = 0;
-	chosen_mb->conc_array[1].input_fds = 0;
-	chosen_mb->conc_array[1].output_fds = 0;
+	chosen_mb->conc_array[0].input_fds = -1;
+	chosen_mb->conc_array[0].output_fds = -1;
+	chosen_mb->conc_array[1].input_fds = -1;
+	chosen_mb->conc_array[1].output_fds = -1;
 	struct sgsh_node_connections *graph_solution =
 			chosen_mb->graph_solution;
 	graph_solution[0].edges_incoming[0].instances = 1;
@@ -3006,8 +3006,8 @@ START_TEST(test_set_io_channels)
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 1);
 	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
-	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 0);
-	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, -1);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, -1);
 	ck_assert_int_eq(chosen_mb->conc_array[0].multiple_inputs, false);
 	ck_assert_int_eq(chosen_mb->conc_array[0].n_proc_pids, 2);
 	ck_assert_int_eq(chosen_mb->conc_array[0].proc_pids[0], 100);
@@ -3017,8 +3017,8 @@ START_TEST(test_set_io_channels)
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 1);
 	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
-	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 0);
-	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, -1);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, -1);
 
 	/* Not exists: set channels (same pi, same channels as before */
 	pid = 2001;	/* static in sgsh-conc.c */
@@ -3027,8 +3027,8 @@ START_TEST(test_set_io_channels)
 	ck_assert_int_eq(chosen_mb->n_concs, 2);
 	DPRINTF("%d", chosen_mb->conc_array[0].pid);
 	ck_assert_int_eq(chosen_mb->conc_array[1].pid, 2001);
-	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, 0);
-	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, -1);
+	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, -1);
 	ck_assert_int_eq(chosen_mb->conc_array[1].multiple_inputs, true);
 	ck_assert_int_eq(chosen_mb->conc_array[1].n_proc_pids, 2);
 	ck_assert_int_eq(chosen_mb->conc_array[1].proc_pids[0], 101);
