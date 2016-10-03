@@ -35,9 +35,22 @@ setup_concs(struct sgsh_negotiation *mb)
 	mb->conc_array[0].pid = 2000;
 	mb->conc_array[0].input_fds = 2;
 	mb->conc_array[0].output_fds = 2;
+	mb->conc_array[0].multiple_inputs = false;
+	mb->conc_array[0].endpoint_pid = 102;
+	mb->conc_array[0].n_proc_pids = 2;
+	mb->conc_array[0].proc_pids = (int *)malloc(sizeof(int) * 2);
+	mb->conc_array[0].proc_pids[0] = 100;
+	mb->conc_array[0].proc_pids[1] = 101;
+
 	mb->conc_array[1].pid = 2001;
 	mb->conc_array[1].input_fds = 3;
 	mb->conc_array[1].output_fds = 3;
+	mb->conc_array[1].multiple_inputs = true;
+	mb->conc_array[1].endpoint_pid = 103;
+	mb->conc_array[1].n_proc_pids = 2;
+	mb->conc_array[1].proc_pids = (int *)malloc(sizeof(int) * 2);
+	mb->conc_array[1].proc_pids[0] = 100;
+	mb->conc_array[1].proc_pids[1] = 101;
 }
 
 
@@ -641,6 +654,14 @@ setup_test_solve_sgsh_graph(void)
 }
 
 void
+setup_test_calculate_conc_fds(void)
+{
+	setup_chosen_mb();
+	setup_graph_solution();
+	setup_concs(chosen_mb);
+}
+
+void
 setup_test_write_output_fds(void)
 {
 	setup_chosen_mb(); /* For setting up graph_solution. */
@@ -685,20 +706,10 @@ setup_test_is_ready(void)
 }
 
 void
-setup_test_set_io(void)
-{
-	setup_pi();
-	setup_chosen_mb();
-	setup_graph_solution();
-	setup_concs(chosen_mb);
-}
-
-void
 setup_test_set_io_channels(void)
 {
 	setup_pi();
 	setup_chosen_mb();
-	setup_graph_solution();
 }
 
 void
@@ -724,6 +735,9 @@ retire_graph_solution(struct sgsh_node_connections *graph_solution,
 
 void retire_concs(struct sgsh_negotiation *mb)
 {
+	int i;
+	for (i = 0; i < mb->n_concs; i++)
+		free(mb->conc_array[i].proc_pids);
 	free(mb->conc_array);
 }
 
@@ -1033,6 +1047,15 @@ retire_test_solve_sgsh_graph(void)
 }
 
 void
+retire_test_calculate_conc_fds(void)
+{
+	retire_graph_solution(chosen_mb->graph_solution,
+			chosen_mb->n_nodes - 1);
+	retire_concs(chosen_mb);
+	retire_chosen_mb();
+}
+
+void
 retire_test_write_output_fds(void)
 {
 	retire_graph_solution(chosen_mb->graph_solution,
@@ -1067,21 +1090,9 @@ retire_test_is_ready(void)
 }
 
 void
-retire_test_set_io(void)
-{
-	retire_concs(chosen_mb);
-	retire_graph_solution(chosen_mb->graph_solution,
-			chosen_mb->n_nodes - 1);
-	retire_chosen_mb();
-	retire_pi();
-}
-
-void
 retire_test_set_io_channels(void)
 {
 	retire_concs(chosen_mb);
-	retire_graph_solution(chosen_mb->graph_solution,
-			chosen_mb->n_nodes - 1);
 	retire_chosen_mb();
 	retire_pi();
 }
@@ -1151,6 +1162,29 @@ START_TEST(test_solve_sgsh_graph)
 }
 END_TEST
 
+START_TEST(test_calculate_conc_fds)
+{
+	DPRINTF("%s()", __func__);
+	chosen_mb->conc_array[0].input_fds = 0;
+	chosen_mb->conc_array[0].output_fds = 0;
+	chosen_mb->conc_array[1].input_fds = 0;
+	chosen_mb->conc_array[1].output_fds = 0;
+	struct sgsh_node_connections *graph_solution =
+			chosen_mb->graph_solution;
+	graph_solution[0].edges_incoming[0].instances = 1;
+	graph_solution[0].edges_outgoing[0].instances = 1;
+	graph_solution[1].edges_incoming[0].instances = 1;
+	graph_solution[1].edges_outgoing[0].instances = 1;
+	/* endpoint for conc with pid 2001*/
+	graph_solution[3].edges_incoming[0].instances = 1;
+	graph_solution[3].edges_incoming[1].instances = 1;
+	/* endpoint for conc with pid 2000*/
+	graph_solution[2].edges_outgoing[0].instances = 1;
+	graph_solution[2].edges_outgoing[1].instances = 1;
+
+	ck_assert_int_eq(calculate_conc_fds(), OP_SUCCESS);
+}
+END_TEST
 
 START_TEST(test_free_graph_solution)
 {
@@ -2226,11 +2260,34 @@ START_TEST(test_alloc_copy_mb)
 }
 END_TEST
 
+START_TEST(test_alloc_copy_proc_pids)
+{
+	struct sgsh_conc c;
+	c.n_proc_pids = 2;
+	const int size = sizeof(int) * c.n_proc_pids;
+	int pids[2] = {101, 103};
+	char buf[512];
+	memcpy(buf, pids, size);
+
+	ck_assert_int_eq(alloc_copy_proc_pids(&c, buf, 86, 512),
+			OP_ERROR);
+
+	char buf2[8];
+	ck_assert_int_eq(alloc_copy_proc_pids(&c, buf2, size, 4),
+			OP_ERROR);
+
+	ck_assert_int_eq(alloc_copy_proc_pids(&c, buf, size, 512),
+			OP_SUCCESS);
+}
+END_TEST
+
 START_TEST(test_alloc_copy_concs)
 {
-	const int n_concs = fresh_mb->n_concs = 2;
+	const int n_concs = fresh_mb->n_concs = 1;
 	const int size = sizeof(struct sgsh_conc) * n_concs;
+	struct sgsh_conc c;
 	char buf[512];
+	memcpy(buf, &c, size);
 	ck_assert_int_eq(alloc_copy_concs(fresh_mb, buf, 86, 512),
 			OP_ERROR);
 
@@ -2941,81 +2998,41 @@ START_TEST (test_next_fd)
 }
 END_TEST
 
-START_TEST(test_set_io)
-{
-	struct sgsh_conc *c = (struct sgsh_conc *)malloc(sizeof(struct sgsh_conc));
-	pid = 2000;	/* static in sgsh-conc.c */
-	nfd = 4;	/* ditto */
-	multiple_inputs = false;	/* ditto */
-	c->pid = 2000;
-	c->input_fds = -1;
-	c->output_fds = -1;
-	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 1;
-	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 1;
-	chosen_mb->graph_solution[0].edges_incoming[0].instances = 1;
-	chosen_mb->graph_solution[3].edges_incoming[0].instances = 1;
-	ck_assert_int_eq(set_io(chosen_mb, c), 0);
-	ck_assert_int_eq(c->pid, 2000);
-	ck_assert_int_eq(c->input_fds, 2);
-	ck_assert_int_eq(c->output_fds, 2);
-
-	pid = 2001;
-	nfd = 5;
-	c->pid = 2001;
-	c->input_fds = -1;
-	c->output_fds = -1;
-	pi[4].pid = 2000;	/* conc to conc */
-	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 2;
-	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 2;
-	ck_assert_int_eq(set_io(chosen_mb, c), 0);
-	ck_assert_int_eq(c->pid, 2001);
-	ck_assert_int_eq(c->input_fds, 4);
-	ck_assert_int_eq(c->output_fds, 4);
-
-	c->pid = 2001;
-	c->input_fds = -1;
-	c->output_fds = -1;
-	pi[4].pid = 2000;	/* conc to conc */
-	chosen_mb->conc_array[1].input_fds = -1;
-	ck_assert_int_eq(set_io(chosen_mb, c), 0);
-	ck_assert_int_eq(c->pid, 2001);
-	ck_assert_int_eq(c->input_fds, 4);
-	ck_assert_int_eq(c->output_fds, 4);
-
-	free(c);
-}
-END_TEST
-
 START_TEST(test_set_io_channels)
 {
 	pid = 2000;	/* static in sgsh-conc.c */
 	nfd = 4;	/* ditto */
 	multiple_inputs = false;	/* ditto */
-	chosen_mb->graph_solution[1].edges_outgoing[0].instances = 1;
-	chosen_mb->graph_solution[1].edges_outgoing[1].instances = 1;
-	chosen_mb->graph_solution[0].edges_incoming[0].instances = 1;
-	chosen_mb->graph_solution[3].edges_incoming[0].instances = 1;
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 1);
 	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
-	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 2);
-	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[0].multiple_inputs, false);
+	ck_assert_int_eq(chosen_mb->conc_array[0].n_proc_pids, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[0].proc_pids[0], 100);
+	ck_assert_int_eq(chosen_mb->conc_array[0].proc_pids[1], 103);
 
 	/* Exists with channels set: keep as it is */
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 1);
 	ck_assert_int_eq(chosen_mb->conc_array[0].pid, 2000);
-	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 2);
-	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[0].input_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[0].output_fds, 0);
 
 	/* Not exists: set channels (same pi, same channels as before */
 	pid = 2001;	/* static in sgsh-conc.c */
+	multiple_inputs = true;
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 2);
 	DPRINTF("%d", chosen_mb->conc_array[0].pid);
 	ck_assert_int_eq(chosen_mb->conc_array[1].pid, 2001);
-	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, 2);
-	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, 0);
+	ck_assert_int_eq(chosen_mb->conc_array[1].multiple_inputs, true);
+	ck_assert_int_eq(chosen_mb->conc_array[1].n_proc_pids, 2);
+	ck_assert_int_eq(chosen_mb->conc_array[1].proc_pids[0], 101);
+	ck_assert_int_eq(chosen_mb->conc_array[1].proc_pids[1], 103);
 }
 END_TEST
 
@@ -3125,6 +3142,12 @@ suite_solve(void)
 					  retire_test_solve_sgsh_graph);
 	tcase_add_test(tc_ssg, test_solve_sgsh_graph);
 	suite_add_tcase(s, tc_ssg);
+
+	TCase *tc_ccf = tcase_create("calculate conc fds");
+	tcase_add_checked_fixture(tc_ccf, setup_test_calculate_conc_fds,
+					  retire_test_calculate_conc_fds);
+	tcase_add_test(tc_ccf, test_calculate_conc_fds);
+	suite_add_tcase(s, tc_ccf);
 
 	TCase *tc_fgs = tcase_create("free graph solution");
 	tcase_add_checked_fixture(tc_fgs, setup_test_free_graph_solution,
@@ -3248,6 +3271,10 @@ suite_broadcast(void)
 				retire_test_alloc_copy_concs);
 	tcase_add_test(tc_acc, test_alloc_copy_concs);
 	suite_add_tcase(s, tc_acc);
+
+	TCase *tc_acp = tcase_create("alloc copy proc pids");
+	tcase_add_test(tc_acp, test_alloc_copy_proc_pids);
+	suite_add_tcase(s, tc_acp);
 
 	TCase *tc_cr = tcase_create("check read");
 	tcase_add_checked_fixture(tc_cr, NULL, NULL);
@@ -3374,10 +3401,6 @@ suite_conc(void)
 			retire_test_is_ready);
 	tcase_add_test(tc_ir, test_is_ready);
 	suite_add_tcase(s, tc_ir);
-	tcase_add_checked_fixture(tc_si, setup_test_set_io,
-					  retire_test_set_io);
-	tcase_add_test(tc_si, test_set_io);
-	suite_add_tcase(s, tc_si);
 	tcase_add_checked_fixture(tc_sich, setup_test_set_io_channels,
 					  retire_test_set_io_channels);
 	tcase_add_test(tc_sich, test_set_io_channels);

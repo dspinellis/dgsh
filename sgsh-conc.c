@@ -137,21 +137,6 @@ next_fd(int fd, bool *ro)
 		}
 }
 
-/* Search for conc with pid in message block mb
- * and return a pointer to the structure or
- * NULL if not found.
- */
-STATIC struct sgsh_conc *
-find_conc(struct sgsh_negotiation *mb, pid_t pid)
-{
-	int i;
-	struct sgsh_conc *ca = mb->conc_array;
-	for (i = 0; i < mb->n_concs; i++)
-		if (ca[i].pid == pid)
-			return &ca[i];
-	return NULL;
-}
-
 /**
  * Return whether the process at port i
  * is ready to run.
@@ -187,104 +172,62 @@ is_ready(int i, struct sgsh_negotiation *mb)
 }
 
 /**
- * Retrieve from message block the current concentrator's input and
- * output channels.
- * This is required in cases where a concentrator is directly
- * connected to another concentrator.
- */
-STATIC int
-set_io(struct sgsh_negotiation *mb, struct sgsh_conc *c)
-{
-	bool ignore = false;
-	int i, n_to_read, n_to_write;
-
-	assert(c->pid == pid);
-	if (c->input_fds > 0 && c->output_fds > 0)
-		return 0;
-
-	c->input_fds = 0;
-	c->output_fds = 0;
-
-	if (multiple_inputs) {		// gather
-		for (i = STDIN_FILENO; i < nfd; i == STDIN_FILENO ? i = FREE_FILENO : i++) {
-			n_to_read = get_provided_fds_n(mb, pi[i].pid);
-			DPRINTF("%s(): fds to read for p[%d].pid %d: %d",
-				__func__, i, pi[i].pid, n_to_read);
-			if (n_to_read == -1) {
-				c->input_fds = -1;
-				break;
-			} else
-				c->input_fds += n_to_read;
-		}
-
-		c->output_fds = get_expected_fds_n(mb, pi[STDOUT_FILENO].pid);
-		/* If we know how many fds to read in the gather end, then
-		 * we have to write equal number of fds.
-		 * We have to make this estimation in cases of conc-to-conc
-		 * communication.
-		 */
-		if (c->input_fds >= 0 && (c->output_fds == -1 ||
-					c->output_fds != c->input_fds))
-			c->output_fds = c->input_fds;
-		DPRINTF("%s(): fds to write: %d", __func__, c->output_fds);
-	} else {		// scatter
-		for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore)) {
-			n_to_write = get_expected_fds_n(mb, pi[i].pid);
-			DPRINTF("%s(): fds to write for p[%d].pid %d: %d",
-				__func__, i, pi[i].pid, n_to_write);
-			if (n_to_write == -1) {
-				c->output_fds = -1;
-				break;
-			} else
-				c->output_fds += n_to_write;
-		}
-
-		c->input_fds = get_provided_fds_n(mb, pi[STDIN_FILENO].pid);
-		/* If we know how many fds to write in the scatter end, then
-		 * we have to read equal number of fds.
-		 * We have to make this estimation in cases of conc-to-conc
-		 * communication.
-		 */
-		if (c->output_fds >= 0 && (c->input_fds == -1 ||
-					c->input_fds != c->output_fds))
-			c->input_fds = c->output_fds;
-		DPRINTF("%s(): fds to read: %d", __func__, c->input_fds);
-	}
-	return 0;
-}
-
-/**
  * Register current concentrator to message block's
  * concentrator array
  */
 STATIC int
 set_io_channels(struct sgsh_negotiation *mb)
 {
-	bool exists = false;
-	struct sgsh_conc *c;
+	if (find_conc(mb, pid))
+		return 0;
+
+	DPRINTF("%s", __func__);
+	struct sgsh_conc c;
+	c.pid = pid;
+	c.input_fds = -1;
+	c.output_fds = -1;
+	c.n_proc_pids = nfd - 2;
+	c.multiple_inputs = multiple_inputs;
+	c.proc_pids = (int *)malloc(sizeof(int) * c.n_proc_pids);
+	int j = 0, i;
+	if (multiple_inputs) {
+		c.endpoint_pid = pi[STDOUT_FILENO].pid;
+		if (c.endpoint_pid == 0)
+			return 1;
+		for (i = STDIN_FILENO; i < nfd; i == STDIN_FILENO ? i = FREE_FILENO : i++)
+			if (pi[i].pid == 0) {
+				free(c.proc_pids);
+				return 1;
+			} else
+				c.proc_pids[j++] = pi[i].pid;
+	} else {
+		bool ignore;
+		c.endpoint_pid = pi[STDIN_FILENO].pid;
+		if (c.endpoint_pid == 0)
+			return 1;
+		for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore))
+			if (pi[i].pid == 0) {
+				free(c.proc_pids);
+				return 1;
+			} else
+				c.proc_pids[j++] = pi[i].pid;
+	}
+
 	if (!mb->conc_array) {
 		mb->conc_array = (struct sgsh_conc *)malloc(sizeof(struct sgsh_conc));
 		mb->n_concs = 1;
 	} else {
-		if (!(c = find_conc(mb, pid))) {
-			mb->n_concs++;
-			mb->conc_array = (struct sgsh_conc *)realloc(mb->conc_array,
+		mb->n_concs++;
+		mb->conc_array = (struct sgsh_conc *)realloc(mb->conc_array,
 					sizeof(struct sgsh_conc) * mb->n_concs);
-		} else
-			exists = true;
 	}
-	if (!exists) {
-		int i = mb->n_concs - 1;
-		c = &mb->conc_array[i];
-		c->pid = pid;
-		c->input_fds = -1;
-		c->output_fds = -1;
-		DPRINTF("%s(): Added conc with pid: %d, now n_concs: %d",
-				__func__, c->pid, mb->n_concs);
-	}
-	return set_io(mb, c);
-}
+	memcpy(&mb->conc_array[mb->n_concs - 1], &c, sizeof(struct sgsh_conc));
 
+	DPRINTF("%s(): Added conc with pid: %d, now n_concs: %d",
+			__func__, mb->conc_array[mb->n_concs - 1].pid, mb->n_concs);
+
+	return 0;
+}
 
 STATIC void
 print_state(int i, int var, int pcase)
@@ -433,13 +376,12 @@ pass_message_blocks(void)
 						rb->initiator_pid < pi[i].lowest_pid)
 					pi[i].lowest_pid = rb->initiator_pid;
 
-				/* Count # times we see a block on a port
-				 * after a solution has been found
-				 */
-				if (rb->state == PS_NEGOTIATION)
-					continue;
 				/* Set a conc's required/provided IO in mb */
 				set_io_channels(pi[next].to_write);
+
+				if (rb->state == PS_NEGOTIATION)
+					continue;
+
 				if (rb->initiator_pid == pi[i].lowest_pid)
 					pi[i].seen = true;
 

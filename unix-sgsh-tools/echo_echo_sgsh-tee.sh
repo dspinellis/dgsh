@@ -1,4 +1,4 @@
 {{
-	sgsh-wrap echo hello &
-	sgsh-wrap echo world &
+	echo hello &
+	echo world &
 }} | sgsh-tee

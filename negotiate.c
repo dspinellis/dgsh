@@ -644,6 +644,118 @@ cross_match_io_constraints(int *free_instances,
 }
 
 /**
+ * Search for conc with pid in message block mb
+ * and return a pointer to the structure or
+ * NULL if not found.
+ */
+struct sgsh_conc *
+find_conc(struct sgsh_negotiation *mb, pid_t pid)
+{
+	int i;
+	struct sgsh_conc *ca = mb->conc_array;
+	for (i = 0; i < mb->n_concs; i++) {
+		if (ca[i].pid == pid)
+			return &ca[i];
+	}
+	return NULL;
+}
+
+/**
+ * Calculate fds for concs at the multi-pipe
+ * endpoint.
+ */
+static enum op_result
+calculate_conc_fds(void)
+{
+	int i, calculated = 0, retries = 0;
+	int n_concs = chosen_mb->n_concs;
+
+	DPRINTF("%s for %d n_concs", __func__, n_concs);
+	if (n_concs == 0)
+		return OP_SUCCESS;
+
+repeat:
+	for (i = 0; i < n_concs; i++) {
+		struct sgsh_conc *c = &chosen_mb->conc_array[i];
+		DPRINTF("%s() for conc %d at index %d",
+				__func__, c->pid, i);
+
+		if (c->input_fds >= 0 && c->output_fds >= 0)
+			continue;
+
+		c->input_fds = 0;
+		c->output_fds = 0;
+
+		if (c->multiple_inputs)
+			c->output_fds = get_expected_fds_n(chosen_mb,
+					c->endpoint_pid);
+		else
+			c->input_fds = get_provided_fds_n(chosen_mb,
+					c->endpoint_pid);
+
+		DPRINTF("%s(): conc pid %d at index %d: %d %s fds for endpoint pid %d recovered",
+				__func__, c->pid, i,
+				c->multiple_inputs ? c->output_fds : c->input_fds,
+				c->multiple_inputs ? "outgoing" : "incoming",
+				c->endpoint_pid);
+
+		int j, fds;
+		for (j = 0; j < c->n_proc_pids; j++) {
+			if (c->multiple_inputs)
+				fds = get_provided_fds_n(chosen_mb,
+						c->proc_pids[j]);
+			else
+				fds = get_expected_fds_n(chosen_mb,
+						c->proc_pids[j]);
+
+			if (find_conc(chosen_mb, c->proc_pids[j]) && fds == -1) {
+				c->input_fds = c->output_fds = -1;
+				DPRINTF("%s(): conc pid %d at index %d: fds for conc with pid %d not yet available",
+					__func__, c->pid, i, c->proc_pids[j]);
+				break;
+			} else
+				if (c->multiple_inputs)
+					c->input_fds += fds;
+				else
+					c->output_fds += fds;
+			DPRINTF("%s(): conc pid %d at index %d: %d %s fds for pid %d recovered",
+				__func__, c->pid, i, fds,
+				c->multiple_inputs ? "incoming" : "outgoing",
+				c->proc_pids[j]);
+		}
+		// Use what we know for the multi-pipe end to compute the endpoint
+		if (c->multiple_inputs && c->input_fds >= 0 && c->output_fds == -1)
+			c->output_fds = c->input_fds;
+		else if (!c->multiple_inputs && c->output_fds >= 0
+				&& c->input_fds == -1)
+			c->input_fds = c->output_fds;
+
+		if (c->input_fds >= 0 && c->output_fds >= 0) {
+			assert(c->input_fds == c->output_fds);
+			calculated++;
+		}
+		DPRINTF("%s(): Conc pid %d at index %d has %d %s fds and %d %s fds",
+				__func__, c->pid, i,
+				c->multiple_inputs ? c->input_fds : c->output_fds,
+				c->multiple_inputs ? "incoming" : "outgoing",
+				c->multiple_inputs ? c->output_fds : c->input_fds,
+				c->multiple_inputs ? "outgoing" : "incoming");
+		DPRINTF("%s(): Calculated fds for %d concs so far", __func__,
+				calculated);
+
+	}
+	if (calculated != n_concs && retries < n_concs) {
+		retries++;
+		goto repeat;
+	}
+
+	if (retries == n_concs)
+		return OP_ERROR;
+
+	return OP_SUCCESS;
+}
+
+/**
  * For each node substitute pointers to edges with proper edge structures
  * (copies) to facilitate transmission and receipt in one piece.
  */
@@ -884,6 +996,9 @@ solve_sgsh_graph(void)
 	if ((exit_state = prepare_solution()) == OP_ERROR)
 		goto exit;
 
+	if ((exit_state = calculate_conc_fds()) == OP_ERROR)
+		goto exit;
+
 	if ((filename = getenv("SGSH_DOT_DRAW")))
 		output_graph(filename);
 
@@ -1035,8 +1150,9 @@ write_output_fds(int output_socket, int *output_fds)
 static enum op_result
 write_concs(int write_fd)
 {
-	int wsize;
-	int conc_size = sizeof(struct sgsh_conc) * chosen_mb->n_concs;
+	int wsize, i;
+	int n_concs = chosen_mb->n_concs;
+	int conc_size = sizeof(struct sgsh_conc) * n_concs;
 
 	if (!chosen_mb->conc_array)
 		return OP_SUCCESS;
@@ -1045,6 +1161,17 @@ write_concs(int write_fd)
 	if (wsize == -1)
 		return OP_ERROR;
 	DPRINTF("%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
+
+	for (i = 0; i < n_concs; i++) {
+		struct sgsh_conc *c = &chosen_mb->conc_array[i];
+		int proc_pids_size = sizeof(int) * c->n_proc_pids;
+		wsize = write(write_fd, c->proc_pids, proc_pids_size);
+		if (wsize == -1)
+			return OP_ERROR;
+		DPRINTF("%s(): Wrote %d proc_pids for conc %d at index %d of size %d bytes ",
+				__func__, c->n_proc_pids, c->pid, i, wsize);
+	}
+
 	return OP_SUCCESS;
 }
 
@@ -1147,6 +1274,9 @@ write_message_block(int write_fd)
 
 	chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
 
+	if (write_concs(write_fd) == OP_ERROR)
+		return OP_ERROR;
+
 	if (chosen_mb->state == PS_NEGOTIATION) {
 		if (chosen_mb->n_nodes > 1) {
 			/* Transmit edges. */
@@ -1162,8 +1292,6 @@ write_message_block(int write_fd)
 	} else if (chosen_mb->state == PS_RUN) {
 		/* Transmit solution. */
 		if (write_graph_solution(write_fd) == OP_ERROR)
-			return OP_ERROR;
-		if (write_concs(write_fd) == OP_ERROR)
 			return OP_ERROR;
 	}
 
@@ -1376,6 +1504,16 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int *n_input_fds,
 	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
 }
 
+static void
+free_conc_array(struct sgsh_negotiation *mb)
+{
+	int i, n_concs = mb->n_concs;
+	for (i = 0; i < n_concs; i++)
+		if (mb->conc_array[i].proc_pids)
+			free(mb->conc_array[i].proc_pids);
+	free(mb->conc_array);
+}
+
 /* Deallocate message block together with nodes and edges. */
 void
 free_mb(struct sgsh_negotiation *mb)
@@ -1386,6 +1524,8 @@ free_mb(struct sgsh_negotiation *mb)
 		free(mb->node_array);
 	if (mb->edge_array)
 		free(mb->edge_array);
+	if (mb->conc_array)
+		free_conc_array(mb);
 	free(mb);
 	DPRINTF("%s(): Freed message block.", __func__);
 }
@@ -1501,6 +1641,18 @@ check_read(int bytes_read, int buf_size, int expected_read_size) {
 				__func__, bytes_read, buf_size);
 		return OP_ERROR;
 	}
+	return OP_SUCCESS;
+}
+
+static enum op_result
+alloc_copy_proc_pids(struct sgsh_conc *c, char *buf, int bytes_read,
+		int buf_size)
+{
+	int expected_read_size = sizeof(int) * c->n_proc_pids;
+	if (check_read(bytes_read, buf_size, expected_read_size) == OP_ERROR)
+		return OP_ERROR;
+	c->proc_pids = (int *)malloc(bytes_read);
+	memcpy(c->proc_pids, buf, bytes_read);
 	return OP_SUCCESS;
 }
 
@@ -1847,6 +1999,21 @@ read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 		return error_code;
 	error_code = alloc_copy_concs(fresh_mb, buf, bytes_read, buf_size);
 	free(buf);
+
+	int i, n_concs = fresh_mb->n_concs;
+	for (i = 0; i < n_concs; i++) {
+		struct sgsh_conc *c = &fresh_mb->conc_array[i];
+		size_t buf_size = sizeof(int) * c->n_proc_pids;
+		buf = (char *)malloc(buf_size);
+		if ((error_code = read_chunk(read_fd, buf, buf_size,
+						&bytes_read)) != OP_SUCCESS)
+			return error_code;
+		error_code = alloc_copy_proc_pids(c, buf, bytes_read, buf_size);
+		free(buf);
+		DPRINTF("%s(): Read %d proc_pids for conc %d at index %d of size %d bytes ",
+				__func__, c->n_proc_pids, c->pid, i, bytes_read);
+	}
+
 	return error_code;
 }
 
@@ -1958,6 +2125,9 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		return OP_ERROR;
 	free(buf);
 
+	if (read_concs(read_fd, *fresh_mb) == OP_ERROR)
+		return OP_ERROR;
+
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
         	if ((*fresh_mb)->n_nodes > 1) {
 			DPRINTF("%s(): Read negotiation graph edges.",__func__);
@@ -1979,8 +2149,6 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		 * where we share the solution across the sgsh graph.
                  */
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
-			return OP_ERROR;
-		if (read_concs(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
 	}
 	DPRINTF("%s(): Read message block or solution from node %d sent from file descriptor: %s.\n", __func__, (*fresh_mb)->origin_index, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");

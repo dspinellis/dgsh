@@ -2,9 +2,8 @@
 # SYNOPSIS Web log reporting
 # DESCRIPTION
 # Creates a report for a fixed-size web log file read from the standard input.
-# Demonstrates the combined use of stores and named streams,
-# the use of shell group commands and functions in the scatter block, and
-# the use of cat(1) as a way to sequentially combine multiple streams.
+# Demonstrates the combined use of multipipe blocks, writeval and readval
+# to store and retrieve values, and functions in the scatter block.
 # Used to measure throughput increase achieved through parallelism.
 #
 #  Copyright 2013 Diomidis Spinellis
@@ -29,6 +28,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
 toplist()
 {
 	uniq -c | sort -rn | head -$1
+	echo
 }
 
 # Output the argument as a section header
@@ -45,8 +45,6 @@ export LC_ALL=C
 export -f toplist
 export -f header
 
-#Accesses per day: $(expr $(store:nAccess) / $(store:nDays))
-#MBytes per day: $(expr $(store:nXBytes) / $(store:nDays) / 1024 / 1024)
 
 cat <<EOF
 			WWW server statistics
@@ -59,25 +57,34 @@ EOF
 sgsh-tee |
 {{
 
-	# Number of transferred bytes
-	echo -n 'Number of Gbytes transferred: ' &
-	awk '{s += $NF} END {print s / 1024 / 1024 / 1024}' &
-	#|store:nXBytes
+	awk '{s += $NF} END {print s / 1024 / 1024 / 1024}' |
+	sgsh-tee |
+	{{
+		# Number of transferred bytes
+		echo -n 'Number of Gbytes transferred: ' &
+		cat &
+
+		sgsh-writeval -s nXBytes &
+	}} &
 
 	# Number of log file bytes
 	echo -n 'MBytes log file size: ' &
 	wc -c |
 	awk '{print $1 / 1024 / 1024}' &
-	#|store:nLogBytes
 
 	# Host names
 	awk '{print $1}' |
 	sgsh-tee |
 	{{
-		# Number of accesses
-		echo -n 'Number of accesses: ' &
-		wc -l &
-		 #|store:nAccess
+		wc -l |
+		sgsh-tee |
+		{{
+			# Number of accesses
+			echo -n 'Number of accesses: ' &
+			cat &
+
+			sgsh-writeval -s nAccess &
+		}} &
 
 		# Sorted hosts
 		sort |
@@ -91,14 +98,12 @@ sgsh-tee |
 				# Number of hosts
 				echo -n 'Number of hosts: ' &
 				wc -l &
-				#|store:nHosts
 
 				# Number of TLDs
 				echo -n 'Number of top level domains: ' &
 				awk -F. '$NF !~ /[0-9]/ {print $NF}' |
 				sort -u |
 				wc -l &
-				#|store:nTLD
 			}} &
 
 			# Top 10 hosts
@@ -106,7 +111,6 @@ sgsh-tee |
 				 call 'header "Top 10 Hosts"' &
 				 call 'toplist 10' &
 			}} &
-			#|>/stream/top10HostsByN
 		}} &
 
 		# Top 20 TLDs
@@ -116,7 +120,6 @@ sgsh-tee |
 			sort |
 			call 'toplist 20' &
 		}} &
-		#|>/stream/top20TLD
 
 		# Domains
 		awk -F. 'BEGIN {OFS = "."}
@@ -128,14 +131,12 @@ sgsh-tee |
 			echo -n 'Number of domains: ' &
 			uniq |
 			wc -l &
-			#|store:nDomain
 
 			# Top 10 domains
 			{{
 				 call 'header "Top 10 Domains"' &
 				 call 'toplist 10' &
 			}} &
-			#|>/stream/top10Domain
 		}} &
 	}} &
 
@@ -147,7 +148,6 @@ sgsh-tee |
 		sort -rn |
 		head -10 &
 	}} &
-	#|>/stream/top10HostsByVol
 
 	# Sorted page name requests
 	awk '{print $7}' |
@@ -161,20 +161,17 @@ sgsh-tee |
 			 awk -F/ '{print $2}' |
 			 call 'toplist 20' &
 		}} &
-		#|>/stream/top20Area
 
 		# Number of different pages
 		echo -n 'Number of different pages: ' &
 		uniq |
 		wc -l &
-		#|store:nPages
 
 		# Top 20 requests
 		{{
 			 call 'header "Top 20 Requests"' &
 			 call 'toplist 20' &
 		}} &
-		#|>/stream/top20Request
 	}} &
 
 	# Access time: dd/mmm/yyyy:hh:mm:ss
@@ -187,17 +184,32 @@ sgsh-tee |
 		sgsh-tee |
 		{{
 
-			# Number of days
-			echo -n 'Number of days: ' &
 			uniq |
-			wc -l &
-			#|store:nDays
+			wc -l |
+			sgsh-tee |
+			{{
+				# Number of days
+				echo -n 'Number of days: ' &
+				cat &
+				#|store:nDays
+
+				echo -n 'Accesses per day: ' &
+				awk '
+					BEGIN {
+					"sgsh-readval -l -x -q -s nAccess" | getline NACCESS;}
+					{print NACCESS / $1}' &
+
+				echo -n 'MBytes per day: ' &
+				awk '
+					BEGIN {
+					"sgsh-readval -l -x -q -s nXBytes" | getline NXBYTES;}
+					{print NXBYTES / $1 / 1024 / 1024}' &
+			}} &
 
 			{{
 				 call 'header "Accesses by Date"' &
 				 uniq -c &
 			}} &
-			#|>/stream/accessByDate
 
 			# Accesses by day of week
 			{{
@@ -208,7 +220,6 @@ sgsh-tee |
 				 uniq -c |
 				 sort -rn &
 			}} &
-			#|>/stream/accessByDoW
 		}} &
 
 		# Hour
@@ -218,7 +229,6 @@ sgsh-tee |
 			sort |
 			uniq -c &
 		}} &
-		#|>/stream/accessByHour
 	}} &
 }} |
 sgsh-tee
