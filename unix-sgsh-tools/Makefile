@@ -77,6 +77,7 @@ install:
 	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/head $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
@@ -86,6 +87,7 @@ install:
 	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
