@@ -376,7 +376,7 @@ test-bash: test-clean
 	
 	# ditto
 	$(SGSHPATH)/bash --sgsh $(XDIR)/code-metrics.sh \
-		>$(PSDIR)/code-metrics.outb 2>/dev/null \
+		>$(PSDIR)/code-metrics.outb 2>err \
 	&& echo 'code-metrics.sh $S' \
 	|| echo 'code-metrics.sh $F'
 	

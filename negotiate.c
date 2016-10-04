@@ -1278,7 +1278,7 @@ write_message_block(int write_fd)
 		return OP_ERROR;
 
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (chosen_mb->n_nodes > 1) {
+		if (chosen_mb->n_edges > 0) {
 			/* Transmit edges. */
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
 			chosen_mb->edge_array = NULL;
@@ -1304,7 +1304,7 @@ static void
 check_negotiation_round(int serialno_ntimes_same)
 {
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (serialno_ntimes_same == 3) {
+		if (serialno_ntimes_same == 3 + chosen_mb->n_nodes / 30) {
 			chosen_mb->state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = true;
@@ -2129,8 +2129,9 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		return OP_ERROR;
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
-        	if ((*fresh_mb)->n_nodes > 1) {
-			DPRINTF("%s(): Read negotiation graph edges.",__func__);
+        	if ((*fresh_mb)->n_edges > 0) {
+			DPRINTF("%s(): Read %d negotiation graph edges.",
+					__func__, (*fresh_mb)->n_edges);
 			buf_size = sizeof(struct sgsh_edge) * (*fresh_mb)->n_edges;
 			buf = (char *)malloc(buf_size);
 			if ((error_code = read_chunk(read_fd, buf, buf_size,

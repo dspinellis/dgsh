@@ -332,6 +332,14 @@ pass_message_blocks(void)
 				assert(pi[next].to_write == NULL);
 				read_message_block(i, &pi[next].to_write); // XXX check return
 				rb = pi[next].to_write;
+				// Discard message block if we should
+				if (oinit != -1 && rb->initiator_pid > oinit) {
+					DPRINTF("Discard message block from fd %d initiator %d (loses to %d)",
+						i, rb->initiator_pid, oinit);
+					rb = pi[next].to_write = NULL;
+					continue;
+				}
+
 				DPRINTF("%s(): next write via fd %d to pid %d",
 						__func__, next, pi[next].pid);
 
