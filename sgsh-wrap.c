@@ -110,7 +110,7 @@ main(int argc, char *argv[])
 	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
 		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
-		if (!strcmp(exec_argv[k], "<|")) {
+		if (!strcmp(exec_argv[k], "<|") || strstr(exec_argv[k], "<|")) {
 			if (!ninputs) {
 				ninputs = (int *)malloc(sizeof(int));
 				*ninputs = 1;
@@ -150,10 +150,30 @@ main(int argc, char *argv[])
 	 * from negotiation
 	 */
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
+		char *m = NULL;
 		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
-		if (!strcmp(exec_argv[k], "<|")) {
-			sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
-			exec_argv[k] = fds[k];
+		if (!strcmp(exec_argv[k], "<|") ||
+				(m = strstr(exec_argv[k], "<|"))) {
+			if (m) {	// substring match
+				char new_argv[strlen(exec_argv[k] + 20)];
+				char argv_start[strlen(exec_argv[k])];
+				char argv_end[strlen(exec_argv[k])];
+				char proc_fd[20];
+				sprintf(proc_fd, "/proc/self/fd/%d",
+						input_fds[n++]);
+				strncpy(argv_start, exec_argv[k], m - exec_argv[k]);
+				fprintf(stderr, "argv_start: %s", argv_start);
+				// pointer math: skip "<|" and copy
+				strcpy(argv_end, m+4);
+				fprintf(stderr, "argv_end: %s", argv_end);
+				sprintf(new_argv, "%s%s%s",
+						argv_start, proc_fd, argv_end);
+				fprintf(stderr, "new_argv: %s", new_argv);
+				exec_argv[k] = new_argv;
+			} else {	// full match, just substitute
+				sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
+				exec_argv[k] = fds[k];
+			}
 		}
 		fprintf(stderr, "After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
 	}

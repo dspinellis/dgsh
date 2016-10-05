@@ -87,10 +87,15 @@ install:
 	cp $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
