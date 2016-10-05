@@ -83,6 +83,15 @@ install:
 	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin

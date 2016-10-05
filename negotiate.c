@@ -2129,7 +2129,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		return OP_ERROR;
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
-        	if ((*fresh_mb)->n_edges > 0) {
+		if ((*fresh_mb)->n_edges > 0) {
 			DPRINTF("%s(): Read %d negotiation graph edges.",
 					__func__, (*fresh_mb)->n_edges);
 			buf_size = sizeof(struct sgsh_edge) * (*fresh_mb)->n_edges;

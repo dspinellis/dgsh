@@ -107,7 +107,7 @@ main(int argc, char *argv[])
 		exec_argv[j] = argv[i];
 	exec_argv[j] = NULL;
 
-	// Mark special argument "<|" that means input from /proc/fd/x
+	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
 		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|")) {
@@ -140,20 +140,19 @@ main(int argc, char *argv[])
 		exit(1);
 
 	int n = 1;
-	char *fds[argc - 2];
+	char fds[argc - 2][20];		// /proc/self/fd/x
 	memset(fds, 0, sizeof(fds));
 
 	if (ninputs)
 		fprintf(stderr, "%s returned %d input fds\n",
 				negotiation_title, *ninputs);
-	/* Substitute special argument "<|" with /proc/fd/x received
+	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
 		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|")) {
-			fds[k] = (char *)malloc(15);
-			sprintf(fds[k], "/proc/fd/%d", input_fds[n++]);
+			sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
 			exec_argv[k] = fds[k];
 		}
 		fprintf(stderr, "After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
@@ -172,10 +171,6 @@ main(int argc, char *argv[])
 
 	if (input_fds)
 		free(input_fds);
-
-	for (k = 0; k < argc -1; k++)
-		if (fds[k])
-			free(fds[k]);
 
 	return 0;
 }
