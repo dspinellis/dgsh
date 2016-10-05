@@ -21,7 +21,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
+export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Output the top X elements of the input by the number of their occurrences
 # X is the first argument

@@ -14,7 +14,7 @@
 # Madagascar project: http://www.reproducibility.org
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).dot"
+export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 mkdir -p Fig
 

@@ -2,7 +2,9 @@ digraph {
 	n0 [label="0 git log --format=%an:%ad"];
 	n0 -> n1;
 	n1 [label="1 scatter-gather"];
+	n1 -> n2;
 	n1 -> n4;
+	n1 -> n6;
 	n1 -> n7;
 	n2 [label="2 echo Authors ordered by number of commits"];
 	n2 -> n3;

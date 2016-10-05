@@ -1,6 +1,7 @@
 digraph {
 	n0 [label="0 scatter-gather"];
 	n0 -> n1;
+	n0 -> n7;
 	n0 -> n8;
 	n0 -> n10;
 	n0 -> n41;
@@ -10,6 +11,7 @@ digraph {
 	n1 [label="1 awk {s += $NF} END {print s / 1024 / 1024 / 1024}"];
 	n1 -> n2;
 	n2 [label="2 scatter-gather"];
+	n2 -> n3;
 	n2 -> n5;
 	n2 -> n6;
 	n3 [label="3 echo -n Number of Gbytes transferred: "];
@@ -18,6 +20,7 @@ digraph {
 	n5 [label="5 cat"];
 	n5 -> n4;
 	n6 [label="6 sgsh-writeval"];
+	n6 -> n4;
 	n7 [label="7 echo -n MBytes log file size: "];
 	n7 -> n4;
 	n8 [label="8 wc -c"];
@@ -35,6 +38,7 @@ digraph {
 	n12 [label="12 wc -l"];
 	n12 -> n13;
 	n13 [label="13 scatter-gather"];
+	n13 -> n14;
 	n13 -> n15;
 	n13 -> n16;
 	n14 [label="14 echo -n Number of accesses: "];
@@ -42,6 +46,7 @@ digraph {
 	n15 [label="15 cat"];
 	n15 -> n4;
 	n16 [label="16 sgsh-writeval"];
+	n16 -> n4;
 	n17 [label="17 sort"];
 	n17 -> n18;
 	n18 [label="18 scatter-gather"];
@@ -51,7 +56,9 @@ digraph {
 	n19 [label="19 uniq"];
 	n19 -> n20;
 	n20 [label="20 scatter-gather"];
+	n20 -> n21;
 	n20 -> n22;
+	n20 -> n23;
 	n20 -> n24;
 	n21 [label="21 echo -n Number of hosts: "];
 	n21 -> n4;
@@ -83,6 +90,7 @@ digraph {
 	n34 [label="34 sort"];
 	n34 -> n35;
 	n35 [label="35 scatter-gather"];
+	n35 -> n36;
 	n35 -> n37;
 	n35 -> n39;
 	n35 -> n40;
@@ -112,6 +120,7 @@ digraph {
 	n47 [label="47 scatter-gather"];
 	n47 -> n48;
 	n47 -> n49;
+	n47 -> n51;
 	n47 -> n52;
 	n47 -> n54;
 	n47 -> n55;
@@ -150,8 +159,11 @@ digraph {
 	n61 [label="61 wc -l"];
 	n61 -> n62;
 	n62 [label="62 scatter-gather"];
+	n62 -> n63;
 	n62 -> n64;
+	n62 -> n65;
 	n62 -> n66;
+	n62 -> n67;
 	n62 -> n68;
 	n63 [label="63 echo -n Number of days: "];
 	n63 -> n4;

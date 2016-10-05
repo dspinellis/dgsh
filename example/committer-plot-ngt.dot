@@ -18,6 +18,7 @@ digraph {
 	n6 [label="6 wc -l"];
 	n6 -> n7;
 	n7 [label="7 sgsh-writeval"];
+	n7 -> n8;
 	n8 [label="8 scatter-gather"];
 	n8 -> n9;
 	n9 [label="9 tr \n  "];
@@ -25,11 +26,15 @@ digraph {
 	n10 [label="10 awk {print int(($1 - $2) / 60 / 60 / 24)}"];
 	n10 -> n11;
 	n11 [label="11 sgsh-writeval"];
+	n11 -> n12;
 	n12 [label="12 join -j 2"];
 	n12 -> n13;
 	n13 [label="13 sort -k 2n"];
 	n13 -> n14;
 	n14 [label="14 scatter-gather"];
+	n14 -> n15;
+	n14 -> n22;
+	n14 -> n26;
 	n14 -> n27;
 	n15 [label="15 echo P1"];
 	n15 -> n16;

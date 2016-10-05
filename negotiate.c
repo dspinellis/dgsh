@@ -143,7 +143,14 @@ static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
 STATIC void
 output_graph(char *filename)
 {
-	FILE *f = fopen(filename, "w");
+	char ffilename[strlen(filename) + 5];	// + .dot
+	sprintf(ffilename, "%s.dot", filename);
+	FILE *f = fopen(ffilename, "w");
+
+	char fnfilename[strlen(filename) + 9];	// + -ngt + .dot
+	sprintf(fnfilename, "%s-ngt.dot", filename);
+	FILE *fn = fopen(fnfilename, "w");
+
 	int i, j;
 	int n_nodes = chosen_mb->n_nodes;
 	struct sgsh_node_connections *graph_solution =
@@ -153,6 +160,7 @@ output_graph(char *filename)
 			filename, n_nodes, chosen_mb->n_edges);
 
 	fprintf(f, "digraph {\n");
+	fprintf(fn, "digraph {\n");
 
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node *node = &chosen_mb->node_array[i];
@@ -160,11 +168,40 @@ output_graph(char *filename)
 						&graph_solution[i];
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
+		// Remove path to command to save space in the graph plot
+		char node_name[strlen(node->name)];
+		memset(node_name, 0, sizeof(node_name));
+		char *s = strstr(node->name, " ");
+		// Find first space if any and take the name up to there
+		if (s)
+			strncpy(node_name, node->name, s - node->name);
+		else
+			strcpy(node_name, node->name);
+
+		char *name_plain = node_name;
+		char *m = strstr(node_name, "/");
+		while (m) {
+			name_plain = m + 1;
+			m = strstr(++m, "/");
+		}
+		if (s)
+			sprintf(node_name, "%s%s", name_plain, s);
+		else
+			strcpy(node_name, name_plain);
+
 		fprintf(f, "	n%d [label=\"%d %s\"];\n",
-				node->index, node->index, node->name);
-		DPRINTF("Node: (%d) %s", node->index, node->name);
+				node->index, node->index,
+				node_name);
+		fprintf(fn, "	n%d [label=\"%d %s\"];\n",
+				node->index, node->index,
+				node_name);
+		DPRINTF("Node: (%d) %s", node->index, node_name);
 
 		for (j = 0; j < n_edges_outgoing; j++) {
+			fprintf(fn, "	n%d -> n%d;\n",
+				node->index,
+				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
+			
 			if (connections->edges_outgoing[j].instances == 0)
 				continue;
 
@@ -179,8 +216,10 @@ output_graph(char *filename)
 	}
 
 	fprintf(f, "}");
+	fprintf(fn, "}");
 
 	fclose(f);
+	fclose(fn);
 }
 
 /**
