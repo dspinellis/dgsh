@@ -408,6 +408,13 @@ test-bash: test-clean
 	&& echo 'web-log-report.sh $S' \
 	|| echo 'web-log-report.sh $F'
 	
+	# ditto
+	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
+	$(SGSHPATH)/bash --sgsh $(XDIR)/NMRPipe.sh $(PSDIR)/fid \
+		>$(PSDIR)/NMRPipe.outb 2>$(PSDIR)/NMRPipe.err \
+	&& echo 'NMRPipe.sh $S' \
+	|| echo 'NMRPipe.sh $F'
+	
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
 	
