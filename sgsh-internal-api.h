@@ -21,6 +21,10 @@ struct sgsh_conc {
 	pid_t pid;
 	int input_fds;
 	int output_fds;
+	int n_proc_pids;
+	int *proc_pids;		/* pids at the multipipe end */
+	int endpoint_pid;	/* pid at the other end */
+	bool multiple_inputs;	/* true for input conc */
 };
 
 /* The message block structure that provides the vehicle for negotiation. */
@@ -77,6 +81,7 @@ struct sgsh_negotiation {
 
 };
 
+struct sgsh_conc *find_conc(struct sgsh_negotiation *mb, pid_t pid);
 pid_t get_origin_pid(struct sgsh_negotiation *mb);
 int get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid);
 int get_provided_fds_n(struct sgsh_negotiation *mb, pid_t pid);

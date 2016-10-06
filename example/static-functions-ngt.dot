@@ -1,0 +1,18 @@
+digraph {
+	n0 [label="0 find diffutils -name"];
+	n0 -> n1;
+	n1 [label="1 xargs nm"];
+	n1 -> n2;
+	n2 [label="2 scatter-gather"];
+	n2 -> n3;
+	n2 -> n6;
+	n3 [label="3 awk NF == 3 && $2 ~ /[A-Z]/ {print $3}"];
+	n3 -> n4;
+	n4 [label="4 sort"];
+	n4 -> n5;
+	n5 [label="5 comm -23 -"];
+	n6 [label="6 awk $1 == \"U\" {print $2}"];
+	n6 -> n7;
+	n7 [label="7 sort"];
+	n7 -> n5;
+}

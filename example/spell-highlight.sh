@@ -21,7 +21,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 export LC_ALL=C
 

@@ -1,0 +1,19 @@
+digraph {
+	n0 [label="0 scatter-gather"];
+	n0 -> n1;
+	n0 -> n6;
+	n0 -> n7;
+	n1 [label="1 tr -cs A-Za-z"];
+	n1 -> n2;
+	n2 [label="2 tr A-Z a-z"];
+	n2 -> n3;
+	n3 [label="3 sort -u"];
+	n3 -> n4;
+	n4 [label="4 comm -23 -"];
+	n4 -> n5;
+	n5 [label="5 grep -F -f"];
+	n6 [label="6 sort /usr/share/dict/words"];
+	n6 -> n4;
+	n7 [label="7 cat"];
+	n7 -> n5;
+}

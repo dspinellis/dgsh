@@ -23,7 +23,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh).draw"
+export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |

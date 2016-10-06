@@ -35,19 +35,20 @@ MANHTML=$(patsubst %.1,%.html,$(MANSRC))
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
-WEBPNG=$(EGPNG) debug.png profile.png
+ENGTPNG=$(patsubst %.sh,png/%-pretty-ngt.png,$(EXAMPLES))
+WEBPNG=$(EGPNG) $(ENGTPNG) debug.png profile.png
 WEBDIST=../../../pubs/web/home/sw/sgsh/
 
 # Files required for sgsh negotiation
 NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h \
 		     sgsh-conc.c
 
-%.png: %.sh
-	./sgsh -g pretty $< | dot -Tpng >$@
-
 png/%-pretty.png: example/%.dot
 	# The sed removes the absolute path from the command label
 	sed 's|label="/[^"]*/\([^/"]*\)"|label="\1"|' $< | dot -Tpng >$@
+
+png/%-pretty-ngt.png: example/%-ngt.dot
+	dot -Tpng $< >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
@@ -197,10 +198,10 @@ debug-web-log-report: sgsh
 	gzip -dc eval/clarknet_access_log_Aug28.gz | ./sgsh -d -p . example/web-log-report.sh
 
 # Diagrams that require special processing
-png/ft2d-pretty.png: example/ft2d.sh
-	./sgsh -g pretty $< | dot -Tpng | pngtopnm >top.pnm
-	./sgsh -g pretty $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | pnmcat -topbottom top.pnm - | pnmtopng >$@
-	rm top.pnm
+#png/ft2d-pretty.png: example/ft2d.sh
+#	./sgsh -g pretty $< | dot -Tpng | pngtopnm >top.pnm
+#	./sgsh -g pretty $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | pnmcat -topbottom top.pnm - | pnmtopng >$@
+#	rm top.pnm
 
-png/NMRPipe-pretty.png: diagram/NMRPipe-pretty-full.dot
-	dot -Tpng $< >png/NMRPipe-pretty.png
+#png/NMRPipe-pretty.png: diagram/NMRPipe-pretty-full.dot
+#	dot -Tpng $< >png/NMRPipe-pretty.png
