@@ -140,6 +140,63 @@ static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
 							 * at execution.
 							 */
 
+/**
+ * Remove path to command to save space in the graph plot
+ * Find first space if any and take the name up to there
+ * Find and remove path prepended to the name
+ * Rejoin the name with arguments
+ * Escape double quotes
+ */
+STATIC void
+process_node_name(char *name, char *processed_name)
+{
+	char no_path_name[strlen(name)];
+	memset(no_path_name, 0, sizeof(no_path_name));
+	char *s = strstr(name, " ");
+
+	if (s)
+		strncpy(no_path_name, name, s - name);
+	else
+		strcpy(no_path_name, name);
+
+	char *p = no_path_name;
+	char *m = strstr(no_path_name, "/");
+	while (m) {
+		p = ++m;
+		m = strstr(m, "/");
+	}
+
+	if (s)
+		sprintf(no_path_name, "%s%s", p, s);
+	else
+		strcpy(no_path_name, p);
+
+	m = strstr(no_path_name, "\"");
+	char *mm = NULL;
+	while (m) {
+		DPRINTF("processed_name: %s, m: %s, mm: %s",
+				processed_name, m, mm);
+		if (strlen(processed_name) == 0)
+			strncpy(processed_name, no_path_name, m - no_path_name);
+		else {
+			strcat(processed_name, "\\");
+			strncat(processed_name, mm, m - mm);
+			DPRINTF("processed_name: %s, m - mm: %ld",
+					processed_name, (long)(m - mm));
+		}
+		mm = m;
+		m = strstr(++m, "\"");
+	}
+	if (mm) {
+		strcat(processed_name, "\\");
+		strcat(processed_name, mm);
+	} else
+		strcpy(processed_name, no_path_name);
+
+	DPRINTF("final processed_name: %s, m: %s, mm: %s",
+				processed_name, m, mm);
+}
+
 STATIC void
 output_graph(char *filename)
 {
@@ -168,34 +225,17 @@ output_graph(char *filename)
 						&graph_solution[i];
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
-		// Remove path to command to save space in the graph plot
-		char node_name[strlen(node->name)];
-		memset(node_name, 0, sizeof(node_name));
-		char *s = strstr(node->name, " ");
-		// Find first space if any and take the name up to there
-		if (s)
-			strncpy(node_name, node->name, s - node->name);
-		else
-			strcpy(node_name, node->name);
-
-		char *name_plain = node_name;
-		char *m = strstr(node_name, "/");
-		while (m) {
-			name_plain = m + 1;
-			m = strstr(++m, "/");
-		}
-		if (s)
-			sprintf(node_name, "%s%s", name_plain, s);
-		else
-			strcpy(node_name, name_plain);
+		char processed_name[strlen(node->name)];
+		memset(processed_name, 0, sizeof(processed_name));
+		process_node_name(node->name, processed_name);
 
 		fprintf(f, "	n%d [label=\"%d %s\"];\n",
 				node->index, node->index,
-				node_name);
+				processed_name);
 		fprintf(fn, "	n%d [label=\"%d %s\"];\n",
 				node->index, node->index,
-				node_name);
-		DPRINTF("Node: (%d) %s", node->index, node_name);
+				processed_name);
+		DPRINTF("Node: (%d) %s", node->index, processed_name);
 
 		for (j = 0; j < n_edges_outgoing; j++) {
 			fprintf(fn, "	n%d -> n%d;\n",
