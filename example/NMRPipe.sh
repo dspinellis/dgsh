@@ -62,6 +62,10 @@ sgsh-tee |
   nmrPipe -fn POLY -auto -verb >B &
 }}
 
+# Fence to allow async write to A and B complete
+# before mmap read of addNMR (read fails otherwise)
+sleep 0.05
+
 # We use temporary files rather than streams, because
 # addNMR mmaps its input files. The diagram displayed in the
 # example shows the notional data flow.
