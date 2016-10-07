@@ -409,6 +409,12 @@ test-bash: test-clean
 	|| echo 'web-log-report.sh $F'
 	
 	# ditto
+	$(SGSHPATH)/bash --sgsh $(XDIR)/ft2d.sh \
+		>$(PSDIR)/ft2d.outb 2>$(PSDIR)/ft2d.err \
+	&& echo 'ft2d.sh $S' \
+	|| echo 'ft2d.sh $F'
+	
+	# ditto
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
 	$(SGSHPATH)/bash --sgsh $(XDIR)/NMRPipe.sh $(PSDIR)/fid \
 		>$(PSDIR)/NMRPipe.outb 2>$(PSDIR)/NMRPipe.err \

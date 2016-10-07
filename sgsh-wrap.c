@@ -140,7 +140,7 @@ main(int argc, char *argv[])
 		exit(1);
 
 	int n = 1;
-	char fds[argc - 2][20];		// /proc/self/fd/x
+	char fds[argc - 2][50];		// /proc/self/fd/x or arg=/proc/self/fd/x
 	memset(fds, 0, sizeof(fds));
 
 	if (ninputs)
@@ -155,25 +155,22 @@ main(int argc, char *argv[])
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
 			if (m) {	// substring match
-				char new_argv[strlen(exec_argv[k] + 20)];
 				char argv_start[strlen(exec_argv[k])];
 				char argv_end[strlen(exec_argv[k])];
 				char proc_fd[20];
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
 				strncpy(argv_start, exec_argv[k], m - exec_argv[k]);
-				fprintf(stderr, "argv_start: %s", argv_start);
+				fprintf(stderr, "argv_start: %s\n", argv_start);
 				// pointer math: skip "<|" and copy
-				strcpy(argv_end, m+4);
-				fprintf(stderr, "argv_end: %s", argv_end);
-				sprintf(new_argv, "%s%s%s",
+				strcpy(argv_end, m + 2);
+				fprintf(stderr, "argv_end: %s\n", argv_end);
+				sprintf(fds[k], "%s%s%s",
 						argv_start, proc_fd, argv_end);
-				fprintf(stderr, "new_argv: %s", new_argv);
-				exec_argv[k] = new_argv;
-			} else {	// full match, just substitute
+				fprintf(stderr, "new_argv: %s\n", fds[k]);
+			} else	// full match, just substitute
 				sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
-				exec_argv[k] = fds[k];
-			}
+			exec_argv[k] = fds[k];
 		}
 		fprintf(stderr, "After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
 	}
