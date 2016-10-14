@@ -133,3 +133,6 @@ sgsh-tee |
 	pamscale -width 640 |
 	pnmtopng >small.png &
 }}
+
+# Close sgsh-writeval
+sgsh-readval -l -x -q -s committers

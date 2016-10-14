@@ -60,11 +60,11 @@ sgsh-tee |
   nmrPipe -fn PS -p0 -90 -p1 0 -di |
   nmrPipe -fn TP |
   nmrPipe -fn POLY -auto -verb >B &
-}}
 
-# Fence to allow async write to A and B complete
-# before mmap read of addNMR (read fails otherwise)
-sleep 0.05
+  # Wait for async writes to finish
+  # sgsh-conc ignores the wait command when setting up connections
+  wait
+}}
 
 # We use temporary files rather than streams, because
 # addNMR mmaps its input files. The diagram displayed in the

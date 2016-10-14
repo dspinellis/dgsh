@@ -392,8 +392,6 @@ test-bash: test-clean
 		2>../$(PSDIR)/committer-plot.err \
 	&& echo 'committer-plot.sh $S' \
 	|| echo 'committer-plot.sh $F'
-	# XXX: sgsh-writeval hangs
-	pkill -f sgsh-writeval
 	
 	# ditto
 	$(SGSHPATH)/bash --sgsh $(XDIR)/code-metrics.sh \
