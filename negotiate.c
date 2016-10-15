@@ -202,11 +202,11 @@ output_graph(char *filename)
 {
 	char ffilename[strlen(filename) + 5];	// + .dot
 	sprintf(ffilename, "%s.dot", filename);
-	FILE *f = fopen(ffilename, "w");
+	FILE *f = fopen(ffilename, "a");
 
 	char fnfilename[strlen(filename) + 9];	// + -ngt + .dot
 	sprintf(fnfilename, "%s-ngt.dot", filename);
-	FILE *fn = fopen(fnfilename, "w");
+	FILE *fn = fopen(fnfilename, "a");
 
 	int i, j;
 	int n_nodes = chosen_mb->n_nodes;
@@ -255,8 +255,8 @@ output_graph(char *filename)
 		}
 	}
 
-	fprintf(f, "}");
-	fprintf(fn, "}");
+	fprintf(f, "}\n");
+	fprintf(fn, "}\n");
 
 	fclose(f);
 	fclose(fn);

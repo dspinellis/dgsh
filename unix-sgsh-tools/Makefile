@@ -419,6 +419,8 @@ test-bash: test-clean
 	&& echo 'NMRPipe.sh $S' \
 	|| echo 'NMRPipe.sh $F'
 	
+	mv *.dot coreutils/*.dot $(XDIR)
+
 test-pseudo: test-clean
 	echo "$B\nPseudo shell tests:${EC}"
 	

@@ -197,10 +197,17 @@ debug-web-log-report: sgsh
 	gzip -dc eval/clarknet_access_log_Aug28.gz | ./sgsh -d -p . example/web-log-report.sh
 
 # Diagrams that require special processing
-#png/ft2d-pretty.png: example/ft2d.sh
-#	./sgsh -g pretty $< | dot -Tpng | pngtopnm >top.pnm
-#	./sgsh -g pretty $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | pnmcat -topbottom top.pnm - | pnmtopng >$@
-#	rm top.pnm
+png/ft2d-pretty.png: example/ft2d.dot
+	dot -Tpng $< | pngtopnm >top.pnm
+	cat $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | \
+		pnmcat -topbottom top.pnm - | pnmtopng >$@
+	rm top.pnm
+
+png/ft2d-pretty-ngt.png: example/ft2d-ngt.dot
+	dot -Tpng $< | pngtopnm >top.pnm
+	cat $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | \
+		pnmcat -topbottom top.pnm - | pnmtopng >$@
+	rm top.pnm
 
 #png/NMRPipe-pretty.png: diagram/NMRPipe-pretty-full.dot
 #	dot -Tpng $< >png/NMRPipe-pretty.png
