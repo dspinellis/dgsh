@@ -27,30 +27,19 @@ get-submodules:
 		$(TD)/bash \
 		$(TD)/coreutils \
 		$(TD)/diffutils \
-		$(TD)/grep \
-		$(TD)/parallel \
-		$(TD)/sed \
-		$(TD)/tar
+		$(TD)/grep
 
 configure:
 	cd bash && ./configure --prefix=$(INSTPREFIX)
 	cd coreutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
 	cd diffutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
-	#cd gawk && ./bootstrap.sh && ./configure --prefix=`pwd`/..
 	cd grep && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
-	#cd parallel && ./configure --prefix=
-	#cd sed && ./bootstrap && ./configure --prefix=`pwd`/..
-	#cd tar && ./bootstrap && ./configure --prefix=`pwd`/..
 
 make:
 	$(MAKE) -C bash
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
-	#$(MAKE) -C gawk
 	$(MAKE) -C grep
-	#$(MAKE) -C parallel
-	#$(MAKE) -C sed
-	#$(MAKE) -C tar
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 
@@ -58,11 +47,7 @@ install:
 	$(MAKE) -C bash install
 	$(MAKE) -C coreutils install
 	$(MAKE) -C diffutils install
-	#$(MAKE) -C gawk install
 	$(MAKE) -C grep install
-	#$(MAKE) -C parallel install
-	#$(MAKE) -C sed install
-	#$(MAKE) -C tar install
 	cp secho $(INSTPREFIX)/bin
 	cp pecho $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
@@ -562,9 +547,5 @@ clean:
 	$(MAKE) -C bash clean
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
-	#$(MAKE) -C gawk clean
 	$(MAKE) -C grep clean
-	#$(MAKE) -C parallel clean
-	#$(MAKE) -C sed clean
-	#$(MAKE) -C tar clean
 
