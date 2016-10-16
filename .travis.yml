@@ -4,7 +4,13 @@ language: c
 
 install:
 - sudo apt-get -qq update
-- sudo apt-get install -y check make automake gcc libtool pkg-config gettext gperf texinfo
+- sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo
+- wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz && \
+  tar Jxvf gettext-0.19.5.tar.xz && \
+  cd gettext-0.19.5 && \
+  ./configure && \
+  make && \
+  sudo make install
 - make config-tools && make DEBUG=1 && sudo make install && make setup-test-negotiate
 
 compiler: gcc
