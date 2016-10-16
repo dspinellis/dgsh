@@ -4,7 +4,7 @@ language: c
 
 install:
 - sudo apt-get -qq update
-- sudo apt-get install -y check make automake gcc libtool pkg-config
+- sudo apt-get install -y check make automake gcc libtool pkg-config gettext gperf texinfo
 - make config-tools && make DEBUG=1 && sudo make install && make setup-test-negotiate
 
 compiler: gcc
