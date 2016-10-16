@@ -62,7 +62,7 @@ all: $(EXECUTABLES) $(LIBS) tools
 tools:
 	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
 
-config-tools: $(TOOLS)
+config-tools:
 	$(MAKE) -C $(TOOLS) configure
 
 sgsh-readval: sgsh-readval.c kvstore.c negotiate.o
