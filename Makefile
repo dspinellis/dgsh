@@ -27,6 +27,8 @@ EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
 
 LIBS=libsgsh_negotiate.a
 
+TOOLS=unix-sgsh-tools
+
 # Manual pages
 MANSRC=$(wildcard *.1)
 MANPDF=$(patsubst %.1,%.pdf,$(MANSRC))
@@ -55,7 +57,13 @@ png/%-pretty-ngt.png: example/%-ngt.dot
 %.html: %.1
 	groff -man -Thtml $< >$@
 
-all: $(EXECUTABLES) $(LIBS)
+all: $(EXECUTABLES) $(LIBS) tools
+
+tools:
+	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
+
+config-tools:
+	$(MAKE) -C $(TOOLS) configure
 
 sgsh-readval: sgsh-readval.c kvstore.c negotiate.o
 
@@ -78,7 +86,7 @@ test-tee: sgsh-tee charcount test-tee.sh
 test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
 	./test-merge-sum.sh
 
-test-negotiate: copy_files build-run-ng-tests
+test-negotiate: copy_files build-run-ng-tests test-tools
 
 setup-test-negotiate: copy_files autoreconf-ng-tests
 
@@ -97,6 +105,9 @@ build-run-ng-tests:
 	cd test/negotiate && \
 	$(MAKE) && \
 	$(MAKE) check
+
+test-tools:
+	$(MAKE) -C $(TOOLS) -s test
 
 test-kvstore: test-kvstore.sh
 	# Make versions that will exercise the buffers
@@ -174,15 +185,23 @@ seed-regression:
 		/usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
 	done
 
-clean:
-	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG)
+clean: clean-tools
+	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG) $(ENGTPNG)
 
-install: $(EXECUTABLES) $(LIBS)
+clean-tools:
+	$(MAKE) -C $(TOOLS) clean
+
+install: install-sgsh install-tools
+
+install-sgsh: $(EXECUTABLES) $(LIBS)
 	-mkdir $(INSTPREFIX)/bin
 	-mkdir $(INSTPREFIX)/lib
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
+
+install-tools:
+	$(MAKE) -C $(TOOLS) install
 
 web: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html

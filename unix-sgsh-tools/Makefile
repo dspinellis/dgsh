@@ -43,26 +43,26 @@ configure:
 	#cd tar && ./bootstrap && ./configure --prefix=`pwd`/..
 
 make:
-	cd bash && make
-	cd coreutils && make
-	cd diffutils && make
-	#cd gawk && make
-	cd grep && make
-	#cd parallel && make
-	#cd sed && make
-	#cd tar && make
+	$(MAKE) -C bash
+	$(MAKE) -C coreutils
+	$(MAKE) -C diffutils
+	#$(MAKE) -C gawk
+	$(MAKE) -C grep
+	#$(MAKE) -C parallel
+	#$(MAKE) -C sed
+	#$(MAKE) -C tar
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 
 install:
-	cd bash && make install
-	cd coreutils && make install
-	cd diffutils && make install
-	#cd gawk && make install
-	cd grep && make install
-	#cd parallel && make install
-	#cd sed && make install
-	#cd tar && make install
+	$(MAKE) -C bash install
+	$(MAKE) -C coreutils install
+	$(MAKE) -C diffutils install
+	#$(MAKE) -C gawk install
+	$(MAKE) -C grep install
+	#$(MAKE) -C parallel install
+	#$(MAKE) -C sed install
+	#$(MAKE) -C tar install
 	cp secho $(INSTPREFIX)/bin
 	cp pecho $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
@@ -559,11 +559,12 @@ test-pseudo: test-clean
 	|| echo '{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F'
 
 clean:
-	cd coreutils && make clean
-	cd diffutils && make clean
-	cd gawk && make clean
-	cd grep && make clean
-	cd parallel && make clean
-	cd sed && make clean
-	cd tar && make clean
+	$(MAKE) -C bash clean
+	$(MAKE) -C coreutils clean
+	$(MAKE) -C diffutils clean
+	#$(MAKE) -C gawk clean
+	$(MAKE) -C grep clean
+	#$(MAKE) -C parallel clean
+	#$(MAKE) -C sed clean
+	#$(MAKE) -C tar clean
 
