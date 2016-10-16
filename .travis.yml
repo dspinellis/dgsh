@@ -1,6 +1,6 @@
 dist: trusty
 
-language: c
+language: C
 
 install:
 - sudo apt-get -qq update
