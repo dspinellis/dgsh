@@ -200,6 +200,8 @@ install-sgsh: $(EXECUTABLES) $(LIBS)
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
+	# For tests
+	install sgsh-readval /usr/bin
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install

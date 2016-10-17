@@ -53,6 +53,7 @@ install:
 	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
+	cp $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/df $(INSTPREFIX)/bin
 	cp $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
@@ -360,7 +361,11 @@ test-bash: test-clean
 	|| echo 'word-properties.sh $F'
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/map-hierarchy.sh tar tar-p100 tarp \
+	-rm -rf grep-p100
+	cd grep && git checkout HEAD~100 2>/dev/null && \
+		cd .. && cp -R grep grep-p100 && \
+		cd grep && git checkout master 2>/dev/null && cd ..
+	$(SGSHPATH)/bash --sgsh $(XDIR)/map-hierarchy.sh grep grep-p100 grepp \
 		>$(PSDIR)/map-hierarchy.outb 2>$(PSDIR)/map-hierarchy.err \
 	&& echo 'map-hierarchy.sh $S' \
 	|| echo 'map-hierarchy.sh $F'

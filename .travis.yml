@@ -4,7 +4,7 @@ language: C
 
 install:
 - sudo apt-get -qq update
-- sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo help2man
+- sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo help2man wbritish wamerican
 - wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 - tar Jxvf gettext-0.19.5.tar.xz
 - cd gettext-0.19.5 && ./configure && make && sudo make install

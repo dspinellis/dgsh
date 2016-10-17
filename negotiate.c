@@ -152,6 +152,7 @@ process_node_name(char *name, char *processed_name)
 {
 	char no_path_name[strlen(name)];
 	memset(no_path_name, 0, sizeof(no_path_name));
+	memset(processed_name, 0, sizeof(*processed_name));
 	char *s = strstr(name, " ");
 
 	if (s)
@@ -226,7 +227,6 @@ output_graph(char *filename)
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
 		char processed_name[strlen(node->name)];
-		memset(processed_name, 0, sizeof(processed_name));
 		process_node_name(node->name, processed_name);
 
 		fprintf(f, "	n%d [label=\"%d %s\"];\n",
