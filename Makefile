@@ -196,6 +196,7 @@ install: install-sgsh install-tools
 install-sgsh: $(EXECUTABLES) $(LIBS)
 	-mkdir -p $(INSTPREFIX)/bin
 	-mkdir -p $(INSTPREFIX)/lib
+	-mkdir -p $(INSTPREFIX)/share/man/man1
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
