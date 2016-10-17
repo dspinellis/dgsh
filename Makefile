@@ -194,8 +194,8 @@ clean-tools:
 install: install-sgsh install-tools
 
 install-sgsh: $(EXECUTABLES) $(LIBS)
-	-mkdir $(INSTPREFIX)/bin
-	-mkdir $(INSTPREFIX)/lib
+	-mkdir -p $(INSTPREFIX)/bin
+	-mkdir -p $(INSTPREFIX)/lib
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
