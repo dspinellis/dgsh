@@ -148,13 +148,13 @@ static struct sgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
  * Escape double quotes
  */
 STATIC void
-process_node_name(char *name, char *processed_name)
+process_node_name(char *name, char **processed_name)
 {
 	char no_path_name[strlen(name)];
 	memset(no_path_name, 0, sizeof(no_path_name));
-	memset(processed_name, 0, sizeof(*processed_name));
 	char *s = strstr(name, " ");
 
+	DPRINTF("Node name to process: %s", name);
 	if (s)
 		strncpy(no_path_name, name, s - name);
 	else
@@ -176,26 +176,26 @@ process_node_name(char *name, char *processed_name)
 	char *mm = NULL;
 	while (m) {
 		DPRINTF("processed_name: %s, m: %s, mm: %s",
-				processed_name, m, mm);
-		if (strlen(processed_name) == 0)
-			strncpy(processed_name, no_path_name, m - no_path_name);
+				*processed_name, m, mm);
+		if (strlen(*processed_name) == 0)
+			strncpy(*processed_name, no_path_name, m - no_path_name);
 		else {
-			strcat(processed_name, "\\");
-			strncat(processed_name, mm, m - mm);
+			strcat(*processed_name, "\\");
+			strncat(*processed_name, mm, m - mm);
 			DPRINTF("processed_name: %s, m - mm: %ld",
-					processed_name, (long)(m - mm));
+					*processed_name, (long)(m - mm));
 		}
 		mm = m;
 		m = strstr(++m, "\"");
 	}
 	if (mm) {
-		strcat(processed_name, "\\");
-		strcat(processed_name, mm);
+		strcat(*processed_name, "\\");
+		strcat(*processed_name, mm);
 	} else
-		strcpy(processed_name, no_path_name);
+		strcpy(*processed_name, no_path_name);
 
 	DPRINTF("final processed_name: %s, m: %s, mm: %s",
-				processed_name, m, mm);
+				*processed_name, m, mm);
 }
 
 STATIC void
@@ -226,8 +226,20 @@ output_graph(char *filename)
 						&graph_solution[i];
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
-		char processed_name[strlen(node->name)];
-		process_node_name(node->name, processed_name);
+		DPRINTF("Output node: %s", node->name);
+		// Reserve space for quotes
+		int q = 0;
+		char *m = strstr(node->name, "\"");
+		while (m) {
+			q++;
+			m = strstr(++m, "\"");
+		}
+		char *processed_name = (char *)malloc(sizeof(char) *
+						(strlen(node->name) + q + 1));
+		DPRINTF("Malloc %d bytes for processed_name",
+					(int)strlen(node->name) + q + 1);
+		memset(processed_name, 0, strlen(node->name) + q + 1);
+		process_node_name(node->name, &processed_name);
 
 		fprintf(f, "	n%d [label=\"%d %s\"];\n",
 				node->index, node->index,
@@ -237,6 +249,7 @@ output_graph(char *filename)
 				processed_name);
 		DPRINTF("Node: (%d) %s", node->index, processed_name);
 
+		free(processed_name);
 		for (j = 0; j < n_edges_outgoing; j++) {
 			fprintf(fn, "	n%d -> n%d;\n",
 				node->index,
@@ -1080,6 +1093,8 @@ solve_sgsh_graph(void)
 
 	if ((filename = getenv("SGSH_DOT_DRAW")))
 		output_graph(filename);
+
+	DPRINTF("%s: exit_state: %d", __func__, exit_state);
 
 exit:
 	if (exit_state == OP_ERROR)
