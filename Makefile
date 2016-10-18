@@ -185,7 +185,9 @@ seed-regression:
 		/usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
 	done
 
-clean: clean-tools
+clean: clean-sgsh clean-tools
+
+clean-sgsh:
 	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG) $(ENGTPNG)
 
 clean-tools:

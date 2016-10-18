@@ -49,7 +49,7 @@ main(int argc, char *argv[])
 {
 	int pos = 1;
 	int *ninputs = NULL, *noutputs = NULL;
-	int *input_fds;
+	int *input_fds = NULL;
 
 	fprintf(stderr, "argc: %d\n", argc);
 	int k = 0;

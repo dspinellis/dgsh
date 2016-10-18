@@ -362,9 +362,8 @@ test-bash: test-clean
 	
 	# ditto
 	-rm -rf grep-p100
-	cd grep && git checkout HEAD~100 2>/dev/null && \
-		cd .. && cp -R grep grep-p100 && \
-		cd grep && git checkout master 2>/dev/null && cd ..
+	cp -R grep grep-p100 && \
+	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && cd ..
 	$(SGSHPATH)/bash --sgsh $(XDIR)/map-hierarchy.sh grep grep-p100 grepp \
 		>$(PSDIR)/map-hierarchy.outb 2>$(PSDIR)/map-hierarchy.err \
 	&& echo 'map-hierarchy.sh $S' \
@@ -392,10 +391,11 @@ test-bash: test-clean
 	# ditto
 	cat $(PSDIR)/access.log | \
 	$(SGSHPATH)/bash --sgsh $(XDIR)/web-log-report.sh \
-		>$(PSDIR)/web-log-report.outb \
+		>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
 	&& echo 'web-log-report.sh $S' \
 	|| echo 'web-log-report.sh $F'
 	#	>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
+	#	>$(PSDIR)/web-log-report.outb \
 	
 	# ditto
 	$(SGSHPATH)/bash --sgsh $(XDIR)/ft2d.sh \
