@@ -392,9 +392,10 @@ test-bash: test-clean
 	# ditto
 	cat $(PSDIR)/access.log | \
 	$(SGSHPATH)/bash --sgsh $(XDIR)/web-log-report.sh \
-		>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
+		>$(PSDIR)/web-log-report.outb \
 	&& echo 'web-log-report.sh $S' \
 	|| echo 'web-log-report.sh $F'
+	#	>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
 	
 	# ditto
 	$(SGSHPATH)/bash --sgsh $(XDIR)/ft2d.sh \
