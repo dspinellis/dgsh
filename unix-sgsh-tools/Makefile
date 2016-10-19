@@ -237,11 +237,12 @@ test-bash: test-clean
 			diff $(PSDIR)/world - & \
 			comm $(PSDIR)/hello - & \
 		}} > $(PSDIR)/tee-copy_diff_comm.outb' \
+		2>$(PSDIR)/tee-copy_diff_comm.err \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/tee-copy_diff_comm.outb \
-			$(PSDIR)/tee-copy_diff_comm.success1 \
+			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-copy_diff_comm.outb \
-			$(PSDIR)/tee-copy_diff_comm.success2) \
+			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
 	&& echo "sgsh-tee | {{ diff & comm & }} $S" \
 	|| (echo "sgsh-tee | {{ diff & comm & }} $F" \
 	&& exit 1)
