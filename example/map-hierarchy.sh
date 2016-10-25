@@ -49,7 +49,7 @@ line_signatures()
     sed -n "/[a-z]/s|^|$dir$file|p" "$dir/$file"
   done |
   # Error: multi-character tab '\001\001'
-  sort -t -k 2
+  sort -T `pwd` -t -k 2
 }
 
 

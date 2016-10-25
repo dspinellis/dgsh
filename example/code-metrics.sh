@@ -42,7 +42,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P |
+			cpp -P 2>/dev/null |
 			sgsh-tee |
 			{{
 				# Structure definitions
@@ -51,7 +51,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 				#}} (match preceding openings)
 
 				# Type definitions
-				echo -n 'NSTRUCT: ' &
+				echo -n 'NTYPEDEF: ' &
 				grep -cw typedef &
 
 				# Use of void
@@ -81,7 +81,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 			# testing
 			echo -n 'NCCHAR: ' &
 			sed 's/#/@/g' |
-			cpp -traditional -P |
+			cpp -traditional -P 2>/dev/null |
 			wc -c |
 			awk '{OFMT = "%.0f"; print $1/1000}' &
 
@@ -115,8 +115,6 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		}} &
 
 		# C code
-		#xargs -0 cat |
-		#sgsh-tee |
 		{{
 			# Lines and characters
 			echo -n 'CLINESCHAR: ' &
@@ -125,14 +123,12 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P |
+			cpp -P 2>/dev/null |
 			sgsh-tee |
 			{{
 				# Number of functions
 				echo -n 'NFUNCTION: ' &
 				grep -c '^{' &
-	  
-				# } (match preceding open)
 
 				# Number of gotos
 				echo -n 'NGOTO: ' &

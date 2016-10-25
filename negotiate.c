@@ -241,12 +241,19 @@ output_graph(char *filename)
 		memset(processed_name, 0, strlen(node->name) + q + 1);
 		process_node_name(node->name, &processed_name);
 
+#ifdef DEBUG
 		fprintf(f, "	n%d [label=\"%d %s\"];\n",
 				node->index, node->index,
 				processed_name);
 		fprintf(fn, "	n%d [label=\"%d %s\"];\n",
 				node->index, node->index,
 				processed_name);
+#else
+		fprintf(f, "	n%d [label=\"%s\"];\n",
+				node->index, processed_name);
+		fprintf(fn, "	n%d [label=\"%s\"];\n",
+				node->index, processed_name);
+#endif
 		DPRINTF("Node: (%d) %s", node->index, processed_name);
 
 		free(processed_name);
