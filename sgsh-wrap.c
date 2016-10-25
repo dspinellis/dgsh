@@ -38,7 +38,7 @@ static char *guest_program_name = NULL;
 static void
 usage(void)
 {
-	frpintf(stderr, "Usage: %s [-d | -m] program [arguments ...]\n"
+	fprintf(stderr, "Usage: %s [-d | -m] program [arguments ...]\n"
 			"-d"		"Requires no input; d for deaf\n"
 			"-m"		"Provides no output; m for mute\n",
 		program_name);
