@@ -103,3 +103,5 @@ sgsh-tee |
 call 'side_by_side_iso "<|" \
 		yscale=1.25 >Fig/airwave.vpl' &
 #call 'side_by_side_iso airtx.vpl airfk.vpl \
+
+wait
