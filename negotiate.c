@@ -77,6 +77,8 @@ struct sgsh_node {
 	int sgsh_out;		/* Provides output to other tool(s)
 				 * on sgsh graph.
 				 */
+	int sgsh_start;		/* Starts the negotiation procedure
+				 */
 };
 
 /* Holds a node's connections. It contains a piece of the solution. */
@@ -2319,6 +2321,10 @@ get_environment_vars()
 	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
 		return OP_ERROR;
 
+	DPRINTF("Try to get environment variable SGSH_START.");
+	if (get_env_var("SGSH_START", &self_node.sgsh_start) == OP_ERROR)
+		return OP_ERROR;
+
 	return OP_SUCCESS;
 }
 
@@ -2506,7 +2512,8 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	}
 
 	/* Start negotiation */
-	if (self_node.sgsh_out && !self_node.sgsh_in) {
+	if (self_node.sgsh_out && (!self_node.sgsh_in ||
+				self_node.sgsh_start)) {
 		if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (register_node_edge(tool_name, self_pid, n_input_fds,

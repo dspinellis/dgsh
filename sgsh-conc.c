@@ -44,7 +44,7 @@ usage(void)
 	fprintf(stderr, "Usage: %s -i|-o nprog [-r]\n"
 		"-i"		"\tInput concentrator: multiple inputs to single output\n"
 		"-o"		"\tOutput concentrator: single input to multiple outputs\n"
-		"-r"		"\tPass the block to origin (except for stdin, stdout); used with input concentrator\n",
+		"-n"		"\tDo not consider standard input (used with -o)\n",
 		program_name);
 	exit(1);
 }
@@ -79,7 +79,8 @@ STATIC bool multiple_inputs;
  * stdout -> stdin
  * fd -> fd
  */
-STATIC bool pass_origin;
+//STATIC bool pass_origin;
+STATIC bool noinput;
 
 /*
  * Total number of file descriptors on which the process performs I/O
@@ -97,39 +98,29 @@ STATIC int
 next_fd(int fd, bool *ro)
 {
 	if (multiple_inputs)
-		if (pass_origin)
-			switch (fd) {
-			case STDIN_FILENO:
-				return STDOUT_FILENO;
-			case STDOUT_FILENO:
-				return STDIN_FILENO;
-			default:
-				*ro = true;
-				return fd;
-			}
-		else
-			switch (fd) {
-			case STDIN_FILENO:
-				return STDOUT_FILENO;
-			case STDOUT_FILENO:
-				return nfd - 1;
-			case FREE_FILENO:
-				*ro = true;
-				return STDIN_FILENO;
-			default:
-				*ro = true;
-				return fd - 1;
-			}
-	else
 		switch (fd) {
 		case STDIN_FILENO:
 			return STDOUT_FILENO;
+		case STDOUT_FILENO:
+			return STDIN_FILENO;
+		default:
+			*ro = true;
+			return fd;
+		}
+	else
+		switch (fd) {
+		case STDIN_FILENO:
+			if (!noinput)
+				return STDOUT_FILENO;
 		case STDOUT_FILENO:
 			*ro = true;
 			return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
-				return STDIN_FILENO;
+				if (!noinput)
+					return STDIN_FILENO;
+				else
+					return STDOUT_FILENO;
 			else {
 				*ro = true;
 				return fd + 1;
@@ -515,9 +506,9 @@ main(int argc, char *argv[])
 
 	program_name = argv[0];
 	pid = getpid();
-	pass_origin = false;
+	noinput = false;
 
-	while ((ch = getopt(argc, argv, "ior")) != -1) {
+	while ((ch = getopt(argc, argv, "ion")) != -1) {
 		switch (ch) {
 		case 'i':
 			multiple_inputs = true;
@@ -525,9 +516,9 @@ main(int argc, char *argv[])
 		case 'o':
 			multiple_inputs = false;
 			break;
-		case 'r':
-			if (multiple_inputs)
-				pass_origin = true;
+		case 'n':
+			if (!multiple_inputs)
+				noinput = true;
 			else
 				usage();
 			break;
