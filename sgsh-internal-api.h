@@ -81,6 +81,7 @@ struct sgsh_negotiation {
 
 };
 
+enum op_result construct_message_block(const char *tool_name, pid_t pid);
 struct sgsh_conc *find_conc(struct sgsh_negotiation *mb, pid_t pid);
 pid_t get_origin_pid(struct sgsh_negotiation *mb);
 int get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid);

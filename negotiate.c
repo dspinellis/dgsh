@@ -77,8 +77,6 @@ struct sgsh_node {
 	int sgsh_out;		/* Provides output to other tool(s)
 				 * on sgsh graph.
 				 */
-	int sgsh_start;		/* Starts the negotiation procedure
-				 */
 };
 
 /* Holds a node's connections. It contains a piece of the solution. */
@@ -1370,10 +1368,13 @@ write_message_block(int write_fd)
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
 	/* Transmit nodes. */
-	wsize = write(write_fd, p_nodes, nodes_size);
-	if (wsize == -1)
-		return OP_ERROR;
-	DPRINTF("%s(): Wrote nodes of size %d bytes ", __func__, wsize);
+	if (chosen_mb->n_nodes > 0) {
+		wsize = write(write_fd, p_nodes, nodes_size);
+		if (wsize == -1)
+			return OP_ERROR;
+		DPRINTF("%s(): Wrote nodes of size %d bytes ",
+				__func__, wsize);
+	}
 
 	chosen_mb->node_array = p_nodes; // Reinstate pointers to nodes.
 
@@ -1407,7 +1408,7 @@ static void
 check_negotiation_round(int serialno_ntimes_same)
 {
 	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (serialno_ntimes_same == 3 + chosen_mb->n_nodes / 30) {
+		if (serialno_ntimes_same == 3) {
 			chosen_mb->state = PS_NEGOTIATION_END;
 			chosen_mb->serial_no++;
 			mb_is_updated = true;
@@ -1583,12 +1584,12 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int *n_input_fds,
 	self_node.pid = pid;
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 
-	if (n_input_fds == NULL) {
+	if (n_input_fds == NULL)
 		if (self_node.sgsh_in)
 			self_node.requires_channels = 1;
 		else
 			self_node.requires_channels = 0;
-	} else
+	else
 		self_node.requires_channels = *n_input_fds;
 	DPRINTF("%s(): sgsh_in: %d, self_node.requires_channels: %d", __func__,
 			self_node.sgsh_in, self_node.requires_channels);
@@ -2218,15 +2219,17 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		return OP_ERROR;
 	free(buf);
 
-	buf_size = sizeof(struct sgsh_node) * (*fresh_mb)->n_nodes;
-	buf = (char *)malloc(buf_size);
-	if ((error_code = read_chunk(read_fd, buf, buf_size,
+	if ((*fresh_mb)->n_nodes > 0) {
+		buf_size = sizeof(struct sgsh_node) * (*fresh_mb)->n_nodes;
+		buf = (char *)malloc(buf_size);
+		if ((error_code = read_chunk(read_fd, buf, buf_size,
 					&bytes_read)) != OP_SUCCESS)
-		return error_code;
-	if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
+			return error_code;
+		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
 								== OP_ERROR)
-		return OP_ERROR;
-	free(buf);
+			return OP_ERROR;
+		free(buf);
+	}
 
 	if (read_concs(read_fd, *fresh_mb) == OP_ERROR)
 		return OP_ERROR;
@@ -2260,7 +2263,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 }
 
 /* Construct a message block to use as a vehicle for the negotiation phase. */
-static enum op_result
+enum op_result
 construct_message_block(const char *tool_name, pid_t self_pid)
 {
 	int memory_allocation_size = sizeof(struct sgsh_negotiation);
@@ -2270,6 +2273,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 		DPRINTF("ERROR: Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
+
 	chosen_mb->version = 1;
 	chosen_mb->node_array = NULL;
 	chosen_mb->n_nodes = 0;
@@ -2319,10 +2323,6 @@ get_environment_vars()
 
 	DPRINTF("Try to get environment variable SGSH_OUT.");
 	if (get_env_var("SGSH_OUT", &self_node.sgsh_out) == OP_ERROR)
-		return OP_ERROR;
-
-	DPRINTF("Try to get environment variable SGSH_START.");
-	if (get_env_var("SGSH_START", &self_node.sgsh_start) == OP_ERROR)
 		return OP_ERROR;
 
 	return OP_SUCCESS;
@@ -2417,9 +2417,11 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 			if (chosen_mb->origin_fd_direction == STDOUT_FILENO) {
 				FD_SET(STDOUT_FILENO, fds);
 				self_node_io_side.fd_direction = STDOUT_FILENO;
+				DPRINTF("STDOUT set for write");
 			} else {
 				FD_SET(STDIN_FILENO, fds);
 				self_node_io_side.fd_direction = STDIN_FILENO;
+				DPRINTF("STDIN set for write");
 			}
 		}
 	}
@@ -2512,8 +2514,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	}
 
 	/* Start negotiation */
-	if (self_node.sgsh_out && (!self_node.sgsh_in ||
-				self_node.sgsh_start)) {
+	if (self_node.sgsh_out && !self_node.sgsh_in) {
 		if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (register_node_edge(tool_name, self_pid, n_input_fds,

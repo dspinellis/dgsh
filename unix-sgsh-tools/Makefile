@@ -373,8 +373,10 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/duplicate-files.sh \
-		>$(PSDIR)/duplicate-files.outb 2>$(PSDIR)/duplicate-files.err \
+	cd coreutils && \
+	$(SGSHPATH)/bash --sgsh ../$(XDIR)/duplicate-files.sh \
+		>../$(PSDIR)/duplicate-files.outb \
+		2>../$(PSDIR)/duplicate-files.err \
 	&& echo "duplicate-files.sh $S" \
 	|| (echo "duplicate-files.sh $F" \
 	&& exit 1)

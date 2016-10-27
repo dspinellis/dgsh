@@ -113,7 +113,8 @@ next_fd(int fd, bool *ro)
 			if (!noinput)
 				return STDOUT_FILENO;
 		case STDOUT_FILENO:
-			*ro = true;
+			if (!noinput)
+				*ro = true;
 			return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
@@ -122,7 +123,8 @@ next_fd(int fd, bool *ro)
 				else
 					return STDOUT_FILENO;
 			else {
-				*ro = true;
+				if (!noinput)
+					*ro = true;
 				return fd + 1;
 			}
 		}
@@ -262,6 +264,14 @@ pass_message_blocks(void)
 				 * be restored
 				 */
 
+	if (noinput) {
+		construct_message_block("sgsh-conc", pid);
+		chosen_mb->origin_fd_direction = STDOUT_FILENO;
+		chosen_mb->is_origin_conc = true;
+		chosen_mb->conc_pid = pid;
+		pi[STDOUT_FILENO].to_write = chosen_mb;
+	}
+
 	for (;;) {
 		// Create select(2) masks
 		FD_ZERO(&readfds);
@@ -369,8 +379,10 @@ pass_message_blocks(void)
 							oi, ofd ? "stdout" : "stdin");
 					pi[next].to_write->origin_index = oi;
 					pi[next].to_write->origin_fd_direction = ofd;
+				} else if (noinput) {
+					pi[next].to_write->origin_index = -1;
+					pi[next].to_write->origin_fd_direction = STDOUT_FILENO;
 				}
-
 				if (pi[i].lowest_pid == 0 ||
 						rb->initiator_pid < pi[i].lowest_pid)
 					pi[i].lowest_pid = rb->initiator_pid;
@@ -516,7 +528,7 @@ main(int argc, char *argv[])
 		case 'o':
 			multiple_inputs = false;
 			break;
-		case 'n':
+		case 'n':	// special output conc that takes no input
 			if (!multiple_inputs)
 				noinput = true;
 			else
