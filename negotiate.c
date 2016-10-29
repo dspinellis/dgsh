@@ -124,9 +124,6 @@ struct sgsh_node_pipe_fds {
 
 /* The message block implicitly used by many functions */
 struct sgsh_negotiation *chosen_mb;
-static bool mb_is_updated;			/* Boolean value that signals
-						 * an update to the mb.
-						 */
 static struct sgsh_node self_node;		/* The sgsh node that models
 						 * this tool.
 						 */
@@ -870,11 +867,11 @@ prepare_solution(void)
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *current_connections =
 							&graph_solution[i];
-		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
+		/* Hack: struct sgsh_edge* -> struct sgsh_edge** */
 		struct sgsh_edge **edges_incoming =
 		       (struct sgsh_edge **)current_connections->edges_incoming;
 		current_connections->edges_incoming = NULL;
-		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
+		/* Hack: struct sgsh_edge* -> struct sgsh_edge** */
 		struct sgsh_edge **edges_outgoing =
 		       (struct sgsh_edge **)current_connections->edges_outgoing;
 		current_connections->edges_outgoing = NULL;
@@ -926,10 +923,10 @@ cross_match_constraints(void)
 	for (i = 0; i < n_nodes; i++) {
 		struct sgsh_node_connections *current_connections =
 							&graph_solution[i];
-		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
+		/* Hack: struct sgsh_edge* -> struct sgsh_edge** */
 		struct sgsh_edge **edges_incoming =
 		       (struct sgsh_edge **)current_connections->edges_incoming;
-		/* Hack: struct sgsh_edge* -> struct_sgsh_edge** */
+		/* Hack: struct sgsh_edge* -> struct sgsh_edge** */
 		struct sgsh_edge **edges_outgoing =
 		       (struct sgsh_edge **)current_connections->edges_outgoing;
 		struct sgsh_node *current_node = &chosen_mb->node_array[i];
@@ -1048,7 +1045,7 @@ node_match_constraints(void)
  * This function implements the algorithm that tries to satisfy reported
  * I/O constraints of tools on an sgsh graph.
  */
-static enum op_result
+enum op_result
 solve_sgsh_graph(void)
 {
 	char *filename;
@@ -1331,8 +1328,6 @@ set_dispatcher(void)
 	/* The process preceding the one to find the solution
 	 * will eventually set its PID.
 	 */
-	if (chosen_mb->state == PS_NEGOTIATION)
-		chosen_mb->preceding_process_pid = self_node.pid;
 	assert(self_node_io_side.index >= 0); /* Node is added to the graph. */
 	chosen_mb->origin_fd_direction = self_node_io_side.fd_direction;
 	chosen_mb->is_origin_conc = false;
@@ -1403,20 +1398,6 @@ write_message_block(int write_fd)
 	return OP_SUCCESS;
 }
 
-/* If negotiation is still going, Check whether it should end. */
-static void
-check_negotiation_round(int serialno_ntimes_same)
-{
-	if (chosen_mb->state == PS_NEGOTIATION) {
-		if (serialno_ntimes_same == 3) {
-			chosen_mb->state = PS_NEGOTIATION_END;
-			chosen_mb->serial_no++;
-			mb_is_updated = true;
-			DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase. serialno_ntimes_same: %d***\n",
-					__func__, serialno_ntimes_same);
-		}
-	}
-}
 
 /* Reallocate message block to fit new node coming in. */
 static enum op_result
@@ -1544,8 +1525,6 @@ try_add_sgsh_edge(void)
 				return OP_ERROR;
 			DPRINTF("**Sgsh graph now has %d edges.\n",
 							chosen_mb->n_edges);
-			chosen_mb->serial_no++; /* Message block updated. */
-			mb_is_updated = true;
 			return OP_SUCCESS;
 		}
 		return OP_EXISTS;
@@ -1553,35 +1532,12 @@ try_add_sgsh_edge(void)
 	return OP_NOOP;
 }
 
-/**
- * Add node to message block. Copy the node using offset-based
- * calculation from the start of the array of nodes.
- */
-static enum op_result
-try_add_sgsh_node(void)
-{
-	int n_nodes = chosen_mb->n_nodes;
-	int i;
-	for (i = 0; i < n_nodes; i++)
-		if (chosen_mb->node_array[i].pid == self_node.pid)
-			break;
-	if (i == n_nodes) {
-		if (add_node() == OP_ERROR)
-			return OP_ERROR;
-		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
-		chosen_mb->serial_no++;
-		mb_is_updated = true;
-		return OP_SUCCESS;
-	}
-	return OP_EXISTS;
-}
-
 /* A constructor-like function for struct sgsh_node. */
 static void
-fill_sgsh_node(const char *tool_name, pid_t pid, int *n_input_fds,
+fill_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 						int *n_output_fds)
 {
-	self_node.pid = pid;
+	self_node.pid = self_pid;
 	memcpy(self_node.name, tool_name, strlen(tool_name) + 1);
 
 	if (n_input_fds == NULL)
@@ -1604,8 +1560,31 @@ fill_sgsh_node(const char *tool_name, pid_t pid, int *n_input_fds,
 	DPRINTF("%s(): sgsh_out: %d, self_node.provides_channels: %d", __func__,
 			self_node.sgsh_out, self_node.provides_channels);
 
-	self_node.index = -1; /* Will be filled in when added to the graph. */
-	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name, pid);
+	DPRINTF("Sgsh node for tool %s with pid %d created.\n", tool_name,
+			self_pid);
+}
+
+/**
+ * Add node to message block. Copy the node using offset-based
+ * calculation from the start of the array of nodes.
+ */
+static enum op_result
+try_add_sgsh_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
+						int *n_output_fds)
+{
+	int n_nodes = chosen_mb->n_nodes;
+	int i;
+	for (i = 0; i < n_nodes; i++)
+		if (chosen_mb->node_array[i].pid == self_pid)
+			break;
+	if (i == n_nodes) {
+		fill_node(tool_name, self_pid, n_input_fds, n_output_fds);
+		if (add_node() == OP_ERROR)
+			return OP_ERROR;
+		DPRINTF("Sgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
+		return OP_SUCCESS;
+	}
+	return OP_EXISTS;
 }
 
 static void
@@ -1634,6 +1613,21 @@ free_mb(struct sgsh_negotiation *mb)
 	DPRINTF("%s(): Freed message block.", __func__);
 }
 
+static enum op_result
+register_node_edge(const char *tool_name, pid_t self_pid, int *n_input_fds,
+		int *n_output_fds)
+{
+	/* Create sgsh node representation and add node, edge to the graph. */
+	if (try_add_sgsh_node(tool_name, self_pid, n_input_fds,
+				n_output_fds) == OP_ERROR)
+		return OP_ERROR;
+
+	if (try_add_sgsh_edge() == OP_ERROR)
+		return OP_ERROR;
+
+	return OP_SUCCESS;
+}
+
 /**
  * Check if the arrived message block preexists our chosen one
  * and substitute the chosen if so.
@@ -1643,93 +1637,23 @@ free_mb(struct sgsh_negotiation *mb)
  */
 static enum op_result
 analyse_read(struct sgsh_negotiation *fresh_mb,
-			bool *should_transmit_mb,
-			int *serialno_ntimes_same,
-			int *run_ntimes_same,
-			int *error_ntimes_same,
+			int *ntimes_seen_run,
+			int *ntimes_seen_error,
 			const char *tool_name,
 			pid_t pid, int *n_input_fds, int *n_output_fds)
 {
-        *should_transmit_mb = false; /* Default value. */
-	mb_is_updated = false; /* Default value. */
+	if (chosen_mb)
+		free(chosen_mb);
+	chosen_mb = fresh_mb;
 
-	if (fresh_mb->state == PS_ERROR) {
-		(*error_ntimes_same)++;
-		free_mb(chosen_mb);
-		chosen_mb = fresh_mb;
-		/* Records whether process is terminal or non-terminal */
-		int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
-		/* The second time terminals processes
-		 * and first time non-terminal processes see the error
-		 * flag in the message block is time to exit.
-		 * All processes but the preceding process to the one
-		 * found the solution (if we were in the run phase when
-		 * the error stroke) pass the block before exiting.
-		 */
-		DPRINTF("%s(): preceding pid: %d, self pid: %d", __func__, chosen_mb->preceding_process_pid, self_node.pid);
-		if ((n_io_channels == *error_ntimes_same &&
-					chosen_mb->preceding_process_pid !=
-					self_node.pid) ||
-				(n_io_channels != *error_ntimes_same))
-			*should_transmit_mb = true;
-	} else if (fresh_mb->state == PS_RUN) {
-		(*run_ntimes_same)++;
-		free_mb(chosen_mb);
-		chosen_mb = fresh_mb;
-		/* Records whether process is terminal or non-terminal */
-		int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
-		/* The first time terminal processes
-		 * and second time non-terminal processes see the run
-		 * flag in the message block is time to exit.
-		 * All processes but the preceding process to the one
-		 * found the solution pass the block before exiting.
-		 */
-		if ((n_io_channels == *run_ntimes_same &&
-					chosen_mb->preceding_process_pid !=
-					self_node.pid) ||
-				(n_io_channels != *run_ntimes_same))
-			*should_transmit_mb = true;
-	} else if (fresh_mb->state == PS_NEGOTIATION) {
-		/* New chosen message block */
-		if (chosen_mb == NULL ||
-				fresh_mb->initiator_pid < chosen_mb->initiator_pid) {
-			if (chosen_mb)
-				free_mb(chosen_mb);
-			else
-				fill_sgsh_node(tool_name, pid, n_input_fds,
-						n_output_fds);
-			chosen_mb = fresh_mb;
-			mb_is_updated = true; /*Substituting chosen_mb is an update.*/
-			if (try_add_sgsh_node() == OP_ERROR)
-				return OP_ERROR; /* Double realloc: one for node, */
-			if (try_add_sgsh_edge() == OP_ERROR)
-				return OP_ERROR; /* one for edge. */
-			*should_transmit_mb = true;
-		} else if (fresh_mb->initiator_pid > chosen_mb->initiator_pid)
-			free_mb(fresh_mb); /* Discard MB just read. */
-		else {
-                	*should_transmit_mb = true;
-			DPRINTF("%s(): Fresh vs chosen message block: same initiator pid.", __func__);
-			free_mb(chosen_mb);
-			chosen_mb = fresh_mb;
-			/* check if there is a new edge to be included
-			 * and if serial no of the mb has changed
-			 * even if serial_no has not changed
-			 * in the interim, we accept it to
-			 * receive the id of the dispatcher.
-			 */
-			int re = try_add_sgsh_edge();
-			if (re == OP_ERROR)
-				return OP_ERROR;
-			else if (re == OP_SUCCESS)
-				DPRINTF("%s serial no updated.", __func__);
-			else if (re == OP_EXISTS &&
-					chosen_mb->serial_no == fresh_mb->serial_no) {
-				(*serialno_ntimes_same)++;
-				DPRINTF("%s serial no not updated.", __func__);
-			}
-		}
-	}
+	if (fresh_mb->state == PS_ERROR)
+		(*ntimes_seen_error)++;
+	else if (fresh_mb->state == PS_RUN)
+		(*ntimes_seen_run)++;
+	else if (fresh_mb->state == PS_NEGOTIATION)
+		if (register_node_edge(tool_name, pid, n_input_fds,
+				n_output_fds) == OP_ERROR)
+			chosen_mb->state = PS_ERROR;
 	return OP_SUCCESS;
 }
 
@@ -2280,9 +2204,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->edge_array = NULL;
 	chosen_mb->n_edges = 0;
 	chosen_mb->initiator_pid = self_pid;
-	chosen_mb->preceding_process_pid = -1;
 	chosen_mb->state = PS_NEGOTIATION;
-	chosen_mb->serial_no = 0;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
 	chosen_mb->is_origin_conc = false;
@@ -2361,30 +2283,6 @@ validate_input(int *channels_required, int *channels_provided, const char *tool_
 	return OP_SUCCESS;
 }
 
-
-/**
- * Count times we read a message block in error state
- * and return whether we should continue transmitting it or
- * exit the negotiation.
- * The decision is dependent on whether the node is terminal
- * or not. Terminal nodes (those that only take input or only
- * provide output) need get the message block with the error
- * flag set once. After they pass it along they exit.
- * Non-terminal ones pass the block and exit the second time
- * they receive it in error state.
- */
-static bool
-leave_negotiation(int run_ntimes_same, int error_ntimes_same)
-{
-	int n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
-	if ((chosen_mb->state == PS_RUN &&
-			n_io_channels == run_ntimes_same) ||
-			(chosen_mb->state == PS_ERROR &&
-			 n_io_channels == error_ntimes_same))
-		return true;
-	return false;
-}
-
 static int
 set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 {
@@ -2429,21 +2327,6 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 	return 2;
 }
 
-enum op_result
-register_node_edge(const char *tool_name, pid_t self_pid, int *n_input_fds,
-		int *n_output_fds)
-{
-	/* Create sgsh node representation and add node, edge to the graph. */
-	fill_sgsh_node(tool_name, self_pid, n_input_fds, n_output_fds);
-	if (try_add_sgsh_node() == OP_ERROR)
-		return OP_ERROR;
-
-	if (try_add_sgsh_edge() == OP_ERROR)
-		return OP_ERROR;
-
-	return OP_SUCCESS;
-}
-
 /**
  * Each tool in the sgsh graph calls sgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -2485,14 +2368,12 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 				       */
 {
 	int i = 0;
-	int serialno_ntimes_same = 0;
-	int run_ntimes_same = 0;
-	int error_ntimes_same = 0;
-	bool should_transmit_mb = true;
+	int ntimes_seen_run = 0;
+	int ntimes_seen_error = 0;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct sgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 
-	int nfds = 0;
+	int nfds = 0, n_io_channels;
 	bool isread = false;
 	fd_set read_fds, write_fds;
 
@@ -2512,6 +2393,7 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 		DPRINTF("ERROR: Failed to extract SGSH_IN, SGSH_OUT environment variables.");
 		return PS_ERROR;
 	}
+	n_io_channels = self_node.sgsh_in + self_node.sgsh_out;
 
 	/* Start negotiation */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
@@ -2541,16 +2423,12 @@ again:
 		for (i = 0; i < nfds; i++) {
 			if (FD_ISSET(i, &write_fds)) {
 				DPRINTF("write on fd %d is active.", i);
-				/* Decision to drop message block */
-				if (should_transmit_mb) {	
-					/* Write message block et al. */
-					set_dispatcher();
-					if (write_message_block(i) == OP_ERROR)
-						chosen_mb->state = PS_ERROR;
-					should_transmit_mb = false;
-				}
-				if (leave_negotiation(run_ntimes_same,
-							error_ntimes_same)) {
+				/* Write message block et al. */
+				set_dispatcher();
+				if (write_message_block(i) == OP_ERROR)
+					chosen_mb->state = PS_ERROR;
+				if (n_io_channels == ntimes_seen_run ||
+				    n_io_channels == ntimes_seen_error) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
 					DPRINTF("**%s(): %s (%d) leaves after write with state %d.", __func__, programname, self_node.index, chosen_mb->state);
@@ -2564,38 +2442,41 @@ again:
 				if (read_message_block(i, &fresh_mb)
 						== OP_ERROR)
 					fresh_mb->state = PS_ERROR;
-				/* Accept? message block, check state */
-				if (analyse_read(fresh_mb, &should_transmit_mb,
-						&serialno_ntimes_same,
-						&run_ntimes_same,
-						&error_ntimes_same, tool_name,
+				/* Check state */
+				if (analyse_read(fresh_mb,
+						&ntimes_seen_run,
+						&ntimes_seen_error, tool_name,
 						self_pid, n_input_fds,
 						n_output_fds) == OP_ERROR)
 					chosen_mb->state = PS_ERROR;
 
-				check_negotiation_round(serialno_ntimes_same);
 				/**
-				 * If all I/O constraints have been contributed,
-				 * try to solve the I/O constraint problem,
-				 * then spread the word, and leave negotiation.
-				 * Only initiator executes this block; once.
+				 * Initiator process.
+				 * It receives the block, so all IO
+				 * constraints have been stated. Now:
+				 * - solves the I/O constraint problem,
+				 * - communicates the solution,
+				 * and when it receives the block again,
+				 * it leaves negotiation.
 				 */
-				if (chosen_mb->state == PS_NEGOTIATION_END) {
+				if (self_node.pid ==
+						chosen_mb->initiator_pid &&
+				    chosen_mb->state == PS_RUN) {
+					chosen_mb->state = PS_COMPLETE;
+					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, programname, self_node.index, chosen_mb->state);
+					goto exit;
+				}
+
+				if (self_node.pid ==
+						chosen_mb->initiator_pid &&
+				    chosen_mb->state == PS_NEGOTIATION) {
+					chosen_mb->state = PS_NEGOTIATION_END;
+					DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
 					if (solve_sgsh_graph() == OP_ERROR) {
 						chosen_mb->state = PS_ERROR;
 							fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the participating processes.");
-					} else {
+					} else
 						chosen_mb->state = PS_RUN;
-						run_ntimes_same++;
-					}
-				}
-				if (leave_negotiation(run_ntimes_same,
-							error_ntimes_same) &&
-						!should_transmit_mb) {
-					if (chosen_mb->state == PS_RUN)
-						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, programname, self_node.index, chosen_mb->state);
-					goto exit;
 				}
 				isread = false;
 			}

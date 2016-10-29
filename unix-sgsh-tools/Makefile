@@ -111,7 +111,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		secho hello \
 		| paste - $(PSDIR)/world \
-		> $(PSDIR)/secho_paste.outb' 2>$(PSDIR)/secho_paste.err \
+		> $(PSDIR)/secho_paste.outb' 2>$(PSDIR)/secho_paste.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/secho_paste.outb $(PSDIR)/secho_paste.success \
 	&& echo "secho | paste $S" \
@@ -123,7 +123,7 @@ test-bash: test-clean
 		| comm - $(PSDIR)/f2s \
 		| sort \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' \
-		2>$(PSDIR)/wrap-cat_comm_sort.err \
+		2>$(PSDIR)/wrap-cat_comm_sort.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/wrap-cat_comm_sort.outb \
 		$(PSDIR)/wrap-cat_comm_sort.success \
@@ -133,7 +133,7 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f1s $(PSDIR)/f2s \
-		| sort > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.err \
+		| sort > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/comm_sort.outb $(PSDIR)/comm_sort.success \
 	&& echo "comm | sort $S" \
@@ -143,7 +143,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| paste - - - \
-		> $(PSDIR)/comm_paste.outb' 2>$(PSDIR)/comm_paste.err \
+		> $(PSDIR)/comm_paste.outb' 2>$(PSDIR)/comm_paste.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/comm_paste.outb \
 		$(PSDIR)/comm_paste.success \
@@ -154,7 +154,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
-		> $(PSDIR)/join_sort.outb' 2>$(PSDIR)/join_sort.err \
+		> $(PSDIR)/join_sort.outb' 2>$(PSDIR)/join_sort.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/join_sort.outb \
 		$(PSDIR)/join_sort.success \
@@ -167,7 +167,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		paste $(PSDIR)/f1s $(PSDIR)/f2s \
 		| diff $(PSDIR)/f1s - \
-		> $(PSDIR)/paste_diff.outb' 2>$(PSDIR)/paste_diff.err \
+		> $(PSDIR)/paste_diff.outb' 2>$(PSDIR)/paste_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/paste_diff.outb $(PSDIR)/paste_diff.success \
 	&& echo "paste | diff $S" \
@@ -178,7 +178,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		grep -v -w match $(PSDIR)/f $(PSDIR)/F \
 		| diff - - \
-		> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.err \
+		> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
 	&& echo "grep | diff $S" \
@@ -188,7 +188,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		grep -l -L match $(PSDIR)/f $(PSDIR)/F \
 		| comm - - \
-		> $(PSDIR)/grep_comm.outb' 2>$(PSDIR)/grep_comm.err \
+		> $(PSDIR)/grep_comm.outb' 2>$(PSDIR)/grep_comm.errb \
 	|| diff $(PSDIR)/grep_comm.outb $(PSDIR)/grep_comm.success \
 	&& echo "grep | comm $S" \
 	|| (echo "grep | comm $F" \
@@ -199,7 +199,7 @@ test-bash: test-clean
 		join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
 		| diff $(PSDIR)/f3s - \
-		> $(PSDIR)/join_sort_diff.outb' 2>$(PSDIR)/join_sort_diff.err \
+		> $(PSDIR)/join_sort_diff.outb' 2>$(PSDIR)/join_sort_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/join_sort_diff.outb \
 		$(PSDIR)/join_sort_diff.success \
@@ -209,7 +209,7 @@ test-bash: test-clean
 	
 	# No diff, just check execution exit status
 	$(SGSHPATH)/bash --sgsh $(PSDIR)/dir-plain.sh \
-		>$(PSDIR)/dir-plain.outb 2>$(PSDIR)/dir-plain.err \
+		>$(PSDIR)/dir-plain.outb 2>$(PSDIR)/dir-plain.errb \
 	&& echo "ls -n | {{ awk & awk & }} $S" \
 	|| (echo "ls -n | {{ awk & awk & }} $F" \
 	&& exit 1)
@@ -223,7 +223,7 @@ test-bash: test-clean
 			secho "not `date`" & \
 		}} \
 		| grep -F -h match - - \
-	> $(PSDIR)/secho_secho_fgrep.outb' 2>$(PSDIR)/secho_secho_fgrep.err \
+	> $(PSDIR)/secho_secho_fgrep.outb' 2>$(PSDIR)/secho_secho_fgrep.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/secho_secho_fgrep.outb \
 		$(PSDIR)/secho_secho_fgrep.success \
@@ -237,7 +237,7 @@ test-bash: test-clean
 			diff $(PSDIR)/world - & \
 			comm $(PSDIR)/hello - & \
 		}} > $(PSDIR)/tee-copy_diff_comm.outb' \
-		2>$(PSDIR)/tee-copy_diff_comm.err \
+		2>$(PSDIR)/tee-copy_diff_comm.errb \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/tee-copy_diff_comm.outb \
 			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
@@ -253,7 +253,7 @@ test-bash: test-clean
 			diff $(PSDIR)/world - & \
 			comm $(PSDIR)/hello - & \
 		}} > $(PSDIR)/tee-scatter_diff_comm.outb' \
-		2>$(PSDIR)/tee-scatter_diff_comm.err \
+		2>$(PSDIR)/tee-scatter_diff_comm.errb \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/tee-scatter_diff_comm.outb \
 			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
@@ -270,7 +270,7 @@ test-bash: test-clean
 			diff - - & \
 			comm - - & \
 		}} > $(PSDIR)/grep_diff_comm.outb' \
-		2>$(PSDIR)/grep_diff_comm.err \
+		2>$(PSDIR)/grep_diff_comm.errb \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/grep_diff_comm.outb \
 		$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
@@ -287,7 +287,7 @@ test-bash: test-clean
 			join - $(PSDIR)/j2 & \
 			diff - $(PSDIR)/d3 & \
 		}} > $(PSDIR)/comm_paste_join_diff.outb' \
-		2>$(PSDIR)/comm_paste_join_diff.err \
+		2>$(PSDIR)/comm_paste_join_diff.errb \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/comm_paste_join_diff.outb \
 		$(PSDIR)/comm_paste_join_diff.success1 >/dev/null \
@@ -299,12 +299,12 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		{{ \
-			sort $(PSDIR)/f4s 2>$(PSDIR)/f4s.err & \
-			sort $(PSDIR)/f5s 2>$(PSDIR)/f5s.err & \
+			sort $(PSDIR)/f4s 2>$(PSDIR)/f4s.errb & \
+			sort $(PSDIR)/f5s 2>$(PSDIR)/f5s.errb & \
 		}} \
 		| comm - - \
 		> $(PSDIR)/sort_sort_comm.outb' \
-		2>$(PSDIR)/sort_sort_comm.err \
+		2>$(PSDIR)/sort_sort_comm.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/sort_sort_comm.outb \
 		$(PSDIR)/sort_sort_comm.success \
@@ -323,7 +323,7 @@ test-bash: test-clean
 			join - $(PSDIR)/j2 & \
 			diff - $(PSDIR)/d3 & \
 		}} > $(PSDIR)/sort_sort_comm_paste_join_diff.outb' \
-			2>$(PSDIR)/sort_sort_comm_paste_join_diff.err \
+			2>$(PSDIR)/sort_sort_comm_paste_join_diff.errb \
 	&& sleep 0.01 \
 	&& (diff $(PSDIR)/sort_sort_comm_paste_join_diff.outb \
 		$(PSDIR)/sort_sort_comm_paste_join_diff.success1 >/dev/null \

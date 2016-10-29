@@ -55,7 +55,6 @@ usage(void)
  */
 static struct portinfo {
 	pid_t pid;		// The id of the process talking to this port
-	pid_t lowest_pid;	// Lowest pid seen on this port
 	bool seen;		// True when the pid was seen
 	bool written;		// True when we wrote to pid
 	bool run_ready;		// True when the associated process can run
@@ -139,29 +138,14 @@ next_fd(int fd, bool *ro)
 STATIC bool
 is_ready(int i, struct sgsh_negotiation *mb)
 {
-	bool ignore = false;
-	/* The process whose id is set does not pass
-	 * the block. Prepare exit.
-	 */
-	DPRINTF("%s: pi[%d].pid: %d, mb->preceding_process_pid: %d\n",
-			__func__, i, pi[i].pid, mb->preceding_process_pid);
+	bool ready = false;
 	if (mb->state != PS_RUN)
-		return false;
-	if (pi[i].pid == mb->preceding_process_pid &&
-			!find_conc(mb, pi[i].pid)) {
-		pi[i].seen = true;	/* Fake that */
-		/* If the solution is also in our territory
-		 * fake writing to it.
-		 */
-		if (!pi[next_fd(i, &ignore)].run_ready) {
-			assert(pi[next_fd(i, &ignore)].seen);
-			pi[next_fd(i, &ignore)].written = true;
-			pi[next_fd(i, &ignore)].run_ready = true;
-		}
-		return true;
-	} else if (pi[i].seen && pi[i].written)
-		return true;
-	return false;
+		ready = false;
+	else if (pi[i].seen && pi[i].written)
+		ready = true;
+	DPRINTF("pi[%d].pid: %d %s?: %d\n",
+			i, pi[i].pid, __func__, ready);
+	return ready;
 }
 
 /**
@@ -231,8 +215,8 @@ print_state(int i, int var, int pcase)
 					__func__, i, (int)pi[i].pid);
 			DPRINTF("  initiator pid: %d",
 					var);
-			DPRINTF("  pi[%d].lowest_pid %d, pi[%d].seen: %d",
-					i, (int)pi[i].lowest_pid, i, pi[i].seen);
+			DPRINTF("  pi[%d].seen: %d",
+					i, pi[i].seen);
 			DPRINTF("  write: %d", pi[i].written);
 		case 2:
 			DPRINTF("%s(): pi[%d].pid: %d",
@@ -250,13 +234,12 @@ print_state(int i, int var, int pcase)
  * Pass around the message blocks so that they reach all processes
  * connected through the concentrator.
  */
-STATIC struct sgsh_negotiation *
+STATIC int
 pass_message_blocks(void)
 {
 	fd_set readfds, writefds;
 	int nfds = 0;
 	int i;
-	struct sgsh_negotiation *solution = NULL;
 	int oi = -1;		/* scatter/gather block's origin index */
 	int ofd = -1;		/* ... origin fd direction */
 	int oinit = -1;		/* initiator pid of origin */
@@ -279,9 +262,7 @@ pass_message_blocks(void)
 		for (i = 0; i < nfd; i++) {
 			if (i == STDERR_FILENO)
 				continue;
-			if (!pi[i].run_ready &&
-					pi[next_fd(i, &ro)].to_write == NULL &&
-					!pi[i].seen) {
+			if (!pi[i].seen) {
 				FD_SET(i, &readfds);
 				nfds = max(i + 1, nfds);
 			}
@@ -308,8 +289,6 @@ pass_message_blocks(void)
 			if (FD_ISSET(i, &writefds)) {
 				assert(pi[i].to_write);
 				chosen_mb = pi[i].to_write;
-				if (chosen_mb->state == PS_NEGOTIATION)
-					chosen_mb->preceding_process_pid = pid;
 				write_message_block(i); // XXX check return
 
 				if (pi[i].to_write->state == PS_RUN)
@@ -317,7 +296,6 @@ pass_message_blocks(void)
 
 				// Write side exit
 				if (is_ready(i, pi[i].to_write)) {
-					solution = pi[i].to_write;
 					pi[i].run_ready = true;
 					DPRINTF("**%s(): pi[%d] is run ready",
 							__func__, i);
@@ -333,18 +311,11 @@ pass_message_blocks(void)
 				assert(pi[next].to_write == NULL);
 				read_message_block(i, &pi[next].to_write); // XXX check return
 				rb = pi[next].to_write;
-				// Discard message block if we should
-				if (oinit != -1 && rb->initiator_pid > oinit) {
-					DPRINTF("Discard message block from fd %d initiator %d (loses to %d)",
-						i, rb->initiator_pid, oinit);
-					rb = pi[next].to_write = NULL;
-					continue;
-				}
 
 				DPRINTF("%s(): next write via fd %d to pid %d",
 						__func__, next, pi[next].pid);
 
-				if (oi == -1 || rb->initiator_pid < oinit) {
+				if (oi == -1) {
 					if ((multiple_inputs && i == 1) ||
 							(!multiple_inputs &&
 							 i == 0)) {
@@ -353,12 +324,6 @@ pass_message_blocks(void)
 						oinit = rb->initiator_pid;
 						DPRINTF("**Store origin: %d, fd: %s, initiator: %d",
 							oi, ofd ? "stdout" : "stdin", oinit);
-					} else {
-						DPRINTF("**Reset origin from %d",
-								oinit);
-						oi = -1;
-						ofd = -1;
-						oinit = -1;
 					}
 				}
 
@@ -383,22 +348,36 @@ pass_message_blocks(void)
 					pi[next].to_write->origin_index = -1;
 					pi[next].to_write->origin_fd_direction = STDOUT_FILENO;
 				}
-				if (pi[i].lowest_pid == 0 ||
-						rb->initiator_pid < pi[i].lowest_pid)
-					pi[i].lowest_pid = rb->initiator_pid;
 
 				/* Set a conc's required/provided IO in mb */
-				set_io_channels(pi[next].to_write);
+				if (!noinput)
+					set_io_channels(pi[next].to_write);
 
-				if (rb->state == PS_NEGOTIATION)
-					continue;
-
-				if (rb->initiator_pid == pi[i].lowest_pid)
+				if (rb->state == PS_NEGOTIATION &&
+						noinput) {
+					int j, seen = 0;
+					pi[i].seen = true;
+					for (j = 1; j < nfd; j++)
+						if (pi[j].seen)
+							seen++;
+					if (seen == nfd - 2) {
+						chosen_mb = rb;
+						if (solve_sgsh_graph() ==
+								OP_ERROR)
+							pi[next].to_write->state = PS_ERROR;
+						else
+							pi[next].to_write->state = PS_RUN;
+						for (j = 1; j < nfd; j++)
+							pi[j].seen = false;
+						// Don't free
+						chosen_mb = NULL;
+					}
+				} else if (rb->state == PS_RUN)
 					pi[i].seen = true;
 
 				print_state(i, (int)rb->initiator_pid, 1);
 				if (pi[i].seen && pi[i].written) {
-					solution = pi[next].to_write;
+					chosen_mb = pi[next].to_write;
 					pi[i].run_ready = true;
 					DPRINTF("**%s(): pi[%d] is run ready",
 							__func__, i);
@@ -413,23 +392,12 @@ pass_message_blocks(void)
 				nfds++;
 			print_state(i, nfds, 2);
 		}
-		if (nfds == nfd - 1) {
-			assert(solution != NULL);
+		if (nfds == nfd - 1 || (noinput && nfds == nfd - 2)) {
+			assert(chosen_mb != NULL);
 			DPRINTF("%s(): conc leaves negotiation", __func__);
-			return solution;
-		} else if (nfds == nfd - 2 &&
-				solution->preceding_process_pid == pid) {
-			for (i = 0; i < nfd; i++) {
-				if (!pi[i].run_ready && pi[i].seen) {
-					DPRINTF("conc is the preceding process");
-					DPRINTF("No write to pi[%d].pid %d",
-							i, pi[i].pid);
-					assert(solution != NULL);
-					DPRINTF("%s(): conc leaves negotiation", __func__);
-					return solution;
-				}
-			}
-		} else if (chosen_mb != NULL) {
+			return 0;
+		} else if (chosen_mb != NULL &&	// Free if we have written it
+				!pi[next_fd(i, &ro)].to_write) {
 			free_mb(chosen_mb);
 			chosen_mb = NULL;
 		}
@@ -552,13 +520,17 @@ main(int argc, char *argv[])
 	pi = (struct portinfo *)calloc(nfd, sizeof(struct portinfo));
 
 	chosen_mb = NULL;
-	chosen_mb = pass_message_blocks();
+	pass_message_blocks();
 	if (multiple_inputs)
 		gather_input_fds(chosen_mb);
-	else
+	else if (!noinput)	// Output noinput conc has no job here
 		scatter_input_fds(chosen_mb);
 	free_mb(chosen_mb);
 	free(pi);
+	DPRINTF("conc with pid %d terminates normally", pid);
+#ifdef DEBUG
+	fflush(stderr);
+#endif
 	return 0;
 }
 

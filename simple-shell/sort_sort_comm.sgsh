@@ -1,9 +1,12 @@
-1 sort f4s
-2 sort f5s
-3 sgsh-conc -i 2
-4 comm - -
+1 sgsh-conc -o 2 -n
+2 sort f4s
+3 sort f5s
+4 sgsh-conc -i 2
+5 comm - -
 
 %
+socketpipe 1 2
 socketpipe 1 3
-socketpipe 2 3
+socketpipe 2 4
 socketpipe 3 4
+socketpipe 4 5
