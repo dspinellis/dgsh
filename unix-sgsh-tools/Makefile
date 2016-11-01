@@ -390,7 +390,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	$(SGSHPATH)/bash --sgsh $(XDIR)/static-functions.sh diffutils \
+	$(SGSHPATH)/bash --sgsh $(XDIR)/static-functions.sh coreutils \
 		>$(PSDIR)/static-functions.outb 2>$(PSDIR)/static-functions.err \
 	&& echo "static-functions.sh $S" \
 	|| (echo "static-functions.sh $F" \

@@ -35,10 +35,14 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
-		awk '{s += length($1); n++} END {print s * n}' &
+		awk '{s += length($1); n++} END {
+			if (n>0)
+				print s / n;
+			else
+				print 0; }' &
 
-		#xargs -0 cat |
-		#sgsh-tee |
+		xargs -0 /bin/cat |
+		sgsh-tee |
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
@@ -66,7 +70,11 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 				echo -n 'IDLEN: ' &
 				tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len * n}' &
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {
+					if (n>0)
+						print len / n;
+					else
+						print 0; }' &
 			}} &
 
 			# Lines and characters
@@ -115,6 +123,8 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		}} &
 
 		# C code
+		xargs -0 /bin/cat |
+		sgsh-tee |
 		{{
 			# Lines and characters
 			echo -n 'CLINESCHAR: ' &

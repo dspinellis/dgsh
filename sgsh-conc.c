@@ -242,7 +242,6 @@ pass_message_blocks(void)
 	int i;
 	int oi = -1;		/* scatter/gather block's origin index */
 	int ofd = -1;		/* ... origin fd direction */
-	int oinit = -1;		/* initiator pid of origin */
 	bool ro = false;	/* Whether the read block's origin should
 				 * be restored
 				 */
@@ -321,9 +320,8 @@ pass_message_blocks(void)
 							 i == 0)) {
 						oi = rb->origin_index;
 						ofd = rb->origin_fd_direction;
-						oinit = rb->initiator_pid;
-						DPRINTF("**Store origin: %d, fd: %s, initiator: %d",
-							oi, ofd ? "stdout" : "stdin", oinit);
+						DPRINTF("**Store origin: %d, fd: %s",
+							oi, ofd ? "stdout" : "stdin");
 					}
 				}
 
