@@ -95,7 +95,7 @@ main(int argc, char *argv[])
 	/* Arguments might contain the sgsh-wrap script to executable
 	 * Skip the argv item that contains the wrapper script
 	 */
-	int cmp, compare_chars = strlen(argv[0]) - strlen("sgsh-wrap");
+	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("sgsh-wrap");
 	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
 			argv[0], argv[2], compare_chars);
 	if (compare_chars > 0 &&

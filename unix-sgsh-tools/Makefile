@@ -122,6 +122,7 @@ test-bash: test-clean
 		sgsh-wrap /bin/cat $(PSDIR)/f1s \
 		| comm - $(PSDIR)/f2s \
 		| sort \
+		| wc -l \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' \
 		2>$(PSDIR)/wrap-cat_comm_sort.errb \
 	&& sleep 0.01 \
@@ -133,7 +134,8 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f1s $(PSDIR)/f2s \
-		| sort > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
+		| sort \
+		| wc -l > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/comm_sort.outb $(PSDIR)/comm_sort.success \
 	&& echo "comm | sort $S" \
@@ -176,7 +178,7 @@ test-bash: test-clean
 	
 	#ditto
 	$(SGSHPATH)/bash --sgsh -c ' \
-		grep -v -w match $(PSDIR)/f $(PSDIR)/F \
+		grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
 		| diff - - \
 		> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
 	&& sleep 0.01 \
@@ -186,7 +188,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
-		grep -l -L match $(PSDIR)/f $(PSDIR)/F \
+		grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
 		| comm - - \
 		> $(PSDIR)/grep_comm.outb' 2>$(PSDIR)/grep_comm.errb \
 	|| diff $(PSDIR)/grep_comm.outb $(PSDIR)/grep_comm.success \

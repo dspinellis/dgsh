@@ -1,4 +1,4 @@
 1c1
-< F:not
+< ../simple-shell/F:not
 ---
-> f:match
+> ../simple-shell/ff:match
