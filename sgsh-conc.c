@@ -35,6 +35,11 @@
 #include "sgsh-internal-api.h"
 #include "sgsh.h"		/* DPRINTF */
 
+#ifdef TIME
+#include <time.h>
+static struct timespec tstart={0,0}, tend={0,0};
+#endif
+
 static const char *program_name;
 static pid_t pid;
 
@@ -247,6 +252,9 @@ pass_message_blocks(void)
 				 */
 
 	if (noinput) {
+#ifdef TIME
+		clock_gettime(CLOCK_MONOTONIC, &tstart);
+#endif
 		construct_message_block("sgsh-conc", pid);
 		chosen_mb->origin_fd_direction = STDOUT_FILENO;
 		chosen_mb->is_origin_conc = true;
@@ -528,6 +536,16 @@ main(int argc, char *argv[])
 	DPRINTF("conc with pid %d terminates normally", pid);
 #ifdef DEBUG
 	fflush(stderr);
+#endif
+#ifdef TIME
+	if (noinput) {
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		fprintf(stderr, "The sgsh negotiation procedure took about %.5f seconds\n",
+			((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
+		fflush(stderr);
+
+	}
 #endif
 	return 0;
 }

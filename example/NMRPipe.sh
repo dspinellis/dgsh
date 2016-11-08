@@ -61,9 +61,6 @@ sgsh-tee |
   nmrPipe -fn TP |
   nmrPipe -fn POLY -auto -verb >B &
 
-  # Wait for async writes to finish
-  # sgsh-conc ignores the wait command when setting up connections
-  wait
 }}
 
 # We use temporary files rather than streams, because

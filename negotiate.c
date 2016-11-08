@@ -43,6 +43,12 @@
 #include "sgsh-internal-api.h"	/* Message block and I/O */
 #include "sgsh.h"		/* DPRINTF() */
 
+#ifdef TIME
+#include <time.h>
+static struct timespec tstart={0,0}, tend={0,0};
+#endif
+
+
 #ifndef UNIT_TESTING
 
 /* Models an I/O connection between tools on an sgsh graph. */
@@ -2397,6 +2403,9 @@ sgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 
 	/* Start negotiation */
 	if (self_node.sgsh_out && !self_node.sgsh_in) {
+#ifdef TIME
+		clock_gettime(CLOCK_MONOTONIC, &tstart);
+#endif
 		if (construct_message_block(tool_name, self_pid) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (register_node_edge(tool_name, self_pid, n_input_fds,
@@ -2498,6 +2507,15 @@ exit:
 			chosen_mb->state = PS_ERROR;
 	}
 	int state = chosen_mb->state;
+#ifdef TIME
+	if (self_node.pid == chosen_mb->initiator_pid) {
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		fprintf(stderr, "The sgsh negotiation procedure took about %.5f seconds\n",
+			((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
+		fflush(stderr);
+	}
+#endif
 	free_mb(chosen_mb);
 	return state;
 }

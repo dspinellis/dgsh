@@ -37,7 +37,13 @@ sgsh-tee |
 		awk '{print $2}' |
 		sort -u |
 		wc -l |
-		sgsh-writeval -s committers &
+		sgsh-tee |
+		{{
+			sgsh-writeval -s committers1 &
+
+			sgsh-writeval -s committers2 &
+			sgsh-writeval -s committers3 &
+		}} &
 
 		# Calculate last commit timestamp in seconds
 		tail -1 |
@@ -66,7 +72,7 @@ sgsh-tee |
 	sort -n |
 	awk '
 		BEGIN {
-			"sgsh-readval -l -x -s committers" | getline NCOMMITTERS
+			"sgsh-readval -l -x -q -s committers1" | getline NCOMMITTERS
 			l = 0; r = NCOMMITTERS;}
 		{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &	# <left/right, email>
@@ -83,7 +89,7 @@ sgsh-tee |
 	echo 'P1' &
 
 	{{
-		sgsh-readval -l -s committers &
+		sgsh-readval -l -q -s committers2 &
 		sgsh-readval -l -q -s days &
 	}} |
 	sgsh-tee |
@@ -91,7 +97,7 @@ sgsh-tee |
 	awk '{print $1, $2}' &
 
 	perl -na -e '
-	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -s committers");
+	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -q -s committers3");
 		$ncommitters = <$ncf>;
 		@empty[$ncommitters - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
@@ -135,4 +141,4 @@ sgsh-tee |
 }}
 
 # Close sgsh-writeval
-sgsh-readval -l -x -q -s committers
+#sgsh-readval -l -x -q -s committers

@@ -22,6 +22,10 @@ else
 CFLAGS=-O -Wall
 endif
 
+ifdef TIME
+CFLAGS+=-DTIME
+endif
+
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
 	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
 
@@ -203,7 +207,7 @@ install-sgsh: $(EXECUTABLES) $(LIBS)
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 	# For tests
-	install sgsh-readval /usr/bin
+	install sgsh-readval /usr/local/bin
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install
