@@ -79,7 +79,9 @@ sgsh-tee |
 		wc -c |
 		sgsh-writeval -s nchars &
 
-		awk 'BEGIN {OFMT = "%.2g%%"}
-			{print $1, $2}' > character.txt &
+		awk 'BEGIN {
+			"sgsh-readval -l -x -q -s nchars" | getline NCHARS
+			OFMT = "%.2g%%"}
+			{print $1, $2, $1 / NCHARS * 100}' > character.txt &
 	}} &
 }}

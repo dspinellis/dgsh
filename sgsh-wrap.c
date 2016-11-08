@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "sgsh.h"
 #include "sgsh-negotiate.h"
 
 static const char *program_name;
@@ -49,12 +50,12 @@ main(int argc, char *argv[])
 {
 	int pos = 1;
 	int *ninputs = NULL, *noutputs = NULL;
-	int *input_fds;
+	int *input_fds = NULL;
 
-	fprintf(stderr, "argc: %d\n", argc);
+	DPRINTF("argc: %d\n", argc);
 	int k = 0;
 	for (k = 0; k < argc; k++)
-		fprintf(stderr, "argv[%d]: %s\n", k, argv[k]);
+		DPRINTF("argv[%d]: %s\n", k, argv[k]);
 
 	program_name = argv[0];
 
@@ -83,7 +84,7 @@ main(int argc, char *argv[])
 		guest_program_name = argv[pos];
 		pos++;
 	}
-	fprintf(stderr, "guest_program_name: %s\n", guest_program_name);
+	DPRINTF("guest_program_name: %s\n", guest_program_name);
 
 	int exec_argv_len = argc - 1;
 	char *exec_argv[exec_argv_len];
@@ -95,12 +96,12 @@ main(int argc, char *argv[])
 	 * Skip the argv item that contains the wrapper script
 	 */
 	int cmp, compare_chars = strlen(argv[0]) - strlen("sgsh-wrap");
-	fprintf(stderr, "argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
+	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
 			argv[0], argv[2], compare_chars);
 	if (compare_chars > 0 &&
 			!(cmp = strncmp(argv[2], argv[0], compare_chars)))
 		pos++;
-	fprintf(stderr, "cmp: %d, pos: %d\n", cmp, pos);
+	DPRINTF("cmp: %d, pos: %d\n", cmp, pos);
 
 	// Pass argv arguments to exec_argv for exec() call.
 	for (i = pos, j = 1; i < argc; i++, j++)
@@ -109,21 +110,21 @@ main(int argc, char *argv[])
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
-		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") || strstr(exec_argv[k], "<|")) {
 			if (!ninputs) {
 				ninputs = (int *)malloc(sizeof(int));
 				*ninputs = 1;
 			}
 			(*ninputs)++;
-			fprintf(stderr, "ninputs: %d\n", *ninputs);
+			DPRINTF("ninputs: %d\n", *ninputs);
 		}
 	}
 
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
 	 */
-	fprintf(stderr, "argc: %d\n", argc);
+	DPRINTF("argc: %d\n", argc);
 	char negotiation_title[100];
 	if (argc >= 5)	// [4] does not exist, [3] is NULL
 		snprintf(negotiation_title, 100, "%s %s %s",
@@ -140,42 +141,39 @@ main(int argc, char *argv[])
 		exit(1);
 
 	int n = 1;
-	char fds[argc - 2][20];		// /proc/self/fd/x
+	char fds[argc - 2][50];		// /proc/self/fd/x or arg=/proc/self/fd/x
 	memset(fds, 0, sizeof(fds));
 
 	if (ninputs)
-		fprintf(stderr, "%s returned %d input fds\n",
+		DPRINTF("%s returned %d input fds\n",
 				negotiation_title, *ninputs);
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
 	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
-		fprintf(stderr, "exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
 			if (m) {	// substring match
-				char new_argv[strlen(exec_argv[k] + 20)];
 				char argv_start[strlen(exec_argv[k])];
 				char argv_end[strlen(exec_argv[k])];
 				char proc_fd[20];
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
 				strncpy(argv_start, exec_argv[k], m - exec_argv[k]);
-				fprintf(stderr, "argv_start: %s", argv_start);
+				DPRINTF("argv_start: %s\n", argv_start);
 				// pointer math: skip "<|" and copy
-				strcpy(argv_end, m+4);
-				fprintf(stderr, "argv_end: %s", argv_end);
-				sprintf(new_argv, "%s%s%s",
+				strcpy(argv_end, m + 2);
+				DPRINTF("argv_end: %s\n", argv_end);
+				sprintf(fds[k], "%s%s%s",
 						argv_start, proc_fd, argv_end);
-				fprintf(stderr, "new_argv: %s", new_argv);
-				exec_argv[k] = new_argv;
-			} else {	// full match, just substitute
+				DPRINTF("new_argv: %s\n", fds[k]);
+			} else	// full match, just substitute
 				sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
-				exec_argv[k] = fds[k];
-			}
+			exec_argv[k] = fds[k];
 		}
-		fprintf(stderr, "After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
 	}
 
 	// Execute command

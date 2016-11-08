@@ -35,14 +35,18 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		# Remove path
 		sed 's|^.*/||' |
 		# Maintain average
-		awk '{s += length($1); n++} END {print s * n}' &
+		awk '{s += length($1); n++} END {
+			if (n>0)
+				print s / n;
+			else
+				print 0; }' &
 
-		#xargs -0 cat |
-		#sgsh-tee |
+		xargs -0 /bin/cat |
+		sgsh-tee |
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P |
+			cpp -P 2>/dev/null |
 			sgsh-tee |
 			{{
 				# Structure definitions
@@ -51,7 +55,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 				#}} (match preceding openings)
 
 				# Type definitions
-				echo -n 'NSTRUCT: ' &
+				echo -n 'NTYPEDEF: ' &
 				grep -cw typedef &
 
 				# Use of void
@@ -66,7 +70,11 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 				echo -n 'IDLEN: ' &
 				tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
-				awk '/^[A-Za-z]/ { len += length($1); n++ } END {print len * n}' &
+				awk '/^[A-Za-z]/ { len += length($1); n++ } END {
+					if (n>0)
+						print len / n;
+					else
+						print 0; }' &
 			}} &
 
 			# Lines and characters
@@ -81,7 +89,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 			# testing
 			echo -n 'NCCHAR: ' &
 			sed 's/#/@/g' |
-			cpp -traditional -P |
+			cpp -traditional -P 2>/dev/null |
 			wc -c |
 			awk '{OFMT = "%.0f"; print $1/1000}' &
 
@@ -115,8 +123,8 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 		}} &
 
 		# C code
-		#xargs -0 cat |
-		#sgsh-tee |
+		xargs -0 /bin/cat |
+		sgsh-tee |
 		{{
 			# Lines and characters
 			echo -n 'CLINESCHAR: ' &
@@ -125,14 +133,12 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P |
+			cpp -P 2>/dev/null |
 			sgsh-tee |
 			{{
 				# Number of functions
 				echo -n 'NFUNCTION: ' &
 				grep -c '^{' &
-	  
-				# } (match preceding open)
 
 				# Number of gotos
 				echo -n 'NGOTO: ' &

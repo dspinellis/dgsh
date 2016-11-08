@@ -60,10 +60,14 @@ sgsh-tee |
   nmrPipe -fn PS -p0 -90 -p1 0 -di |
   nmrPipe -fn TP |
   nmrPipe -fn POLY -auto -verb >B &
+
+  # Wait for async writes to finish
+  # sgsh-conc ignores the wait command when setting up connections
+  wait
 }}
 
 # We use temporary files rather than streams, because
 # addNMR mmaps its input files. The diagram displayed in the
 # example shows the notional data flow.
-csh /usr/local/bin/addNMR -in1 A -in2 B -out A+B.sgsh.ft2 -c1 1.0 -c2 1.25 -add
-csh /usr/local/bin/addNMR -in1 A -in2 B -out A-B.sgsh.ft2 -c1 1.0 -c2 1.25 -sub
+addNMR -in1 A -in2 B -out A+B.sgsh.ft2 -c1 1.0 -c2 1.25 -add
+addNMR -in1 A -in2 B -out A-B.sgsh.ft2 -c1 1.0 -c2 1.25 -sub

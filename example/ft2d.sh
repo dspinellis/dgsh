@@ -21,7 +21,7 @@ mkdir -p Fig
 # The SConstruct SideBySideIso "Result" method
 side_by_side_iso()
 {
-	vppen size=r vpstyle=n gridnum=2,1 /proc/self/fd/1 $*
+	vppen size=r vpstyle=n gridnum=2,1 /dev/stdin $*
 }
 
 export -f side_by_side_iso
@@ -86,7 +86,7 @@ sgsh-tee |
 		sfimag &
 		#| sgsh-writeval -s airfti &
 	}} |
-	sfmath re=/proc/self/fd/1 im="<|" output="sqrt(re*re+im*im)" |
+	sfmath nostdin=y re=/dev/stdin im="<|" output="sqrt(re*re+im*im)" |
 	sgsh-tee |
 	{{
 		sfwindow f1=1 |
@@ -103,3 +103,5 @@ sgsh-tee |
 call 'side_by_side_iso "<|" \
 		yscale=1.25 >Fig/airwave.vpl' &
 #call 'side_by_side_iso airtx.vpl airfk.vpl \
+
+wait

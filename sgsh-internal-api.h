@@ -47,16 +47,7 @@ struct sgsh_negotiation {
 					 * message block. The one with the
 					 * smaller pid will prevail.
 					 */
-	pid_t preceding_process_pid;	/* The pid of the process that passed the
-					 * message block to the process that
-					 * found a solution and set the PS_RUN
-					 * flag.
-					 */
 	enum prot_state state;		/* State of the negotiation process */
-        int serial_no;			/* Message block serial no.
-					 * It shows how many times it has been
-					 * updated.
-					 */
 	int origin_index;		/* The node from which the message
 					 * block is dispatched.
 					 */
@@ -81,6 +72,8 @@ struct sgsh_negotiation {
 
 };
 
+enum op_result solve_sgsh_graph(void);
+enum op_result construct_message_block(const char *tool_name, pid_t pid);
 struct sgsh_conc *find_conc(struct sgsh_negotiation *mb, pid_t pid);
 pid_t get_origin_pid(struct sgsh_negotiation *mb);
 int get_expected_fds_n(struct sgsh_negotiation *mb, pid_t pid);
