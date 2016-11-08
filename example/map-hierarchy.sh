@@ -63,7 +63,7 @@ export -f line_signatures
 }} |
 
 # Join signatures on file name and content
-join -t -1 2 -2 2 - - |
+join -t -1 2 -2 2 |
 
 # Print filename dir1 dir2
 sed 's///g' |

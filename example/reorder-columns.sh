@@ -6,4 +6,4 @@ sgsh-tee |
 
 	cut -d , -f 2-4 - &
 }} |
-paste -d , - -
+paste -d ,

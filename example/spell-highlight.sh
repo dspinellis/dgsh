@@ -36,7 +36,7 @@ sgsh-tee |
 		# Ensure dictionary is sorted consistently with our settings
 		sort /usr/share/dict/words &
 	}} |
-	comm -23 - - &
+	comm -23 &
 
 	cat &
 }} |

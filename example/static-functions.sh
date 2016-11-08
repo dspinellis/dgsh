@@ -41,4 +41,4 @@ sgsh-tee |
 
 }} |
 # Print exports that are not imported
-comm -23 - -
+comm -23

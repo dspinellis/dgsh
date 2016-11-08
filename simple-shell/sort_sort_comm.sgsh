@@ -2,7 +2,7 @@
 2 sort f4s
 3 sort f5s
 4 sgsh-conc -i 2
-5 comm - -
+5 comm
 
 %
 socketpipe 1 2

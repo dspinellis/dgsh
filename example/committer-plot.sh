@@ -80,7 +80,7 @@ sgsh-tee |
 }} |
 # Join committer positions with commit time stamps
 # based on committer email
-join -j 2 - - |		# <email, timestamp, left/right>
+join -j 2 |		# <email, timestamp, left/right>
 # Order by timestamp
 sort -k 2n |
 sgsh-tee |

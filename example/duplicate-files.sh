@@ -46,7 +46,7 @@ sgsh-tee |
 # Join the repeated MD5 sums with the corresponding file names
 # Join expects two inputs, second will come from scatter
 # XXX make streaming input identifiers transparent to users
-join -2 2 - - |
+join -2 2 |
 
 # Output same files on a single line
 awk '

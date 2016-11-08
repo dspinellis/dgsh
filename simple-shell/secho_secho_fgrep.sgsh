@@ -2,7 +2,7 @@
 2 secho match
 3 secho not
 4 sgsh-conc -i 2
-5 grep -F -h match - -
+5 grep -F -h match
 
 %
 socketpipe 1 2
