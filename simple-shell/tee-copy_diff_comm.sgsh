@@ -1,4 +1,4 @@
-1 sgsh-tee -i hello
+1 tee -i hello
 2 sgsh-conc -o 2
 3 diff world
 4 comm hello

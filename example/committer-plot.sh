@@ -30,14 +30,14 @@ git log --pretty=tformat:'%at %ae' |
 # Filter records according to timestamp: keep (100000, now) seconds
 awk 'NF == 2 && $1 > 100000 && $1 < '`date +%s` |
 sort -n |
-sgsh-tee |
+tee |
 {{
 	{{
 		# Calculate number of committers
 		awk '{print $2}' |
 		sort -u |
 		wc -l |
-		sgsh-tee |
+		tee |
 		{{
 			sgsh-writeval -s committers1 &
 
@@ -54,7 +54,7 @@ sgsh-tee |
 		awk '{print $1}' &
 	}} |
 	# Gather last and first commit timestamp
-	sgsh-tee |
+	tee |
 	# Make one space-delimeted record
 	tr '\n' ' ' |
 	# Compute the difference in days
@@ -83,7 +83,7 @@ sgsh-tee |
 join -j 2 |		# <email, timestamp, left/right>
 # Order by timestamp
 sort -k 2n |
-sgsh-tee |
+tee |
 {{
 	# Create portable bitmap
 	echo 'P1' &
@@ -92,7 +92,7 @@ sgsh-tee |
 		sgsh-readval -l -q -s committers2 &
 		sgsh-readval -l -q -s days &
 	}} |
-	sgsh-tee |
+	cat |
 	tr '\n' ' ' |
 	awk '{print $1, $2}' &
 
@@ -116,7 +116,7 @@ sgsh-tee |
 		END { out(); }
 		' &
 }} |
-sgsh-tee |
+cat |
 # Enlarge points into discs through morphological convolution
 pgmmorphconv -erode <(
 cat <<EOF
@@ -131,7 +131,7 @@ P1
 1 1 1 0 1 1 1
 EOF
 ) |
-sgsh-tee |
+tee |
 {{
 	# Full-scale image
 	pnmtopng >large.png &

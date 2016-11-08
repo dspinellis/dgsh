@@ -25,7 +25,7 @@ var2pipe -in $1            \
  -xLAB          1H      -yLAB   15N      \
  -ndim          2       -aq2D   States      \
 -verb  |
-sgsh-tee |
+tee |
 {{
   # IP/AP channel conversion
   # See http://tech.groups.yahoo.com/group/nmrpipe/message/389

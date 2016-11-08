@@ -1,6 +1,7 @@
 INSTPREFIX=/usr/local/sgsh
 SGSHPATH=/usr/local/sgsh/bin
 
+SGSHDIR=..
 PSDIR=../simple-shell
 XDIR=../example
 # TOOLDIR
@@ -48,49 +49,51 @@ install:
 	$(MAKE) -C coreutils install
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
-	cp secho $(INSTPREFIX)/bin
-	cp pecho $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/df $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/file $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/find $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/git $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/head $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
+	# Install last to overwrite standard tools of coreutils
+	install $(SGSHDIR)/sgsh-tee $(INSTPREFIX)/bin/tee
+	install $(SGSHDIR)/sgsh-tee $(INSTPREFIX)/bin/cat
+	install secho $(INSTPREFIX)/bin
+	install pecho $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/df $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/file $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/find $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/git $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/head $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
 
 
 test-clean-bash:
@@ -232,7 +235,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
-		sgsh-tee -i $(PSDIR)/hello \
+		tee -i $(PSDIR)/hello \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
@@ -243,12 +246,12 @@ test-bash: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-copy_diff_comm.outb \
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee | {{ diff & comm & }} $F" \
+	&& echo "tee | {{ diff & comm & }} $S" \
+	|| (echo "tee | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
-		sgsh-tee -i $(PSDIR)/hello -s \
+		tee -i $(PSDIR)/hello -s \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
@@ -259,8 +262,8 @@ test-bash: test-clean
 			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-scatter_diff_comm.outb \
 			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee -s | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee -s | {{ diff & comm & }} $F" \
+	&& echo "tee -s | {{ diff & comm & }} $S" \
+	|| (echo "tee -s | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	# ditto
@@ -569,8 +572,8 @@ test-pseudo: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-copy_diff_comm.out \
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee | {{ diff & comm & }} $F" \
+	&& echo "tee | {{ diff & comm & }} $S" \
+	|| (echo "tee | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	cd $(PSDIR) && \
@@ -581,8 +584,8 @@ test-pseudo: test-clean
 			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-scatter_diff_comm.out \
 			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee -s | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee -s | {{ diff & comm & }} $F" \
+	&& echo "tee -s | {{ diff & comm & }} $S" \
+	|| (echo "tee -s | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	cd $(PSDIR) && \

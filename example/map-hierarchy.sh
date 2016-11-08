@@ -71,7 +71,7 @@ awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
-sgsh-tee |
+tee |
 {{
   # Commands to copy
   awk '{print "mkdir -p '$NEWDIR'/" $3 ""}' |
@@ -81,5 +81,5 @@ sgsh-tee |
 }} |
 # Order: first make directories, then copy files
 # TODO: sgsh-tee does not pass along first incoming stream
-sgsh-tee |
+cat |
 sh

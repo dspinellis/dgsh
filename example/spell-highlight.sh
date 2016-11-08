@@ -25,7 +25,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 export LC_ALL=C
 
-sgsh-tee |
+tee |
 {{
 	{{
 		# Find errors

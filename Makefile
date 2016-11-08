@@ -204,6 +204,8 @@ install-sgsh: $(EXECUTABLES) $(LIBS)
 	-mkdir -p $(INSTPREFIX)/lib
 	-mkdir -p $(INSTPREFIX)/share/man/man1
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
+	install sgsh-tee $(INSTPREFIX)/bin/tee
+	install sgsh-tee $(INSTPREFIX)/bin/cat
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 	# For tests

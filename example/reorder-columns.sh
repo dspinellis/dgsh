@@ -1,6 +1,6 @@
 export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
-sgsh-tee |
+tee |
 {{
 	cut -d , -f 5-6 - &
 

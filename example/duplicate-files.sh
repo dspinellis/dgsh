@@ -34,7 +34,7 @@ sed 's/^MD5(//;s/)= / /' |
 # Sort by MD5 sum
 sort -k2 |
 
-sgsh-tee |
+tee |
 {{
 
 	# Print an MD5 sum for each file that appears more than once

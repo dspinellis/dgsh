@@ -25,7 +25,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 {{
 	# C and header code
 	find "$@" \( -name \*.c -or -name \*.h \) -type f -print0 |
-	sgsh-tee |
+	tee |
 	{{
 
 		# Average file name length
@@ -42,12 +42,12 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 				print 0; }' &
 
 		xargs -0 /bin/cat |
-		sgsh-tee |
+		tee |
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
-			sgsh-tee |
+			tee |
 			{{
 				# Structure definitions
 				echo -n 'NSTRUCT: ' &
@@ -105,11 +105,11 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 	# C files
 	find "$@" -name \*.c -type f -print0 |
-	sgsh-tee |
+	tee |
 	{{
 		# Convert to newline separation for counting
 		tr \\0 \\n |
-		sgsh-tee |
+		tee |
 		{{
 			# Number of C files
 			echo -n 'NSTRUCT: ' &
@@ -124,7 +124,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 		# C code
 		xargs -0 /bin/cat |
-		sgsh-tee |
+		tee |
 		{{
 			# Lines and characters
 			echo -n 'CLINESCHAR: ' &
@@ -134,7 +134,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
 			cpp -P 2>/dev/null |
-			sgsh-tee |
+			tee |
 			{{
 				# Number of functions
 				echo -n 'NFUNCTION: ' &
@@ -170,4 +170,4 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 }} |
 # Gather and print the results
-sgsh-tee
+cat

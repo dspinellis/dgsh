@@ -30,7 +30,7 @@ find "$1" -name \*.o |
 # Print defined symbols
 xargs nm |
 
-sgsh-tee |
+tee |
 {{
 
   # List all defined (exported) symbols
