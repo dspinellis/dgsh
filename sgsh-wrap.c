@@ -149,7 +149,7 @@ main(int argc, char *argv[])
 		exit(1);
 
 	int n = 1;
-	char fds[argc - 2][50];		// /proc/self/fd/x or arg=/proc/self/fd/x
+	char *fds[argc - 2];		// /proc/self/fd/x or arg=/proc/self/fd/x
 	memset(fds, 0, sizeof(fds));
 
 	if (ninputs)
@@ -163,33 +163,53 @@ main(int argc, char *argv[])
 		DPRINTF("exec_argv[%d] to sub: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
 			(m = strstr(exec_argv[k], "<|"))) {
+
+			size_t size = sizeof(char) *
+				(strlen(exec_argv[k]) + 20 * *ninputs);
+			DPRINTF("fds[k] size: %d", (int)size);
+			fds[k] = (char *)malloc(size);
+			memset(fds[k], 0, size);
+
 			if (!m)	// full match, just substitute
-				sprintf(fds[k], "/proc/self/fd/%d", input_fds[n++]);
+				sprintf(fds[k], "/proc/self/fd/%d",
+						input_fds[n++]);
+
 			char *argv_end = NULL;
 			while (m) {	// substring match
 				DPRINTF("Matched: %s", m);
-				char argv_start[strlen(exec_argv[k])];
-				//char argv_end[strlen(exec_argv[k])];
+				char new_argv[size];
+				char argv_start[size];
 				char proc_fd[20];
+				memset(new_argv, 0, size);
+				memset(argv_start, 0, size);
+				memset(proc_fd, 0, 20);
+
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
 				DPRINTF("proc_fd: %s", proc_fd);
 				if (!argv_end)
-					strncpy(argv_start, exec_argv[k], m - exec_argv[k]);
+					strncpy(argv_start, exec_argv[k],
+							m - exec_argv[k]);
 				else
-					strncpy(argv_start, argv_end, m - argv_end);
+					strncpy(argv_start, argv_end,
+							m - argv_end);
 				DPRINTF("argv_start: %s\n", argv_start);
-				// pointer math: skip "<|" and copy
-				//strcpy(argv_end, m + 2);
 				argv_end = m + 2;
 				DPRINTF("argv_end: %s\n", argv_end);
-				sprintf(fds[k], "%s%s%s",
-						fds[k], argv_start, proc_fd);
+				if (strlen(fds[k]) > 0) {
+					strcpy(new_argv, fds[k]);
+					sprintf(fds[k], "%s%s%s", new_argv,
+							argv_start, proc_fd);
+				} else
+					sprintf(fds[k], "%s%s", argv_start,
+							proc_fd);
 				m = strstr(argv_end, "<|");
-				if (!m)
+				if (!m) {
+					strcpy(new_argv, fds[k]);
 					sprintf(fds[k], "%s%s",
-						fds[k], argv_end);
-				DPRINTF("new_argv: %s\n", fds[k]);
+						new_argv, argv_end);
+				}
+				DPRINTF("fds[k]: %s\n", fds[k]);
 			}
 			exec_argv[k] = fds[k];
 		}
@@ -209,6 +229,10 @@ main(int argc, char *argv[])
 
 	if (input_fds)
 		free(input_fds);
+
+	for (k = 0; k < argc - 2; k++)
+		if (fds[k])
+			free(fds[k]);
 
 	return 0;
 }
