@@ -2177,7 +2177,7 @@ START_TEST(test_read_chunk)
 	char buf[32];
 	int read_fd = -1;
 	int bytes_read = -1;
-	ck_assert_int_eq(read_chunk(fd[0], buf, 32, &bytes_read), OP_SUCCESS);
+	ck_assert_int_eq(read_chunk(fd[0], buf, 32, &bytes_read, 5), OP_SUCCESS);
 	ck_assert_int_eq(bytes_read, 9);
 	
 	close(fd[0]);

@@ -1,4 +1,4 @@
-1 grep -l -L -w -v match f F
+1 grep -l -L -w -v match ff F
 2 sgsh-conc -o 2
 3 diff - -
 4 comm - -

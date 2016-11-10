@@ -1,4 +1,4 @@
-1 grep -l -L match f F
+1 grep -l -L match ff F
 2 comm - -
 
 %

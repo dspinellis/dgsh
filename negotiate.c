@@ -27,7 +27,7 @@
  */
 
 #include <assert.h>		/* assert() */
-#include <errno.h>		/* EAGAIN */
+#include <errno.h>		/* ENOBUFS */
 #include <err.h>		/* err() */
 #include <stdbool.h>		/* bool, true, false */
 #include <stdio.h>		/* fprintf() in DPRINTF() */
@@ -38,7 +38,9 @@
 				 * STDIN_FILENO, STDOUT_FILENO,
 				 * STDERR_FILENO 
 				 */
+#include <time.h>		/* nanosleep() */
 #include <sys/select.h>		/* select(), fd_set, */
+#include <limits.h>		/* IOV_MAX */
 #include "sgsh-negotiate.h"	/* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh-internal-api.h"	/* Message block and I/O */
 #include "sgsh.h"		/* DPRINTF() */
@@ -157,18 +159,19 @@ process_node_name(char *name, char **processed_name)
 	else
 		strcpy(no_path_name, name);
 
+	DPRINTF("no_path_name: %s, s: %s", no_path_name, s);
 	char *p = no_path_name;
 	char *m = strstr(no_path_name, "/");
 	while (m) {
 		p = ++m;
 		m = strstr(m, "/");
 	}
+	DPRINTF("no_path_name: %s, m: %s", no_path_name, m);
 
 	if (s)
 		sprintf(no_path_name, "%s%s", p, s);
-	else
-		strcpy(no_path_name, p);
 
+	DPRINTF("no_path_name: %s, p: %s", no_path_name, p);
 	m = strstr(no_path_name, "\"");
 	char *mm = NULL;
 	while (m) {
@@ -1245,6 +1248,102 @@ write_output_fds(int output_socket, int *output_fds)
 	return re;
 }
 
+static int
+write_piece (int write_fd, void *datastruct, int struct_size)
+{
+	int retries = 0, wsize;
+retry:
+	DPRINTF("Try write struct of size: %d", struct_size);
+	wsize = write(write_fd, datastruct, struct_size);
+	if (wsize == -1 && errno == ENOBUFS && retries < 3) {	// sleep for 10ms
+		nanosleep((const struct timespec[]){{0, 10000000L}}, NULL);
+		retries++;
+		goto retry;
+	}
+	return wsize;
+}
+
+static int
+get_struct_size(int struct_type)
+{
+		switch (struct_type) {
+		case 1:
+			return sizeof(struct sgsh_node);
+		case 2:
+			return sizeof(struct sgsh_edge);
+		case 3:
+			return sizeof(struct sgsh_conc);
+		case 4:
+			return sizeof(struct sgsh_node_connections);
+		}
+		return 0;
+}
+
+static int
+do_write (int write_fd, void *datastruct, int datastruct_size, int struct_type)
+{
+	int wsize;
+	if (datastruct_size > IOV_MAX) {
+		int all_elements, max_elements, elements = 0, pieces, 
+			prev_elements = 0, size, struct_size, i;
+
+		struct_size = get_struct_size(struct_type);
+		all_elements = datastruct_size / struct_size;
+		max_elements = IOV_MAX / struct_size;
+		pieces = all_elements / max_elements;
+		pieces += (all_elements % max_elements > 0);
+		DPRINTF("struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
+			struct_type, pieces, all_elements, max_elements);
+
+		for (i = 0; i < pieces; i++) {
+			if (all_elements - max_elements > 0)
+				elements = max_elements;
+			else if (all_elements > 0)
+				elements = all_elements;
+			all_elements -= elements;
+			size = struct_size * elements;
+			DPRINTF("Round %d: elements: %d, size: %d, prev_elements: %d",
+				i, elements, size, prev_elements);
+
+			if (size > 0) {
+				void *struct_piece = malloc(size);
+				switch (struct_type) {
+				case 1:
+					memcpy(struct_piece,
+						&((struct sgsh_node *)
+						datastruct)[i * prev_elements],
+						size);
+					break;
+				case 2:
+					memcpy(struct_piece,
+						&((struct sgsh_edge *)
+						datastruct)[i * prev_elements],
+						size);
+					break;
+				case 3:
+					memcpy(struct_piece,
+						&((struct sgsh_conc *)
+						datastruct)[i * prev_elements],
+						size);
+					break;
+				case 4:
+					memcpy(struct_piece,
+						&((struct sgsh_node_connections *)
+						datastruct)[i * prev_elements],
+						size);
+				}
+				wsize = write_piece(write_fd, struct_piece,
+							size);
+				free(struct_piece);
+				prev_elements = elements;
+			}
+		}
+	} else
+		wsize = write_piece(write_fd, datastruct, datastruct_size);
+
+	return wsize;
+}
+
 static enum op_result
 write_concs(int write_fd)
 {
@@ -1255,17 +1354,21 @@ write_concs(int write_fd)
 	if (!chosen_mb->conc_array)
 		return OP_SUCCESS;
 
-	wsize = write(write_fd, chosen_mb->conc_array, conc_size);
-	if (wsize == -1)
+	wsize = do_write(write_fd, chosen_mb->conc_array, conc_size, 3);
+	if (wsize == -1) {
+		DPRINTF("ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
+	}
 	DPRINTF("%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
 
 	for (i = 0; i < n_concs; i++) {
 		struct sgsh_conc *c = &chosen_mb->conc_array[i];
 		int proc_pids_size = sizeof(int) * c->n_proc_pids;
-		wsize = write(write_fd, c->proc_pids, proc_pids_size);
-		if (wsize == -1)
+		wsize = do_write(write_fd, c->proc_pids, proc_pids_size, 5);
+		if (wsize == -1) {
+			DPRINTF("ERROR: write failed: errno: %d", errno);
 			return OP_ERROR;
+		}
 		DPRINTF("%s(): Wrote %d proc_pids for conc %d at index %d of size %d bytes ",
 				__func__, c->n_proc_pids, c->pid, i, wsize);
 	}
@@ -1286,9 +1389,11 @@ write_graph_solution(int write_fd)
 	int wsize = -1;
 
 	/* Transmit node connection structures. */
-	wsize = write(write_fd, graph_solution, graph_solution_size);
-	if (wsize == -1)
+	wsize = do_write(write_fd, graph_solution, graph_solution_size, 4);
+	if (wsize == -1) {
+		DPRINTF("ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
+	}
 	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 
 	/* We haven't invalidated pointers to arrays of node indices. */
@@ -1299,17 +1404,23 @@ write_graph_solution(int write_fd)
 		int out_edges_size = sizeof(struct sgsh_edge) * nc->n_edges_outgoing;
 		if (nc->n_edges_incoming) {
 			/* Transmit a node's incoming connections. */
-			wsize = write(write_fd, nc->edges_incoming, in_edges_size);
-			if (wsize == -1)
+			wsize = do_write(write_fd, nc->edges_incoming,
+							in_edges_size, 2);
+			if (wsize == -1) {
+				DPRINTF("ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
+			}
 			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
 		}
 
 		if (nc->n_edges_outgoing) {
 			/* Transmit a node's outgoing connections. */
-			wsize = write(write_fd, nc->edges_outgoing, out_edges_size);
-			if (wsize == -1)
+			wsize = do_write(write_fd, nc->edges_outgoing,
+							out_edges_size, 2);
+			if (wsize == -1) {
+				DPRINTF("ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
+			}
 			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
 		}
 	}
@@ -1357,16 +1468,20 @@ write_message_block(int write_fd)
 	 */
 	chosen_mb->node_array = NULL;
 	DPRINTF("%s(): Write message block.", __func__);
-	wsize = write(write_fd, chosen_mb, mb_size);
-	if (wsize == -1)
+	wsize = do_write(write_fd, chosen_mb, mb_size, 0);
+	if (wsize == -1) {
+		DPRINTF("ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
+	}
 	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
 	/* Transmit nodes. */
 	if (chosen_mb->n_nodes > 0) {
-		wsize = write(write_fd, p_nodes, nodes_size);
-		if (wsize == -1)
+		wsize = do_write(write_fd, p_nodes, nodes_size, 1);
+		if (wsize == -1) {
+			DPRINTF("ERROR: write failed: errno: %d", errno);
 			return OP_ERROR;
+		}
 		DPRINTF("%s(): Wrote nodes of size %d bytes ",
 				__func__, wsize);
 	}
@@ -1381,9 +1496,11 @@ write_message_block(int write_fd)
 			/* Transmit edges. */
 			struct sgsh_edge *p_edges = chosen_mb->edge_array;
 			chosen_mb->edge_array = NULL;
-			wsize = write(write_fd, p_edges, edges_size);
-			if (wsize == -1)
+			wsize = do_write(write_fd, p_edges, edges_size, 2);
+			if (wsize == -1) {
+				DPRINTF("ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
+			}
 			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
 
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
@@ -1574,9 +1691,13 @@ try_add_sgsh_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 {
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
-	for (i = 0; i < n_nodes; i++)
+	for (i = 0; i < n_nodes; i++) {
+		DPRINTF("node name: %s, pid: %d",
+						chosen_mb->node_array[i].name,
+						chosen_mb->node_array[i].pid);
 		if (chosen_mb->node_array[i].pid == self_pid)
 			break;
+	}
 	if (i == n_nodes) {
 		fill_node(tool_name, self_pid, n_input_fds, n_output_fds);
 		if (add_node() == OP_ERROR)
@@ -1776,14 +1897,57 @@ call_read(int fd, char *buf, int buf_size, int *bytes_read, int *error_code)
  * Its job is to manage a read operation.
  */
 static enum op_result
-read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read)
+read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
+						int struct_type)
 {
-	int error_code = -EAGAIN;
-	DPRINTF("%s()", __func__);
+	int error_code;
+	DPRINTF("%s(): buf_size: %d, IOV_MAX: %d",
+			__func__, buf_size, IOV_MAX);
 
-	call_read(read_fd, buf, buf_size, bytes_read, &error_code);
+	if (buf_size > IOV_MAX) {
+		int buf_size_piece, pieces, i, size_copied = 0, rsize = 0,
+			struct_size, all_elements, max_elements, elements = 0;
+
+		struct_size = get_struct_size(struct_type);
+		all_elements = buf_size / struct_size;
+		max_elements = IOV_MAX / struct_size;
+		pieces = all_elements / max_elements;
+		pieces += (all_elements % max_elements > 0);
+		DPRINTF("struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
+			struct_type, pieces, all_elements, max_elements);
+		
+		for (i = 0; i < pieces; i++) {
+			void *buf_piece;
+			if (all_elements - max_elements > 0)
+				elements = max_elements;
+			else if (all_elements > 0)
+				elements = all_elements;
+			all_elements -= elements;
+			buf_size_piece = struct_size * elements;
+			DPRINTF("Round %d: elements: %d, size: %d",
+				i, elements, buf_size_piece);
+
+			if (buf_size_piece > 0) {
+				buf_piece = malloc(buf_size_piece);
+				call_read(read_fd, buf_piece, buf_size_piece,
+					bytes_read, &error_code);
+				if (*bytes_read == -1) {
+					free(buf_piece);
+					return OP_ERROR;
+				}
+				rsize += *bytes_read;
+				memcpy(buf + size_copied, buf_piece,
+							buf_size_piece);
+				size_copied += buf_size_piece;
+				free(buf_piece);
+			}
+		}
+		*bytes_read = rsize;
+	} else
+		call_read(read_fd, buf, buf_size, bytes_read, &error_code);
+
 	if (*bytes_read == -1) {  /* Read failed. */
-	 	DPRINTF("Reading from fd %d failed with error code %d.",
+	 	DPRINTF("ERROR: Reading from fd %d failed with error code %d.",
 			read_fd, error_code);
 		return error_code;
 	} else  /* Read succeeded. */
@@ -2022,7 +2186,7 @@ read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 	if (!fresh_mb->conc_array)
 		return error_code;
 
-	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
+	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read, 3))
 			!= OP_SUCCESS)
 		return error_code;
 	error_code = alloc_copy_concs(fresh_mb, buf, bytes_read, buf_size);
@@ -2034,7 +2198,7 @@ read_concs(int read_fd, struct sgsh_negotiation *fresh_mb)
 		size_t buf_size = sizeof(int) * c->n_proc_pids;
 		buf = (char *)malloc(buf_size);
 		if ((error_code = read_chunk(read_fd, buf, buf_size,
-						&bytes_read)) != OP_SUCCESS)
+						&bytes_read, 5)) != OP_SUCCESS)
 			return error_code;
 		error_code = alloc_copy_proc_pids(c, buf, bytes_read, buf_size);
 		free(buf);
@@ -2057,7 +2221,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 	enum op_result error_code = OP_SUCCESS;
 
 	/* Read node connection structures of the solution. */
-	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
+	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read, 4))
 			!= OP_SUCCESS)
 		return error_code;
 	if ((error_code = alloc_copy_graph_solution(fresh_mb, buf, bytes_read,
@@ -2077,7 +2241,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 		if (nc->n_edges_incoming > 0) {
 			buf = (char *)malloc(in_edges_size);
 			if ((error_code = read_chunk(read_fd, buf, in_edges_size,
-				&bytes_read)) != OP_SUCCESS)
+				&bytes_read, 2)) != OP_SUCCESS)
 				return error_code;
 			if (in_edges_size != bytes_read) {
 				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
@@ -2095,7 +2259,7 @@ read_graph_solution(int read_fd, struct sgsh_negotiation *fresh_mb)
 		if (nc->n_edges_outgoing) {
 			buf = (char *)malloc(out_edges_size);
 			if ((error_code = read_chunk(read_fd, buf, out_edges_size,
-				&bytes_read)) != OP_SUCCESS)
+				&bytes_read, 2)) != OP_SUCCESS)
 				return error_code;
 			if (out_edges_size != bytes_read) {
 				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
@@ -2136,7 +2300,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 	memset(buf, 0, buf_size);
 
 	/* Try read core message block: struct negotiation state fields. */
-	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read))
+	if ((error_code = read_chunk(read_fd, buf, buf_size, &bytes_read, 0))
 			!= OP_SUCCESS)
 		return error_code;
 	if (alloc_copy_mb(fresh_mb, buf, bytes_read, buf_size) == OP_ERROR)
@@ -2147,7 +2311,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 		buf_size = sizeof(struct sgsh_node) * (*fresh_mb)->n_nodes;
 		buf = (char *)malloc(buf_size);
 		if ((error_code = read_chunk(read_fd, buf, buf_size,
-					&bytes_read)) != OP_SUCCESS)
+					&bytes_read, 1)) != OP_SUCCESS)
 			return error_code;
 		if (alloc_copy_nodes(*fresh_mb, buf, bytes_read, buf_size)
 								== OP_ERROR)
@@ -2165,7 +2329,7 @@ read_message_block(int read_fd, struct sgsh_negotiation **fresh_mb)
 			buf_size = sizeof(struct sgsh_edge) * (*fresh_mb)->n_edges;
 			buf = (char *)malloc(buf_size);
 			if ((error_code = read_chunk(read_fd, buf, buf_size,
-			     &bytes_read)) != OP_SUCCESS)
+			     &bytes_read, 2)) != OP_SUCCESS)
 				return error_code;
 			if (alloc_copy_edges(*fresh_mb, buf, bytes_read,
 			    buf_size) == OP_ERROR)

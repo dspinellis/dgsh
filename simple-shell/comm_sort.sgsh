@@ -1,5 +1,7 @@
 1 comm f1s f2s
 2 sort
+3 wc -l
 
 %
 socketpipe 1 2
+socketpipe 2 3

@@ -1,6 +1,6 @@
 1c1
-< f
+< ff
 ---
 > F
-f:match
 	F:not
+ff:match
