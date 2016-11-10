@@ -1,0 +1,6 @@
+1c1
+< ../simple-shell/ff
+---
+> ../simple-shell/F
+../simple-shell/ff:match
+	../simple-shell/F:not

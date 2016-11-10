@@ -1931,11 +1931,11 @@ START_TEST(test_alloc_fds)
 	int *fds = NULL;
 	int n_fds = 0;
 	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
-	ck_assert_int_eq((int)fds, 0);
+	ck_assert_int_eq((int)(long)fds, 0);
 
 	n_fds = 2;
 	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
-	ck_assert_int_ne((int)fds, 0);
+	ck_assert_int_ne((int)(long)fds, 0);
 	free(fds);
 }
 END_TEST

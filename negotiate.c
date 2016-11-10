@@ -26,6 +26,14 @@
  * - substitute DPRINTF with appropriate error reporting function in case of errors.
  */
 
+#ifdef __linux__
+#  ifndef IOV_MAX		/* IOV_MAX LINUX */
+#    define IOV_MAX 1024
+#  endif
+#elif __APPLE__
+#include <limits.h>		/* IOV_MAX APPLE */
+#endif
+
 #include <assert.h>		/* assert() */
 #include <errno.h>		/* ENOBUFS */
 #include <err.h>		/* err() */
@@ -40,7 +48,7 @@
 				 */
 #include <time.h>		/* nanosleep() */
 #include <sys/select.h>		/* select(), fd_set, */
-#include <limits.h>		/* IOV_MAX */
+#include <stdio.h>		/* printf family */
 #include "sgsh-negotiate.h"	/* sgsh_negotiate(), sgsh_run(), union fdmsg */
 #include "sgsh-internal-api.h"	/* Message block and I/O */
 #include "sgsh.h"		/* DPRINTF() */

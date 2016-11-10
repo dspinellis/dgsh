@@ -127,6 +127,7 @@ test-bash: test-clean
 		| comm $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
+		| tr -d " " \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' \
 		2>$(PSDIR)/wrap-cat_comm_sort.errb \
 	&& sleep 0.01 \
@@ -139,7 +140,8 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
-		| wc -l > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
+		| wc -l \
+		| tr -d " " > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/comm_sort.outb $(PSDIR)/comm_sort.success \
 	&& echo "comm | sort $S" \
@@ -282,7 +284,11 @@ test-bash: test-clean
 	&& (diff $(PSDIR)/grep_diff_comm.outb \
 		$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
 	    || diff $(PSDIR)/grep_diff_comm.outb \
-		$(PSDIR)/grep_diff_comm.success2-bash >/dev/null) \
+		$(PSDIR)/grep_diff_comm.success2-bash >/dev/null \
+	    || diff $(PSDIR)/grep_diff_comm.outb \
+		$(PSDIR)/grep_diff_comm.success3-bash >/dev/null \
+	    || diff $(PSDIR)/grep_diff_comm.outb \
+		$(PSDIR)/grep_diff_comm.success4-bash >/dev/null) \
 	&& echo "grep | {{ diff & comm & }} $S" \
 	|| (echo "grep | {{ diff & comm & }} $F" \
 	&& exit 1)
@@ -598,6 +604,8 @@ test-pseudo: test-clean
 	&& sleep 0.01 \
 	&& ($(STD)/diff grep_diff_comm.out grep_diff_comm.success1 >/dev/null \
 	    || $(STD)/diff grep_diff_comm.out grep_diff_comm.success2 >/dev/null) \
+	    || $(STD)/diff grep_diff_comm.out grep_diff_comm.success3 >/dev/null \
+	    || $(STD)/diff grep_diff_comm.out grep_diff_comm.success4 >/dev/null \
 	&& echo "grep | {{ diff & comm & }} $S" \
 	|| (echo "grep | {{ diff & comm & }} $F" \
 	&& exit 1)
