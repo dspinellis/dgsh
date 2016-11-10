@@ -1,7 +1,9 @@
 1 comm f1s f2s
 2 sort
 3 wc -l
+4 tr -d " "
 
 %
 socketpipe 1 2
 socketpipe 2 3
+socketpipe 3 4
