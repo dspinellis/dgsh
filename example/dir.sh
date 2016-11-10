@@ -25,7 +25,7 @@ FREE=`df -h . | awk '!/Use%/{print $4}'`
 export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 ls -n |
-sgsh-tee |
+tee |
 {{
 	# Reorder fields in DIR-like way
 	awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
@@ -45,4 +45,4 @@ sgsh-tee |
 	# Print label for number of dirs and calculate free bytes
 	echo " Dir(s) $FREE bytes free" &
 }} |
-sgsh-tee
+cat

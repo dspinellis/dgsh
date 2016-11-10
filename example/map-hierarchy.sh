@@ -63,7 +63,7 @@ export -f line_signatures
 }} |
 
 # Join signatures on file name and content
-join -t -1 2 -2 2 - - |
+join -t -1 2 -2 2 |
 
 # Print filename dir1 dir2
 sed 's///g' |
@@ -71,7 +71,7 @@ awk -F 'BEGIN{OFS=" "}{print $1, $3, $4}' |
 
 # Unique occurrences
 sort -u |
-sgsh-tee |
+tee |
 {{
   # Commands to copy
   awk '{print "mkdir -p '$NEWDIR'/" $3 ""}' |
@@ -81,5 +81,5 @@ sgsh-tee |
 }} |
 # Order: first make directories, then copy files
 # TODO: sgsh-tee does not pass along first incoming stream
-sgsh-tee |
+cat |
 sh

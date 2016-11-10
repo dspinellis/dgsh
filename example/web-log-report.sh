@@ -54,11 +54,11 @@ Summary
 -------
 EOF
 
-sgsh-tee |
+tee |
 {{
 
 	awk '{s += $NF} END {print s / 1024 / 1024 / 1024}' |
-	sgsh-tee |
+	tee |
 	{{
 		# Number of transferred bytes
 		echo -n 'Number of Gbytes transferred: ' &
@@ -74,10 +74,10 @@ sgsh-tee |
 
 	# Host names
 	awk '{print $1}' |
-	sgsh-tee |
+	tee |
 	{{
 		wc -l |
-		sgsh-tee |
+		tee |
 		{{
 			# Number of accesses
 			echo -n 'Number of accesses: ' &
@@ -88,12 +88,12 @@ sgsh-tee |
 
 		# Sorted hosts
 		sort |
-		sgsh-tee |
+		tee |
 		{{
 
 			# Unique hosts
 			uniq |
-			sgsh-tee |
+			tee |
 			{{
 				# Number of hosts
 				echo -n 'Number of hosts: ' &
@@ -125,7 +125,7 @@ sgsh-tee |
 		awk -F. 'BEGIN {OFS = "."}
 		            $NF !~ /^[0-9]/ {$1 = ""; print}' |
 		sort |
-		sgsh-tee |
+		tee |
 		{{
 			# Number of domains
 			echo -n 'Number of domains: ' &
@@ -152,7 +152,7 @@ sgsh-tee |
 	# Sorted page name requests
 	awk '{print $7}' |
 	sort |
-	sgsh-tee |
+	tee |
 	{{
 
 		# Top 20 area requests (input is already sorted)
@@ -176,17 +176,17 @@ sgsh-tee |
 
 	# Access time: dd/mmm/yyyy:hh:mm:ss
 	awk '{print substr($4, 2)}' |
-	sgsh-tee |
+	tee |
 	{{
 
 		# Just dates
 		awk -F: '{print $1}' |
-		sgsh-tee |
+		tee |
 		{{
 
 			uniq |
 			wc -l |
-			sgsh-tee |
+			tee |
 			{{
 				# Number of days
 				echo -n 'Number of days: ' &
@@ -231,4 +231,4 @@ sgsh-tee |
 		}} &
 	}} &
 }} |
-sgsh-tee
+cat

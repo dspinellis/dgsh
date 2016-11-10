@@ -1,6 +1,6 @@
 1 join f1s f2s
 2 sort
-3 diff f3s -
+3 diff f3s
 
 %
 socketpipe 1 2

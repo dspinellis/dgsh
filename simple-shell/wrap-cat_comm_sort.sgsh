@@ -1,5 +1,5 @@
 1 sgsh-wrap /bin/cat f1s
-2 comm - f2s
+2 comm f2s
 3 sort
 4 wc -l
 

@@ -1,6 +1,7 @@
 INSTPREFIX=/usr/local/sgsh
 SGSHPATH=/usr/local/sgsh/bin
 
+SGSHDIR=..
 PSDIR=../simple-shell
 XDIR=../example
 # TOOLDIR
@@ -30,6 +31,7 @@ get-submodules:
 		$(TD)/grep
 
 configure:
+	# To build with DEBUG config do ./configure CFLAGS=-DDEBUG ...
 	cd bash && ./configure --prefix=$(INSTPREFIX)
 	cd coreutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
 	cd diffutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
@@ -48,49 +50,51 @@ install:
 	$(MAKE) -C coreutils install
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
-	cp secho $(INSTPREFIX)/bin
-	cp pecho $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/df $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/file $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/find $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/git $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/head $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
-	cp $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
+	# Install last to overwrite standard tools of coreutils
+	install $(SGSHDIR)/sgsh-tee $(INSTPREFIX)/bin/tee
+	install $(SGSHDIR)/sgsh-tee $(INSTPREFIX)/bin/cat
+	install secho $(INSTPREFIX)/bin
+	install pecho $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/df $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/file $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/find $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/git $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/head $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
 
 
 test-clean-bash:
@@ -110,7 +114,7 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		secho hello \
-		| paste - $(PSDIR)/world \
+		| paste $(PSDIR)/world \
 		> $(PSDIR)/secho_paste.outb' 2>$(PSDIR)/secho_paste.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/secho_paste.outb $(PSDIR)/secho_paste.success \
@@ -120,7 +124,7 @@ test-bash: test-clean
 
 	$(SGSHPATH)/bash --sgsh -c ' \
 		sgsh-wrap /bin/cat $(PSDIR)/f1s \
-		| comm - $(PSDIR)/f2s \
+		| comm $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
 		> $(PSDIR)/wrap-cat_comm_sort.outb' \
@@ -144,7 +148,7 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f1s $(PSDIR)/f2s \
-		| paste - - - \
+		| paste \
 		> $(PSDIR)/comm_paste.outb' 2>$(PSDIR)/comm_paste.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/comm_paste.outb \
@@ -168,7 +172,7 @@ test-bash: test-clean
 	# status becomes the command's exit status
 	$(SGSHPATH)/bash --sgsh -c ' \
 		paste $(PSDIR)/f1s $(PSDIR)/f2s \
-		| diff $(PSDIR)/f1s - \
+		| diff $(PSDIR)/f1s \
 		> $(PSDIR)/paste_diff.outb' 2>$(PSDIR)/paste_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/paste_diff.outb $(PSDIR)/paste_diff.success \
@@ -179,7 +183,7 @@ test-bash: test-clean
 	#ditto
 	$(SGSHPATH)/bash --sgsh -c ' \
 		grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
-		| diff - - \
+		| diff \
 		> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
@@ -189,7 +193,7 @@ test-bash: test-clean
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
 		grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
-		| comm - - \
+		| comm \
 		> $(PSDIR)/grep_comm.outb' 2>$(PSDIR)/grep_comm.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/grep_comm.outb $(PSDIR)/grep_comm.success-bash \
@@ -201,7 +205,7 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
-		| diff $(PSDIR)/f3s - \
+		| diff $(PSDIR)/f3s \
 		> $(PSDIR)/join_sort_diff.outb' 2>$(PSDIR)/join_sort_diff.errb \
 	&& sleep 0.01 \
 	|| diff $(PSDIR)/join_sort_diff.outb \
@@ -225,7 +229,7 @@ test-bash: test-clean
 			secho match & \
 			secho "not `date`" & \
 		}} \
-		| grep -F -h match - - \
+		| grep -F -h match \
 	> $(PSDIR)/secho_secho_fgrep.outb' 2>$(PSDIR)/secho_secho_fgrep.errb \
 	&& sleep 0.01 \
 	&& diff $(PSDIR)/secho_secho_fgrep.outb \
@@ -235,10 +239,10 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
-		sgsh-tee -i $(PSDIR)/hello \
+		tee -i $(PSDIR)/hello \
 		| {{ \
-			diff $(PSDIR)/world - & \
-			comm $(PSDIR)/hello - & \
+			diff $(PSDIR)/world & \
+			comm $(PSDIR)/hello & \
 		}} > $(PSDIR)/tee-copy_diff_comm.outb' \
 		2>$(PSDIR)/tee-copy_diff_comm.errb \
 	&& sleep 0.01 \
@@ -246,15 +250,15 @@ test-bash: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-copy_diff_comm.outb \
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee | {{ diff & comm & }} $F" \
+	&& echo "tee | {{ diff & comm & }} $S" \
+	|| (echo "tee | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	$(SGSHPATH)/bash --sgsh -c ' \
-		sgsh-tee -i $(PSDIR)/hello -s \
+		tee -i $(PSDIR)/hello -s \
 		| {{ \
-			diff $(PSDIR)/world - & \
-			comm $(PSDIR)/hello - & \
+			diff $(PSDIR)/world & \
+			comm $(PSDIR)/hello & \
 		}} > $(PSDIR)/tee-scatter_diff_comm.outb' \
 		2>$(PSDIR)/tee-scatter_diff_comm.errb \
 	&& sleep 0.01 \
@@ -262,16 +266,16 @@ test-bash: test-clean
 			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-scatter_diff_comm.outb \
 			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee -s | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee -s | {{ diff & comm & }} $F" \
+	&& echo "tee -s | {{ diff & comm & }} $S" \
+	|| (echo "tee -s | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	# ditto
 	$(SGSHPATH)/bash --sgsh -c ' \
 		grep -l -L -w -v match $(PSDIR)/ff $(PSDIR)/F \
 		| {{ \
-			diff - - & \
-			comm - - & \
+			diff & \
+			comm & \
 		}} > $(PSDIR)/grep_diff_comm.outb' \
 		2>$(PSDIR)/grep_diff_comm.errb \
 	&& sleep 0.01 \
@@ -286,9 +290,9 @@ test-bash: test-clean
 	$(SGSHPATH)/bash --sgsh -c ' \
 		comm $(PSDIR)/f4ss $(PSDIR)/f5ss \
 		| {{ \
-			paste - $(PSDIR)/p1 & \
-			join - $(PSDIR)/j2 & \
-			diff - $(PSDIR)/d3 & \
+			paste $(PSDIR)/p1 & \
+			join $(PSDIR)/j2 & \
+			diff $(PSDIR)/d3 & \
 		}} > $(PSDIR)/comm_paste_join_diff.outb' \
 		2>$(PSDIR)/comm_paste_join_diff.errb \
 	&& sleep 0.01 \
@@ -305,7 +309,7 @@ test-bash: test-clean
 			sort $(PSDIR)/f4s 2>$(PSDIR)/f4s.errb & \
 			sort $(PSDIR)/f5s 2>$(PSDIR)/f5s.errb & \
 		}} \
-		| comm - - \
+		| comm \
 		> $(PSDIR)/sort_sort_comm.outb' \
 		2>$(PSDIR)/sort_sort_comm.errb \
 	&& sleep 0.01 \
@@ -320,11 +324,11 @@ test-bash: test-clean
 			sort $(PSDIR)/f4s & \
 			sort $(PSDIR)/f5s & \
 		}} \
-		| comm - - \
+		| comm \
 		| {{ \
-			paste - $(PSDIR)/p1 & \
-			join - $(PSDIR)/j2 & \
-			diff - $(PSDIR)/d3 & \
+			paste $(PSDIR)/p1 & \
+			join $(PSDIR)/j2 & \
+			diff $(PSDIR)/d3 & \
 		}} > $(PSDIR)/sort_sort_comm_paste_join_diff.outb' \
 			2>$(PSDIR)/sort_sort_comm_paste_join_diff.errb \
 	&& sleep 0.01 \
@@ -572,8 +576,8 @@ test-pseudo: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-copy_diff_comm.out \
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee | {{ diff & comm & }} $F" \
+	&& echo "tee | {{ diff & comm & }} $S" \
+	|| (echo "tee | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	cd $(PSDIR) && \
@@ -584,8 +588,8 @@ test-pseudo: test-clean
 			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
 		|| diff $(PSDIR)/tee-scatter_diff_comm.out \
 			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& echo "sgsh-tee -s | {{ diff & comm & }} $S" \
-	|| (echo "sgsh-tee -s | {{ diff & comm & }} $F" \
+	&& echo "tee -s | {{ diff & comm & }} $S" \
+	|| (echo "tee -s | {{ diff & comm & }} $F" \
 	&& exit 1)
 	
 	cd $(PSDIR) && \

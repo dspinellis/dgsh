@@ -53,12 +53,11 @@ ngram()
 export -f ranked_frequency
 export -f ngram
 
-cat $1 |
-sgsh-tee |
+tee -i $1 |
 {{
 	# Split input one word per line
 	tr -cs a-zA-Z \\n |
-	sgsh-tee |
+	tee |
 	{{
 		# Digram frequency
 		call 'ngram 2 >digram.txt' &
@@ -73,7 +72,7 @@ sgsh-tee |
 /g' |
 	# Print absolute
 	call 'ranked_frequency' |
-	sgsh-tee |
+	tee |
 	{{
 		# Store number of characters to use in awk below
 		wc -c |

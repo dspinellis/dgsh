@@ -22,6 +22,10 @@ else
 CFLAGS=-O -Wall
 endif
 
+ifdef TIME
+CFLAGS+=-DTIME
+endif
+
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
 	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
 
@@ -200,6 +204,8 @@ install-sgsh: $(EXECUTABLES) $(LIBS)
 	-mkdir -p $(INSTPREFIX)/lib
 	-mkdir -p $(INSTPREFIX)/share/man/man1
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
+	install sgsh-tee $(INSTPREFIX)/bin/tee
+	install sgsh-tee $(INSTPREFIX)/bin/cat
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 	# For tests
