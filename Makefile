@@ -22,12 +22,6 @@ else
 CFLAGS=-O -Wall
 endif
 
-INSTREADVAL=/usr/bin
-UNAME = $(shell uname -s)
-ifeq ($(UNAME),Darwin)
-INSTREADVAL=/usr/local/bin
-endif
-
 EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
 	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
 
@@ -209,7 +203,7 @@ install-sgsh: $(EXECUTABLES) $(LIBS)
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 	# For tests
-	install sgsh-readval $(INSTREADVAL)
+	install sgsh-readval /usr/local/bin
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install
