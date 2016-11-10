@@ -3,6 +3,11 @@
 *.exe
 *.o
 *.pdf
+*.dot
+*.err
+*.errb
+*.out
+*.outb
 png/*.png
 sgsh
 sgsh-conc
