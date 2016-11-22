@@ -688,6 +688,8 @@ cross_match_io_constraints(int *free_instances,
 		       int *edges_matched)
 {
 	int i;
+	int from_flex = 0;
+	int to_flex = 0;
 
 	for (i = 0; i < n_edges; i++) {
 		struct sgsh_edge *e = edges[i];
@@ -696,13 +698,28 @@ cross_match_io_constraints(int *free_instances,
 		int matched = *edges_matched;
 		if (*from == -1 || *to == -1) {
         		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
-			if (*from == -1 && *to == -1)
+			if (*from == -1 && *to == -1) {
+				from_flex++;
+				to_flex++;
 				e->instances = 1;	// TODO
-			else if (*from == -1)
+			} else if (*from == -1) {
+				from_flex++;
 				e->instances = *to;
-			else if (*to == -1)
+			} else if (*to == -1) {
+				to_flex++;
 				e->instances = *from;
+			}
 			(*edges_matched)++;
+			/* fixed to more than one flexible
+			 * is not solvable in the general case
+			 */
+			if (this_channel_constraint > 0 &&
+				((is_edge_incoming && from_flex > 1) ||
+				(!is_edge_incoming && to_flex > 1))) {
+				fprintf(stderr,
+					"ERROR: More than one edges are flexible. Cannot compute solution. Exiting.\n");
+				return OP_ERROR;
+			}
 		} else if (*from == *to) {
 			(*edges_matched)++;
 			e->instances = *from;
