@@ -32,7 +32,7 @@ forder()
 export -f forder
 
 git log --format="%an:%ad" --date=default "$@" |
-sgsh-tee |
+tee |
 {{
 	echo "Authors ordered by number of commits" &
 	# Order by frequency
@@ -44,4 +44,4 @@ sgsh-tee |
 	awk -F: '{print substr($2, 1, 3)}' |
 	call 'forder' &
 }} |
-sgsh-tee
+cat

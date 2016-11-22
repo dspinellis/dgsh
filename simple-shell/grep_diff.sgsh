@@ -1,5 +1,5 @@
-1 grep -v -w match f F
-2 diff - -
+1 grep -v -w match F ff
+2 diff
 
 %
 socketpipe 1 2

@@ -35,13 +35,18 @@
 #include "sgsh-internal-api.h"
 #include "sgsh.h"		/* DPRINTF */
 
+#ifdef TIME
+#include <time.h>
+static struct timespec tstart={0,0}, tend={0,0};
+#endif
+
 static const char *program_name;
 static pid_t pid;
 
 static void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s -i|-o nprog [-r]\n"
+	fprintf(stderr, "Usage: %s -i|-o [-n] nprog\n"
 		"-i"		"\tInput concentrator: multiple inputs to single output\n"
 		"-o"		"\tOutput concentrator: single input to multiple outputs\n"
 		"-n"		"\tDo not consider standard input (used with -o)\n",
@@ -245,8 +250,12 @@ pass_message_blocks(void)
 	bool ro = false;	/* Whether the read block's origin should
 				 * be restored
 				 */
+	bool iswrite = false;
 
 	if (noinput) {
+#ifdef TIME
+		clock_gettime(CLOCK_MONOTONIC, &tstart);
+#endif
 		construct_message_block("sgsh-conc", pid);
 		chosen_mb->origin_fd_direction = STDOUT_FILENO;
 		chosen_mb->is_origin_conc = true;
@@ -286,6 +295,7 @@ pass_message_blocks(void)
 		// Read/write what we can
 		for (i = 0; i < nfd; i++) {
 			if (FD_ISSET(i, &writefds)) {
+				iswrite = true;
 				assert(pi[i].to_write);
 				chosen_mb = pi[i].to_write;
 				write_message_block(i); // XXX check return
@@ -394,10 +404,12 @@ pass_message_blocks(void)
 			assert(chosen_mb != NULL);
 			DPRINTF("%s(): conc leaves negotiation", __func__);
 			return 0;
-		} else if (chosen_mb != NULL &&	// Free if we have written it
-				!pi[next_fd(i, &ro)].to_write) {
+		} else if (chosen_mb != NULL &&	iswrite) { // Free if we have written
+			DPRINTF("chosen_mb: %lx, i: %d, next: %d, pi[next].to_write: %lx\n",
+				(long)chosen_mb, i, next_fd(i, &ro), (long)pi[next_fd(i, &ro)].to_write);
 			free_mb(chosen_mb);
 			chosen_mb = NULL;
+			iswrite = false;
 		}
 	}
 }
@@ -528,6 +540,16 @@ main(int argc, char *argv[])
 	DPRINTF("conc with pid %d terminates normally", pid);
 #ifdef DEBUG
 	fflush(stderr);
+#endif
+#ifdef TIME
+	if (noinput) {
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		fprintf(stderr, "The sgsh negotiation procedure took about %.5f seconds\n",
+			((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
+		fflush(stderr);
+
+	}
 #endif
 	return 0;
 }

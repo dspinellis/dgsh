@@ -1,5 +1,5 @@
 1 secho hello
-2 paste - world
+2 paste world
 
 %
 socketpipe 1 2

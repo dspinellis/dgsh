@@ -28,7 +28,7 @@
 
 export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
-sgsh-tee |
+tee |
 {{
 	echo -n 'File type:' &
 	file - &
@@ -45,4 +45,4 @@ sgsh-tee |
 	echo -n 'gzip:' &
 	gzip -c | wc -c &
 }} |
-sgsh-tee
+cat

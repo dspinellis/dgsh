@@ -15,7 +15,9 @@
  *
  */
 
+#ifdef __linux__
 #define _XOPEN_SOURCE 500	// pread pwrite
+#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>

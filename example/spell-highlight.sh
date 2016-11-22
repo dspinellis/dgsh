@@ -25,7 +25,7 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 
 export LC_ALL=C
 
-sgsh-tee |
+tee |
 {{
 	{{
 		# Find errors
@@ -36,7 +36,7 @@ sgsh-tee |
 		# Ensure dictionary is sorted consistently with our settings
 		sort /usr/share/dict/words &
 	}} |
-	comm -23 - - &
+	comm -23 &
 
 	cat &
 }} |

@@ -3,6 +3,11 @@
 *.exe
 *.o
 *.pdf
+*.dot
+*.err
+*.errb
+*.out
+*.outb
 png/*.png
 sgsh
 sgsh-conc
@@ -26,3 +31,4 @@ sgsh-writeval.html
 tags
 test/web-log-report/logfile
 test/sorted-words
+unix-sgsh-tools/sf*

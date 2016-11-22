@@ -1,5 +1,5 @@
 1 comm f1s f2s
-2 paste - - -
+2 paste
 
 %
 socketpipe 1 2

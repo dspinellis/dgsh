@@ -25,7 +25,7 @@ var2pipe -in $1            \
  -xLAB          1H      -yLAB   15N      \
  -ndim          2       -aq2D   States      \
 -verb  |
-sgsh-tee |
+tee |
 {{
   # IP/AP channel conversion
   # See http://tech.groups.yahoo.com/group/nmrpipe/message/389
@@ -61,9 +61,6 @@ sgsh-tee |
   nmrPipe -fn TP |
   nmrPipe -fn POLY -auto -verb >B &
 
-  # Wait for async writes to finish
-  # sgsh-conc ignores the wait command when setting up connections
-  wait
 }}
 
 # We use temporary files rather than streams, because

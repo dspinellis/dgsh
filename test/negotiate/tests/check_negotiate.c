@@ -707,8 +707,10 @@ retire_graph_solution(struct sgsh_node_connections *graph_solution,
 {
 	int i;
         for (i = 0; i <= node_index; i++) {
-                free(graph_solution[i].edges_incoming);
-                free(graph_solution[i].edges_outgoing);
+		if (graph_solution[i].n_edges_incoming)
+                	free(graph_solution[i].edges_incoming);
+		if (graph_solution[i].n_edges_outgoing)
+                	free(graph_solution[i].edges_outgoing);
         }
         free(graph_solution);
 }
@@ -1929,11 +1931,11 @@ START_TEST(test_alloc_fds)
 	int *fds = NULL;
 	int n_fds = 0;
 	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
-	ck_assert_int_eq(fds, 0);
+	ck_assert_int_eq((int)(long)fds, 0);
 
 	n_fds = 2;
 	ck_assert_int_eq(alloc_fds(&fds, n_fds), OP_SUCCESS);
-	ck_assert_int_ne(fds, 0);
+	ck_assert_int_ne((int)(long)fds, 0);
 	free(fds);
 }
 END_TEST
@@ -2175,7 +2177,7 @@ START_TEST(test_read_chunk)
 	char buf[32];
 	int read_fd = -1;
 	int bytes_read = -1;
-	ck_assert_int_eq(read_chunk(fd[0], buf, 32, &bytes_read), OP_SUCCESS);
+	ck_assert_int_eq(read_chunk(fd[0], buf, 32, &bytes_read, 5), OP_SUCCESS);
 	ck_assert_int_eq(bytes_read, 9);
 	
 	close(fd[0]);
@@ -2193,7 +2195,7 @@ START_TEST(test_call_read)
 		exit(1);
 	}
 
-	if (wsize = write(fd[1], "test", 5) == -1) {
+	if ((wsize = write(fd[1], "test", 5)) == -1) {
 		DPRINTF("Write to 'test' failed.\n");
 		exit(1);
 	}

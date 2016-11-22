@@ -1,8 +1,8 @@
 1 comm f4ss f5ss
 2 sgsh-conc -o 3
-3 paste - p1
-4 join - j2
-5 diff - d3
+3 paste p1
+4 join j2
+5 diff d3
 
 %
 socketpipe 1 2

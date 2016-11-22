@@ -1,8 +1,8 @@
-1 sgsh-conc -o 2 -n
+1 sgsh-conc -o -n 2
 2 secho match
 3 secho not
 4 sgsh-conc -i 2
-5 grep -F -h match - -
+5 grep -F -h match
 
 %
 socketpipe 1 2

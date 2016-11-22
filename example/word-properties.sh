@@ -31,13 +31,13 @@ export SGSH_DOT_DRAW="$(basename $0 .sh)"
 export LC_ALL=C
 
 # Stream input from file
-cat $1 |
+cat -i $1 |
 
 # Split input one word per line
 tr -cs a-zA-Z \\n |
 # Create list of unique words
 sort -u |
-sgsh-tee |
+tee |
 {{
 	# Pass through the original words
 	cat &
@@ -56,6 +56,6 @@ sgsh-tee |
 }} |
 # Paste the four streams side-by-side
 # XXX make the streaming input arguments transparent to users
-paste - - - - |
+paste |
 # List only words satisfying one or more properties
 grep :

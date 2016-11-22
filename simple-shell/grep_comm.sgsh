@@ -1,5 +1,5 @@
-1 grep -l -L match f F
-2 comm - -
+1 grep -l -L match ff F
+2 comm
 
 %
 socketpipe 1 2
