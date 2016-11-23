@@ -37,6 +37,7 @@
 #include <assert.h>		/* assert() */
 #include <errno.h>		/* ENOBUFS */
 #include <err.h>		/* err() */
+#include <limits.h>		/* IOV_MAX */
 #include <stdbool.h>		/* bool, true, false */
 #include <stdio.h>		/* fprintf() in DPRINTF() */
 #include <stdlib.h>		/* getenv(), errno */
