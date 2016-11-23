@@ -123,6 +123,13 @@ static unsigned long max_mem = 256 * 1024 * 1204;
 /* Scatter the output across the files, rather than copying it. */
 static bool opt_scatter = false;
 
+/*
+ * When set, permute the inputs to the specified outputs
+ * Ordinals and number of the destination outputs
+ */
+static int *permute_dest = NULL;
+static int permute_n = 0;
+
 /* Use a temporary file for overflowing buffered data */
 static bool use_tmp_file = false;
 
@@ -807,6 +814,7 @@ usage(const char *name)
 		"-m size[k|M|G]""\tSpecify the maximum buffer memory size\n"
 		"-M"		"\tProvide memory use statistics on termination\n"
 		"-o file"	"\tScatter output to specified file\n"
+		"-p d1[,d2...]"	"\tPermute inputs to specified outputs\n"
 		"-s"		"\tScatter the input across the files, rather than copying it to all\n"
 		"-T dir"	"\tSpecify directory for storing temporary file\n"
 		"-t char"	"\tProcess char-terminated records (newline default)\n",
@@ -908,10 +916,39 @@ parse_size(const char *progname, const char *opt)
 	case 'G' : case 'g':
 		return n * 1024 * 1024 * 1024;
 	default:
+		fprintf(stderr, "Unknown size suffix: %c\n", size);
 		usage(progname);
 	}
 	/* NOTREACHED */
 	return 0;
+}
+
+/*
+ * Parse a comma-separated list of integers setting the
+ * variables permute_dest and permute_n.
+ */
+static void
+parse_permute(char *s)
+{
+	char *p;
+	char *copy = strdup(s);
+
+	if (copy == NULL)
+		errx(1, "Out of memory for destination string");
+	DPRINTF("In parse_permute [%s]", s);
+	for (p = strtok(copy, ","); p != NULL; p = strtok(NULL, ","))
+		permute_n++;
+	free(copy);
+	if ((permute_dest = (int *)malloc(sizeof(int) * permute_n)) == NULL)
+		errx(1, "Out of memory for permutation destination");
+	permute_n = 0;
+	for (p = strtok(s, ","); p != NULL; p = strtok(NULL, ","))
+		if ((permute_dest[permute_n++] = atoi(p)) <= 0)
+			errx(1, "Illegal permutation destination [%s]", s);
+	for (int i = 0; i < permute_n; i++)
+		DPRINTF("%d = %d", i, permute_dest[i]);
+	DPRINTF("permute_n=%d", permute_n);
+	exit(0);
 }
 
 int
@@ -926,7 +963,7 @@ main(int argc, char *argv[])
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
 
-	while ((ch = getopt(argc, argv, "b:fIi:Mm:o:S:sTt:")) != -1) {
+	while ((ch = getopt(argc, argv, "b:fIi:Mm:o:p:S:sTt:")) != -1) {
 		switch (ch) {
 		case 'b':
 			buffer_size = (int)parse_size(progname, optarg);
@@ -967,6 +1004,9 @@ main(int argc, char *argv[])
 			non_block(ofp->fd, ofp->name);
 			ofp->next = ofiles;
 			ofiles = ofp;
+			break;
+		case 'p':
+			parse_permute(optarg);
 			break;
 		case 's':
 			opt_scatter = true;
