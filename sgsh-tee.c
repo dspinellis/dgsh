@@ -932,6 +932,7 @@ parse_permute(char *s)
 {
 	char *p;
 	char *copy = strdup(s);
+	int i;
 
 	if (copy == NULL)
 		errx(1, "Out of memory for destination string");
@@ -945,7 +946,7 @@ parse_permute(char *s)
 	for (p = strtok(s, ","); p != NULL; p = strtok(NULL, ","))
 		if ((permute_dest[permute_n++] = atoi(p)) <= 0)
 			errx(1, "Illegal permutation destination [%s]", s);
-	for (int i = 0; i < permute_n; i++)
+	for (i = 0; i < permute_n; i++)
 		DPRINTF("%d = %d", i, permute_dest[i]);
 	DPRINTF("permute_n=%d", permute_n);
 	exit(0);
