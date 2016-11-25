@@ -21,6 +21,12 @@ EC=\033[0m	# End color
 S=${GR}successful${EC}
 F=${R}failed${EC}
 
+ifdef DEBUG
+DEBUGFLAG=-DDEBUG
+else
+DEBUGFLAG=
+endif
+
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
@@ -31,14 +37,13 @@ get-submodules:
 		$(TD)/grep
 
 configure:
-	# To build with DEBUG config do ./configure CFLAGS=-DDEBUG ...
 	cd bash && ./configure --prefix=$(INSTPREFIX)
 	cd coreutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
 	cd diffutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
 	cd grep && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
 
 make:
-	$(MAKE) -C bash
+	$(MAKE) -C bash CFLAGS=$(DEBUGFLAG)
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
 	$(MAKE) -C grep
