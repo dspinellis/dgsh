@@ -101,7 +101,7 @@ new_buffer_pool(void)
 	bp->free_pool_begin = 0;
 
 	bp->allocated_pool_end = 0;
-	 
+
 	bp->buffers_allocated = bp->buffers_freed = bp->max_buffers_allocated =
 	bp->buffers_paged_out = bp->buffers_paged_in = bp->pages_freed = 0;
 
@@ -168,7 +168,7 @@ new_sink_info(const char *name)
 
 	if ((ofp = (struct sink_info *)malloc(sizeof(struct sink_info))) == NULL)
 		err(1, NULL);
-	ofp->name = strdup(name);
+	ofp->name = name ? strdup(name) : NULL;
 	ofp->active = true;
 	ofp->pos_written = ofp->pos_to_write = 0;
 	return ofp;
@@ -186,6 +186,19 @@ struct source_info {
 	bool is_read;			/* True if an active sink reads it */
 };
 
+/* Return the name of a source or sink */
+#define fp_name(fp) ((fp)->name ? (fp)->name : fd_name((fp)->fd))
+static char *
+fd_name(int fd)
+{
+	static char buff[40];
+
+	sprintf(buff, "fd(%d)", fd);
+	return buff;
+}
+
+
+
 /* Construct a new source_info object */
 struct source_info *
 new_source_info(const char *name)
@@ -194,7 +207,7 @@ new_source_info(const char *name)
 
 	if ((ifp = (struct source_info *)malloc(sizeof(struct source_info))) == NULL)
 		err(1, NULL);
-	ifp->name = strdup(name);
+	ifp->name = name ? strdup(name) : NULL;
 	ifp->bp = new_buffer_pool();
 	ifp->source_pos_read = 0;
 	ifp->reached_eof = false;
@@ -219,7 +232,8 @@ new_source_info(const char *name)
  * States drain_ib and write_ob have select return
  * if the process can write to any fd.
  * Waiting on all output buffers (not only those with data)
- * is needed to avoid starvation of processes with no pending output.
+ * is needed to avoid starvation of downstream processes
+ * when no output is available.
  * If a program can accept data this process will then transition to
  * read_* to read more data.
  *
@@ -508,7 +522,7 @@ sink_buffer(struct sink_info *ofp)
 		b.p = ofp->ifp->bp->buffers[pool].p + pool_offset;
 	}
 	DPRINTF("Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p for input fd: %s",
-		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p, ofp->ifp->name);
+		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p, fp_name(ofp->ifp));
 	return b;
 }
 
@@ -567,13 +581,13 @@ source_read(struct source_info *ifp)
 	if ((n = read(ifp->fd, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF("EAGAIN on %s", ifp->name);
+			DPRINTF("EAGAIN on %s", fp_name(ifp));
 			return read_again;
 		default:
-			err(3, "Read from %s", ifp->name);
+			err(3, "Read from %s", fp_name(ifp));
 		}
 	ifp->source_pos_read += n;
-	DPRINTF("Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, ifp->name,
+	DPRINTF("Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, fp_name(ifp),
 		(int)n * DATA_DUMP, (char *)b.p);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
@@ -597,12 +611,13 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 	if (!opt_scatter) {
 		for (ofp = files; ofp; ofp = ofp->next) {
 			/* Advance to next input file, if required */
-			if (ofp->pos_written == ofp->ifp->source_pos_read &&
+			if (permute_n == 0 &&
+			    ofp->pos_written == ofp->ifp->source_pos_read &&
 			    ofp->ifp->reached_eof &&
 			    ofp->ifp->next) {
 				ofp->ifp = ofp->ifp->next;
 				DPRINTF("%s(): advance to input file %s\n",
-						__func__, ofp->ifp->name);
+						__func__, fp_name(ofp->ifp));
 				ofp->pos_written = 0;
 			}
 			ofp->pos_to_write = ofp->ifp->source_pos_read;
@@ -702,7 +717,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 							/* No newline found in buffer; defer writing. */
 							ofp->pos_to_write = pos_assigned;
 							DPRINTF("scatter to file[%s] no newline from %ld to %ld",
-								ofp->name, (long)pos_assigned, (long)data_end);
+								fp_name(ofp), (long)pos_assigned, (long)data_end);
 							return;
 						}
 					}
@@ -721,7 +736,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 			pos_assigned += data_to_assign;
 		ofp->pos_to_write = pos_assigned;
 		DPRINTF("scatter to file[%s] pos_written=%ld pos_to_write=%ld data=[%.*s]",
-			ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write,
+			fp_name(ofp), (long)ofp->pos_written, (long)ofp->pos_to_write,
 			(int)(ofp->pos_to_write - ofp->pos_written) * DATA_DUMP, sink_pointer(ofp->ifp->bp, ofp->pos_written));
 	}
 }
@@ -746,7 +761,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 
 	allocate_data_to_sinks(sink_fds, ofiles);
 	for (ofp = ofiles; ofp; ofp = ofp->next) {
-		DPRINTF("\n%s(): try write to file %s", __func__, ofp->name);
+		DPRINTF("\n%s(): try write to file %s", __func__, fp_name(ofp));
 		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
 			struct io_buffer b;
@@ -765,14 +780,14 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 					case EPIPE:
 						ofp->active = false;
 						(void)close(ofp->fd);
-						DPRINTF("EPIPE for %s", ofp->name);
+						DPRINTF("EPIPE for %s", fp_name(ofp));
 						break;
 					case EAGAIN:
-						DPRINTF("EAGAIN for %s", ofp->name);
+						DPRINTF("EAGAIN for %s", fp_name(ofp));
 						n = 0;
 						break;
 					default:
-						err(2, "Error writing to %s", ofp->name);
+						err(2, "Error writing to %s", fp_name(ofp));
 					}
 				else {
 					ofp->pos_written += n;
@@ -780,7 +795,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 				}
 			}
 			DPRINTF("Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
-				n, b.size, ofp->name, (unsigned long)ofp->pos_written, (int)n * DATA_DUMP, (char *)b.p);
+				n, b.size, fp_name(ofp), (unsigned long)ofp->pos_written, (int)n * DATA_DUMP, (char *)b.p);
 		}
 		if (ofp->active) {
 			ofp->ifp->read_min_pos = MIN(ofp->ifp->read_min_pos, ofp->pos_written);
@@ -855,12 +870,12 @@ show_select_args(const char *msg, fd_set *source_fds, struct source_info *ifiles
 	fprintf(stderr, "%s: ", msg);
 	for (ifp = ifiles; ifp; ifp = ifp->next)
 		if (FD_ISSET(ifp->fd, source_fds)) {
-			fprintf(stderr, "%s ", ifp->name);
+			fprintf(stderr, "%s ", fp_name(ifp));
 			nbits++;
 		}
 	for (ofp = ofiles; ofp; ofp = ofp->next)
 		if (FD_ISSET(ofp->fd, sink_fds)) {
-			fprintf(stderr, "%s ", ofp->name);
+			fprintf(stderr, "%s ", fp_name(ofp));
 			nbits++;
 		}
 	fputc('\n', stderr);
@@ -924,7 +939,7 @@ parse_size(const char *progname, const char *opt)
 }
 
 /*
- * Parse a comma-separated list of integers setting the
+ * Parse and validate a comma-separated list of integers setting the
  * variables permute_dest and permute_n.
  */
 static void
@@ -942,14 +957,55 @@ parse_permute(char *s)
 	free(copy);
 	if ((permute_dest = (int *)malloc(sizeof(int) * permute_n)) == NULL)
 		errx(1, "Out of memory for permutation destination");
-	permute_n = 0;
-	for (p = strtok(s, ","); p != NULL; p = strtok(NULL, ","))
-		if ((permute_dest[permute_n++] = atoi(p)) <= 0)
+	for (p = strtok(s, ","), i= 0; p != NULL; p = strtok(NULL, ","), i++) {
+		permute_dest[i] = atoi(p) - 1;
+		if (permute_dest[i] < 0 || permute_dest[i] >= permute_n)
 			errx(1, "Illegal permutation destination [%s]", s);
+	}
 	for (i = 0; i < permute_n; i++)
 		DPRINTF("%d = %d", i, permute_dest[i]);
 	DPRINTF("permute_n=%d", permute_n);
-	exit(0);
+}
+
+/*
+ * Return the input file corresponding to the specified
+ * permuted output file number.
+ */
+static struct source_info *
+output_source(struct source_info *ifiles, int output_n)
+{
+	int i, input_n = -1;
+	struct source_info *ifp;
+
+	/* Find input file number */
+	for (i = 0; i < permute_n; i++)
+		if (permute_dest[i] == output_n) {
+			input_n = i;
+			break;
+		}
+	if (input_n == -1)
+		errx(1, "Unspecified output %d", output_n + 1);
+
+	/* Find input file pointer */
+	for (ifp = ifiles, i = permute_n - 1; ifp; ifp = ifp->next, i--)
+		if (i == input_n)
+			return ifp;
+	assert(0);
+	return NULL;
+}
+
+static void
+memory_stats(struct source_info *ifiles)
+{
+	struct source_info *ifp;
+
+	for (ifp = ifiles; ifp; ifp = ifp->next) {
+		fprintf(stderr, "Input file: %s\n", fp_name(ifp));
+		fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
+			ifp->bp->buffers_allocated, ifp->bp->buffers_freed, ifp->bp->max_buffers_allocated);
+		fprintf(stderr, "Page out: %d In: %d Pages freed: %d\n",
+			ifp->bp->buffers_paged_out, ifp->bp->buffers_paged_in, ifp->bp->pages_freed);
+	}
 }
 
 int
@@ -959,7 +1015,7 @@ main(int argc, char *argv[])
 	struct sink_info *ofiles = NULL, *ofp;
 	struct source_info *ifiles = NULL, *ifp, *end = NULL;
 	struct source_info *front_ifp;	/* To keep output sequential, never output past this one */
-	int ch;
+	int ch, status;
 	const char *progname = argv[0];
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
@@ -981,7 +1037,7 @@ main(int argc, char *argv[])
 			if ((ifp->fd = open(optarg, O_RDONLY)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ifp->fd, max_fd);
-			non_block(ifp->fd, ifp->name);
+			non_block(ifp->fd, fp_name(ifp));
 
 			/* Add file at the end of the linked list */
 			ifp->next = NULL;
@@ -1002,7 +1058,7 @@ main(int argc, char *argv[])
 			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ofp->fd, max_fd);
-			non_block(ofp->fd, ofp->name);
+			non_block(ofp->fd, fp_name(ofp));
 			ofp->next = ofiles;
 			ofiles = ofp;
 			break;
@@ -1039,10 +1095,20 @@ main(int argc, char *argv[])
 	int ninputfds = -1;
 	int *inputfds;
 
-	sgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds,
-			&outputfds);
+	if (permute_n)
+		ninputfds = noutputfds = permute_n;
+
+	DPRINTF("Calling negotiate");
+	if ((status = sgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
+		errx(2, "sgsh negotiation failed with status code %d", status);
+	DPRINTF("nin=%d nout=%d", ninputfds, noutputfds);
 	assert(noutputfds >= 0);
 	assert(ninputfds >= 0);
+
+	if (permute_n && permute_n != ninputfds)
+		errx(1, "The number of inputs %d is not equal to the specified permuted outputs %d", ninputfds, permute_n);
+	if (permute_n && permute_n != noutputfds)
+		errx(1, "The number of outputs %d is not equal to the specified permuted outputs %d", noutputfds, permute_n);
 
 	for (j = 0; j < noutputfds; j++) {
 		DPRINTF("New ofp assigned fd %d", outputfds[j]);
@@ -1050,11 +1116,11 @@ main(int argc, char *argv[])
 			ofp = new_sink_info("standard output");
 			ofp->fd = STDOUT_FILENO;
 		} else {
-			ofp = new_sink_info("sgsh");
+			ofp = new_sink_info(NULL);
 			ofp->fd = outputfds[j];
 		}
 		max_fd = MAX(ofp->fd, max_fd);
-		non_block(ofp->fd, ofp->name);
+		non_block(ofp->fd, fp_name(ofp));
 		ofp->next = ofiles;
 		ofiles = ofp;
 	}
@@ -1065,11 +1131,11 @@ main(int argc, char *argv[])
 			ifp = new_source_info("standard input");
 			ifp->fd = STDIN_FILENO;
 		} else {
-			ifp = new_source_info("sgsh");
+			ifp = new_source_info(NULL);
 			ifp->fd = inputfds[j];
 		}
 		max_fd = MAX(ifp->fd, max_fd);
-		non_block(ifp->fd, ifp->name);
+		non_block(ifp->fd, fp_name(ifp));
 		/* Add file at the end of the linked list */
 		ifp->next = NULL;
 		if (end)
@@ -1085,12 +1151,15 @@ main(int argc, char *argv[])
 	if (opt_scatter && ifiles && ifiles->next)
 		errx(1, "Scattering not supported with more than one input file");
 
+	if (opt_scatter && permute_n)
+		errx(1, "Scattering and permutation cannot be used together");
+
 	if (ofiles == NULL) {
 		/* Output to stdout */
 		ofp = new_sink_info("standard output");
 		ofp->fd = STDOUT_FILENO;
 		max_fd = MAX(ofp->fd, max_fd);
-		non_block(ofp->fd, ofp->name);
+		non_block(ofp->fd, fp_name(ofp));
 		ofp->next = ofiles;
 		ofiles = ofp;
 	}
@@ -1100,7 +1169,7 @@ main(int argc, char *argv[])
 		ifp = new_source_info("standard input");
 		ifp->fd = STDIN_FILENO;
 		max_fd = MAX(ifp->fd, max_fd);
-		non_block(ifp->fd, ifp->name);
+		non_block(ifp->fd, fp_name(ifp));
 		ifp->next = ifiles;
 		ifiles = ifp;
 	}
@@ -1109,11 +1178,22 @@ main(int argc, char *argv[])
 	/* We will handle SIGPIPE explicitly when calling write(2). */
 	signal(SIGPIPE, SIG_IGN);
 
-	front_ifp = ifiles;
 
-	/* Initially all output comes from the first input file */
-	for (ofp = ofiles; ofp; ofp = ofp->next)
-		ofp->ifp = front_ifp;
+	front_ifp = ifiles;
+	DPRINTF("permute_n = %d", permute_n);
+	if (permute_n) {
+		/* Assign the corresponding input to each output file */
+		int n;
+
+		for (ofp = ofiles, n = 0; ofp; ofp = ofp->next, n++) {
+			ofp->ifp = output_source(ifiles, n);
+			DPRINTF("output(%d) = %d", ofp->fd, ofp->ifp->fd);
+		}
+	} else {
+		/* Initially all output comes from the first input file */
+		for (ofp = ofiles; ofp; ofp = ofp->next)
+			ofp->ifp = front_ifp;
+	}
 
 	/* Copy source to sink without allowing any single file to block us. */
 	for (;;) {
@@ -1133,7 +1213,12 @@ main(int argc, char *argv[])
 						FD_SET(ifp->fd, &source_fds);
 				break;
 			case read_ob:
-				FD_SET(front_ifp->fd, &source_fds);
+				if (permute_n) {
+					for (ifp = front_ifp; ifp; ifp = ifp->next)
+						if (!ifp->reached_eof)
+							FD_SET(ifp->fd, &source_fds);
+				} else
+					FD_SET(front_ifp->fd, &source_fds);
 				break;
 			default:
 				break;
@@ -1146,7 +1231,7 @@ main(int argc, char *argv[])
 				case read_ob:
 				case drain_ob:
 					DPRINTF("Check active file[%s] pos_written=%ld pos_to_write=%ld",
-						ofp->name, (long)ofp->pos_written, (long)ofp->pos_to_write);
+						fp_name(ofp), (long)ofp->pos_written, (long)ofp->pos_to_write);
 					if (ofp->pos_written < ofp->pos_to_write)
 						FD_SET(ofp->fd, &sink_fds);
 					break;
@@ -1185,24 +1270,17 @@ main(int argc, char *argv[])
 						active_fds++;
 					else {
 						DPRINTF("Retiring file %s pos_written=pos_to_write=%ld source_pos_read=%ld",
-							ofp->name, (long)ofp->pos_written, (long)ofp->ifp->source_pos_read);
+							fp_name(ofp), (long)ofp->pos_written, (long)ofp->ifp->source_pos_read);
 						/* No more data to write; close fd to avoid deadlocks downstream. */
 						if (close(ofp->fd) == -1)
-							err(2, "Error closing %s", ofp->name);
+							err(2, "Error closing %s", fp_name(ofp));
 						ofp->active = false;
 					}
 				}
 			if (active_fds == 0) {
 				/* If no read possible, and no writes pending, terminate. */
-				if (opt_memory_stats) {
-					for (ifp = ifiles; ifp; ifp = ifp->next) {
-						fprintf(stderr, "Input file: %s\n", ifp->name);
-						fprintf(stderr, "Buffers allocated: %d Freed: %d Maximum allocated: %d\n",
-							ifp->bp->buffers_allocated, ifp->bp->buffers_freed, ifp->bp->max_buffers_allocated);
-						fprintf(stderr, "Page out: %d In: %d Pages freed: %d\n",
-							ifp->bp->buffers_paged_out, ifp->bp->buffers_paged_in, ifp->bp->pages_freed);
-					}
-				}
+				if (opt_memory_stats)
+					memory_stats(ifiles);
 				return 0;
 			}
 		}
@@ -1236,7 +1314,32 @@ main(int argc, char *argv[])
 			break;
 		case read_ob:
 			/* Read, if possible. */
-			if (FD_ISSET(front_ifp->fd, &source_fds))
+			if (permute_n) {
+				/* Read, from possible sources; set global reached_eof if all have reached it */
+				reached_eof = true;
+				for (ifp = front_ifp; ifp; ifp = ifp->next) {
+					if (FD_ISSET(ifp->fd, &source_fds))
+						switch (source_read(ifp)) {
+						case read_eof:
+							ifp->reached_eof = true;
+							break;
+						case read_again:
+							break;
+						case read_oom:	/* Allow buffers to empty. */
+							state = drain_ob;
+							break;
+						case read_ok:
+							state = write_ob;
+							break;
+						}
+					if (!ifp->reached_eof)
+						reached_eof = false;
+				}
+				if (reached_eof)
+					state = drain_ib;
+				break;
+			} else if (FD_ISSET(front_ifp->fd, &source_fds))
+				/* Read from the single source */
 				switch (source_read(front_ifp)) {
 				case read_eof:
 					front_ifp->reached_eof = true;
