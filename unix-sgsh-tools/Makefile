@@ -1,5 +1,5 @@
-INSTPREFIX=/usr/local/sgsh
-SGSHPATH=/usr/local/sgsh/bin
+INSTPREFIX?=/usr/local/sgsh
+SGSHPATH=$(INSTPREFIX)/bin
 
 SGSHDIR=..
 PSDIR=../simple-shell
