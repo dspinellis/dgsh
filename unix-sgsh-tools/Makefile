@@ -64,6 +64,7 @@ install:
 	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/dd $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/df $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/file $(INSTPREFIX)/bin
