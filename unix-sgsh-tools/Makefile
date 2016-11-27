@@ -23,6 +23,7 @@ F=${R}failed${EC}
 
 ifdef DEBUG
 DEBUGFLAG=-DDEBUG
+CFLAGS+=-DDEBUG
 else
 DEBUGFLAG=
 endif
@@ -49,6 +50,8 @@ make:
 	$(MAKE) -C grep
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
+	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
+	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
 
 install:
 	$(MAKE) -C bash install
@@ -60,6 +63,8 @@ install:
 	install $(SGSHDIR)/sgsh-tee $(INSTPREFIX)/bin/cat
 	install secho $(INSTPREFIX)/bin
 	install pecho $(INSTPREFIX)/bin
+	install fft-input $(INSTPREFIX)/bin
+	install w $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
@@ -461,6 +466,13 @@ test-bash: test-clean
 		>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
 	&& printf "web-log-report.sh $S" \
 	|| (printf "web-log-report.sh $F" \
+	&& exit 1)
+	
+	# ditto
+	$(SGSHPATH)/bash --sgsh $(XDIR)/fft-block8.sh $(PSDIR)/fft-input.dat \
+		>$(PSDIR)/fft-block8.outb 2>$(PSDIR)/fft-block8.err \
+	&& printf "fft-block8.sh $S" \
+	|| (printf "fft-block8.sh $F" \
 	&& exit 1)
 	
 	# ditto
