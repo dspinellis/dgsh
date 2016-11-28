@@ -31,7 +31,7 @@ endif
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
-	cd .. && git submodule update --init --recursive \
+	cd .. && git submodule update --init --recursive --depth=5000 \
 		$(TD)/bash \
 		$(TD)/coreutils \
 		$(TD)/diffutils \
