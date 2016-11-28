@@ -1,16 +1,16 @@
-[submodule "unix-sgsh-tools/coreutils"]
-	path = unix-sgsh-tools/coreutils
+[submodule "unix-dgsh-tools/coreutils"]
+	path = unix-dgsh-tools/coreutils
 	url = https://github.com/mfragkoulis/coreutils
 	branch = master
-[submodule "unix-sgsh-tools/diffutils"]
-	path = unix-sgsh-tools/diffutils
+[submodule "unix-dgsh-tools/diffutils"]
+	path = unix-dgsh-tools/diffutils
 	url = https://github.com/mfragkoulis/diffutils
 	branch = master
-[submodule "unix-sgsh-tools/grep"]
-	path = unix-sgsh-tools/grep
+[submodule "unix-dgsh-tools/grep"]
+	path = unix-dgsh-tools/grep
 	url = https://github.com/mfragkoulis/grep
 	branch = master
-[submodule "unix-sgsh-tools/bash"]
-	path = unix-sgsh-tools/bash
+[submodule "unix-dgsh-tools/bash"]
+	path = unix-dgsh-tools/bash
 	url = https://github.com/mfragkoulis/bash.git
 	branch = master

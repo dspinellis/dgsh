@@ -47,7 +47,7 @@ mkdir -p time out err
 GROW=1
 while :
 do
-	for PROG in sgsh perl java
+	for PROG in dgsh perl java
 	do
 		DESC=web-$TYPE-$PROG-$GROW
 		if [ -r err/$DESC ]
@@ -63,8 +63,8 @@ do
 		perl)
 			timerun $DESC /usr/bin/perl web-log-report.pl
 			;;
-		sgsh)
-			timerun $DESC ../sgsh -p .. ../example/web-log-report.sh
+		dgsh)
+			timerun $DESC ../dgsh -p .. ../example/web-log-report.sh
 			;;
 		java)
 			timerun $DESC java WebStats

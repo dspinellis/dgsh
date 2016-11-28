@@ -1,6 +1,6 @@
 #!bin/bash
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 fft-input $1 |
 tee -p 1,5,3,7,2,6,4,8 |

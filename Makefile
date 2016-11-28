@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 
-INSTPREFIX?=/usr/local/sgsh
+INSTPREFIX?=/usr/local/dgsh
 
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
@@ -26,12 +26,12 @@ ifdef TIME
 CFLAGS+=-DTIME
 endif
 
-EXECUTABLES=sgsh sgsh-tee sgsh-writeval sgsh-readval sgsh-monitor sgsh-httpval \
-	sgsh-ps sgsh-merge-sum sgsh-conc sgsh-wrap
+EXECUTABLES=dgsh dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
+	dgsh-ps dgsh-merge-sum dgsh-conc dgsh-wrap
 
-LIBS=libsgsh_negotiate.a
+LIBS=libdgsh_negotiate.a
 
-TOOLS=unix-sgsh-tools
+TOOLS=unix-dgsh-tools
 
 # Manual pages
 MANSRC=$(wildcard *.1)
@@ -43,11 +43,11 @@ EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
 ENGTPNG=$(patsubst %.sh,png/%-pretty-ngt.png,$(EXAMPLES))
 WEBPNG=$(EGPNG) $(ENGTPNG) debug.png profile.png
-WEBDIST=../../../pubs/web/home/sw/sgsh/
+WEBDIST=../../../pubs/web/home/sw/dgsh/
 
-# Files required for sgsh negotiation
-NEGOTIATE_TEST_FILES=sgsh.h sgsh-negotiate.h negotiate.c sgsh-internal-api.h \
-		     sgsh-conc.c
+# Files required for dgsh negotiation
+NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
+		     dgsh-conc.c
 
 png/%-pretty.png: example/%.dot
 	# The sed removes the absolute path from the command label
@@ -70,25 +70,25 @@ tools:
 config-tools:
 	$(MAKE) -C $(TOOLS) configure
 
-sgsh-readval: sgsh-readval.c kvstore.c negotiate.o
+dgsh-readval: dgsh-readval.c kvstore.c negotiate.o
 
-sgsh-writeval: sgsh-writeval.c negotiate.o
+dgsh-writeval: dgsh-writeval.c negotiate.o
 
-sgsh-httpval: sgsh-httpval.c kvstore.c
+dgsh-httpval: dgsh-httpval.c kvstore.c
 
-sgsh-conc: sgsh-conc.o negotiate.o
+dgsh-conc: dgsh-conc.o negotiate.o
 
-sgsh-wrap: sgsh-wrap.o negotiate.o
+dgsh-wrap: dgsh-wrap.o negotiate.o
 
-sgsh-tee: sgsh-tee.o negotiate.o
+dgsh-tee: dgsh-tee.o negotiate.o
 
-test-sgsh: $(EXECUTABLES)
-	./test-sgsh.sh
+test-dgsh: $(EXECUTABLES)
+	./test-dgsh.sh
 
-test-tee: sgsh-tee charcount test-tee.sh
+test-tee: dgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
-test-merge-sum: sgsh-merge-sum.pl test-merge-sum.sh
+test-merge-sum: dgsh-merge-sum.pl test-merge-sum.sh
 	./test-merge-sum.sh
 
 test-negotiate: copy_files build-run-ng-tests test-tools
@@ -122,29 +122,29 @@ test-kvstore: test-kvstore.sh
 	# Remove the debug build versions
 	$(MAKE) clean
 
-sgsh: sgsh.pl
-	perl -c sgsh.pl
-	install sgsh.pl sgsh
+dgsh: dgsh.pl
+	perl -c dgsh.pl
+	install dgsh.pl dgsh
 
-sgsh-ps: sgsh-ps.pl
-	! perl -e 'use JSON' 2>/dev/null || perl -c sgsh-ps.pl
-	install sgsh-ps.pl sgsh-ps
+dgsh-ps: dgsh-ps.pl
+	! perl -e 'use JSON' 2>/dev/null || perl -c dgsh-ps.pl
+	install dgsh-ps.pl dgsh-ps
 
-sgsh-merge-sum: sgsh-merge-sum.pl
-	perl -c sgsh-merge-sum.pl
-	install sgsh-merge-sum.pl sgsh-merge-sum
+dgsh-merge-sum: dgsh-merge-sum.pl
+	perl -c dgsh-merge-sum.pl
+	install dgsh-merge-sum.pl dgsh-merge-sum
 
-libsgsh_negotiate.a: negotiate.c
+libdgsh_negotiate.a: negotiate.c
 	ar rcs $@ negotiate.o
 
 charcount: charcount.sh
 	install charcount.sh charcount
 
-allpng: sgsh
+allpng: dgsh
 	for i in example/*.sh ; do \
-		./sgsh -g pretty $$i | dot -Tpng >png/`basename $$i .sh`-pretty.png ; \
-		./sgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
-		./sgsh -g plain $$i | dot -Tpng >png/`basename $$i .sh`-plain.png ; \
+		./dgsh -g pretty $$i | dot -Tpng >png/`basename $$i .sh`-pretty.png ; \
+		./dgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
+		./dgsh -g plain $$i | dot -Tpng >png/`basename $$i .sh`-plain.png ; \
 	done
 	# Outdate example files that need special processing
 	touch -r example/ft2d.sh png/ft2d-pretty.png
@@ -155,22 +155,22 @@ test-regression:
 	# Sort files by size to get the easiest problems first
 	# Generated dot graphs
 	for i in `ls -rS example/*.sh` ; do \
-		perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.test ; \
+		perl dgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.test ; \
 		diff -b test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
 	done
 	# Generated code
 	for i in `ls -rS example/*.sh` ; do \
-		perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
+		perl dgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
 		diff -b test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
 	done
 	# Error messages
 	for i in test/regression/errors/*.sh ; do \
-		! /usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.test || exit 1; \
+		! /usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.test || exit 1; \
 		diff -b test/regression/errors/`basename $$i .sh`.{ok,test} || exit 1 ; \
 	done
 	# Warning messages
 	for i in test/regression/warnings/*.sh ; do \
-		/usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.test || exit 1; \
+		/usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.test || exit 1; \
 		diff -b test/regression/warnings/`basename $$i .sh`.{ok,test} || exit 1 ; \
 	done
 
@@ -178,39 +178,39 @@ test-regression:
 seed-regression:
 	for i in example/*.sh ; do \
 		echo $$i ; \
-		/usr/bin/perl sgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
-		/usr/bin/perl sgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
+		/usr/bin/perl dgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
+		/usr/bin/perl dgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
 	done
 	for i in test/regression/errors/*.sh ; do \
 		echo $$i ; \
-		! /usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.ok ; \
+		! /usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.ok ; \
 	done
 	for i in test/regression/warnings/*.sh ; do \
 		echo $$i ; \
-		/usr/bin/perl sgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
+		/usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
 	done
 
-clean: clean-sgsh clean-tools
+clean: clean-dgsh clean-tools
 
-clean-sgsh:
+clean-dgsh:
 	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG) $(ENGTPNG)
 
 clean-tools:
 	$(MAKE) -C $(TOOLS) clean
 
-install: install-sgsh install-tools
+install: install-dgsh install-tools
 
-install-sgsh: $(EXECUTABLES) $(LIBS)
+install-dgsh: $(EXECUTABLES) $(LIBS)
 	-mkdir -p $(INSTPREFIX)/bin
 	-mkdir -p $(INSTPREFIX)/lib
 	-mkdir -p $(INSTPREFIX)/share/man/man1
 	install $(EXECUTABLES) $(INSTPREFIX)/bin
-	install sgsh-tee $(INSTPREFIX)/bin/tee
-	install sgsh-tee $(INSTPREFIX)/bin/cat
+	install dgsh-tee $(INSTPREFIX)/bin/tee
+	install dgsh-tee $(INSTPREFIX)/bin/cat
 	install $(LIBS) $(INSTPREFIX)/lib
 	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
 	# For tests
-	install sgsh-readval /usr/local/bin
+	install dgsh-readval /usr/local/bin
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install
@@ -221,11 +221,11 @@ web: $(MANPDF) $(MANHTML) $(WEBPNG)
 	cp $(WEBPNG) $(WEBDIST)
 
 # Debugger examples
-debug-word-properties: sgsh
-	cat /usr/share/dict/words | ./sgsh -d -p . example/word-properties.sh
+debug-word-properties: dgsh
+	cat /usr/share/dict/words | ./dgsh -d -p . example/word-properties.sh
 
-debug-web-log-report: sgsh
-	gzip -dc eval/clarknet_access_log_Aug28.gz | ./sgsh -d -p . example/web-log-report.sh
+debug-web-log-report: dgsh
+	gzip -dc eval/clarknet_access_log_Aug28.gz | ./dgsh -d -p . example/web-log-report.sh
 
 # Diagrams that require special processing
 png/ft2d-pretty.png: example/ft2d.dot

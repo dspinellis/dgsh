@@ -1,4 +1,4 @@
-#!/usr/local/bin/sgsh
+#!/usr/local/bin/dgsh
 #
 # Modified version of the example with the same name, to test performance
 # on larger data sets
@@ -20,7 +20,7 @@ scatter |{
 	sfsmooth rect2=2 |{
 		-| sfgrey pclip=100 wanttitle=n |>/stream/pulse.vpl
 		-| sffft1 | sffft3 axis=2 pad=1 | sfreal |{
-			-| sgsh-tee -I |>/stream/ft2d
+			-| dgsh-tee -I |>/stream/ft2d
 			-| sfwindow f1=1 |
 			    sfreverse which=3 |
 			    sfcat axis=1 /stream/ft2d |
@@ -41,7 +41,7 @@ scatter |{
 	   sfspray n=32 d=1 o=0 |
 	   sfput label2=space |
 	   sflmostretch delay=0 v0=-1 |{
-	   	-| sgsh-tee -I |>/stream/air
+	   	-| dgsh-tee -I |>/stream/air
 		-| sfwindow f2=1 |
 		   sfreverse which=2 |
 		   sfcat axis=2 /stream/air |{
@@ -55,7 +55,7 @@ scatter |{
 	|}
 
 	.| sfmath re=/stream/airftr im=/stream/airfti output="sqrt(re*re+im*im)" |{
-		-| sgsh-tee -I |>/stream/airft1
+		-| dgsh-tee -I |>/stream/airft1
 		-| sfwindow f1=1 |
 		   sfreverse which=3 |
 		   sfcat axis=1 /stream/airft1 |

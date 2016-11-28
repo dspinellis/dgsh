@@ -3,7 +3,7 @@
 		rankdir = LR;
 		node [fontname="Courier"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee ", shape="ellipse"];
 	"NCHARS" [id="store:NCHARS", shape="box"];
 	node_cmd_0_1_0 -> "NCHARS" [id="nps-NCHARS"];
 	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="tr -cs a-zA-Z \\\\n\l", shape="ellipse"];

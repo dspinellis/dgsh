@@ -1,0 +1,91 @@
+.TH DGSH-WRITEVAL 1 "21 March 2013"
+.\"
+.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh-writeval \- write values to a data store
+.SH SYNOPSIS
+\fBdgsh-writeval\fP
+[\fB\-l\fP \fIlength\fP | \fB-t\fP \fIcharacter\fP ]
+[\fB\-b\fP \fIn\fP]
+[\fB\-e\fP \fIn\fP]
+[\fB\-u\fP \fIunit\fP]
+\fB\-s\fP \fIpath\fP
+.SH DESCRIPTION
+\fIdgsh-writeval\fP will read values from its standard input and make them available
+to other processes for reading through the specified Unix domain socket.
+Thus this process acts as a data store:
+it reads a series of values (think of them as assignments),
+and provides a way to read the store's current value (from the socket).
+By default \fIdgsh-writeval\fP will store the last value (line or data block)
+it reads.
+However, the default behavior can be modified through options
+so that it stores a specified window of the stream it processes.
+.PP
+\fIdgsh-writeval\fP is normally executed from within \fIdgsh\fP-generated scripts,
+rather than through end-user commands.
+This manual page serves mainly to document its operation and
+the flags that can be used in \fIdgsh\fP scripts when writing into stores.
+
+.SH OPTIONS
+.IP "\fB\-b\fP \fIn\fP"
+Store records beginning in a window \fIn\fP units away from
+the input's end.
+By default this value is 1.
+
+.IP "\fB\-e\fP \fIn\fP"
+Store records ending in a window \fIn\fP units away from
+the input's end.
+By default this value is 0.
+
+.IP "\fB\-l\fP \fIlen\fP"
+Process fixed-width \fIlen\fP-sized records.
+By default \fIdgsh-writeval\fP will process newline-terminated
+records.
+
+.IP "\fB\-s\fP \fIpath\fP"
+This mandatory option must be used to specify the path of the Unix-domain socket
+\fIdgsh-writeval\fP will create.
+This is specified as a normal Unix file path,
+e.g. \fC/tmp/myvalue\fP.
+
+.IP "\fB\-t\fP \fIchar\fP"
+Specify the record termination character to be \fIchar\fP.
+This is the newline by default.
+
+.IP "\fB\-u\fP \fIunit\fP"
+Specify the unit of the window boundaries given in the
+\fC-b\fP and \fC-e\fP options.
+The following units can be specified, using single-character
+identifiers.
+.RS
+.IP "\fBs\fP
+seconds
+.IP "\fBm\fP
+minutes
+.IP "\fBh\fP
+hours
+.IP "\fBd\fP
+days
+.IP "\fBr\fP
+records (this is the default value)
+.RE
+
+.SH "SEE ALSO"
+\fIdgsh\fP(1),
+\fIdgsh-readval\fP(1)
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>

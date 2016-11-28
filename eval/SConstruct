@@ -1,4 +1,4 @@
-# ft2d example souped up to compare with sgsh
+# ft2d example souped up to compare with dgsh
 
 from rsf.proj import *
 

@@ -3,7 +3,7 @@
 		rankdir = LR;
 		node [fontname="Courier"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee  -s", shape="ellipse"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee  -s", shape="ellipse"];
 	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="logresolve\l", shape="ellipse"];
 	node_cmd_0_0_1 [id="node_cmd_0_0_1", label="logresolve\l", shape="ellipse"];
 	node_cmd_0_0_2 [id="node_cmd_0_0_2", label="logresolve\l", shape="ellipse"];

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/ft2d.sh
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Waves: 2D Fourier transforms
 # DESCRIPTION
@@ -36,7 +36,7 @@ side_by_side_iso()
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
 		
@@ -79,13 +79,13 @@ mkfifo 	$SGDIR/npfo-ft2d.0 \
         sfsmooth rect2=2 |
 	sfsmooth rect2=2
 }</dev/null  |
-sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
  {  sfgrey pclip=100 wanttitle=n
 } <$SGDIR/npi-1.0.0 >$SGDIR/npfo-pulse.vpl.0 & SGPID="$! $SGPID"
  {  sffft1 | sffft3 axis=2 pad=1 | sfreal
 } <$SGDIR/npi-1.1.0 |
-sgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
- {  sgsh-tee -I
+dgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
+ {  dgsh-tee -I
 } <$SGDIR/npi-2.0.0 >$SGDIR/npfo-ft2d.0 & SGPID="$! $SGPID"
  {  sfwindow f1=1 |
 			    sfreverse which=3 |
@@ -98,7 +98,7 @@ sgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
 : ; }</dev/null  >$SGDIR/npfo-none-0.1.0  & SGPID="$! $SGPID"
 
 # Gather the results
-sgsh-tee  -i $SGDIR/npfo-none-0.1.0 >/dev/null
+dgsh-tee  -i $SGDIR/npfo-none-0.1.0 >/dev/null
 
 )  3<&0 
 
@@ -113,7 +113,7 @@ sgsh-tee  -i $SGDIR/npfo-none-0.1.0 >/dev/null
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
 		
@@ -164,28 +164,28 @@ mkfifo 	$SGDIR/npfo-air.0 \
 	   sfput label2=space |
 	   sflmostretch delay=0 v0=-1
 }</dev/null  |
-sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
- {  sgsh-tee -I
+dgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
+ {  dgsh-tee -I
 } <$SGDIR/npi-1.0.0 >$SGDIR/npfo-air.0 & SGPID="$! $SGPID"
  {  sfwindow f2=1 |
 		   sfreverse which=2 |
 		   sfcat axis=2 $SGDIR/npfo-air.0
 } <$SGDIR/npi-1.1.0 |
-sgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
  {  sfgrey pclip=100 wanttitle=n
 } <$SGDIR/npi-2.0.0 >$SGDIR/npfo-airtx.vpl.0 & SGPID="$! $SGPID"
  {  sffft1 |
 			   sffft3 sign=1
 } <$SGDIR/npi-2.1.0 |
-sgsh-tee  -o $SGDIR/npi-3.0.0 -o $SGDIR/npi-3.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-3.0.0 -o $SGDIR/npi-3.1.0  & SGPID="$! $SGPID"
  {  sfreal
 } <$SGDIR/npi-3.0.0 >$SGDIR/npfo-airftr.0 & SGPID="$! $SGPID"
  {  sfimag
 } <$SGDIR/npi-3.1.0 >$SGDIR/npfo-airfti.0 & SGPID="$! $SGPID"
  {  sfmath re=$SGDIR/npfo-airftr.0 im=$SGDIR/npfo-airfti.0 output="sqrt(re*re+im*im)"
 }</dev/null  |
-sgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
- {  sgsh-tee -I
+dgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
+ {  dgsh-tee -I
 } <$SGDIR/npi-4.0.0 >$SGDIR/npfo-airft1.0 & SGPID="$! $SGPID"
  {  sfwindow f1=1 |
 		   sfreverse which=3 |
@@ -198,6 +198,6 @@ sgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
 : ; }</dev/null  >$SGDIR/npfo-none-0.2.0  & SGPID="$! $SGPID"
 
 # Gather the results
-sgsh-tee  -i $SGDIR/npfo-none-0.2.0 >/dev/null
+dgsh-tee  -i $SGDIR/npfo-none-0.2.0 >/dev/null
 
 )  3<&0 

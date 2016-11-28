@@ -1,0 +1,134 @@
+.TH DGSH-HTTPVAL 1 "14 July 2013"
+.\"
+.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh-httpval \- data store HTTP server
+.SH SYNOPSIS
+\fBdgsh-httpval\fP
+[\fB\-a\fP]
+[\fB\-b\fP \fIquery:command\fP]
+[\fB\-m\fP \fIMIME-type\fP]
+[\fB\-n\fP]
+[\fB\-p\fP \fIport\fP]
+.SH DESCRIPTION
+\fIdgsh-httpval\fP allows other programs to access \fIdgsh\fP
+data stores through the HTTP protocol.
+This simplifies the interfacing between web-based front-ends and
+\fIdgsh\fP programs.
+When \fIdgsh-httpval\fP receives a REST request with the name of a data store
+whose endpoint is located in the directory where \fIdgsh-httpval\fP
+was launched (e.g. \fChttp://localhost:8081/mystore\fP),
+it will establish a connection with the store specified in the request,
+send a command to read the store's value,
+obtain the value,
+and respond with it as the document sent with the HTTP response.
+.PP
+Requests for files located in the directory where \fIdgsh-httpval\fP
+was launched will also be satisfied.
+The correct MIME type will be sent for files with a suffix of
+\fChtml\fP,
+\fCjs\fP,
+\fCjson\fP,
+\fCpng\fP, and
+\fCcss\fP.
+.PP
+A request for the resource \fC.server?quit\fP, will cause the server
+to terminate processing and exit.
+.PP
+\fIdgsh-httpval\fP is normally executed from within \fIdgsh\fP-generated
+scripts, rather than through end-user commands.
+This manual page serves mainly to document its operation and
+the flags that can be passed to \fIdgsh\fP for modifying its behavior.
+
+.SH OPTIONS
+.IP "\fB\-a\fP
+Allow any Internet host to obtain a value from the server.
+By default the server will only respond to requests arriving from the local
+host's loop-back IP address (127.0.0.1).
+
+.IP "\fB\-b\fP \fIquery:command\fP"
+The colon-separated pair specifies a dynamic query
+than can be sent to the server,
+so that it will execute the specified command and return its output.
+The query and the command can contain up to ten matching
+\fIscanf(3)\fP and \fIprintf(3)\fP specifications for C integer-sized
+arguments, which can be used to pass data from the query to the command.
+An unlimited number of dynamic queries can be specified through multiple
+.B -b
+options.
+The type of the data returned is specified using the
+.B -m
+option.
+
+.IP "\fB\-m\fP \fIMIME-type\fP"
+Specify the MIME-type that the server will provide on the \fCContent-type\fP
+HTTP header for data coming from data stores and dynamic queries.
+By default this value is \fCtext/plain\fP.
+Other reasonable types are
+\fCapplication/json\fP,
+\fCtext/CSV\fP,
+\fCtext/xml\fP, or
+\fCapplication/octet-stream\fP.
+
+.IP "\fB\-n\fP
+Read values from stores using a non-blocking read command.
+This means that the server will return an empty record,
+if no complete record is available.
+
+.IP "\fB\-p\fP \fIport\fP"
+Specify the TCP port on which the server will listen for incoming HTTP
+requests.
+If no port is specified, then the server will listen on an arbitrary,
+system-assigned, port,
+and will print that port's number on its standard output.
+That value can be conveniently piped into \fIdgsh-writeval\fP
+to be made available to other processes.
+
+.SH EXAMPLES
+.PP
+Specify that a query, such as
+\fChttp://localhost:63001/server-bin/pstatus?id=4892\fP,
+will run the \fIps(1)\fP command for the specified process-id.
+.ft C
+.nf
+dgsh-httpval -b 'server-bin/pstatus?id=%d:ps -p %d'
+.ft P
+.fi
+
+.SH "SEE ALSO"
+\fIdgsh\fP(1),
+\fIdgsh-writeval\fP(1),
+\fIdgsh-readval\fP(1)
+
+.SH BUGS
+The server is single-threaded and will block if a value is not available
+on a specified store.
+.PP
+The server only supports IPv4 and the HTTP 1.0 protocols.
+Some clients may require special configuration to connect to it.
+For instance, \fIcurl\fP(1) requires the specification of the \fC--ipv4\fP
+and \fC--http1.0\fP flags.
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>.
+Jef Poskanzer \(em <jef@mail.acme.com> \(em wrote micro_httpd on which
+this server is based.
+
+.SH BUGS
+The possibilities for mallicious attacks through code injection and buffer
+overflows offered by the dynamic query option are too numerous to list.
+Use this feature only in setups where you restrict and control what is being
+sent to the server.

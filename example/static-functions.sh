@@ -4,7 +4,7 @@
 # Given as an argument a directory containing object files, show which
 # symbols are declared with global visibility, but should have been
 # declared with file-local (static) visibility instead.
-# Demonstrates the use of sgsh-capable comm (1) to combine data from
+# Demonstrates the use of dgsh-capable comm (1) to combine data from
 # two sources.
 #
 #  Copyright 2014 Diomidis Spinellis
@@ -22,7 +22,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Find object files
 find "$1" -name \*.o |

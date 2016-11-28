@@ -1,0 +1,47 @@
+.TH DGSH-MONITOR 1 "9 July 2013"
+.\"
+.\" (C) Copyright 2013 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh-monitor \- monitor data on a pipe
+.SH SYNOPSIS
+\fBdgsh-monitor\fP
+.SH DESCRIPTION
+\fIdgsh-monitor\fP is a filter that reads lines from its standard input
+and for each line writes a JSON record containing
+the absolute timestamp (\fCatime\fP),
+the relative timestamp (\fCrtime\fP),
+the number of lines read (\fCnlines\fP),
+the number of bytes read (\fCnbytes\fP),
+and the actual data (\fCdata\fP).
+The values printed are those that were in effect before the line's
+first character was read (i.e. the number of bytes and lines starts at 0).
+The timestamps are printed as a decimal number of seconds
+(since epoch, January 1 1970, for the absolute one)
+with microsecond precision.
+.PP
+The command is used internally by \fIdgsh\fP for providing monitoring ports.
+
+.SH "SEE ALSO"
+\fIdgsh\fP(1),
+\fIdgsh-writeval\fP(1)
+
+.SH BUGS
+When providing data regarding a single record,
+such as that written to a store,
+it can be confusing to see all the numerical values as zero.
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>

@@ -6,7 +6,7 @@ from os import pipe, fork, close, execlp, dup, dup2, \
 from collections import OrderedDict
 import re
 
-instprefix = '/usr/local/sgsh/bin'
+instprefix = '/usr/local/dgsh/bin'
 
 def debug(s):
   if DEBUG:
@@ -106,11 +106,11 @@ except IndexError:
 
 # Read specification of processes and their interconnections
 try:
-  sgshGraph = sys.argv[1]
+  dgshGraph = sys.argv[1]
 except IndexError:
   print "Input error: please specify an input file with tool and pipe specifications."
   exit(1)
-with open(sgshGraph, 'r') as f:
+with open(dgshGraph, 'r') as f:
   lines = f.readlines()
 
 toolDefsEnd = 0
@@ -182,9 +182,9 @@ for index, process in Process.processes.iteritems():
   if pid:
     debug("%s: inputConnectors: %d\n" % (process.command, len(process.inputConnectors)))
     if process.inputConnectors:
-        environ["SGSH_IN"] = "1"
+        environ["DGSH_IN"] = "1"
     else:
-        environ["SGSH_IN"] = "0"
+        environ["DGSH_IN"] = "0"
     for ic in process.inputConnectors:
       fd = process.selectInputFileDescriptor()
       try:
@@ -198,9 +198,9 @@ for index, process in Process.processes.iteritems():
       ic[0].close()
     debug("%s: outputConnectors: %d\n" % (process.command, len(process.outputConnectors)))
     if process.outputConnectors:
-        environ["SGSH_OUT"] = "1"
+        environ["DGSH_OUT"] = "1"
     else:
-        environ["SGSH_OUT"] = "0"
+        environ["DGSH_OUT"] = "0"
     for oc in process.outputConnectors:
       fd = process.selectOutputFileDescriptor()
       debug("%s: fd selected: %d, fd brought: %d\n" % (process.command, process.fileDescriptorsInUse[-1], oc[0].fileno()))

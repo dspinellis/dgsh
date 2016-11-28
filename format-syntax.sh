@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Extract the sgsh syntax from the manual page and format it into HTML
+# Extract the dgsh syntax from the manual page and format it into HTML
 #
 
 sed -n '/^program : /,/^\.fi/ {
@@ -9,4 +9,4 @@ sed -n '/^program : /,/^\.fi/ {
 	s/>/\&gt;/g
 	/^\.fi/d
 	p
-}' sgsh.1
+}' dgsh.1

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Tests for sgsh-merge-sum
+# Tests for dgsh-merge-sum
 #
 
 # Shortcut
@@ -9,7 +9,7 @@ testcase()
 	local name="$1"
 	local expect="$2"
 	shift 2
-	if ! diff <(perl sgsh-merge-sum.pl "$@") $expect
+	if ! diff <(perl dgsh-merge-sum.pl "$@") $expect
 	then
 		echo 1>&2 "Test $name failed"
 		exit 1

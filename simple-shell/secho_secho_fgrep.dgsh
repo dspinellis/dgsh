@@ -1,0 +1,12 @@
+1 dgsh-conc -o -n 2
+2 secho match
+3 secho not
+4 dgsh-conc -i 2
+5 grep -F -h match
+
+%
+socketpipe 1 2
+socketpipe 1 3
+socketpipe 2 4
+socketpipe 3 4
+socketpipe 4 5

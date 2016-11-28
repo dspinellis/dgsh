@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/committer-plot.sh
-#!/usr/bin/env sgsh -s /bin/bash
+#!/usr/bin/env dgsh -s /bin/bash
 #
 # SYNOPSIS Plot git committer activity over time
 # DESCRIPTION
@@ -40,13 +40,13 @@ sort -n |
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
-		sgsh-readval -q -s "$SGDIR/NCOMMITTERS" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/LAST" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/FIRST" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/NDAYS" 2>/dev/null
+		dgsh-readval -q -s "$SGDIR/NCOMMITTERS" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/LAST" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/FIRST" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/NDAYS" 2>/dev/null
 
 		# Kill processes we have launched in the background
 		kill $SGPID 2>/dev/null
@@ -84,20 +84,20 @@ mkfifo 	$SGDIR/npfo-committerpos.0 \
 	$SGDIR/npi-1.0.0 \
 	$SGDIR/npi-1.1.0
 
-sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.4.0 -o $SGDIR/npi-0.5.0 <&3 3<&-   & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.4.0 -o $SGDIR/npi-0.5.0 <&3 3<&-   & SGPID="$! $SGPID"
  {  awk '{print $2}' | sort -u | wc -l
-} <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/NCOMMITTERS  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.0.0 | dgsh-writeval  -s $SGDIR/NCOMMITTERS  & SGPID="$! $SGPID"
  {  tail -1 | awk '{print $1}'
-} <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/LAST  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.1.0 | dgsh-writeval  -s $SGDIR/LAST  & SGPID="$! $SGPID"
  {  head -1 | awk '{print $1}'
-} <$SGDIR/npi-0.2.0 | sgsh-writeval  -s $SGDIR/FIRST  & SGPID="$! $SGPID"
- {  expr \( `sgsh-readval -s $SGDIR/LAST` - `sgsh-readval -s $SGDIR/FIRST` \) / 60 / 60  / 24
-}</dev/null  | sgsh-writeval  -s $SGDIR/NDAYS  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.2.0 | dgsh-writeval  -s $SGDIR/FIRST  & SGPID="$! $SGPID"
+ {  expr \( `dgsh-readval -s $SGDIR/LAST` - `dgsh-readval -s $SGDIR/FIRST` \) / 60 / 60  / 24
+}</dev/null  | dgsh-writeval  -s $SGDIR/NDAYS  & SGPID="$! $SGPID"
  {  awk '{print $2}' |
 	   sort |
 	   uniq -c |
 	   sort -n |
-	   awk 'BEGIN {l = 0; r = '`sgsh-readval -s $SGDIR/NCOMMITTERS`';}
+	   awk 'BEGIN {l = 0; r = '`dgsh-readval -s $SGDIR/NCOMMITTERS`';}
 		      {print NR % 2 ? l++ : --r, $2}' |
 	   sort -k2
 } <$SGDIR/npi-0.4.0 >$SGDIR/npfo-committerpos.0 & SGPID="$! $SGPID"
@@ -108,9 +108,9 @@ sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/
 	{
 	# Create portable bitmap
 	echo 'P1'
-	echo "`sgsh-readval -s $SGDIR/NCOMMITTERS` `sgsh-readval -s $SGDIR/NDAYS`"
+	echo "`dgsh-readval -s $SGDIR/NCOMMITTERS` `dgsh-readval -s $SGDIR/NDAYS`"
 	perl -na -e '
-	BEGIN { @empty['`sgsh-readval -s $SGDIR/NCOMMITTERS`' - 1] = 0; @committers = @empty; }
+	BEGIN { @empty['`dgsh-readval -s $SGDIR/NCOMMITTERS`' - 1] = 0; @committers = @empty; }
 	sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
 
 	$day = int($F[1] / 60 / 60 / 24);
@@ -142,7 +142,7 @@ P1
 EOF
 	)
 } <$SGDIR/npi-0.5.0 |
-sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
  {  pnmtopng >large.png
 : ; } <$SGDIR/npi-1.0.0 >$SGDIR/npfo-none-1.0.0  & SGPID="$! $SGPID"
  {  pamscale -width 640 |
@@ -150,6 +150,6 @@ sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0  & SGPID="$! $SGPID"
 : ; } <$SGDIR/npi-1.1.0 >$SGDIR/npfo-none-1.1.0  & SGPID="$! $SGPID"
 
 # Gather the results
-sgsh-tee  -i $SGDIR/npfo-none-1.0.0  -i $SGDIR/npfo-none-1.1.0 >/dev/null
+dgsh-tee  -i $SGDIR/npfo-none-1.0.0  -i $SGDIR/npfo-none-1.1.0 >/dev/null
 
 )  3<&0 

@@ -6,7 +6,7 @@
 # at the center vertical of the diagram.
 # Demonstrates image processing, mixining of synchronous and
 # asynchronous processing in a scatter block, and the use of an
-# sgsh-compliant join command.
+# dgsh-compliant join command.
 #
 #  Copyright 2013 Diomidis Spinellis
 #
@@ -23,7 +23,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |
@@ -39,10 +39,10 @@ tee |
 		wc -l |
 		tee |
 		{{
-			sgsh-writeval -s committers1 &
+			dgsh-writeval -s committers1 &
 
-			sgsh-writeval -s committers2 &
-			sgsh-writeval -s committers3 &
+			dgsh-writeval -s committers2 &
+			dgsh-writeval -s committers3 &
 		}} &
 
 		# Calculate last commit timestamp in seconds
@@ -60,7 +60,7 @@ tee |
 	# Compute the difference in days
 	awk '{print int(($1 - $2) / 60 / 60 / 24)}' |
 	# Store number of days
-	sgsh-writeval -s days &
+	dgsh-writeval -s days &
 
 	sort -k2 &	# <timestamp, email>
 
@@ -72,7 +72,7 @@ tee |
 	sort -n |
 	awk '
 		BEGIN {
-			"sgsh-readval -l -x -q -s committers1" | getline NCOMMITTERS
+			"dgsh-readval -l -x -q -s committers1" | getline NCOMMITTERS
 			l = 0; r = NCOMMITTERS;}
 		{print NR % 2 ? l++ : --r, $2}' |
 	sort -k2 &	# <left/right, email>
@@ -89,15 +89,15 @@ tee |
 	echo 'P1' &
 
 	{{
-		sgsh-readval -l -q -s committers2 &
-		sgsh-readval -l -q -s days &
+		dgsh-readval -l -q -s committers2 &
+		dgsh-readval -l -q -s days &
 	}} |
 	cat |
 	tr '\n' ' ' |
 	awk '{print $1, $2}' &
 
 	perl -na -e '
-	BEGIN { open(my $ncf, "-|", "sgsh-readval -l -x -q -s committers3");
+	BEGIN { open(my $ncf, "-|", "dgsh-readval -l -x -q -s committers3");
 		$ncommitters = <$ncf>;
 		@empty[$ncommitters - 1] = 0; @committers = @empty; }
 		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
@@ -140,5 +140,5 @@ tee |
 	pnmtopng >small.png &
 }}
 
-# Close sgsh-writeval
-#sgsh-readval -l -x -q -s committers
+# Close dgsh-writeval
+#dgsh-readval -l -x -q -s committers

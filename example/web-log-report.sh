@@ -21,7 +21,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Output the top X elements of the input by the number of their occurrences
 # X is the first argument
@@ -64,7 +64,7 @@ tee |
 		echo -n 'Number of Gbytes transferred: ' &
 		cat &
 
-		sgsh-writeval -s nXBytes &
+		dgsh-writeval -s nXBytes &
 	}} &
 
 	# Number of log file bytes
@@ -83,7 +83,7 @@ tee |
 			echo -n 'Number of accesses: ' &
 			cat &
 
-			sgsh-writeval -s nAccess &
+			dgsh-writeval -s nAccess &
 		}} &
 
 		# Sorted hosts
@@ -196,13 +196,13 @@ tee |
 				echo -n 'Accesses per day: ' &
 				awk '
 					BEGIN {
-					"sgsh-readval -l -x -q -s nAccess" | getline NACCESS;}
+					"dgsh-readval -l -x -q -s nAccess" | getline NACCESS;}
 					{print NACCESS / $1}' &
 
 				echo -n 'MBytes per day: ' &
 				awk '
 					BEGIN {
-					"sgsh-readval -l -x -q -s nXBytes" | getline NXBYTES;}
+					"dgsh-readval -l -x -q -s nXBytes" | getline NXBYTES;}
 					{print NXBYTES / $1 / 1024 / 1024}' &
 			}} &
 

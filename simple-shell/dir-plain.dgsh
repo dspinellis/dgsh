@@ -1,0 +1,11 @@
+1 dgsh-wrap ls -n
+2 dgsh-tee
+3 dgsh-conc -o 2
+4 dgsh-wrap awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}'
+5 dgsh-wrap awk '{s += $5} END {printf("%d bytes", s)}'
+
+%
+socketpipe 1 2
+socketpipe 2 3
+socketpipe 3 4
+socketpipe 3 5

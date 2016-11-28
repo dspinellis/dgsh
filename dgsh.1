@@ -1,0 +1,421 @@
+.TH DGSH 1 "12 August 2014"
+.\"
+.\" (C) Copyright 2013-2014 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh \- directed graph shell
+.SH SYNOPSIS
+\fBdgsh\fP
+[\fB\-g\fP \fIstyle\fP]
+[\fB\-dkmnS\fP]
+[\fB\-o\fP \fIfile name\fP]
+[\fB\-p\fP \fIdirectory\fP]
+[\fB\-s\fP \fIshell\fP]
+[\fB\-t\fP \fItee command\fP]
+[\fIfile\fP]
+.SH DESCRIPTION
+\fIdgsh\fP will read as input a shell script extended with a scatter-gather operation syntax.
+It will produce as output and execute an \fIsh\fP(1)-compatible shell script implementing the
+specified operations through named pipes, sockets, and helper programs.
+
+.SH OPTIONS
+.IP "\fB\-d\fP"
+Generate and launch a web-based debug and monitoring interface.
+This amounts to
+generating a graph of the running processes,
+instrumenting the code with monitoring probes,
+running a tiny web server to respond to AJAX requests,
+and opening a JavaScript-based web page depicting the processing graph.
+Hovering the mouse over a graph's processing node opens a popup window that
+displays details about the top two processes running on that node
+that impose the highest CPU load on the system.
+The details listed vary according to the underlying operating system.
+They include
+elapsed, user, and system time,
+resident set size, virtual set size,
+processor number,
+memory and CPU percentage claimed by the process, and
+major and minor page faults.
+Hovering the mouse over a graph's edge,
+opens up another window displaying
+the number of bytes and lines that have gone through the edge,
+the edge's throughput in terms of bytes and lines per second,
+the time the edge has been idle,
+and (part) of the last record that have gone through the edge.
+
+.IP "\fB\-g\fP \fIstyle\fP"
+Instead of creating and executing a shell script,
+generate a GraphBiz \fIdot\fP(1) file of the diagram specified by the
+input.
+The style can be one of the following.
+.RS
+.IP "plain"
+This option gives full details of the program in a spartan black and white graph
+drawn in Courier font.
+.IP "pretty"
+This option reduces details shown in the graph
+(command-line arguments), adds colors, and uses the Arial font.
+.IP "pretty-full"
+This option adds to the graph colors, and uses the Arial font.
+.RE
+.IP "\fB\-k\fP"
+Cause \fIdgsh\fP to keep the generated file in the temporary
+directory, instead of deleting it at the end of its execution.
+
+.IP "\fB\-m\fP"
+Cause \fIdgsh\fP to instrument the generated code with a monitor
+at each edge of the generated process graph.
+
+.IP "\fB\-n\fP"
+Disable running the generated script.
+Instead, \fIdgsh\fP will only check the script for errors, and
+display the command it would run.
+
+.IP "\fB\-o\fP \fIfile name\fP"
+Write the generated script to the specified \fIfile name\fP.
+If the file name is `\fB-\fP', then the script will appear on the
+\fIdgsh\fP standard output.
+
+.IP "\fB\-p\fP \fIdirectory path\fP"
+Use the specified directory path for executing the required helper
+programs \fIdgsh-tee\fP(1), \fIdgsh-readval\fP(1), and \fIdgsh-writeval\fP(1).
+By specifying `\fB.\fP' as the path, one can execute \fIdgsh\fP programs from
+its source code directory,
+without installing the shell.
+
+.IP "\fB\-s\fP \fIshell path\fP"
+Use the specified path to a shell program for executing the generated
+shell script.
+By default \fIdgsh\fP will execute \fIsh\fP(1) using the path
+\fC/bin/sh\fP.
+
+.IP "\fB\-S\fP"
+Run all scatter-gather commands sequentially rather than
+asynchronously, having them communicate
+through temporary files and shell variables, rather than through
+named pipes and stores.
+This flag can be used for debugging and for measuring the
+speedup of asynchronous execution.
+The flag is not compatible with \fB-d\fP or \fB-m\fP.
+
+.IP "\fB\-t\fP \fItee command\fP"
+Specify the path for the program to use to distribute the output of
+scatter operations to multiple programs.
+By default \fIdgsh\fP will use the helper program \fIdgsh-tee\fP(1)
+using the system-supplied path,
+unless a path is specified using the \fC-p\fP option.
+
+
+.SH INTER-PROCESS COMMUNICATION
+\fIDgsh\fP provides three inter-process communication mechanisms.
+.PP
+\fBScatter blocks\fP send the output of one pipeline ending
+with \fC|{\fP into multiple pipelines beginning with \fC-|\fP.
+The scatter block is terminated by \fC|}\fP.
+Scatter interconnections are internally implemented through
+automatically-named pipes, and a helper program,
+\fIdgsh-tee\fP(1),
+that distributes the data to multiple processes.
+The scatter behavior can be modified by adding
+\fIdgsh-tee\fP(1) flags after the \fC|{\fP symbol.
+.PP
+\fBStores\fP, named as \fCstore:\fP\fIname\fP, allow the storage of a data stream's
+last record (or of a specified window of records) into a named buffer.
+This record can be later retrieved asynchronously by one or more readers.
+Data can be piped into a store or out of a store, or it can be read
+using the shell's command output substitution syntax.
+Stores are implemented internally through Unix-domain sockets,
+a writer program, \fIdgsh-write\fP(1), and a reader program, \fIdgsh-read\fP(1).
+The behavior of store I/O can be modified by adding
+\fIdgsh-writeval\fP(1) and \fIdgsh-readval\fP(1) flags after the store's name.
+In particular, this feature can be used to operate on windows of stream data,
+rather than a single value written to a store.
+.PP
+\fBStreams\fP are named as \fC/stream/\fP\fIname\fP.
+In addition, unnamed streams can be specified with a single dash  when
+writing to a data sink (\fC|-\fP), and with \fC<-\fP when reading from
+it.
+Unnamed streams read match the sequence of unnamed streams written.
+(The first stream written will be the first stream read.)
+Streams connect the output of one process with the input of another.
+In contrast to scatter blocks,
+which restrict the data flow through a tree of processes,
+streams allow the specification of a directed acyclic process graph.
+Streams require exactly one reader and one writer in order to operate.
+Consequently, they should not be used in sequential synchronous steps
+specified in the gather block, because steps waiting to be executed
+will completely block all upstream processing in the scatter block.
+Streams are internally implemented through named pipes.
+
+.SH SYNTAX
+.PP
+.ft C
+.ps -1
+.nf
+program : 'scatter |{' conduit ... '}| gather |{' pipeline '|}'
+        | 'scatter |{' conduit ... '}|'
+        ;
+
+conduit : source pipeline sink
+        ;
+
+source  : '-|'                // Receive scatter input
+        | '.|'                // Receive no input
+        ;
+
+sink    : '|>/stream/' stream-name              // Sink to a named stream
+        | '|-'                                  // Sink to an unnamed stream
+        | '|store:' store-name [ store-flags ]  // Sink to specified store
+        | '|{' [ tee-flags ] conduit ... '|}'   // Scatter to multiple conduits
+        | '|.'                                  // No output
+        ;
+
+// Extend the type of file input arguments commands can receive
+input   : file-path                  // Traditional, file-based input
+	| '/stream/' stream-name     // Named stream
+	| '<-'                       // Unnamed stream
+	;
+
+command	: existing-command
+	| 'store:' store-name [ store-flags ]   // Outputs a store's value
+	;
+.fi
+.ps +1
+.ft P
+.br
+
+.SH DEADLOCKS
+When multiple processes that share resources are executed deadlocks
+can occur.
+The syntax and semantics of \fIdgsh\fP promote the generation of an
+directed acyclic dependency graph, which is deadlock-free.
+In addition, \fIdgsh\fP will detect the possibility of a deadlock and issue an
+error or a warning.
+
+Using a stream as part of a process that generates it
+introduces a circular dependency, which can deadlock.
+\fIdgsh\fP will detect and report such cycles in the dependency graph.
+
+A more subtle dependency occurs when a pass-through stream
+(a stream generated without any processing through a scatter operation)
+is used as an argument in a command.
+The scatter operations get blocked until all their outputs are opened
+for reading.
+This is normally not a problem, because their outputs are opened
+by subsequent commands in the \fIscatter\fP section, which are
+executed asynchronously.
+If however the stream is used in a context where another stream must be
+previously be completely processed, before it is opened, then a deadlock
+can occur.
+\fIdgsh\fP will detect and report through a warning two such cases.
+First, the use of a pass-through stream after another stream in
+a command that processes its arguments sequentially.
+Most Unix commands, apart from
+\fIpaste\fP(1),
+\fIcomm\fP(1),
+\fIjoin\fP(1), and
+\fIsort\fP(1) with a \fB-m\fP argument fall in this category.
+Second, the use of pass-through stream after another stream
+in two separate commands occurring within the \fIgather\fP block,
+where commands are executed in a synchronous order.
+In both cases the warning can be cleared by replacing the pass-through
+construct with an invocation of the \fIcat\fP(1) command.
+
+.SH EXAMPLES
+.PP
+Report file type, length, and compression performance for a
+URL retrieved from the web.  The web file never touches the
+disk.
+.ft C
+.ps -1
+.nf
+#!/usr/bin/env dgsh
+
+curl -s "$1" |
+scatter |{
+	-| wc -c |store:NBYTES
+	-| file - |store:FILETYPE
+	-| compress -c | wc -c |store:COMPRESS
+	-| bzip2 -c | wc -c |store:BZIP2
+	-| gzip -c | wc -c |store:GZIP
+|} gather |{
+	cat <<EOF
+File URL:      $1
+File type:     `store:FILETYPE`
+Original size: `store:NBYTES` bytes
+compress:      `store:COMPRESS` bytes
+gzip:          `store:GZIP` bytes
+bzip2:         `store:BZIP2` bytes
+EOF
+|}
+.fi
+.ps +1
+.ft P
+.PP
+List the names of duplicate files in the specified directory
+.ft C
+.ps -1
+.nf
+#!/usr/bin/env dgsh
+
+# Create list of files
+find "$@" -type f |
+
+# Produce lines of the form
+# MD5(filename)= 811bfd4b5974f39e986ddc037e1899e7
+xargs openssl md5 |
+
+# Convert each line into a "filename md5sum" pair
+sed 's/^MD5(//;s/)= / /' |
+
+# Sort by MD5 sum
+sort -k2 |
+
+scatter |{
+
+	 # Print an MD5 sum for each file that appears more than once
+	 -| awk '{print $2}' | uniq -d |-
+
+	 # Pass through the filename md5sum pairs
+	 -||-
+
+|} gather |{
+	# Join the repeated MD5 sums with the corresponding file names
+	join -2 2 <- <- |
+	# Output same files on a single line
+	awk '
+	BEGIN {ORS=""}
+	$1 != prev && prev {print "\n"}
+	END {if (prev) print "\n"}
+	{if (prev) print " "; prev = $1; print $2}'
+|}
+.fi
+.ps +1
+.ft P
+
+.SH FILES
+When run,
+.I dgsh
+creates a temporary directory in
+.BR /tmp
+with entries following these naming conventions.
+.TP
+.B \fIname\fP
+The communications endpoint for a named store,
+implemented as a Unix domain socket.
+This socket is written by \fIdgsh-writeval\fP(1) and read by
+\fIdgsh-readval\fP(1) or \fIdgsh-httpval\fP(1).
+.TP
+.B npfo-\fIname\fP.#
+A named pipe used to implement a stream with the corresponding name.
+The number within the entry's name (#) corresponds to the ordinal number
+of the stream, when multiple instances of a command are invoked in parallel
+through the scatter
+.B -p
+option.
+.TP
+.B npi-#.#.#
+A named pipe used as input to a process.
+The pipe is fed by \fIdgsh-tee\fP(1).
+The three numbers within the entry's name (#) correspond
+to the ordinal numbers of:
+the scatter-gather block,
+the command within the block, and
+the command's instance, when multiple instances of a command
+are invoked in parallel.
+The numbers are used in the same way in all similarly constructed names.
+.TP
+.B npfo-none-#.#.#
+A named pipe used to wait on a process that has no output
+(is terminated with \fC|.\fP).
+The (background) process's (non-existent) output is redirected to that named pipe.
+At the end of the generated code an \fIdgsh-tee\fP(1) command executing
+synchronously (in the foreground) is automatically added to read from those named pipes.
+When each background process terminates, the write-end of the corresponding named pipe is closed,
+\fIdgsh-tee\fP(1) receives an EOF at the read-end,
+and stops reading from it.
+When all background processes using such named pipes terminate, \fIdgsh-tee\fP(1)
+will also terminate and the pipes and stores created for the block are
+dismantled.
+Without this waiting, the block would terminate too early,
+with pipes and stores that were still required by asynchronously
+executing processes prematurely removed.
+.PP
+In addition, when a script is being debugged with the
+.B -d
+option, the following entries are also created.
+.TP
+.B .SH_HTTP_PORT
+The TCP port used by the HTTP server presenting the debugging interface.
+.TP
+.B npi-#.#.#.monitor
+A named pipe used to monitor the output sent to the corresponding
+normal pipe.
+The values to this pipe are written by \fIdgsh-monitor\fP(1).
+.TP
+.B npi-#.#.#.use
+A named pipe used for the actual data passing through a monitored pipe.
+.TP
+.B nps-\fIname\fP.monitor
+A named pipe used to monitor the output sent to the corresponding store.
+The values to this pipe are written by \fIdgsh-monitor\fP(1).
+.TP
+.B nps-\fIname\fP.use
+A named pipe used for the actual data being sent to a store.
+.TP
+.B mon-npi-#.#.#
+A Unix domain socket implementing the store for
+the \fIdgsh-monitor\fP(1) data regarding the last
+record that passed through the corresponding named pipe.
+.TP
+.B pid-node_cmd_#_#_#.json
+A file containing the process-id of the parent process corresponding
+to a processing graph node in JSON format.
+.TP
+.B mon-nps-\fIname\fP
+A Unix domain socket implementing the store for
+the \fIdgsh-monitor\fP(1) data regarding the last
+record that passed to the corresponding store.
+.TP
+.B index.html
+The debugging interface web page.
+.TP
+.B graph-monitor.js
+Debugging functionality implemented in JavaScript.
+.TP
+.B graph-monitor.css
+Web page styling.
+.TP
+.B jquery.js
+Minified version of the jQuery library.
+
+.SH "SEE ALSO"
+\fIdgsh-tee\fP(1),
+\fIdgsh-writeval\fP(1),
+\fIdgsh-readval\fP(1),
+\fIdgsh-monitor\fP(1)
+\fIdgsh-httpval\fP(1)
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>
+
+.SH BUGS
+The transformation of the \fIdgsh\fP script into an \fIsh\fP(1) script
+is performed using regular expressions,
+and can therefore be thrown off by edge-cases,
+like HERE documents containing \fIdgsh\fP syntax.
+
+The implementation of the \fB-S\fP flag functionality assumes
+that commands are topologically ordered within the script.

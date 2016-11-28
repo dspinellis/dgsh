@@ -1,9 +1,0 @@
-1 tee -i hello
-2 sgsh-conc -o 2
-3 diff world
-4 comm hello
-
-%
-socketpipe 1 2
-socketpipe 2 3
-socketpipe 2 4

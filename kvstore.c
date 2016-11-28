@@ -32,7 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "sgsh.h"
+#include "dgsh.h"
 
 #define RETRY_LIMIT 10
 
@@ -77,7 +77,7 @@ again:
 
 /* Send to the socket path the specified command */
 void
-sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
+dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
     bool quit, int outfd)
 {
 	int s, n;

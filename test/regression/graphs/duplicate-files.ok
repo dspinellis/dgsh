@@ -3,7 +3,7 @@
 		rankdir = LR;
 		node [fontname="Courier"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee ", shape="ellipse"];
 	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="awk '{print $2}' | uniq -d\l", shape="ellipse"];
 	gather_node_1 [id="gather_node_1", label="join -2 2 /stream/dupes /stream/names |\l# Output same files on a single line\lawk '\l", shape="ellipse"];
 	node_cmd_0_0_0 -> gather_node_1 [id="npfo-dupes.0"];

@@ -3,7 +3,7 @@
 		rankdir = LR;
 		node [fontname="Courier"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee ", shape="ellipse"];
 	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="awk -F: '{print $1}' | forder\l", shape="ellipse"];
 	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="awk -F: '{print substr($2, 1, 3)}' | forder\l", shape="ellipse"];
 	gather_node_1 [id="gather_node_1", label="cat /stream/authors\l", shape="ellipse"];

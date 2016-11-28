@@ -40,13 +40,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------
 
-sgsh-httpval is based on micro_httpd, which is licensed as follows.
+dgsh-httpval is based on micro_httpd, which is licensed as follows.
 
 micro_httpd:
 Copyright (c) 1999,2005 by Jef Poskanzer <jef@mail.acme.com>.
 All rights reserved.
 
-Sgsh modifications:
+Dgsh modifications:
 Copyright 2013 Diomidis Spinellis
 
 Redistribution and use in source and binary forms, with or without

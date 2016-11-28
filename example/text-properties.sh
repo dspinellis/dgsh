@@ -25,7 +25,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Consistent sorting across machines
 export LC_ALL=C
@@ -76,10 +76,10 @@ tee -i $1 |
 	{{
 		# Store number of characters to use in awk below
 		wc -c |
-		sgsh-writeval -s nchars &
+		dgsh-writeval -s nchars &
 
 		awk 'BEGIN {
-			"sgsh-readval -l -x -q -s nchars" | getline NCHARS
+			"dgsh-readval -l -x -q -s nchars" | getline NCHARS
 			OFMT = "%.2g%%"}
 			{print $1, $2, $1 / NCHARS * 100}' > character.txt &
 	}} &

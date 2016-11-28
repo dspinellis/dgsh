@@ -6,7 +6,7 @@
 # disk.
 # Demonstrates the use of an output multipipe to source many commands
 # from one followed by an input multipipe to sink to one command
-# the output of many and the use of sgsh-tee that is used both to
+# the output of many and the use of dgsh-tee that is used both to
 # propagate the same input to many commands and collect output from
 # many commands orderly in a way that is transparent to users.
 #
@@ -26,7 +26,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 tee |
 {{

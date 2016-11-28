@@ -1,9 +1,0 @@
-1 grep -l -L -w -v match ff F
-2 sgsh-conc -o 2
-3 diff
-4 comm
-
-%
-socketpipe 1 2
-socketpipe 2 3
-socketpipe 2 4

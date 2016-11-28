@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/text-properties.sh
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Text properties
 # DESCRIPTION
@@ -62,10 +62,10 @@ ngram()
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
-		sgsh-readval -q -s "$SGDIR/NCHARS" 2>/dev/null
+		dgsh-readval -q -s "$SGDIR/NCHARS" 2>/dev/null
 
 		# Kill processes we have launched in the background
 		kill $SGPID 2>/dev/null
@@ -103,10 +103,10 @@ mkfifo 	$SGDIR/npfo-none-0.2.0 \
 	$SGDIR/npi-1.1.0 \
 	$SGDIR/npi-1.2.0
 
-sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 <&3 3<&-   & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 <&3 3<&-   & SGPID="$! $SGPID"
  {  tr -cs a-zA-Z \\n
 } <$SGDIR/npi-0.0.0 |
-sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0 -o $SGDIR/npi-1.2.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0 -o $SGDIR/npi-1.2.0  & SGPID="$! $SGPID"
  {  ngram 2 >digram.txt
 : ; } <$SGDIR/npi-1.0.0 >$SGDIR/npfo-none-1.0.0  & SGPID="$! $SGPID"
  {  ngram 3 >trigram.txt
@@ -114,16 +114,16 @@ sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0 -o $SGDIR/npi-1.2.0  & SGPID="
  {  ranked_frequency >words.txt
 : ; } <$SGDIR/npi-1.2.0 >$SGDIR/npfo-none-1.2.0  & SGPID="$! $SGPID"
  {  wc -c
-} <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/NCHARS  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.1.0 | dgsh-writeval  -s $SGDIR/NCHARS  & SGPID="$! $SGPID"
  {  sed 's/./&\
 /g' |
 	   # Print absolute and percentage
 	   ranked_frequency |
 	   awk 'BEGIN {OFMT = "%.2g%%"}
-	   {print $1, $2, $1 / '"`sgsh-readval -s $SGDIR/NCHARS`"' * 100}' >character.txt
+	   {print $1, $2, $1 / '"`dgsh-readval -s $SGDIR/NCHARS`"' * 100}' >character.txt
 : ; } <$SGDIR/npi-0.2.0 >$SGDIR/npfo-none-0.2.0  & SGPID="$! $SGPID"
 
 # Gather the results
-sgsh-tee  -i $SGDIR/npfo-none-1.0.0  -i $SGDIR/npfo-none-1.1.0  -i $SGDIR/npfo-none-1.2.0  -i $SGDIR/npfo-none-0.2.0 >/dev/null
+dgsh-tee  -i $SGDIR/npfo-none-1.0.0  -i $SGDIR/npfo-none-1.1.0  -i $SGDIR/npfo-none-1.2.0  -i $SGDIR/npfo-none-0.2.0 >/dev/null
 
 )  3<&0 

@@ -22,7 +22,7 @@
 
 FREE=`df -h . | awk '!/Use%/{print $4}'`
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 ls -n |
 tee |

@@ -3,11 +3,11 @@
 		rankdir = LR;
 		node [fontname="Arial", gradientangle="90", style="filled"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse", fillcolor="yellow:white"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee ", shape="ellipse", fillcolor="yellow:white"];
 	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="nmrPipe |\lnmrPipe -fn SOL |\lnmrPipe -fn SP -off 0.5 -end 0.98 -pow 2 -c 0.5 |\lnmrPipe -fn ZF -auto |\lnmrPipe -fn FT |\lnmrPipe -fn PS -p0 177 -p1 0.0 -di |\lnmrPipe -fn EXT -left -sw -verb |\lnmrPipe -fn TP |\lnmrPipe -fn COADD -cList 1 0 -time |\lnmrPipe -fn SP -off 0.5 -end 0.98 -pow 1 -c 0.5 |\lnmrPipe -fn ZF -auto |\lnmrPipe -fn FT |\lnmrPipe -fn PS -p0 0 -p1 0 -di |\lnmrPipe -fn TP |\lnmrPipe -fn POLY -auto -verb >A\l", shape="ellipse", fillcolor="yellow:white"];
 	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="nmrPipe |\lnmrPipe -fn SOL |\lnmrPipe -fn SP -off 0.5 -end 0.98 -pow 2 -c 0.5 |\lnmrPipe -fn ZF -auto |\lnmrPipe -fn FT |\lnmrPipe -fn PS -p0 177 -p1 0.0 -di |\lnmrPipe -fn EXT -left -sw -verb |\lnmrPipe -fn TP |\lnmrPipe -fn COADD -cList 0 1 -time |\lnmrPipe -fn SP -off 0.5 -end 0.98 -pow 1 -c 0.5 |\lnmrPipe -fn ZF -auto |\lnmrPipe -fn FT |\lnmrPipe -fn PS -p0 -90 -p1 0 -di |\lnmrPipe -fn TP |\lnmrPipe -fn POLY -auto -verb >B\l", shape="ellipse", fillcolor="yellow:white"];
-	node_cmd_0_2_0 [id="node_cmd_0_2_0", label="addNMR -in1 A -in2 B \\\l-out A+B.sgsh.ft2 -c1 1.0 -c2 1.25 -add\l", shape="ellipse", fillcolor="yellow:white"];
-	node_cmd_0_3_0 [id="node_cmd_0_3_0", label="addNMR -in1 A -in2 B \\\l-out A-B.sgsh.ft2 -c1 1.0 -c2 1.25 -sub\l", shape="ellipse", fillcolor="yellow:white"];
+	node_cmd_0_2_0 [id="node_cmd_0_2_0", label="addNMR -in1 A -in2 B \\\l-out A+B.dgsh.ft2 -c1 1.0 -c2 1.25 -add\l", shape="ellipse", fillcolor="yellow:white"];
+	node_cmd_0_3_0 [id="node_cmd_0_3_0", label="addNMR -in1 A -in2 B \\\l-out A-B.dgsh.ft2 -c1 1.0 -c2 1.25 -sub\l", shape="ellipse", fillcolor="yellow:white"];
 	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
 	node_tee_0 -> node_cmd_0_0_0 [id="npi-0.0.0"];
 	node_cmd_0_0_0 -> node_cmd_0_3_0 [id="npfo-A2.0"];

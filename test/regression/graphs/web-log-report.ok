@@ -3,7 +3,7 @@
 		rankdir = LR;
 		node [fontname="Courier"];
 		edge [];
-		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+		node_tee_0 [id="node_tee_0", label="dgsh-tee ", shape="ellipse"];
 	"nXBytes" [id="store:nXBytes", shape="box"];
 	node_cmd_0_0_0 -> "nXBytes" [id="nps-nXBytes"];
 	"nLogBytes" [id="store:nLogBytes", shape="box"];

@@ -1,0 +1,11 @@
+1 comm f4ss f5ss
+2 dgsh-conc -o 3
+3 paste p1
+4 join j2
+5 diff d3
+
+%
+socketpipe 1 2
+socketpipe 2 3
+socketpipe 2 4
+socketpipe 2 5

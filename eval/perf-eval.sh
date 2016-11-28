@@ -50,7 +50,7 @@ measure()
 
 	echo 1>&2 "Running for $name"
 
-	run_twice $input /usr/bin/time -p -o $name $PERFDIR/../sgsh -p $PERFDIR/.. $flags \
+	run_twice $input /usr/bin/time -p -o $name $PERFDIR/../dgsh -p $PERFDIR/.. $flags \
 		$PERFDIR/../example/$script "$@"
 }
 
@@ -82,8 +82,8 @@ run_examples()
 }
 
 # Alternative implementations of (modified) ft2d
-/usr/bin/time -p -o time/ft2d.sh:large: ../sgsh -p `pwd`/.. ft2d.sh
-/usr/bin/time -p -o time/ft2d.sh:large:-S ../sgsh -p `pwd`/.. -S ft2d.sh
+/usr/bin/time -p -o time/ft2d.sh:large: ../dgsh -p `pwd`/.. ft2d.sh
+/usr/bin/time -p -o time/ft2d.sh:large:-S ../dgsh -p `pwd`/.. -S ft2d.sh
 
 # Compare with native tool
 run_twice /dev/null /usr/bin/time -p -o time/ft2d.scons:large: scons
@@ -95,7 +95,7 @@ run_twice books.txt /usr/bin/time -p -o time/TextProperties:large: java TextProp
 run_twice access.log /usr/bin/time -p -o time/WebStats:large: java WebStats >out/webstats-java.out
 run_twice access.log /usr/bin/time -p -o time/web-log-report.pl:large: perl web-log-report.pl >out/webstats-pl.out
 
-# sh and sgsh implementations of other examples
+# sh and dgsh implementations of other examples
 for flags in '' -S
 do
 	run_examples "$flags" small /dev/null emptydir emptydir access-small.log emptygit HEAD

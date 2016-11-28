@@ -1,4 +1,4 @@
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Highlight misspelled words
 # DESCRIPTION

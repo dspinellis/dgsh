@@ -20,5 +20,5 @@
 #include <stdbool.h>
 
 /* Send to the socket path the specified command */
-void sgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
+void dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
     bool quit, int outfd);

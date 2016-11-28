@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/web-log-report.sh
-#!/usr/bin/env sgsh -s /bin/bash
+#!/usr/bin/env dgsh -s /bin/bash
 #
 # SYNOPSIS Web log reporting
 # DESCRIPTION
@@ -54,17 +54,17 @@ export LC_ALL=C
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
-		sgsh-readval -q -s "$SGDIR/nXBytes" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nLogBytes" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nAccess" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nHosts" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nTLD" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nDomain" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nPages" 2>/dev/null
-sgsh-readval -q -s "$SGDIR/nDays" 2>/dev/null
+		dgsh-readval -q -s "$SGDIR/nXBytes" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nLogBytes" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nAccess" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nHosts" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nTLD" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nDomain" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nPages" 2>/dev/null
+dgsh-readval -q -s "$SGDIR/nDays" 2>/dev/null
 
 		# Kill processes we have launched in the background
 		kill $SGPID 2>/dev/null
@@ -126,27 +126,27 @@ mkfifo 	$SGDIR/npfo-accessByDate.0 \
 	$SGDIR/npi-7.1.0 \
 	$SGDIR/npi-7.2.0
 
-sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.3.0 -o $SGDIR/npi-0.4.0 -o $SGDIR/npi-0.5.0 <&3 3<&-   & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.3.0 -o $SGDIR/npi-0.4.0 -o $SGDIR/npi-0.5.0 <&3 3<&-   & SGPID="$! $SGPID"
  {   awk '{s += $NF} END {print s}'
-} <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/nXBytes  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.0.0 | dgsh-writeval  -s $SGDIR/nXBytes  & SGPID="$! $SGPID"
  {   wc -c
-} <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/nLogBytes  & SGPID="$! $SGPID"
+} <$SGDIR/npi-0.1.0 | dgsh-writeval  -s $SGDIR/nLogBytes  & SGPID="$! $SGPID"
  {   awk '{print $1}'
 } <$SGDIR/npi-0.2.0 |
-sgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0 -o $SGDIR/npi-1.2.0 -o $SGDIR/npi-1.3.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-1.0.0 -o $SGDIR/npi-1.1.0 -o $SGDIR/npi-1.2.0 -o $SGDIR/npi-1.3.0  & SGPID="$! $SGPID"
  {  wc -l
-} <$SGDIR/npi-1.0.0 | sgsh-writeval  -s $SGDIR/nAccess  & SGPID="$! $SGPID"
+} <$SGDIR/npi-1.0.0 | dgsh-writeval  -s $SGDIR/nAccess  & SGPID="$! $SGPID"
  {  sort
 } <$SGDIR/npi-1.1.0 |
-sgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-2.0.0 -o $SGDIR/npi-2.1.0  & SGPID="$! $SGPID"
  {  uniq
 } <$SGDIR/npi-2.0.0 |
-sgsh-tee  -o $SGDIR/npi-3.0.0 -o $SGDIR/npi-3.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-3.0.0 -o $SGDIR/npi-3.1.0  & SGPID="$! $SGPID"
  {  wc -l
-} <$SGDIR/npi-3.0.0 | sgsh-writeval  -s $SGDIR/nHosts  & SGPID="$! $SGPID"
+} <$SGDIR/npi-3.0.0 | dgsh-writeval  -s $SGDIR/nHosts  & SGPID="$! $SGPID"
  {  awk -F. '$NF !~ /[0-9]/ {print $NF}' |
 					sort -u | wc -l
-} <$SGDIR/npi-3.1.0 | sgsh-writeval  -s $SGDIR/nTLD  & SGPID="$! $SGPID"
+} <$SGDIR/npi-3.1.0 | dgsh-writeval  -s $SGDIR/nTLD  & SGPID="$! $SGPID"
  {  {
 				header 'Top 10 Hosts'
 				toplist 10
@@ -162,9 +162,9 @@ sgsh-tee  -o $SGDIR/npi-3.0.0 -o $SGDIR/npi-3.1.0  & SGPID="$! $SGPID"
  {  awk -F. 'BEGIN {OFS = "."}
 		            $NF !~ /^[0-9]/ {$1 = ""; print}' | sort
 } <$SGDIR/npi-1.3.0 |
-sgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
  {  uniq | wc -l
-} <$SGDIR/npi-4.0.0 | sgsh-writeval  -s $SGDIR/nDomain  & SGPID="$! $SGPID"
+} <$SGDIR/npi-4.0.0 | dgsh-writeval  -s $SGDIR/nDomain  & SGPID="$! $SGPID"
  {  {
 				header 'Top 10 Domains'
 				toplist 10
@@ -180,7 +180,7 @@ sgsh-tee  -o $SGDIR/npi-4.0.0 -o $SGDIR/npi-4.1.0  & SGPID="$! $SGPID"
 } <$SGDIR/npi-0.3.0 >$SGDIR/npfo-top10HostsByVol.0 & SGPID="$! $SGPID"
  {  awk '{print $7}' | sort
 } <$SGDIR/npi-0.4.0 |
-sgsh-tee  -o $SGDIR/npi-5.0.0 -o $SGDIR/npi-5.1.0 -o $SGDIR/npi-5.2.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-5.0.0 -o $SGDIR/npi-5.1.0 -o $SGDIR/npi-5.2.0  & SGPID="$! $SGPID"
  {  {
 			header 'Top 20 Area Requests'
 			awk -F/ '{print $2}' |
@@ -188,7 +188,7 @@ sgsh-tee  -o $SGDIR/npi-5.0.0 -o $SGDIR/npi-5.1.0 -o $SGDIR/npi-5.2.0  & SGPID="
 		}
 } <$SGDIR/npi-5.0.0 >$SGDIR/npfo-top20Area.0 & SGPID="$! $SGPID"
  {  uniq | wc -l
-} <$SGDIR/npi-5.1.0 | sgsh-writeval  -s $SGDIR/nPages  & SGPID="$! $SGPID"
+} <$SGDIR/npi-5.1.0 | dgsh-writeval  -s $SGDIR/nPages  & SGPID="$! $SGPID"
  {  {
 			header 'Top 20 Requests'
 			toplist 20
@@ -196,12 +196,12 @@ sgsh-tee  -o $SGDIR/npi-5.0.0 -o $SGDIR/npi-5.1.0 -o $SGDIR/npi-5.2.0  & SGPID="
 } <$SGDIR/npi-5.2.0 >$SGDIR/npfo-top20Request.0 & SGPID="$! $SGPID"
  {  awk '{print substr($4, 2)}'
 } <$SGDIR/npi-0.5.0 |
-sgsh-tee  -o $SGDIR/npi-6.0.0 -o $SGDIR/npi-6.1.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-6.0.0 -o $SGDIR/npi-6.1.0  & SGPID="$! $SGPID"
  {  awk -F: '{print $1}'
 } <$SGDIR/npi-6.0.0 |
-sgsh-tee  -o $SGDIR/npi-7.0.0 -o $SGDIR/npi-7.1.0 -o $SGDIR/npi-7.2.0  & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-7.0.0 -o $SGDIR/npi-7.1.0 -o $SGDIR/npi-7.2.0  & SGPID="$! $SGPID"
  {  uniq | wc -l
-} <$SGDIR/npi-7.0.0 | sgsh-writeval  -s $SGDIR/nDays  & SGPID="$! $SGPID"
+} <$SGDIR/npi-7.0.0 | dgsh-writeval  -s $SGDIR/nDays  & SGPID="$! $SGPID"
  {  {
 				header 'Accesses by Date'
 				uniq -c
@@ -230,15 +230,15 @@ sgsh-tee  -o $SGDIR/npi-7.0.0 -o $SGDIR/npi-7.1.0 -o $SGDIR/npi-7.2.0  & SGPID="
 
 Summary
 -------
-Number of accesses: $(sgsh-readval -s $SGDIR/nAccess)
-Number of Gbytes transferred: $(expr $(sgsh-readval -s $SGDIR/nXBytes) / 1024 / 1024 / 1024)
-Number of hosts: $(sgsh-readval -s $SGDIR/nHosts)
-Number of domains: $(sgsh-readval -s $SGDIR/nDomain)
-Number of top level domains: $(sgsh-readval -s $SGDIR/nTLD)
-Number of different pages: $(sgsh-readval -s $SGDIR/nPages)
-Accesses per day: $(expr $(sgsh-readval -s $SGDIR/nAccess) / $(sgsh-readval -s $SGDIR/nDays))
-MBytes per day: $(expr $(sgsh-readval -s $SGDIR/nXBytes) / $(sgsh-readval -s $SGDIR/nDays) / 1024 / 1024)
-MBytes log file size: $(expr $(sgsh-readval -s $SGDIR/nLogBytes) / 1024 / 1024)
+Number of accesses: $(dgsh-readval -s $SGDIR/nAccess)
+Number of Gbytes transferred: $(expr $(dgsh-readval -s $SGDIR/nXBytes) / 1024 / 1024 / 1024)
+Number of hosts: $(dgsh-readval -s $SGDIR/nHosts)
+Number of domains: $(dgsh-readval -s $SGDIR/nDomain)
+Number of top level domains: $(dgsh-readval -s $SGDIR/nTLD)
+Number of different pages: $(dgsh-readval -s $SGDIR/nPages)
+Accesses per day: $(expr $(dgsh-readval -s $SGDIR/nAccess) / $(dgsh-readval -s $SGDIR/nDays))
+MBytes per day: $(expr $(dgsh-readval -s $SGDIR/nXBytes) / $(dgsh-readval -s $SGDIR/nDays) / 1024 / 1024)
+MBytes log file size: $(expr $(dgsh-readval -s $SGDIR/nLogBytes) / 1024 / 1024)
 
 EOF
 
@@ -247,6 +247,6 @@ EOF
 # Gather the results
 
 	# Gather all results together sequentially into a single report
-	sgsh-tee -f -I -i $SGDIR/npfo-summary.0 -i $SGDIR/npfo-top20Request.0 -i $SGDIR/npfo-top20Area.0 -i $SGDIR/npfo-top10HostsByN.0 -i $SGDIR/npfo-top10HostsByVol.0 -i $SGDIR/npfo-top10Domain.0 -i $SGDIR/npfo-top20TLD.0 -i $SGDIR/npfo-accessByDoW.0 -i $SGDIR/npfo-accessByHour.0 -i $SGDIR/npfo-accessByDate.0
+	dgsh-tee -f -I -i $SGDIR/npfo-summary.0 -i $SGDIR/npfo-top20Request.0 -i $SGDIR/npfo-top20Area.0 -i $SGDIR/npfo-top10HostsByN.0 -i $SGDIR/npfo-top10HostsByVol.0 -i $SGDIR/npfo-top10Domain.0 -i $SGDIR/npfo-top20TLD.0 -i $SGDIR/npfo-accessByDoW.0 -i $SGDIR/npfo-accessByHour.0 -i $SGDIR/npfo-accessByDate.0
 
 )  3<&0 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Automatically generated file
 # Source file example/duplicate-files.sh
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Find duplicate files
 # DESCRIPTION
@@ -46,7 +46,7 @@ sort -k2 |
 	cleanup()
 	{
 		SIGNAL=$1
-		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+		[ $SIGNAL = EXIT ] || echo dgsh interrupted. Cleaning up... 1>&2
 
 		# Stop key-value stores
 		
@@ -79,7 +79,7 @@ mkfifo 	$SGDIR/npfo-dupes.0 \
 	$SGDIR/npi-0.0.0 \
 	$SGDIR/npi-0.1.0
 
-sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 <&3 3<&-   & SGPID="$! $SGPID"
+dgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 <&3 3<&-   & SGPID="$! $SGPID"
  {  awk '{print $2}' | uniq -d
 } <$SGDIR/npi-0.0.0 >$SGDIR/npfo-dupes.0 & SGPID="$! $SGPID"
 ln -s $SGDIR/npi-0.1.0 $SGDIR/npfo-names.0

@@ -1,4 +1,4 @@
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 #  Copyright 2013 Diomidis Spinellis
 #

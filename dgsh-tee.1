@@ -1,0 +1,150 @@
+.TH DGSH-TEE 1 "25 November 2016"
+.\"
+.\" (C) Copyright 2013-2016 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh-tee \- buffer and copy or scatter standard input to one or more sinks
+.SH SYNOPSIS
+\fBdgsh-tee\fP
+[\fB\-b\fP \fIbuffer-size\fP]
+[\fB\-fIMs\fP]
+[\fB\-i\fP \fIinput-file\fP]
+[\fB\-o\fP \fIoutput-file\fP]
+[\fB\-m\fP \fImemory-size\fP]
+[\fB\-p\fP \fIo1,o2 ...\fP]
+[\fB\-T\fP \fIdirectory\fP]
+[\fB\-t\fP \fIcharacter\fP]
+[\fIfile ...\fP]
+.SH DESCRIPTION
+\fIdgsh-tee\fP will read data from its standard input and scatter it to
+the specified sinks as files.
+It resembles in its operation \fItee\fP(1),
+but offers additional capabilities required for the operation of \fIdgsh\fP(1).
+In contrast to \fItee\fP(1), \fIdgsh-tee\fP will buffer the data it handles,
+so it will never cause deadlock or starvation when one or more sinks
+are unable to read data.
+.PP
+\fIdgsh-tee\fP is normally executed from within \fIdgsh\fP-generated scripts,
+rather than through end-user commands.
+This manual page serves mainly to document its operation,
+to clarify the flags that can be used at the beginning of an \fIdgsh\fP scatter block, and
+to allow the creation of plug-compatible replacements
+implementing different record types.
+
+.SH OPTIONS
+.IP "\fB\-b\fP \fIbuffer-size\fP"
+Specify the size of the buffer to use.
+This is by default 1MB.
+Buffers are chained together when more space is required,
+so the main utility of this option is to decrease the buffer
+size in memory-constrained environments.
+The specified number can be suffixed with
+\fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
+The specified buffer size must be less than the program's maximum memory size.
+
+.IP "\fB\-f\fP
+When the allocated memory size reaches the maximum memory threshold,
+start using a temporary file for buffering the data.
+This extends the amount of data that can be buffered to the
+space available on disk.
+The location of the temporary file follows the
+\fItempnam\fP(3) rules, and can be overridden through the
+.B -T
+option.
+
+.IP "\fB\-I\fP"
+Implement input-side buffering.
+By default \fIdgsh-tee\fP will buffer only as much input data,
+as is needed to avoid starving one of the specified sinks.
+In doing so it may cause its input source to block
+while having data to write.
+When this option is enabled
+\fIdgsh-tee\fP will always read data if they are available
+on the standard input,
+and will write that data to any (including zero) sinks that
+can read it.
+This can be useful in cases where a command with insufficient input
+buffering,
+like \fIjoin\fP(1), \fIsort\fP(1), or \fIpaste\fP(1),
+is gathering input from commands executing in parallel.
+In such a case adding \fIdgsh-tee\fP with input side buffering
+enabled at the end of each data pipeline,
+will increase the number of processes that can operate concurrently.
+
+.IP "\fB\-i\fP \fIinput-file\fP"
+Read input from the specified source file, rather than the standard input.
+The option can be provided multiple times to specify multiple files that
+will be read sequentially.
+All input files will be opened at the beginning of the program's operation
+in order to unblock the execution of asynchronous shell commands
+that redirect their output to the corresponding named pipes.
+Furthermore, when input-side buffering is specified \fB-I\fP
+data is read asynchronously from all specified input files.
+
+.IP "\fB\-M\fP"
+Provide memory use statistics on termination.
+This is mainly used for testing,
+to check against leaks of buffers.
+
+.IP "\fB\-o\fP \fIoutput-file\fP"
+Write copies of the input data to the specified sink file,
+rather than the standard output.
+The option can be provided multiple times to specify multiple files
+where input data will be copied.
+
+.IP "\fB\-m\fP \fImemory-size\fP"
+Specify the maximum size of memory to allocate for buffers.
+This is by default 256MB.
+When \fIdgsh-tee\fP exhausts this memory, it enters a state where it
+waits for its output buffers drain, thus freeing allocated memory.
+The specified number can be suffixed with
+\fBk\fI, \fBM\fI, or \fBG\fI to specify the corresponding unit.
+The specified maximum memory size must be larger than the program's buffer size.
+
+.IP "\fB\-p\fP \fIo1,o2 ...\fP"
+Permute the inputs to the specified outputs.
+The comma-separated arguments \fIo1,o2, ...\fP
+specify the number of the output channel (starting from 1)
+where the corresponding \fIn\fPth input channel will be sent.
+Thus,
+input 1 goes to output \fIo1\fP,
+input 2 goes to output \fIo2\fP,
+and so on.
+As an example a cross-permutation is specified with the argument \fI-p 2,1\fP.
+
+.IP "\fB\-s\fP"
+Scatter the input fairly across the sinks, rather than copying it to all.
+When this option is in effect,
+the input data are divided into chunks of one or more lines,
+and each chunk is written only to a single sink.
+This is useful for dividing the work among multiple processes operating
+in parallel.
+
+.IP "\fB\-T\fP \fIdirectory\fP"
+Specify the directory to use for storing the temporary file,
+when the specified maximum buffer memory size is exceeded.
+
+.IP "\fB\-t\fP \fIchar\fP"
+Use \fIchar\fP as the record separator,
+By default the record separator is a newline,
+An empty (not missing) argument for the record separator
+will make the record separator be the null character.
+
+.SH "SEE ALSO"
+\fIdgsh\fP(1)
+\fItempnam\fP(3)
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>

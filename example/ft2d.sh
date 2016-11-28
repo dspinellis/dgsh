@@ -14,7 +14,7 @@
 # Madagascar project: http://www.reproducibility.org
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 mkdir -p Fig
 
@@ -34,7 +34,7 @@ sfsmooth rect2=2 |
 tee |
 {{
 	sfgrey pclip=100 wanttitle=n &
-	#sgsh-writeval -s pulse.vpl &
+	#dgsh-writeval -s pulse.vpl &
 
 	sffft1 |
 	sffft3 axis=2 pad=1 |
@@ -45,13 +45,13 @@ tee |
 		sfreverse which=3 &
 
 		cat &
-		#sgsh-tee -I |
-		#sgsh-writeval -s ft2d &
+		#dgsh-tee -I |
+		#dgsh-writeval -s ft2d &
 	}} |
-	sfcat axis=1 "<|" |	# sgsh-readval
+	sfcat axis=1 "<|" |	# dgsh-readval
 	sfgrey pclip=100 wanttitle=n \
 		label1="1/time" label2="1/space" &
-	#sgsh-writeval -s ft2d.vpl &
+	#dgsh-writeval -s ft2d.vpl &
 }} |
 call 'side_by_side_iso "<|" \
 	   yscale=1.25 >Fig/ft2dofpulse.vpl' &
@@ -68,23 +68,23 @@ tee |
 	sfreverse which=2 &
 
 	cat &
-	#sgsh-tee -I | sgsh-writeval -s air &
+	#dgsh-tee -I | dgsh-writeval -s air &
 }} |
 sfcat axis=2 "<|" |
 tee |
 {{
 	sfgrey pclip=100 wanttitle=n &
-	#| sgsh-writeval -s airtx.vpl &
+	#| dgsh-writeval -s airtx.vpl &
 			
 	sffft1 |
 	sffft3 sign=1 |
 	tee |
 	{{
 		sfreal &
-		#| sgsh-writeval -s airftr &
+		#| dgsh-writeval -s airftr &
 				
 		sfimag &
-		#| sgsh-writeval -s airfti &
+		#| dgsh-writeval -s airfti &
 	}} |
 	sfmath nostdin=y re=/dev/stdin im="<|" output="sqrt(re*re+im*im)" |
 	tee |
@@ -93,12 +93,12 @@ tee |
 		sfreverse which=3 &
 
 		cat &
-		#sgsh-tee -I | sgsh-writeval -s airft1 &
+		#dgsh-tee -I | dgsh-writeval -s airft1 &
 	}} |
 	sfcat axis=1 "<|" |
 	sfgrey pclip=100 wanttitle=n label1="1/time" \
 		label2="1/space" &
-	#| sgsh-writeval -s airfk.vpl
+	#| dgsh-writeval -s airfk.vpl
 }} |
 call 'side_by_side_iso "<|" \
 		yscale=1.25 >Fig/airwave.vpl' &

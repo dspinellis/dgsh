@@ -24,7 +24,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 if [ ! -d "$1" -o ! -d "$2" -o -z "$3" ]
 then
@@ -80,6 +80,6 @@ tee |
   awk '{print "cp " $2 "/" $1 " '$NEWDIR'/" $3 "/" $1 ""}' &
 }} |
 # Order: first make directories, then copy files
-# TODO: sgsh-tee does not pass along first incoming stream
+# TODO: dgsh-tee does not pass along first incoming stream
 cat |
 sh

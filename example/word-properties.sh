@@ -5,7 +5,7 @@
 # containing a two-letter palindrome, words containing
 # four consonants, and words longer than 12 characters.
 #
-# Demonstrates the use of sgsh-compatible paste as a gather function
+# Demonstrates the use of dgsh-compatible paste as a gather function
 #
 # Example:
 # curl ftp://sunsite.informatik.rwth-aachen.de/pub/mirror/ibiblio/gutenberg/1/3/139/139.txt | word-properties
@@ -25,7 +25,7 @@
 #  limitations under the License.
 #
 
-export SGSH_DOT_DRAW="$(basename $0 .sh)"
+export DGSH_DOT_DRAW="$(basename $0 .sh)"
 
 # Consistent sorting across machines
 export LC_ALL=C
