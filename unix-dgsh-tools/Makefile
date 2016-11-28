@@ -121,7 +121,7 @@ path:
 	echo $(PATH)
 
 test-bash: test-clean
-	printf "$B\nBash tests:${EC}"
+	printf "$B\nBash tests:${EC}\n"
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
 		secho hello \
@@ -357,7 +357,7 @@ test-bash: test-clean
 	|| (printf "{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F\n" \
 	&& exit 1)
 	
-	printf " $BPaper examples under ../example:${EC}"
+	printf " $BPaper examples under ../example:${EC}\n"
 
 	# No diff, just check execution exit status
 	$(DGSHPATH)/bash --dgsh $(XDIR)/dir.sh \
@@ -493,7 +493,7 @@ test-bash: test-clean
 	mv *.dot coreutils/*.dot $(XDIR)
 
 test-pseudo: test-clean
-	printf "$B\nPseudo shell tests:${EC}"
+	printf "$B\nPseudo shell tests:${EC}\n"
 	
 	cd $(PSDIR) && \
 	python2 simple-shell.py secho_paste.dgsh secho_paste.out \
