@@ -26,8 +26,8 @@ ifdef TIME
 CFLAGS+=-DTIME
 endif
 
-EXECUTABLES=dgsh dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
-	dgsh-ps dgsh-merge-sum dgsh-conc dgsh-wrap
+EXECUTABLES=dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
+	dgsh-conc dgsh-wrap
 
 LIBS=libdgsh_negotiate.a
 
@@ -88,9 +88,6 @@ test-dgsh: $(EXECUTABLES)
 test-tee: dgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
-test-merge-sum: dgsh-merge-sum.pl test-merge-sum.sh
-	./test-merge-sum.sh
-
 test-negotiate: copy_files build-run-ng-tests test-tools
 
 setup-test-negotiate: copy_files autoreconf-ng-tests
@@ -121,18 +118,6 @@ test-kvstore: test-kvstore.sh
 	./test-kvstore.sh
 	# Remove the debug build versions
 	$(MAKE) clean
-
-dgsh: dgsh.pl
-	perl -c dgsh.pl
-	install dgsh.pl dgsh
-
-dgsh-ps: dgsh-ps.pl
-	! perl -e 'use JSON' 2>/dev/null || perl -c dgsh-ps.pl
-	install dgsh-ps.pl dgsh-ps
-
-dgsh-merge-sum: dgsh-merge-sum.pl
-	perl -c dgsh-merge-sum.pl
-	install dgsh-merge-sum.pl dgsh-merge-sum
 
 libdgsh_negotiate.a: negotiate.c
 	ar rcs $@ negotiate.o
