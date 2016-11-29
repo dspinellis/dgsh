@@ -28,6 +28,21 @@ else
 DEBUGFLAG=
 endif
 
+OS = $(shell uname -s)
+ifeq ($(OS), Linux)
+   BZIP2LOCATION=/bin/bzip2
+   GZIPLOCATION=/bin/gzip
+   SEDLOCATION=/bin/sed
+   XZLOCATION=/usr/bin/xz
+else
+   ifeq ($(OS), Darwin)
+       BZIP2LOCATION=/usr/bin/bzip2
+       GZIPLOCATION=/usr/bin/gzip
+       SEDLOCATION=/usr/bin/sed
+       XZLOCATION=/usr/local/bin/xz
+   endif
+endif
+
 # If not cloned repo with --recursive use this target to
 # clone the submodule repos
 get-submodules:
@@ -52,6 +67,10 @@ make:
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
+	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(BZIP2LOCATION)" > $(SCRIPTDIR)/bzip2
+	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(GZIPLOCATION)" > $(SCRIPTDIR)/gzip
+	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(SEDLOCATION)" > $(SCRIPTDIR)/sed
+	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(XZLOCATION)" > $(SCRIPTDIR)/xz
 
 install:
 	$(MAKE) -C bash install
@@ -390,17 +409,16 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/commit-stats.sh Readme.md \
+	$(DGSHPATH)/bash --dgsh $(XDIR)/commit-stats.sh \
 		>$(PSDIR)/commit-stats.outb 2>$(PSDIR)/commit-stats.err \
 	&& printf "commit-stats.sh $S\n" \
 	|| (printf "commit-stats.sh $F\n" \
 	&& exit 1)
 	
 	# ditto
-	cd coreutils && \
-	$(DGSHPATH)/bash --dgsh ../$(XDIR)/duplicate-files.sh \
-		>../$(PSDIR)/duplicate-files.outb \
-		2>../$(PSDIR)/duplicate-files.err \
+	$(DGSHPATH)/bash --dgsh $(XDIR)/duplicate-files.sh coreutils \
+		>$(PSDIR)/duplicate-files.outb \
+		2>$(PSDIR)/duplicate-files.err \
 	&& printf "duplicate-files.sh $S\n" \
 	|| (printf "duplicate-files.sh $F\n" \
 	&& exit 1)
@@ -454,7 +472,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/code-metrics.sh \
+	$(DGSHPATH)/bash --dgsh $(XDIR)/code-metrics.sh coreutils \
 		>$(PSDIR)/code-metrics.outb 2>$(PSDIR)/code-metrics.err \
 	&& printf "code-metrics.sh $S\n" \
 	|| (printf "code-metrics.sh $F\n" \

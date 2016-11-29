@@ -97,9 +97,9 @@ main(int argc, char *argv[])
 	 */
 	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("dgsh-wrap");
 	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
-			argv[0], argv[2], compare_chars);
+			argv[0], argv[pos], compare_chars);
 	if (compare_chars > 0 &&
-			!(cmp = strncmp(argv[2], argv[0], compare_chars)))
+			!(cmp = strncmp(argv[pos], argv[0], compare_chars)))
 		pos++;
 	DPRINTF("cmp: %d, pos: %d\n", cmp, pos);
 
@@ -109,7 +109,7 @@ main(int argc, char *argv[])
 	exec_argv[j] = NULL;
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
-	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
+	for (k = 0; k < argc - pos; k++) {	// exec_argv[argc - 1] = NULL
 		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
@@ -158,7 +158,7 @@ main(int argc, char *argv[])
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
-	for (k = 0; k < argc - 2; k++) {	// exec_argv[argc - 1] = NULL
+	for (k = 0; k < argc - pos; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
 		DPRINTF("exec_argv[%d] to sub: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
