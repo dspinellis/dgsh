@@ -109,7 +109,7 @@ main(int argc, char *argv[])
 	exec_argv[j] = NULL;
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
-	for (k = 0; k < argc - pos; k++) {	// exec_argv[argc - 1] = NULL
+	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
 		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
@@ -158,7 +158,7 @@ main(int argc, char *argv[])
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
-	for (k = 0; k < argc - pos; k++) {	// exec_argv[argc - 1] = NULL
+	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
 		DPRINTF("exec_argv[%d] to sub: %s\n", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
