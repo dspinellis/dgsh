@@ -41,26 +41,25 @@ MANHTML=$(patsubst %.1,%.html,$(MANSRC))
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
-ENGTPNG=$(patsubst %.sh,png/%-pretty-ngt.png,$(EXAMPLES))
-WEBPNG=$(EGPNG) $(ENGTPNG) debug.png profile.png
+WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 # Files required for dgsh negotiation
 NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
 		     dgsh-conc.c
 
-png/%-pretty.png: example/%.dot
+png/%-pretty.png: graphdot/%.dot
 	# The sed removes the absolute path from the command label
 	sed 's|label="/[^"]*/\([^/"]*\)"|label="\1"|' $< | dot -Tpng >$@
-
-png/%-pretty-ngt.png: example/%-ngt.dot
-	dot -Tpng $< >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
 
 %.html: %.1
 	groff -man -Thtml $< >$@
+
+graphdot/%.dot: example/%.sh
+	DGSH_DOT_DRAW_EXIT=$@ ./unix-dgsh-tools/bash/bash --dgsh $<
 
 all: $(EXECUTABLES) $(LIBS) tools
 
@@ -125,16 +124,6 @@ libdgsh_negotiate.a: negotiate.c
 charcount: charcount.sh
 	install charcount.sh charcount
 
-allpng: dgsh
-	for i in example/*.sh ; do \
-		./dgsh -g pretty $$i | dot -Tpng >png/`basename $$i .sh`-pretty.png ; \
-		./dgsh -g pretty-full $$i | dot -Tpng >png/`basename $$i .sh`-pretty-full.png ; \
-		./dgsh -g plain $$i | dot -Tpng >png/`basename $$i .sh`-plain.png ; \
-	done
-	# Outdate example files that need special processing
-	touch -r example/ft2d.sh png/ft2d-pretty.png
-	touch -r diagram/NMRPipe-pretty-full.dot png/NMRPipe-pretty.png
-
 # Regression test based on generated output files
 test-regression:
 	# Sort files by size to get the easiest problems first
@@ -178,7 +167,7 @@ seed-regression:
 clean: clean-dgsh clean-tools
 
 clean-dgsh:
-	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG) $(ENGTPNG)
+	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG)
 
 clean-tools:
 	$(MAKE) -C $(TOOLS) clean
@@ -204,26 +193,3 @@ web: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
-
-# Debugger examples
-debug-word-properties: dgsh
-	cat /usr/share/dict/words | ./dgsh -d -p . example/word-properties.sh
-
-debug-web-log-report: dgsh
-	gzip -dc eval/clarknet_access_log_Aug28.gz | ./dgsh -d -p . example/web-log-report.sh
-
-# Diagrams that require special processing
-png/ft2d-pretty.png: example/ft2d.dot
-	dot -Tpng $< | pngtopnm >top.pnm
-	cat $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | \
-		pnmcat -topbottom top.pnm - | pnmtopng >$@
-	rm top.pnm
-
-png/ft2d-pretty-ngt.png: example/ft2d-ngt.dot
-	dot -Tpng $< | pngtopnm >top.pnm
-	cat $< | sed '1,/^}/d' | dot -Tpng | pngtopnm | \
-		pnmcat -topbottom top.pnm - | pnmtopng >$@
-	rm top.pnm
-
-#png/NMRPipe-pretty.png: diagram/NMRPipe-pretty-full.dot
-#	dot -Tpng $< >png/NMRPipe-pretty.png
