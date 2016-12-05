@@ -541,6 +541,7 @@ free_graph_solution(int node_index)
 			free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
+	chosen_mb->graph_solution = NULL;
 	DPRINTF("%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
 	return OP_SUCCESS;
 }

@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <err.h>
 
 #include "dgsh.h"
 #include "dgsh-negotiate.h"
@@ -144,9 +145,11 @@ main(int argc, char *argv[])
 		snprintf(negotiation_title, 100, "%s", guest_program_name);
 
 	// Participate in negotiation
-	if (dgsh_negotiate(negotiation_title, ninputs, noutputs, &input_fds,
-				NULL) != 0)
-		exit(1);
+	int status;
+	if ((status = dgsh_negotiate(negotiation_title, ninputs, noutputs, &input_fds,
+				NULL)) != 0)
+		errx(1, "dgsh negotiation failed for %s with status code %d\n",
+				negotiation_title, status);
 
 	int n = 1;
 	char *fds[argc - 2];		// /proc/self/fd/x or arg=/proc/self/fd/x
