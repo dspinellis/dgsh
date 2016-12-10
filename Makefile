@@ -49,8 +49,7 @@ NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
 		     dgsh-conc.c
 
 png/%-pretty.png: graphdot/%.dot
-	# The sed removes the absolute path from the command label
-	sed 's|label="/[^"]*/\([^/"]*\)"|label="\1"|' $< | dot -Tpng >$@
+	dot -Tpng $< >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
@@ -59,7 +58,7 @@ png/%-pretty.png: graphdot/%.dot
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
-	DGSH_DOT_DRAW_EXIT=$@ ./unix-dgsh-tools/bash/bash --dgsh $<
+	DRAW_EXIT=1 DGSH_DOT_DRAW_EXIT=$@ ./unix-dgsh-tools/bash/bash --dgsh $<
 
 all: $(EXECUTABLES) $(LIBS) tools
 
