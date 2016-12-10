@@ -9,16 +9,16 @@ SECTION='compress-compare
 	duplicate-files
 	spell-highlight
 	word-properties
-	parallel-logresolve
-	parallel-word-count
 	web-log-report
-	web-log-stats
 	text-properties
 	static-functions
 	map-hierarchy
 	committer-plot
 	ft2d
 	NMRPipe
+	fft-block8
+	manage-results
+	reorder-columns
 	dir'
 
 
