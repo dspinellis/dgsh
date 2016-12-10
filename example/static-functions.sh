@@ -22,8 +22,6 @@
 #  limitations under the License.
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 # Find object files
 find "$1" -name \*.o |
 

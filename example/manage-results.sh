@@ -1,5 +1,3 @@
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 PSDIR=$1
 
 cp $PSDIR/results $PSDIR/res

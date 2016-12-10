@@ -26,8 +26,6 @@
 #  limitations under the License.
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 tee |
 {{
 	echo -n 'File type:' &

@@ -25,8 +25,6 @@
 #  limitations under the License.
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 # Consistent sorting across machines
 export LC_ALL=C
 

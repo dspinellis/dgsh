@@ -11,8 +11,6 @@
 # http://spin.niddk.nih.gov/NMRPipe/
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 # The conversion is configured for the following file:
 # http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
 var2pipe -in $1            \

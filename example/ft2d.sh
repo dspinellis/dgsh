@@ -14,8 +14,6 @@
 # Madagascar project: http://www.reproducibility.org
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 mkdir -p Fig
 
 # The SConstruct SideBySideIso "Result" method

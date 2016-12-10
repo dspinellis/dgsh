@@ -23,8 +23,6 @@
 #  limitations under the License.
 #
 
-export DGSH_DOT_DRAW="$(basename $0 .sh)"
-
 # Commit history in the form of ascending Unix timestamps, emails
 git log --pretty=tformat:'%at %ae' |
 # Filter records according to timestamp: keep (100000, now) seconds
