@@ -144,9 +144,7 @@ STATIC bool
 is_ready(int i, struct dgsh_negotiation *mb)
 {
 	bool ready = false;
-	if (mb->state != PS_RUN)
-		ready = false;
-	else if (pi[i].seen && pi[i].written)
+	if (pi[i].seen && pi[i].written)
 		ready = true;
 	DPRINTF("pi[%d].pid: %d %s?: %d\n",
 			i, pi[i].pid, __func__, ready);
@@ -300,7 +298,8 @@ pass_message_blocks(void)
 				chosen_mb = pi[i].to_write;
 				write_message_block(i); // XXX check return
 
-				if (pi[i].to_write->state == PS_RUN)
+				if (pi[i].to_write->state == PS_RUN
+					|| pi[i].to_write->state == PS_ERROR)
 					pi[i].written = true;
 
 				// Write side exit
@@ -380,7 +379,7 @@ pass_message_blocks(void)
 						// Don't free
 						chosen_mb = NULL;
 					}
-				} else if (rb->state == PS_RUN)
+				} else if (rb->state == PS_RUN || rb->state == PS_ERROR)
 					pi[i].seen = true;
 
 				print_state(i, (int)rb->initiator_pid, 1);
@@ -403,7 +402,7 @@ pass_message_blocks(void)
 		if (nfds == nfd - 1 || (noinput && nfds == nfd - 2)) {
 			assert(chosen_mb != NULL);
 			DPRINTF("%s(): conc leaves negotiation", __func__);
-			return 0;
+			return chosen_mb->state;
 		} else if (chosen_mb != NULL &&	iswrite) { // Free if we have written
 			DPRINTF("chosen_mb: %lx, i: %d, next: %d, pi[next].to_write: %lx\n",
 				(long)chosen_mb, i, next_fd(i, &ro), (long)pi[next_fd(i, &ro)].to_write);
@@ -493,6 +492,7 @@ int
 main(int argc, char *argv[])
 {
 	int ch;
+	int exit;
 
 	program_name = argv[0];
 	pid = getpid();
@@ -530,14 +530,18 @@ main(int argc, char *argv[])
 	pi = (struct portinfo *)calloc(nfd, sizeof(struct portinfo));
 
 	chosen_mb = NULL;
-	pass_message_blocks();
-	if (multiple_inputs)
-		gather_input_fds(chosen_mb);
-	else if (!noinput)	// Output noinput conc has no job here
-		scatter_input_fds(chosen_mb);
+	exit = pass_message_blocks();
+	if (exit == PS_RUN) {
+		if (multiple_inputs)
+			gather_input_fds(chosen_mb);
+		else if (!noinput)	// Output noinput conc has no job here
+			scatter_input_fds(chosen_mb);
+		exit = PS_COMPLETE;
+	}
 	free_mb(chosen_mb);
 	free(pi);
-	DPRINTF("conc with pid %d terminates normally", pid);
+	DPRINTF("conc with pid %d terminates %s",
+		pid, exit == PS_COMPLETE ? "normally" : "with error");
 #ifdef DEBUG
 	fflush(stderr);
 #endif
@@ -551,7 +555,7 @@ main(int argc, char *argv[])
 
 	}
 #endif
-	return 0;
+	return exit;
 }
 
 #endif

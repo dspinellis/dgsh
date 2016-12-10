@@ -40,7 +40,7 @@ tee |
 	awk '{s += $5} END {printf("%d bytes\n", s)}' &
 
 	# Count number of directories
-	grep -c '^d' - | tr -d \\n &
+	grep -c '^d' | tr -d \\n &
 
 	# Print label for number of dirs and calculate free bytes
 	echo " Dir(s) $FREE bytes free" &

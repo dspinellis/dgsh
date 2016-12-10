@@ -446,11 +446,12 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	-rm -rf grep-p100
-	cp -R grep grep-p100 && \
+	-rm -rf grep2 grep-p100
+	cp -R grep grep2 && \
+	cp -R grep2 grep-p100 && \
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
-	cd ../grep && git checkout master >/dev/null 2>/dev/null && cd ..
-	$(DGSHPATH)/bash --dgsh $(XDIR)/map-hierarchy.sh grep grep-p100 grepp \
+	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
+	$(DGSHPATH)/bash --dgsh $(XDIR)/map-hierarchy.sh grep2 grep-p100 grepp \
 		>$(PSDIR)/map-hierarchy.outb 2>$(PSDIR)/map-hierarchy.err \
 	&& printf "map-hierarchy.sh $S\n" \
 	|| (printf "map-hierarchy.sh $F\n" \

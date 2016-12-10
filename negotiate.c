@@ -541,6 +541,7 @@ free_graph_solution(int node_index)
 			free(graph_solution[i].edges_outgoing);
 	}
 	free(graph_solution);
+	chosen_mb->graph_solution = NULL;
 	DPRINTF("%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
 	return OP_SUCCESS;
 }
@@ -1132,6 +1133,12 @@ solve_dgsh_graph(void)
 
 	if ((filename = getenv("DGSH_DOT_DRAW")))
 		output_graph(filename);
+
+	if (getenv("DRAW_EXIT")) {
+		fprintf(stderr,
+			"Fake an error and exit after outputting the graph\n");
+		exit_state = OP_ERROR;
+	}
 
 	DPRINTF("%s: exit_state: %d", __func__, exit_state);
 
