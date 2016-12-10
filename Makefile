@@ -26,6 +26,8 @@ ifdef TIME
 CFLAGS+=-DTIME
 endif
 
+DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
+
 EXECUTABLES=dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
 	dgsh-conc dgsh-wrap
 
@@ -49,7 +51,8 @@ NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
 		     dgsh-conc.c
 
 png/%-pretty.png: graphdot/%.dot
-	dot -Tpng $< >$@
+	dot $(DOTFLAGS) -Tpng $< >$@
+
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
