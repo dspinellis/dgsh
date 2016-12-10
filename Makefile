@@ -51,6 +51,7 @@ NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
 		     dgsh-conc.c
 
 png/%-pretty.png: graphdot/%.dot
+	mkdir -p graphdot
 	dot $(DOTFLAGS) -Tpng $< >$@
 
 
