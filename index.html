@@ -48,7 +48,7 @@ provides an expressive way to construct
 sophisticated and efficient big data set and stream processing pipelines
 using existing Unix tools as well as custom-built components.
 It is a Unix-style shell allowing the specification of pipelines
-with non-linear scatter-gather operations.
+with non-linear non-uniform operations.
 These form a directed acyclic process graph,
 which is typically executed by multiple processor cores,
 thus increasing the operation's processing throughput.
@@ -62,53 +62,38 @@ skip right down to the <a href="#examples">examples</a> section.
 <section id="ipc"> <!-- {{{2 -->
 <h2>Inter-process communication</h2>
 <p>
-<em>Dgsh</em> provides three new ways
+<em>Dgsh</em> provides two new ways
 for expressing inter-process communication.
 
 </p>
 <dl class="dl-horizontal">
-<dt>Scatter blocks</dt><dd> send the output of one pipeline ending
-with <code>|{</code> into multiple pipelines beginning with <code>-|</code>.
-The scatter block is terminated by <code>|}</code>.
-Scatter interconnections are internally implemented through
-automatically-named pipes, and a helper program,
-<em>dgsh-tee</em>(1),
-that distributes the data to multiple processes.
-The scatter behavior can be modified by adding
-<em>dgsh-tee</em>(1) flags after the <code>|{</code> symbol.
-</dd>
-<dt>Stores</dt><dd> are named as <code>store:</code><em>name</em>.
-These allow the storage of a data stream's
-last record (or of a specified window of records) into a named buffer.
-This record can be later retrieved asynchronously by one or more readers.
-Data can be piped into a store or out of a store, or it can be read
-using the shell's command output substitution syntax.
-Stores are implemented internally through Unix-domain sockets,
-a writer program, <em>dgsh-writeval</em>(1), and a reader program, <em>dgsh-readval</em>(1).
-The behavior of store I/O can be modified by adding
-<em>dgsh-writeval</em>(1) and <em>dgsh-readval</em>(1) flags after the store's name.
-In particular, flags can be used to operate on windows of stream data,
-rather than a single value written to a store.
-</dd>
-<dt>Streams</dt><dd> are named as <code>/stream/</code><em>name</em>.
-In addition, unnamed streams can be specified with a single dash  when
-writing to a data sink (<code>|-</code>),
-and with <code><-</code> when reading from it.
-Unnamed streams read match lexically the sequence of unnamed streams written.
-(The first specified unnamed output stream will be read by
-the first specified unnamed input stream.)
+<dt>Multipipe blocks {{ ... }}</dt><dd>
+send the input received on its input channel to the processes
+that reside within the block and/or pass the output produced by the processes
+within the block through its output channel.
+Multipipe blocks are made possible by a helper program,
+the dgsh <dt>concentrator</dt>, which connects and coordinates
+message block communication between the connected processes.
+Each concentrator command is created
+and executed dynamically by <dt>bash</dt> with arguments
+the number of processes the block contains and its type, that is input or
+output.
+Then <dt>bash</dt> also takes care to setup the connections
+between the concentrator, the IO connection(s) piped to it, and
+the processes contained in the block.
 
-Streams connect the output of one process
-with the input of another.
-In contrast to scatter blocks,
-which restrict the data flow through a tree of processes,
-streams allow the specification of a directed acyclic process graph.
-Streams require exactly one reader and one writer,
-operating asynchronously, in order to operate.
-Consequently, they should not be used in sequential synchronous steps
-specified in the gather block, because steps waiting to be executed
-will completely block all upstream processing in the scatter block.
-Streams are internally implemented through named pipes.
+<dt>Stored values</dt> offer a convenient way for communicating
+computed values between arbitrary processes on the graph.
+They allow the storage of a data stream's
+last record into a named buffer.
+This record can be later retrieved asynchronously by one or more readers.
+Data in a stored value can be piped into a process or out of it, or it can be read
+using the shell's command output substitution syntax.
+Stored values are implemented internally through Unix-domain sockets,
+a background-running store program, <em>dgsh-writeval</em>, and
+a reader program, <em>dgsh-readval</em>.
+The behavior of a stored value's IO can be modified by adding flags to
+<em>dgsh-writeval</em> and <em>dgsh-readval</em>.
 </dd>
 </dl>
 </section>
@@ -116,74 +101,91 @@ Streams are internally implemented through named pipes.
 <section id="syntax"> <!-- {{{2 -->
 <h2>Syntax</h2>
 <p>
-An <em>dgsh</em> script follows the syntax of an <em>sh</em>(1) shell
-script with the addition of <em>scatter/gather</em> blocks.
-A <em>scatter</em> block starts with a line
-containing the sequence <code>scatter |{</code>.
-Data may be redirected or piped into and out of the block.
-A scatter block contains one or more <em>dgsh</em> commands,
+A <em>dgsh</em> script follows the syntax of a <em>bash</em>(1) shell
+script with the addition of <em>multipipe</em> blocks.
+A multipipe block contains one or more <em>dgsh</em> commands,
 which are executed asynchronously (in parallel, in the background).
-Each command starts with a source (input) specification at
-the beginning of a line:
-<code>-|</code> to receive input that was piped into the
-scatter block, or
-<code>.|</code> to specify that no input will be received.
-Then follows a normal <em>sh</em>(1) pipeline,
-followed by a sink (output) specification at the end of a line.
-This can be a stream (<code>|&gt;/stream/</code><em>name</em> or <code>|-</code>),
-a data store (<code>|store:</code><em>name</em>),
-<code>|.</code> to specify that no output will be generated,
-or a nested scatter block
-(starting with <code>|{</code> and ending with <code>|}</code>).
-</p>
+Data may be redirected or piped into and out of a multipipe block.
+With multipipe blocks <em>dgsh</em> scripts form directed acyclic process graphs.
+Multipipe blocks can be recursively composed.
+
 <p>
-The (optional) <em>gather</em> block starts with a line
-containing the sequence <code>|} gather |{</code>,
-which also ends the preceding scatter block,
-and ends with a line containing <code>|}</code>.
-The gather block contains normal <em>sh</em>(1) commands,
-which are executed synchronously&emdash;one by one in the specified order.
-Names of data stores and streams appearing in the gather
-block are set to match the output of the corresponding gather commands.
-The gather block ends with <code>|}</code> appearing in a single line.
-The <code>|}</code> token terminating the gather block can be followed
-by redirection operators,
-like <code>|</code>, <code>&lt;</code>, and <code>&gt;</code>.
-</p>
-<p>
-In the following example the output of <em>ls</em> is scattered to
-three commands:
-<em>grep</em>, which counts the number of directories and stores the
-result into the <code>NDIRS</code> store,
-<em>awk</em>, which sums the number of bytes and stores the
-result into the <code>NBYTES</code> store, and
-an empty command,
-which simply sends a copy of its input to the <code>files</code> stream.
-The commands in the <em>gather</em> block retrieve and display the
-data from the stores and the stream.
+In the following example the output of <em>ls</em> is distributed to
+six commands:
+<em>awk</em>, which sums the number of bytes and passes the
+result to the <em>tr</em> command that deletes
+newline characters,
+<em>wc</em>, which counts the number of files,
+<em>awk</em>, which counts the number of bytes,
+<em>grep</em>, which counts the number of directories and passes the
+result to the <em>tr</em> command that deletes newline characters,
+three <code>echo</code> commands, which provide the headers
+of the data output by the commands described above.
+All six commands pass their output
+to the <code>cat</code> command, which gathers their outputs
+in order.
 </p>
 
 <pre class="prettyprint lang-bash">
-#!/usr/bin/env dgsh
+FREE=`df -h . | awk '!/Use%/{print $4}'`
 
 ls -n |
-scatter |{
-	# Count number of directories
-	-| grep -c '^d' |store:NDIRS
+tee |
+{{
+        # Reorder fields in DIR-like way
+        awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
 
-	# Tally number of bytes
-	-| awk '{s += $5} END {print s}' |store:NBYTES
+        # Count number of files
+        wc -l | tr -d \\n &
 
-	# Copy of the files
-	-||&gt;/stream/files
-|} gather |{
-	cat /stream/files
-	echo "`store:NDIRS` Dir(s) `store:NBYTES` bytes"
-|}
+        # Print label for number of files
+        echo -n ' File(s) ' &
+
+        # Tally number of bytes
+        awk '{s += $5} END {printf("%d bytes\n", s)}' &
+
+        # Count number of directories
+        grep -c '^d' | tr -d \\n &
+
+        # Print label for number of dirs and calculate free bytes
+        echo " Dir(s) $FREE bytes free" &
+}} |
+cat
 </pre>
 
 <p>
-Here the formal description of the <em>dgsh</em> syntax.
+<em>Dgsh</em> extends the syntax of the Unix Bourne-shell and
+its descendants, such as <em>bash</em>.
+The extensions involve
+inter-process communication mechanisms through a syntax
+that allows the specification
+of pipelines communicating in a directed acyclic process graph.
+This pattern can perform non-uniform non-linear processing.
+<em>Dgsh</em> is set to operate with the Bash shell
+when provided with the <em>--dgsh</em> argument.
+
+A dag is understood as a recursive composition of boxes $b$ with <rm>In</rm>(b)
+ordered inputs and <rm>Out</rm>(b) ordered outputs.
+A box's number of inputs or outputs may be designated ``flexible'',
+which can take values $[1, \infty]$.
+
+A composition step (symbolized by <tt>|</tt>) matches in order the outputs
+L of one box b_1 to the inputs R of another b_2.
+A pairwise composition may involve at most one box with flexible input and
+one box with flexible output.
+In this case flexible inputs or outputs may expand to cover the other box's
+cardinality of outputs or inputs, with the cardinality of a flexible element
+on the other side counting as one.
+The cardinalities of L and R must be equal, either directly or by
+expanding through flexibility.
+
+Boxes can be recursively grouped by bracketing an ordered set of
+asynchronously running boxes using a pair of double curly braces
+(<tt>{{ }}</tt>).
+The inputs and outputs of the group are those of the grouped boxes,
+ordered according to the order of the boxes in the group.
+At most one box in a group may have flexible input or output;
+the corresponding flexibility is inherited by the group.
 </p>
 
 <pre class="prettyprint">
@@ -247,9 +249,6 @@ in formats suitable for browsing and printing.
 <dt> dgsh-tee </dt><dd> buffer and copy or scatter standard input to one or more sinks <a href="dgsh-tee.html">HTML</a>, <a href="dgsh-tee.pdf">PDF</a></dd>
 <dt> dgsh-writeval </dt><dd> write values to a data store <a href="dgsh-writeval.html">HTML</a>, <a href="dgsh-writeval.pdf">PDF</a></dd>
 <dt> dgsh-readval </dt><dd> data store client <a href="dgsh-readval.html">HTML</a>, <a href="dgsh-readval.pdf">PDF</a></dd>
-<dt> dgsh-httpval </dt><dd> data store HTTP server <a href="dgsh-httpval.html">HTML</a>, <a href="dgsh-httpval.pdf">PDF</a></dd>
-<dt> dgsh-monitor </dt><dd> pipe monitoring filter <a href="dgsh-monitor.html">HTML</a>, <a href="dgsh-monitor.pdf">PDF</a></dd>
-<dt> dgsh-ps </dt><dd> process status provider <a href="dgsh-ps.html">HTML</a>, <a href="dgsh-ps.pdf">PDF</a></dd>
 </dl>
 </section>
 
