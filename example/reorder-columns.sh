@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 tee |
 {{
 	cut -d , -f 5-6 - &

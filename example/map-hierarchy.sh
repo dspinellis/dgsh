@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Hierarchy map
 # DESCRIPTION

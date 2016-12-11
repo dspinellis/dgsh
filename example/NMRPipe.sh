@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Nuclear magnetic resonance processing
 # DESCRIPTION

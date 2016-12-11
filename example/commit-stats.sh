@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Git commit statistics
 # DESCRIPTION

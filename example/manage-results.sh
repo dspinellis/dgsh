@@ -1,3 +1,5 @@
+#!/usr/bin/env dgsh
+
 PSDIR=$1
 
 cp $PSDIR/results $PSDIR/res

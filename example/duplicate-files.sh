@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Find duplicate files
 # DESCRIPTION

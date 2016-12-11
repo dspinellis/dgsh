@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Plot git committer activity over time
 # DESCRIPTION

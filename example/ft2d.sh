@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Waves: 2D Fourier transforms
 # DESCRIPTION

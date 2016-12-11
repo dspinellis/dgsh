@@ -1,3 +1,4 @@
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS C/C++ symbols that should be static
 # DESCRIPTION
