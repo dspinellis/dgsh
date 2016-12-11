@@ -822,6 +822,7 @@ static void
 usage(const char *name)
 {
 	fprintf(stderr, "Usage %s [-b size] [-i file] [-IMs] [-o file] [-m size] [-t char]\n"
+		"-a"		"\tOpen output file(s) for appending\n"
 		"-b size"	"\tSpecify the size of the buffer to use (used for stress testing)\n"
 		"-f"		"\tOverflow buffered data into a temporary file\n"
 		"-I"		"\tInput-side buffering\n"
@@ -1019,9 +1020,13 @@ main(int argc, char *argv[])
 	const char *progname = argv[0];
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
+	bool opt_append = false;
 
-	while ((ch = getopt(argc, argv, "b:fIi:Mm:o:p:S:sTt:")) != -1) {
+	while ((ch = getopt(argc, argv, "ab:fIi:Mm:o:p:S:sTt:")) != -1) {
 		switch (ch) {
+		case 'a':
+			opt_append = true;
+			break;
 		case 'b':
 			buffer_size = (int)parse_size(progname, optarg);
 			break;
@@ -1055,7 +1060,9 @@ main(int argc, char *argv[])
 			break;
 		case 'o':	/* Specify output file */
 			ofp = new_sink_info(optarg);
-			if ((ofp->fd = open(optarg, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+			if ((ofp->fd = open(optarg,
+					(opt_append ? O_APPEND : 0) |
+					O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ofp->fd, max_fd);
 			non_block(ofp->fd, fp_name(ofp));

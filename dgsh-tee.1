@@ -1,4 +1,4 @@
-.TH DGSH-TEE 1 "25 November 2016"
+.TH DGSH-TEE 1 "11 December 2016"
 .\"
 .\" (C) Copyright 2013-2016 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -19,7 +19,7 @@ dgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 .SH SYNOPSIS
 \fBdgsh-tee\fP
 [\fB\-b\fP \fIbuffer-size\fP]
-[\fB\-fIMs\fP]
+[\fB\-afIMs\fP]
 [\fB\-i\fP \fIinput-file\fP]
 [\fB\-o\fP \fIoutput-file\fP]
 [\fB\-m\fP \fImemory-size\fP]
@@ -44,6 +44,9 @@ to allow the creation of plug-compatible replacements
 implementing different record types.
 
 .SH OPTIONS
+.IP "\fB\-a\fP
+Open files subsequently specified with the \fB-o\fP option for appending.
+
 .IP "\fB\-b\fP \fIbuffer-size\fP"
 Specify the size of the buffer to use.
 This is by default 1MB.
