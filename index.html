@@ -119,11 +119,14 @@ The behavior of a stored value's IO can be modified by adding flags to
 <p>
 A <em>dgsh</em> script follows the syntax of a <em>bash</em>(1) shell
 script with the addition of <em>multipipe</em> blocks.
-A multipipe block contains one or more <em>dgsh</em> commands,
-which are executed asynchronously (in parallel, in the background).
+A multipipe block contains one or more <em>dgsh</em> simple commands,
+other multipipe blocks, or pipelines of the previous two types of commands.
+The commands in a multipipe block
+are executed asynchronously (in parallel, in the background).
 Data may be redirected or piped into and out of a multipipe block.
 With multipipe blocks <em>dgsh</em> scripts form directed acyclic process graphs.
-Multipipe blocks can be recursively composed.
+It follows from the above description that
+multipipe blocks can be recursively composed.
 
 <p>
 In the following example, which implements a directory listing similar
@@ -246,8 +249,86 @@ The commands are listed in the order of usefulness in everyday scenarios.
 </dl>
 </section>
 
-<!-- Examples {{{1
-================================================== -->
+
+<table style="width:50%">
+	<caption>Tools adapted or developed for multipipe use with <em>dgsh</em></caption>
+	<tr>
+		<th>Tool</th>
+		<th>Input channels</th>
+		<th>Output channels</th>
+		<th>Flownomial connector</th>
+	</tr>
+		<td>cat (<em>dgsh-tee</em>)</td>
+		<td>0--N</td>
+		<td>0--N</td>
+		<td>&or<sub>a</sub><sup>k</sup>, I<sub>a</sub></td>
+	</tr>
+	<tr>
+		<td>comm</td>
+		<td>0--2</td>
+		<td>0--3</td>
+	</tr>
+	<tr>
+		<td>diff</td>
+		<td>0--2</td>
+		<td>0--1</td>
+	</tr>
+	<tr>
+		<td>grep</td>
+		<td>0--2</td>
+		<td>0--4</td>
+	</tr>
+	<tr>
+		<td>join</td>
+		<td>0--2</td>
+		<td>0--1</td>
+	</tr>
+	<tr>
+		<td>paste</td>
+		<td>0--N</td>
+		<td>0--1</td>
+	</tr>
+	<tr>
+		<td>perm</td>
+		<td>1--N</td>
+		<td>1--N</td>
+		<td><sup>a</sup>X<sup>b</sup></td>
+	</tr>
+	<tr>
+		<td>sort</td>
+		<td>0--N</td>
+		<td>0--1</td>
+	</tr>
+	<tr>
+		<td>tee (<em>dgsh-tee</em>)</td>
+		<td>0--N</td>
+		<td>0--N</td>
+		<td>&and<sub>a</sub><sup>k</sup></td>
+	</tr>
+	<tr>
+		<td>dgsh-readval</td>
+		<td>0</td>
+		<td>1</td>
+	</tr>
+	<tr>
+		<td>dgsh-wrap</td>
+		<td>0--N</td>
+		<td>0--1</td>
+	</tr>
+	<tr>
+		<td>dgsh-writeval</td>
+		<td>1</td>
+		<td>0</td>
+	</tr>
+</table>
+		
+		
+		
+<!--</th>
+<th>Examples</th>
+<th>{{{1
+==================================================</th>
+<th>-->
 <section id="examples">
   <div class="page-header">
     <h1>Examples</h1>
