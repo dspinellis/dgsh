@@ -86,6 +86,7 @@ install:
 	install w $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/dd $(INSTPREFIX)/bin
@@ -119,6 +120,7 @@ install:
 	install $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
+	install $(SCRIPTDIR)/tee $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
 	install $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin

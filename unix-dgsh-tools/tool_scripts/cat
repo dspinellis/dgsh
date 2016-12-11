@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Implementation of POSIX tee through dgsh-tee
+#
+
+# Process flags
+args=$(getopt u "$@")
+if [ $? -ne 0 ]; then
+   echo 'Usage: tee [-u] [file ...]'
+   exit 2
+fi
+
+for i in $args; do
+   case "$1" in
+   -u)
+	   shift
+	   ;;
+   --)
+	   shift; break
+	   ;;
+   esac
+done
+
+# Process file arguments
+for i; do
+    flags="$flags -i \"${i}\""
+    shift
+done
+
+exec /usr/local/dgsh/bin/dgsh-tee $flags
