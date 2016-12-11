@@ -43,11 +43,12 @@
     <h1>dgsh &mdash; directed graph shell</h1>
   </div>
 <p>
-The directed graph gather shell, <em>dgsh</em>,
+The directed graph shell, <em>dgsh</em>,
 provides an expressive way to construct
 sophisticated and efficient big data set and stream processing pipelines
 using existing Unix tools as well as custom-built components.
-It is a Unix-style shell allowing the specification of pipelines
+It is a Unix-style shell (based on <em>bash</em>)
+allowing the specification of pipelines
 with non-linear non-uniform operations.
 These form a directed acyclic process graph,
 which is typically executed by multiple processor cores,
@@ -67,22 +68,37 @@ for expressing inter-process communication.
 
 </p>
 <dl class="dl-horizontal">
-<dt>Multipipe blocks {{ ... }}</dt><dd>
-send the input received on its input channel to the processes
-that reside within the block and/or pass the output produced by the processes
-within the block through its output channel.
-Multipipe blocks are made possible by a helper program,
-the dgsh <dt>concentrator</dt>, which connects and coordinates
-message block communication between the connected processes.
-Each concentrator command is created
-and executed dynamically by <dt>bash</dt> with arguments
-the number of processes the block contains and its type, that is input or
-output.
-Then <dt>bash</dt> also takes care to setup the connections
-between the concentrator, the IO connection(s) piped to it, and
-the processes contained in the block.
+<dt>Multipipes</dt><dd> are expressed as usual Unix pipelines,
+but can connect commands with more than one output or input channel.
+As an example, the <code>comm</code> command supplied with <em>dgsh</em>
+expects two input channels and produces on its output three
+output channels: the lines appearing only in first (sorted) channel,
+the lines appearing only in the second channel,
+and the lines appearing in both.
+Connecting the output of the <code>comm</code> command to the
+<code>cat</code> command supplied with <em>dgsh</em>
+will make the three outputs appear in sequence,
+while connecting it to the
+<code>paste</code> command supplied with <em>dgsh</em>
+will make the output appear in its customary format.
+</dd>
 
-<dt>Stored values</dt> offer a convenient way for communicating
+<dt>Multipipe blocks {{ ... }}</dt><dd>
+a) send the input received on their input side to the asynchronously-running
+processes that reside within the block, and, b) pass the output
+produced by the processes within the block to their output side.
+Multipipe blocks typically receive input from more than one channel
+and produce more than one output channel.
+For example, a multipipe block that runs <code>md5sum</code> and <code>wc -c</code>
+receives two inputs and produces two outputs:
+the MD5 hash of its input and the input's size.
+Data to multipipe blocks are typically provided with an
+<em>dgsh</em>-aware version of <code>tee</code> and collected by
+<em>dgsh</em>-aware versions of programs such as
+<code>cat</code> and <code>paste</code>.
+</dd>
+
+<dt>Stored values</dt> <dd>offer a convenient way for communicating
 computed values between arbitrary processes on the graph.
 They allow the storage of a data stream's
 last record into a named buffer.
@@ -90,10 +106,10 @@ This record can be later retrieved asynchronously by one or more readers.
 Data in a stored value can be piped into a process or out of it, or it can be read
 using the shell's command output substitution syntax.
 Stored values are implemented internally through Unix-domain sockets,
-a background-running store program, <em>dgsh-writeval</em>, and
-a reader program, <em>dgsh-readval</em>.
+a background-running store program, <code>dgsh-writeval</code>, and
+a reader program, <code>dgsh-readval</code>.
 The behavior of a stored value's IO can be modified by adding flags to
-<em>dgsh-writeval</em> and <em>dgsh-readval</em>.
+<code>dgsh-writeval</code> and <code>dgsh-readval</code>.
 </dd>
 </dl>
 </section>
@@ -110,7 +126,9 @@ With multipipe blocks <em>dgsh</em> scripts form directed acyclic process graphs
 Multipipe blocks can be recursively composed.
 
 <p>
-In the following example the output of <em>ls</em> is distributed to
+In the following example, which implements a directory listing similar
+to that of the Windows <em>DIR</em> command,
+the output of <em>ls</em> is distributed to
 six commands:
 <em>awk</em>, which sums the number of bytes and passes the
 result to the <em>tr</em> command that deletes
@@ -127,7 +145,7 @@ in order.
 </p>
 
 <pre class="prettyprint lang-bash">
-FREE=`df -h . | awk '!/Use%/{print $4}'`
+FREE=$(df -h . | awk '!/Use%/{print $4}')
 
 ls -n |
 tee |
@@ -154,39 +172,9 @@ cat
 </pre>
 
 <p>
-<em>Dgsh</em> extends the syntax of the Unix Bourne-shell and
-its descendants, such as <em>bash</em>.
-The extensions involve
-inter-process communication mechanisms through a syntax
-that allows the specification
-of pipelines communicating in a directed acyclic process graph.
-This pattern can perform non-uniform non-linear processing.
-<em>Dgsh</em> is set to operate with the Bash shell
-when provided with the <em>--dgsh</em> argument.
-
-A dag is understood as a recursive composition of boxes $b$ with <rm>In</rm>(b)
-ordered inputs and <rm>Out</rm>(b) ordered outputs.
-A box's number of inputs or outputs may be designated ``flexible'',
-which can take values $[1, \infty]$.
-
-A composition step (symbolized by <tt>|</tt>) matches in order the outputs
-L of one box b_1 to the inputs R of another b_2.
-A pairwise composition may involve at most one box with flexible input and
-one box with flexible output.
-In this case flexible inputs or outputs may expand to cover the other box's
-cardinality of outputs or inputs, with the cardinality of a flexible element
-on the other side counting as one.
-The cardinalities of L and R must be equal, either directly or by
-expanding through flexibility.
-
-Boxes can be recursively grouped by bracketing an ordered set of
-asynchronously running boxes using a pair of double curly braces
-(<tt>{{ }}</tt>).
-The inputs and outputs of the group are those of the grouped boxes,
-ordered according to the order of the boxes in the group.
-At most one box in a group may have flexible input or output;
-the corresponding flexibility is inherited by the group.
-</p>
+<em>Dgsh</em> extends the syntax of the (modified) Unix Bourne-shell
+when <code>bash</code> provided with the <code>--dgsh</code> argument.
+<p>
 
 <pre class="prettyprint">
 <!-- #!sh format-syntax.sh -->
@@ -243,16 +231,20 @@ as in
 <p>
 These are the manual pages for <em>dgsh</em> and the associated helper programs
 in formats suitable for browsing and printing.
+The commands are listed in the order of usefulness in everyday scenarios.
 </p>
 <dl >
-<dt> dgsh </dt><dd> scatter gather shell <a href="dgsh.html">HTML</a>, <a href="dgsh.pdf">PDF</a></dd>
+<dt> dgsh </dt><dd> directed graph shell <a href="dgsh.html">HTML</a>, <a href="dgsh.pdf">PDF</a></dd>
 <dt> dgsh-tee </dt><dd> buffer and copy or scatter standard input to one or more sinks <a href="dgsh-tee.html">HTML</a>, <a href="dgsh-tee.pdf">PDF</a></dd>
+<dt> dgsh-wrap </dt><dd> allow any filter program to participate in an dgsh pipeline <a href="dgsh-wrap.html">HTML</a>, <a href="dgsh-wrap.pdf">PDF</a></dd>
 <dt> dgsh-writeval </dt><dd> write values to a data store <a href="dgsh-writeval.html">HTML</a>, <a href="dgsh-writeval.pdf">PDF</a></dd>
 <dt> dgsh-readval </dt><dd> data store client <a href="dgsh-readval.html">HTML</a>, <a href="dgsh-readval.pdf">PDF</a></dd>
+<dt> dgsh-monitor </dt><dd> monitor data on a pipe <a href="dgsh-monitor.html">HTML</a>, <a href="dgsh-monitor.pdf">PDF</a></dd>
+<dt> dgsh-httpval </dt><dd> provide data store values through HTTP <a href="dgsh-httpval.html">HTML</a>, <a href="dgsh-httpval.pdf">PDF</a></dd>
+<dt> dgsh-merge-sum </dt><dd> merge key value pairs, summing the values <a href="dgsh-merge-sum.html">HTML</a>, <a href="dgsh-merge-sum.pdf">PDF</a></dd>
+<dt> dgsh-conc </dt><dd> input or output pipe concentrator for <em>dgsh</em> negotiation (used internally) <a href="dgsh-conc.html">HTML</a>, <a href="dgsh-conc.pdf">PDF</a></dd>
 </dl>
 </section>
-
-
 
 <!-- Examples {{{1
 ================================================== -->
