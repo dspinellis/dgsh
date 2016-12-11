@@ -9,7 +9,6 @@
 *.out
 *.outb
 png/*.png
-dgsh
 dgsh-conc
 dgsh-ps
 dgsh-merge-sum

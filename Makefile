@@ -29,7 +29,7 @@ endif
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
 EXECUTABLES=dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
-	dgsh-conc dgsh-wrap
+	dgsh-conc dgsh-wrap dgsh
 
 LIBS=libdgsh_negotiate.a
 
