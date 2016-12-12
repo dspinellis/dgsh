@@ -2,7 +2,7 @@
 #
 # SYNOPSIS Reorder columns
 # DESCRIPTION
-# Reorder columns in structured document
+# Reorder columns in a CSV document.
 # Demonstrates the combined use of tee, cut, and paste.
 #
 #  Copyright 2016 Marios Fragkoulis

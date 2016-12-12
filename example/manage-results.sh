@@ -2,8 +2,8 @@
 #
 # SYNOPSIS Manage results
 # DESCRIPTION
-# Combine, update, aggregate, summarise results files, such as logs
-# Demonstrates combined use of adapted tools for use with dgsh,
+# Combine, update, aggregate, summarise results files, such as logs.
+# Demonstrates combined use of tools adapted for use with dgsh:
 # sort, comm, paste, join, and diff.
 #
 #  Copyright 2016 Marios Fragkoulis

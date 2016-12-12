@@ -1,8 +1,8 @@
 #!/usr/bin/env dgsh
 #
-# SYNOPSIS FFT calculation (n = 8)
+# SYNOPSIS FFT calculation
 # DESCRIPTION
-# Calculate the iterative FFT for n = 8 in parallel
+# Calculate the iterative FFT for n = 8 in parallel.
 # Demonstrates combined use of permute and multipipe blocks.
 #
 #  Copyright 2016 Marios Fragkoulis
