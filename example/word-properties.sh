@@ -30,7 +30,7 @@
 export LC_ALL=C
 
 # Stream input from file
-cat -i $1 |
+cat $1 |
 
 # Split input one word per line
 tr -cs a-zA-Z \\n |

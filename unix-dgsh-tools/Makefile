@@ -273,7 +273,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
-		tee -i $(PSDIR)/hello \
+		tee $(PSDIR)/hello \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
@@ -289,7 +289,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
-		tee -i $(PSDIR)/hello -s \
+		tee $(PSDIR)/hello -s \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
