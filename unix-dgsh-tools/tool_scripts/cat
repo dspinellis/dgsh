@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # Implementation of POSIX tee through dgsh-tee
 #
@@ -21,10 +21,12 @@ for i in $args; do
    esac
 done
 
+declare -a opts
+
 # Process file arguments
 for i; do
-    flags="$flags -i \"${i}\""
+    opts+=('-i', "$i")
     shift
 done
 
-exec /usr/local/dgsh/bin/dgsh-tee $flags
+exec /usr/local/dgsh/bin/dgsh-tee "${opts[@]}"
