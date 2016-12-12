@@ -1,4 +1,4 @@
-1 tee <hello
+1 dgsh-tee -i hello
 2 dgsh-conc -o 2
 3 diff world
 4 comm hello
