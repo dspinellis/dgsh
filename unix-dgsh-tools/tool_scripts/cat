@@ -6,7 +6,7 @@
 # Process flags
 args=$(getopt u "$@")
 if [ $? -ne 0 ]; then
-   echo 'Usage: tee [-u] [file ...]'
+   echo 'Usage: cat [-u] [file ...]'
    exit 2
 fi
 
@@ -25,8 +25,8 @@ declare -a opts
 
 # Process file arguments
 for i; do
-    opts+=('-i', "$i")
+    opts+=('-i' "$i")
     shift
 done
 
-exec /usr/local/dgsh/bin/dgsh-tee "${opts[@]}"
+echo exec /usr/local/dgsh/bin/dgsh-tee "${opts[@]}"

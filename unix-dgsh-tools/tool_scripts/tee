@@ -29,7 +29,7 @@ done
 
 # Process file arguments
 for i; do
-    opts+=('-o', "$i")
+    opts+=('-o' "$i")
     shift
 done
 
