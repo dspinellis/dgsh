@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # Implementation of POSIX tee through dgsh-tee
 #
@@ -10,10 +10,12 @@ if [ $? -ne 0 ]; then
    exit 2
 fi
 
+declare -a opts
+
 for i in $args; do
    case "$1" in
    -a)
-	   flags=-a
+	   opts=(-a)
 	   shift
 	   ;;
    -i)
@@ -27,8 +29,8 @@ done
 
 # Process file arguments
 for i; do
-    flags="$flags -o \"${i}\""
+    opts+=('-o', "$i")
     shift
 done
 
-exec /usr/local/dgsh/bin/dgsh-tee $flags
+exec /usr/local/dgsh/bin/dgsh-tee "${opts[@]}"
