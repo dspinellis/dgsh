@@ -495,8 +495,6 @@ test-bash: test-clean
 	|| (printf "NMRPipe.sh $F\n" \
 	&& exit 1)
 	
-	mv *.dot coreutils/*.dot $(XDIR)
-
 test-pseudo: test-clean
 	printf "$B\nPseudo shell tests:${EC}\n"
 	
