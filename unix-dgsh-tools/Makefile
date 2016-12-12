@@ -273,7 +273,7 @@ test-bash: test-clean
 	&& exit 1)
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
-		tee $(PSDIR)/hello \
+		tee <$(PSDIR)/hello \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
@@ -286,22 +286,6 @@ test-bash: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
 	&& printf "tee | {{ diff & comm & }} $S\n" \
 	|| (printf "tee | {{ diff & comm & }} $F\n" \
-	&& exit 1)
-	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		tee $(PSDIR)/hello -s \
-		| {{ \
-			diff $(PSDIR)/world & \
-			comm $(PSDIR)/hello & \
-		}} > $(PSDIR)/tee-scatter_diff_comm.outb' \
-		2>$(PSDIR)/tee-scatter_diff_comm.errb \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/tee-scatter_diff_comm.outb \
-			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
-		|| diff $(PSDIR)/tee-scatter_diff_comm.outb \
-			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& printf "tee -s | {{ diff & comm & }} $S\n" \
-	|| (printf "tee -s | {{ diff & comm & }} $F\n" \
 	&& exit 1)
 	
 	# ditto
@@ -623,18 +607,6 @@ test-pseudo: test-clean
 			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
 	&& printf "tee | {{ diff & comm & }} $S\n" \
 	|| (printf "tee | {{ diff & comm & }} $F\n" \
-	&& exit 1)
-	
-	cd $(PSDIR) && \
-	python2 simple-shell.py tee-scatter_diff_comm.dgsh tee-scatter_diff_comm.out \
-		2>$(PSDIR)/tee-scatter_diff_comm.err \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/tee-scatter_diff_comm.out \
-			$(PSDIR)/tee-scatter_diff_comm.success1 >/dev/null \
-		|| diff $(PSDIR)/tee-scatter_diff_comm.out \
-			$(PSDIR)/tee-scatter_diff_comm.success2 >/dev/null) \
-	&& printf "tee -s | {{ diff & comm & }} $S\n" \
-	|| (printf "tee -s | {{ diff & comm & }} $F\n" \
 	&& exit 1)
 	
 	cd $(PSDIR) && \
