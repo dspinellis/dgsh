@@ -1,5 +1,5 @@
 PREFIX?=/usr/local/dgsh
-DGSHPATH=$(PREFIX)/bin
+DGSHPATH=$(PREFIX)/libexec/dgsh
 
 DGSHDIR=..
 PSDIR=../simple-shell
@@ -53,10 +53,10 @@ get-submodules:
 		$(TD)/grep
 
 configure:
-	cd bash && ./configure --prefix=$(PREFIX)
-	cd coreutils && ./bootstrap && ./configure --prefix=$(PREFIX)
-	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX)
-	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX)
+	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
+	cd coreutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
+	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
+	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
 make:
 	$(MAKE) -C bash CFLAGS=$(DEBUGFLAG)
@@ -67,10 +67,6 @@ make:
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
-	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(BZIP2LOCATION)" > $(SCRIPTDIR)/bzip2
-	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(GZIPLOCATION)" > $(SCRIPTDIR)/gzip
-	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(SEDLOCATION)" > $(SCRIPTDIR)/sed
-	echo "#!/usr/local/dgsh/bin/dgsh-wrap $(XZLOCATION)" > $(SCRIPTDIR)/xz
 
 install:
 	$(MAKE) -C bash install
@@ -78,56 +74,17 @@ install:
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
 	# Install last to overwrite standard tools of coreutils
-	install $(DGSHDIR)/dgsh-tee $(PREFIX)/bin/tee
-	install $(DGSHDIR)/dgsh-tee $(PREFIX)/bin/cat
-	install secho $(PREFIX)/bin
-	install pecho $(PREFIX)/bin
-	install fft-input $(PREFIX)/bin
-	install w $(PREFIX)/bin
-	install $(SCRIPTDIR)/awk $(PREFIX)/bin
-	install $(SCRIPTDIR)/bzip2 $(PREFIX)/bin
-	install $(SCRIPTDIR)/cat $(PREFIX)/bin
-	install $(SCRIPTDIR)/cpp $(PREFIX)/bin
-	install $(SCRIPTDIR)/cut $(PREFIX)/bin
-	install $(SCRIPTDIR)/dd $(PREFIX)/bin
-	install $(SCRIPTDIR)/df $(PREFIX)/bin
-	install $(SCRIPTDIR)/echo $(PREFIX)/bin
-	install $(SCRIPTDIR)/file $(PREFIX)/bin
-	install $(SCRIPTDIR)/find $(PREFIX)/bin
-	install $(SCRIPTDIR)/git $(PREFIX)/bin
-	install $(SCRIPTDIR)/gzip $(PREFIX)/bin
-	install $(SCRIPTDIR)/head $(PREFIX)/bin
-	install $(SCRIPTDIR)/ls $(PREFIX)/bin
-	install $(SCRIPTDIR)/nmrPipe $(PREFIX)/bin
-	install $(SCRIPTDIR)/pamscale $(PREFIX)/bin
-	install $(SCRIPTDIR)/perl $(PREFIX)/bin
-	install $(SCRIPTDIR)/pgmmorphconv $(PREFIX)/bin
-	install $(SCRIPTDIR)/pnmtopng $(PREFIX)/bin
-	install $(SCRIPTDIR)/sed $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfcat $(PREFIX)/bin
-	install $(SCRIPTDIR)/sffft1 $(PREFIX)/bin
-	install $(SCRIPTDIR)/sffft3 $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfgrey $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfimag $(PREFIX)/bin
-	install $(SCRIPTDIR)/sflmostretch $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfmath $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfput $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfreal $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfreverse $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfsmooth $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfspike $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfspray $(PREFIX)/bin
-	install $(SCRIPTDIR)/sfwindow $(PREFIX)/bin
-	install $(SCRIPTDIR)/sh $(PREFIX)/bin
-	install $(SCRIPTDIR)/tail $(PREFIX)/bin
-	install $(SCRIPTDIR)/tee $(PREFIX)/bin
-	install $(SCRIPTDIR)/tr $(PREFIX)/bin
-	install $(SCRIPTDIR)/uniq $(PREFIX)/bin
-	install $(SCRIPTDIR)/var2pipe $(PREFIX)/bin
-	install $(SCRIPTDIR)/wc $(PREFIX)/bin
-	install $(SCRIPTDIR)/xargs $(PREFIX)/bin
-	install $(SCRIPTDIR)/xz $(PREFIX)/bin
+	install secho $(DGSHPATH)
+	install pecho $(DGSHPATH)
+	install fft-input $(DGSHPATH)
+	install w $(DGSHPATH)
+	./install-wrapped.sh
 
+cat: cat.sh
+	../replace-paths.sh <$? >$@
+
+tee: tee.sh
+	../replace-paths.sh <$? >$@
 
 test-clean-bash:
 	-rm $(PSDIR)/*.outb
@@ -658,4 +615,4 @@ clean:
 	$(MAKE) -C bash clean
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
-	$(MAKE) -C grep clean
+	HPATH

@@ -33,4 +33,4 @@ for i; do
     shift
 done
 
-exec /usr/local/dgsh/bin/dgsh-tee "${opts[@]}"
+exec @libexecdir@/dgsh/dgsh-tee "${opts[@]}"

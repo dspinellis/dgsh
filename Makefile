@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 
-PREFIX?=/usr/local/dgsh
+export PREFIX?=/usr/local
 
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
@@ -28,8 +28,10 @@ endif
 
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
-EXECUTABLES=dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor dgsh-httpval \
-	dgsh-conc dgsh-wrap dgsh
+EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval
+
+LIBEXECUTABLES=dgsh-tee dgsh-writeval dgsh-monitor \
+	dgsh-conc dgsh-wrap perm
 
 LIBS=libdgsh_negotiate.a
 
@@ -64,7 +66,7 @@ png/%-pretty.png: graphdot/%.dot
 graphdot/%.dot: example/%.sh
 	DRAW_EXIT=1 DGSH_DOT_DRAW_EXIT=$@ ./unix-dgsh-tools/bash/bash --dgsh $<
 
-all: $(EXECUTABLES) $(LIBS) tools
+all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
 
 tools:
 	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
@@ -84,7 +86,13 @@ dgsh-wrap: dgsh-wrap.o negotiate.o
 
 dgsh-tee: dgsh-tee.o negotiate.o
 
-test-dgsh: $(EXECUTABLES)
+dgsh: dgsh.sh
+	./replace-paths.sh <$? >$@
+
+perm: perm.sh
+	./replace-paths.sh <$? >$@
+
+test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 	./test-dgsh.sh
 
 test-tee: dgsh-tee charcount test-tee.sh
@@ -170,19 +178,21 @@ seed-regression:
 clean: clean-dgsh clean-tools
 
 clean-dgsh:
-	rm -f *.o *.exe *.a $(EXECUTABLES) $(MANPDF) $(MANHTML) $(EGPNG)
+	rm -f *.o *.exe *.a $(EXECUTABLES) $(LIBEXECUTABLES) $(MANPDF) \
+		$(MANHTML) $(EGPNG)
 
 clean-tools:
 	$(MAKE) -C $(TOOLS) clean
 
 install: install-dgsh install-tools
 
-install-dgsh: $(EXECUTABLES) $(LIBS)
+install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 	-mkdir -p $(PREFIX)/bin
 	-mkdir -p $(PREFIX)/lib
+	-mkdir -p $(PREFIX)/libexec/dgsh
 	-mkdir -p $(PREFIX)/share/man/man1
 	install $(EXECUTABLES) $(PREFIX)/bin
-	install perm.sh $(PREFIX)/bin/perm
+	install $(LIBEXECUTABLES) $(PREFIX)/libexec/dgsh
 	install $(LIBS) $(PREFIX)/lib
 	install -m 644 $(MANSRC) $(PREFIX)/share/man/man1
 
