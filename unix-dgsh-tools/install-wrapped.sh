@@ -3,7 +3,8 @@
 # Install the commands wrapped by dgsh-wrap
 #
 
-mkdir -p $PREFIX/libexec/dgsh
+DGPATH=$PREFIX/libexec/dgsh
+mkdir -p $DGPATH
 
 # Remove comments and blank lines
 sed 's/[ \t]*#.*//;/^$/d' wrapped-commands |
@@ -12,17 +13,23 @@ while read mode name ; do
     continue
   fi
   case $mode in
-    m) opt='-m '
+    m)	# Mute
+      opt=' -m'
       ;;
-    d) opt='-d '
+    d)	# Deaf
+      opt=' -d'
       ;;
-    f) opt=''
+    f)	# Filter
+      opt=''
+      ;;
+    c)	# Custom implementation
+      continue
       ;;
     *)
       echo "Unknown I/O mode $mode" 1>&2
       exit 1
   esac
-  target=$PREFIX/libexec/dgsh/$name
-  echo "#!$PREFIX/libexec/dgsh/dgsh-wrap $opt$path" >$target
+  target=$DGPATH/$name
+  echo "#!$DGPATH/dgsh-wrap$opt $path" >$target
   chmod 755 $target
 done
