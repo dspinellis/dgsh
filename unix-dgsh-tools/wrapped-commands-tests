@@ -1,22 +1,13 @@
-f awk
+# Commands required for running the negotiation and performance tests
 f bzip2
 f cpp
-f cut
-f dd
-f df
-d echo
-f file
-f find
-f git
+d git
 f gzip
-f head
-f ls
 f nmrPipe
 f pamscale
 f perl
 f pgmmorphconv
 f pnmtopng
-f sed
 f sfcat
 f sffft1
 f sffft3
@@ -31,11 +22,5 @@ f sfsmooth
 f sfspike
 f sfspray
 f sfwindow
-f sh
-f tail
-f tr
-f uniq
 f var2pipe
-f wc
-f xargs
 f xz

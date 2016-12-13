@@ -7,28 +7,35 @@ DGPATH=$PREFIX/libexec/dgsh
 mkdir -p $DGPATH
 
 # Remove comments and blank lines
-sed 's/[ \t]*#.*//;/^$/d' wrapped-commands |
+sed 's/[ \t]*#.*//;/^$/d' wrapped-commands-posix wrapped-commands-tests |
 while read mode name ; do
-  if ! path=$(which $name) ; then
+  if ! path=$(which $name 2>/dev/null) ; then
     continue
   fi
-  case $mode in
-    m)	# Mute
-      opt=' -m'
-      ;;
-    d)	# Deaf
-      opt=' -d'
-      ;;
-    f)	# Filter
-      opt=''
-      ;;
-    c)	# Custom implementation
-      continue
-      ;;
-    *)
-      echo "Unknown I/O mode $mode" 1>&2
-      exit 1
-  esac
+  opt=''
+  # Iterate over the mode's characters
+  for m in $(echo "$mode" | sed 's/./& /g') ; do
+    case $m in
+      m)	# Mute
+	opt="$opt -m"
+	;;
+      M)	# Mute unless - is specified (TODO)
+	;;
+      d)	# Deaf
+	opt="$opt -d"
+	;;
+      D)	# Deaf unless - is specified or no arguments are provided (TODO)
+	;;
+      f)	# Filter
+	;;
+      c)	# Custom implementation
+	continue
+	;;
+      *)
+	echo "Unknown I/O mode character $m for $name" 1>&2
+	exit 1
+    esac
+  done
   target=$DGPATH/$name
   echo "#!$DGPATH/dgsh-wrap$opt $path" >$target
   chmod 755 $target
