@@ -9,9 +9,10 @@
 *.swp
 *.test
 charcount
-dgsh.html
+dgsh
 dgsh-conc
 dgsh-conc.html
+dgsh.html
 dgsh-httpval
 dgsh-httpval.html
 dgsh-merge-sum
@@ -23,11 +24,13 @@ dgsh-readval
 dgsh-readval.html
 dgsh-tee
 dgsh-tee.html
+dgsh-wrap
 dgsh-wrap.html
 dgsh-writeval
 dgsh-writeval.html
 libdgsh_negotiate.a
 negotiate
+perm
 perm.html
 png/*.png
 tags
