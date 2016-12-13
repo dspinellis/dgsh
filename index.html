@@ -274,25 +274,8 @@ as follows, based on the supplied command-line arguments.
   <div class="page-header">
     <h1>Downloading and installation</h1>
   </div>
-<p>
-Go through the following steps.
-<ol>
-<li>
-Recursively clone the project's source code through its
-<a href="https://github.com/dspinellis/dgsh">GitHub page</a>.
-<pre class="prettyprint lang-bash">
-git clone --recursive https://github.com/dspinellis/dgsh.git
-</pre>.
-</li>
-<li>
-Configure <em>bash</em> and the Unix tools adapted for <em>dgsh</em>.
-<pre class="prettyprint lang-bash">
-make config-tools
-</pre>.
-</li>
-</ol>
-</p>
-
+    <section>
+    <h2>Prerequisites</h1>
 <p>
 To compile and run <em>dgsh</em> you will need to have the following commands
 installed in your system:
@@ -306,20 +289,51 @@ The <em>dgsh</em> suite has been tested under
 Debian Linux, FreeBSD, and Mac OS X.
 A Cygwin port is underway.
 </p>
+    </section>
+    <section>
+    <h2>Installation steps</h1>
 <p>
-To install the <em>dgsh</em> suite run <code>make</code>,
-followed by <code>sudo make install</code>.
+Go through the following steps.
+<ol>
+<li>
+Recursively clone the project's source code through its
+<a href="https://github.com/dspinellis/dgsh">GitHub page</a>.
+<pre class="prettyprint lang-bash">
+git clone --recursive https://github.com/dspinellis/dgsh.git
+</pre>
+</li>
+<li>
+Configure <em>bash</em> and the Unix tools adapted for <em>dgsh</em>.
+<pre class="prettyprint lang-bash">
+make config-tools
+</pre>
+</li>
+<li>
+Compile all programs.
+<pre class="prettyprint lang-bash">
+make
+</pre>
+</li>
+<li>
+Install.
+<pre class="prettyprint lang-bash">
+sudo make install
+</pre>
+</li>
+</ol>
+</p>
+<p>
 By default, the program and its documentation are installed under
 <code>/usr/local</code>.
 You can modify this by setting the <code>PREFIX</code> variable
-during installation,
-e.g. <code>sudo make PREFIX=/usr install</code>.
-Alternatively, you can also run <em>dgsh</em> from its current
-directory, by running <code>make</code> and then using the <code>-p</code>
-flag to specify the location of the helper programs,
-as in
-<code>./dgsh -p . example/compress-compare.sh http://www.google.com</code>.
+in all the above steps, for example:
+<pre class="prettyprint lang-bash">
+make PREFIX=$HOME config-tools
+make PREFIX=$HOME
+make PREFIX=$HOME install
+</pre>
 </p>
+    </section>
 </section>
 
 <!-- Reference {{{1
