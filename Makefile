@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 
-INSTPREFIX?=/usr/local/dgsh
+PREFIX?=/usr/local/dgsh
 
 ifdef DEBUG
 CFLAGS=-g -DDEBUG -Wall
@@ -178,15 +178,13 @@ clean-tools:
 install: install-dgsh install-tools
 
 install-dgsh: $(EXECUTABLES) $(LIBS)
-	-mkdir -p $(INSTPREFIX)/bin
-	-mkdir -p $(INSTPREFIX)/lib
-	-mkdir -p $(INSTPREFIX)/share/man/man1
-	install $(EXECUTABLES) $(INSTPREFIX)/bin
-	install perm.sh $(INSTPREFIX)/bin/perm
-	install $(LIBS) $(INSTPREFIX)/lib
-	install -m 644 $(MANSRC) $(INSTPREFIX)/share/man/man1
-	# For tests
-	install dgsh-readval /usr/local/bin
+	-mkdir -p $(PREFIX)/bin
+	-mkdir -p $(PREFIX)/lib
+	-mkdir -p $(PREFIX)/share/man/man1
+	install $(EXECUTABLES) $(PREFIX)/bin
+	install perm.sh $(PREFIX)/bin/perm
+	install $(LIBS) $(PREFIX)/lib
+	install -m 644 $(MANSRC) $(PREFIX)/share/man/man1
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install

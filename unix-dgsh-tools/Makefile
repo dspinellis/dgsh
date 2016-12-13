@@ -1,5 +1,5 @@
-INSTPREFIX?=/usr/local/dgsh
-DGSHPATH=$(INSTPREFIX)/bin
+PREFIX?=/usr/local/dgsh
+DGSHPATH=$(PREFIX)/bin
 
 DGSHDIR=..
 PSDIR=../simple-shell
@@ -53,10 +53,10 @@ get-submodules:
 		$(TD)/grep
 
 configure:
-	cd bash && ./configure --prefix=$(INSTPREFIX)
-	cd coreutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
-	cd diffutils && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
-	cd grep && ./bootstrap && ./configure --prefix=$(INSTPREFIX)
+	cd bash && ./configure --prefix=$(PREFIX)
+	cd coreutils && ./bootstrap && ./configure --prefix=$(PREFIX)
+	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX)
+	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX)
 
 make:
 	$(MAKE) -C bash CFLAGS=$(DEBUGFLAG)
@@ -78,55 +78,55 @@ install:
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
 	# Install last to overwrite standard tools of coreutils
-	install $(DGSHDIR)/dgsh-tee $(INSTPREFIX)/bin/tee
-	install $(DGSHDIR)/dgsh-tee $(INSTPREFIX)/bin/cat
-	install secho $(INSTPREFIX)/bin
-	install pecho $(INSTPREFIX)/bin
-	install fft-input $(INSTPREFIX)/bin
-	install w $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/awk $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/bzip2 $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/cat $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/cpp $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/cut $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/dd $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/df $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/echo $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/file $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/find $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/git $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/gzip $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/head $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/ls $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/nmrPipe $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/pamscale $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/perl $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/pgmmorphconv $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/pnmtopng $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sed $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfcat $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sffft1 $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sffft3 $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfgrey $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfimag $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sflmostretch $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfmath $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfput $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfreal $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfreverse $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfsmooth $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfspike $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfspray $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sfwindow $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/sh $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/tail $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/tee $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/tr $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/uniq $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/var2pipe $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/wc $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/xargs $(INSTPREFIX)/bin
-	install $(SCRIPTDIR)/xz $(INSTPREFIX)/bin
+	install $(DGSHDIR)/dgsh-tee $(PREFIX)/bin/tee
+	install $(DGSHDIR)/dgsh-tee $(PREFIX)/bin/cat
+	install secho $(PREFIX)/bin
+	install pecho $(PREFIX)/bin
+	install fft-input $(PREFIX)/bin
+	install w $(PREFIX)/bin
+	install $(SCRIPTDIR)/awk $(PREFIX)/bin
+	install $(SCRIPTDIR)/bzip2 $(PREFIX)/bin
+	install $(SCRIPTDIR)/cat $(PREFIX)/bin
+	install $(SCRIPTDIR)/cpp $(PREFIX)/bin
+	install $(SCRIPTDIR)/cut $(PREFIX)/bin
+	install $(SCRIPTDIR)/dd $(PREFIX)/bin
+	install $(SCRIPTDIR)/df $(PREFIX)/bin
+	install $(SCRIPTDIR)/echo $(PREFIX)/bin
+	install $(SCRIPTDIR)/file $(PREFIX)/bin
+	install $(SCRIPTDIR)/find $(PREFIX)/bin
+	install $(SCRIPTDIR)/git $(PREFIX)/bin
+	install $(SCRIPTDIR)/gzip $(PREFIX)/bin
+	install $(SCRIPTDIR)/head $(PREFIX)/bin
+	install $(SCRIPTDIR)/ls $(PREFIX)/bin
+	install $(SCRIPTDIR)/nmrPipe $(PREFIX)/bin
+	install $(SCRIPTDIR)/pamscale $(PREFIX)/bin
+	install $(SCRIPTDIR)/perl $(PREFIX)/bin
+	install $(SCRIPTDIR)/pgmmorphconv $(PREFIX)/bin
+	install $(SCRIPTDIR)/pnmtopng $(PREFIX)/bin
+	install $(SCRIPTDIR)/sed $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfcat $(PREFIX)/bin
+	install $(SCRIPTDIR)/sffft1 $(PREFIX)/bin
+	install $(SCRIPTDIR)/sffft3 $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfgrey $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfimag $(PREFIX)/bin
+	install $(SCRIPTDIR)/sflmostretch $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfmath $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfput $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfreal $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfreverse $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfsmooth $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfspike $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfspray $(PREFIX)/bin
+	install $(SCRIPTDIR)/sfwindow $(PREFIX)/bin
+	install $(SCRIPTDIR)/sh $(PREFIX)/bin
+	install $(SCRIPTDIR)/tail $(PREFIX)/bin
+	install $(SCRIPTDIR)/tee $(PREFIX)/bin
+	install $(SCRIPTDIR)/tr $(PREFIX)/bin
+	install $(SCRIPTDIR)/uniq $(PREFIX)/bin
+	install $(SCRIPTDIR)/var2pipe $(PREFIX)/bin
+	install $(SCRIPTDIR)/wc $(PREFIX)/bin
+	install $(SCRIPTDIR)/xargs $(PREFIX)/bin
+	install $(SCRIPTDIR)/xz $(PREFIX)/bin
 
 
 test-clean-bash:
@@ -659,4 +659,3 @@ clean:
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
 	$(MAKE) -C grep clean
-
