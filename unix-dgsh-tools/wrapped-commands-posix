@@ -117,7 +117,7 @@ f sccs		# Depends on the command
 f sed
 f sh
 dm sleep
-f sort
+c sort
 f split
 f strings	# TODO custom
 dm strip
