@@ -14,8 +14,8 @@ while read mode name ; do
     continue
   fi
 
-  # Continue if command is custom-implemented
-  if [ $mode = c ] ; then
+  # Continue if command is custom-implemented or both dead and mute
+  if [ $mode = c -o $mode = dm ] ; then
     continue
   fi
 
