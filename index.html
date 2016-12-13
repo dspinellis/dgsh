@@ -128,9 +128,33 @@ Data may be redirected or piped into and out of a multipipe block.
 With multipipe blocks <em>dgsh</em> scripts form directed acyclic process graphs.
 It follows from the above description that
 multipipe blocks can be recursively composed.
+</p>
 
 <p>
-In the following example, which implements a directory listing similar
+As a simple example consider running the following command
+directly within <em>dgsh</em>
+</p>
+<pre class="prettyprint lang-bash">
+{{ echo hello & echo world & }} | paste
+</pre>
+<p>
+or by invoking <code>dgsh</code> with the command as an argument.
+</p>
+<pre class="prettyprint lang-bash">
+dgsh -c '{{ echo hello & echo world & }} | paste'
+</pre>
+<p>
+The command will run <em>paste</em> with input from the two
+<em>echo</em> processes to output <code>hello world</code>.
+This is equivalent to running the following <em>bash</em> command,
+but with the flow of data appearing in the natural left-to-right order.
+</p>
+<pre class="prettyprint lang-bash">
+paste <(echo hello) <(echo world)
+</pre>
+
+<p>
+In the following larger example, which implements a directory listing similar
 to that of the Windows <em>DIR</em> command,
 the output of <em>ls</em> is distributed to
 six commands:
@@ -176,7 +200,7 @@ cat
 </pre>
 
 <p>
-<em>Dgsh</em> extends the syntax of the (modified) Unix Bourne-shell
+Formally, <em>dgsh</em> extends the syntax of the (modified) Unix Bourne-shell
 when <code>bash</code> provided with the <code>--dgsh</code> argument
 as follows.
 </p>
@@ -194,7 +218,7 @@ and outputs to match their natural capabilities.
 This echoes a similar adaptation that was performed in the early
 1970s when Unix and the shell got pipes and the pipeline syntax.
 Many programs that worked with files were adjusted to work as filters.
-The inputs and outputs of <em>dgsh</em>-compatible commands are
+The number of inputs and outputs of <em>dgsh</em>-compatible commands are
 as follows, based on the supplied command-line arguments.
 </p>
 <p>
