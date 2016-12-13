@@ -275,23 +275,36 @@ as follows, based on the supplied command-line arguments.
     <h1>Downloading and installation</h1>
   </div>
 <p>
-You can clone the project's source code through its
+Go through the following steps.
+<ol>
+<li>
+Recursively clone the project's source code through its
 <a href="https://github.com/dspinellis/dgsh">GitHub page</a>.
-Alternatively, you can download the latest version of the source code
-as a zip file through
-<a href="https://github.com/dspinellis/dgsh/archive/master.zip">this link</a>.
+<pre class="prettyprint lang-bash">
+git clone --recursive https://github.com/dspinellis/dgsh.git
+</pre>.
+</li>
+<li>
+Configure <em>bash</em> and the Unix tools adapted for <em>dgsh</em>.
+<pre class="prettyprint lang-bash">
+make config-tools
+</pre>.
+</li>
+</ol>
 </p>
+
 <p>
-To compile and run <em>dgsh</em> you will need to have
-a C compiler, GNU make, and <a href="http://www.perl.org/">Perl</a>
-installed in your system.
-The optional Perl module <em>Graph</em> is used to detect cycles that
-can lead to deadlocks.
+To compile and run <em>dgsh</em> you will need to have the following commands
+installed in your system:
+<!-- #!sed -n -e '/- sudo apt-get install/{;s/- sudo apt-get install -y //;s/ /, /g;s/$/,/p}' .travis.yml -->
+and gettext (at least 0.19.5).
+
 An installation of <a href="http://www.graphviz.org/">GraphViz</a>
 will allow you to visualize the <em>dgsh</em> graphs that you specify
 in your programs.
 The <em>dgsh</em> suite has been tested under
-Cygwin, Debian Linux, FreeBSD, and Mac OS X.
+Debian Linux, FreeBSD, and Mac OS X.
+A Cygwin port is underway.
 </p>
 <p>
 To install the <em>dgsh</em> suite run <code>make</code>,
@@ -327,6 +340,7 @@ The commands are listed in the order of usefulness in everyday scenarios.
 <dt> dgsh-writeval </dt><dd> write values to a data store <a href="dgsh-writeval.html">HTML</a>, <a href="dgsh-writeval.pdf">PDF</a></dd>
 <dt> dgsh-readval </dt><dd> data store client <a href="dgsh-readval.html">HTML</a>, <a href="dgsh-readval.pdf">PDF</a></dd>
 <dt> dgsh-monitor </dt><dd> monitor data on a pipe <a href="dgsh-monitor.html">HTML</a>, <a href="dgsh-monitor.pdf">PDF</a></dd>
+<dt> perm </dt><dd> permute inputs to outputs <a href="perm.html">HTML</a>, <a href="perm.pdf">PDF</a></dd>
 <dt> dgsh-httpval </dt><dd> provide data store values through HTTP <a href="dgsh-httpval.html">HTML</a>, <a href="dgsh-httpval.pdf">PDF</a></dd>
 <dt> dgsh-merge-sum </dt><dd> merge key value pairs, summing the values <a href="dgsh-merge-sum.html">HTML</a>, <a href="dgsh-merge-sum.pdf">PDF</a></dd>
 <dt> dgsh-conc </dt><dd> input or output pipe concentrator for <em>dgsh</em> negotiation (used internally) <a href="dgsh-conc.html">HTML</a>, <a href="dgsh-conc.pdf">PDF</a></dd>

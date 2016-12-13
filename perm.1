@@ -1,0 +1,40 @@
+.TH PERM 1 "13 December 2016"
+.\"
+.\" (C) Copyright 2016 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+perm \- permute inputs to outputs
+.SH SYNOPSIS
+\fBperm\fP
+\fIo1,o2 ...\fP
+.SH DESCRIPTION
+\fIperm\fP will read data from multiple inputs, and output each input
+to the specified output.
+\fIperm\fP is implemented by invoking \fIdgsh-tee\fP with the \fI-p\fP option.
+.SH OPTIONS
+.IP "\fIo1,o2 ...\fP"
+Permute the inputs to the specified outputs.
+The comma-separated arguments \fIo1,o2, ...\fP
+specify the number of the output channel (starting from 1)
+where the corresponding \fIn\fPth input channel will be sent.
+Thus,
+input 1 goes to output \fIo1\fP,
+input 2 goes to output \fIo2\fP,
+and so on.
+As an example a cross-permutation is specified with the argument \fI2,1\fP.
+.SH "SEE ALSO"
+\fIdgsh-tee\fP(1)
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>
