@@ -6,7 +6,8 @@ from os import pipe, fork, close, execlp, dup, dup2, \
 from collections import OrderedDict
 import re
 
-instprefix = '/usr/local/dgsh/bin'
+prefix = '/usr/local/dgsh/bin'
+outFile = None
 
 def debug(s):
   if DEBUG:
@@ -92,17 +93,16 @@ def parse(command):
 
 # Debug configuration
 DEBUG = False
-try:
-  if sys.argv[2] == "DEBUG" or sys.argv[3] == "DEBUG":
+for arg in sys.argv[2:]:
+  if arg == "DEBUG":
     DEBUG = True
-except IndexError:
-  pass
-
+  elif arg.startswith("PREFIX="):
+    match = re.match(r'PREFIX=(.+)$', arg)
+    prefix = match.group(1)
 # Get output file name
-try:
-  outFile = sys.argv[2]
-except IndexError:
-  outFile = ""
+  elif arg.startswith("OUT="):
+    match = re.match(r'OUT=(.+)$', arg)
+    outFile = match.group(1)
 
 # Read specification of processes and their interconnections
 try:
@@ -134,7 +134,7 @@ for line in lines[:toolDefsEnd]:
   toolIndex = match.group(1)
   toolCommand = match.group(2)
   if not toolCommand.startswith('/') and not toolCommand.startswith('.'):
-    toolCommand = instprefix + '/' + toolCommand
+    toolCommand = prefix + '/' + toolCommand
   toolDict[int(toolIndex)] = toolCommand
   debug("index: %s, command: %s\n" % \
           (toolIndex, toolCommand))
@@ -218,4 +218,5 @@ for index, process in Process.processes.iteritems():
       dup(outfile_fd)
       close(outfile_fd)
     args = parse(process.command)
+    debug("\n\nARGS[0]: %s\n\n" % args[0])
     execlp(args[0], args[0], *args[1:])
