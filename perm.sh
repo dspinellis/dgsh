@@ -9,8 +9,7 @@ usage()
    exit 2
 }
 
-# Validate first argument syntax
-expr match "$1" '[0-9][0-9,]*[0-9]$' >/dev/null || usage
+# Get first argument. Its syntax will be validated by dgsh-tee
 p="$1"
 shift
 
