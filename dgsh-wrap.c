@@ -88,7 +88,7 @@ main(int argc, char *argv[])
 	DPRINTF("guest_program_name: %s", guest_program_name);
 
 	int exec_argv_len = argc - 1;
-	char *exec_argv[exec_argv_len];
+	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
 	int i, j;
 
 	exec_argv[0] = guest_program_name;
@@ -116,7 +116,7 @@ main(int argc, char *argv[])
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
 			if (!ninputs) {
-				ninputs = (int *)malloc(sizeof(int));
+				ninputs = malloc(sizeof(int));
 				*ninputs = 1;
 			}
 			if (!m)
@@ -152,8 +152,7 @@ main(int argc, char *argv[])
 				negotiation_title, status);
 
 	int n = 1;
-	char *fds[argc - 2];		// /proc/self/fd/x or arg=/proc/self/fd/x
-	memset(fds, 0, sizeof(fds));
+	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
 	if (ninputs)
 		DPRINTF("%s returned %d input fds",
@@ -180,9 +179,9 @@ main(int argc, char *argv[])
 			char *argv_end = NULL;
 			while (m) {	// substring match
 				DPRINTF("Matched: %s", m);
-				char new_argv[size];
-				char argv_start[size];
-				char proc_fd[20];
+				char *new_argv = malloc(size);
+				char *argv_start = malloc(size);
+				char *proc_fd = malloc(20);
 				memset(new_argv, 0, size);
 				memset(argv_start, 0, size);
 				memset(proc_fd, 0, 20);
