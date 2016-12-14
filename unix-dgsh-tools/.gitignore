@@ -1,4 +1,5 @@
 bin/*
+cat
 coreutils/*
 diffutils/*
 etc/*
@@ -10,7 +11,9 @@ lib/*
 libexec/*
 parallel/*
 patch/*
+secho
 sed/*
 share/*
 tar/*
-
+tee
+w
