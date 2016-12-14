@@ -53,10 +53,10 @@ main(int argc, char *argv[])
 	int *ninputs = NULL, *noutputs = NULL;
 	int *input_fds = NULL;
 
-	DPRINTF("argc: %d\n", argc);
+	DPRINTF("argc: %d", argc);
 	int k = 0;
 	for (k = 0; k < argc; k++)
-		DPRINTF("argv[%d]: %s\n", k, argv[k]);
+		DPRINTF("argv[%d]: %s", k, argv[k]);
 
 	program_name = argv[0];
 
@@ -85,7 +85,7 @@ main(int argc, char *argv[])
 		guest_program_name = argv[pos];
 		pos++;
 	}
-	DPRINTF("guest_program_name: %s\n", guest_program_name);
+	DPRINTF("guest_program_name: %s", guest_program_name);
 
 	int exec_argv_len = argc - 1;
 	char *exec_argv[exec_argv_len];
@@ -97,12 +97,12 @@ main(int argc, char *argv[])
 	 * Skip the argv item that contains the wrapper script
 	 */
 	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("dgsh-wrap");
-	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
+	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d",
 			argv[0], argv[pos], compare_chars);
 	if (compare_chars > 0 &&
 			!(cmp = strncmp(argv[pos], argv[0], compare_chars)))
 		pos++;
-	DPRINTF("cmp: %d, pos: %d\n", cmp, pos);
+	DPRINTF("cmp: %d, pos: %d", cmp, pos);
 
 	// Pass argv arguments to exec_argv for exec() call.
 	for (i = pos, j = 1; i < argc; i++, j++)
@@ -111,7 +111,7 @@ main(int argc, char *argv[])
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
-		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d]: %s", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
@@ -126,14 +126,14 @@ main(int argc, char *argv[])
 				m += 2;
 				m = strstr(m, "<|");
 			}
-			DPRINTF("ninputs: %d\n", *ninputs);
+			DPRINTF("ninputs: %d", *ninputs);
 		}
 	}
 
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
 	 */
-	DPRINTF("argc: %d\n", argc);
+	DPRINTF("argc: %d", argc);
 	char negotiation_title[100];
 	if (argc >= 5)	// [4] does not exist, [3] is NULL
 		snprintf(negotiation_title, 100, "%s %s %s",
@@ -156,14 +156,14 @@ main(int argc, char *argv[])
 	memset(fds, 0, sizeof(fds));
 
 	if (ninputs)
-		DPRINTF("%s returned %d input fds\n",
+		DPRINTF("%s returned %d input fds",
 				negotiation_title, *ninputs);
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
-		DPRINTF("exec_argv[%d] to sub: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d] to sub: %s", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
 			(m = strstr(exec_argv[k], "<|"))) {
 
@@ -196,9 +196,9 @@ main(int argc, char *argv[])
 				else
 					strncpy(argv_start, argv_end,
 							m - argv_end);
-				DPRINTF("argv_start: %s\n", argv_start);
+				DPRINTF("argv_start: %s", argv_start);
 				argv_end = m + 2;
-				DPRINTF("argv_end: %s\n", argv_end);
+				DPRINTF("argv_end: %s", argv_end);
 				if (strlen(fds[k]) > 0) {
 					strcpy(new_argv, fds[k]);
 					sprintf(fds[k], "%s%s%s", new_argv,
@@ -212,11 +212,11 @@ main(int argc, char *argv[])
 					sprintf(fds[k], "%s%s",
 						new_argv, argv_end);
 				}
-				DPRINTF("fds[k]: %s\n", fds[k]);
+				DPRINTF("fds[k]: %s", fds[k]);
 			}
 			exec_argv[k] = fds[k];
 		}
-		DPRINTF("After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("After sub exec_argv[%d]: %s", k, exec_argv[k]);
 	}
 
 	// Execute command
