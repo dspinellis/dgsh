@@ -1,11 +1,25 @@
 #!/bin/sh
 #
-# Shard, compute, collect using dgsh
+# Create a semi-homongeneous dgsh parallel processing block
 #
+
+SCRIPT="${TMP:-/tmp}/dgsh-parallel-$$"
+trap 'rm -rf "$SCRIPT"' 0
+trap 'exit 2' 1 2 15
+
+cat >$SCRIPT <<EOF
+#!/usr/bin/env dgsh
+#
+# Automatically generated file from:
+# $0 $*
+#
+
+{{
+EOF
 
 usage()
 {
-   echo 'Usage: shcoco -n n|-f file|-l list shard compute collect'
+   echo 'Usage: dgsh-processing -n n|-f file|-l list command ...'
    exit 2
 }
 
@@ -41,15 +55,8 @@ for i in $args; do
    esac
 done
 
-shard="$1"
-shift
-compute="$1"
-shift
-collect="$1"
-shift
-
-# Ensure exactly three commands are specified
-if [ ! "$shard" -o ! "$compute" -o ! "$collect" -o "$1" ] ; then
+# Ensure commands is specified
+if [ ! "$1" ] ; then
   usage
 fi
 
@@ -58,20 +65,6 @@ if [ ! "$nspec" ] || expr match $nspec .. >/dev/null ; then
   usage
 fi
 
-SCRIPT=/tmp/shcoco-$$
-
-cat >$SCRIPT <<EOF
-#!/usr/bin/env dgsh
-#
-# Automatically generated file
-#
-
-# Shard
-$shard |
-
-# Compute
-{{
-EOF
 
 # Generate list of nodes
 if [ "$n" ] ; then
@@ -92,14 +85,12 @@ fi |
 sed 's/[&/\\]/\\&/g' |
 # Replace {} with the name of each node
 while IFS='' read -r node ; do
-  echo "$compute &" | sed "s/{}/$node/"
+  echo "$1 &" | sed "s/{}/$node/"
 done >>$SCRIPT
 
 cat >>$SCRIPT <<EOF
-}} |
-# Collect
-$collect
+}}
 EOF
 
-dgsh $SCRIPT
+cat $SCRIPT
 rm $SCRIPT
