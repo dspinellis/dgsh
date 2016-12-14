@@ -225,17 +225,6 @@ main(int argc, char *argv[])
 	else
 		execvp(guest_program_name, exec_argv);
 
-	if (ninputs)
-		free(ninputs);
-	if (noutputs)
-		free(noutputs);
-
-	if (input_fds)
-		free(input_fds);
-
-	for (k = 0; k < argc - 2; k++)
-		if (fds[k])
-			free(fds[k]);
-
-	return 0;
+	err(1, "Unable to execute %s", guest_program_name);
+	return 1;
 }
