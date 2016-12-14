@@ -4,6 +4,9 @@ language: C
 
 install:
 - echo $PATH
+- which pnmtopng
+- which pamscale
+- which pgmmorphconv
 - sudo apt-get -qq update
 - sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo help2man wbritish wamerican libfftw3-dev csh netpbm libnetpbm10-dev
 - wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
