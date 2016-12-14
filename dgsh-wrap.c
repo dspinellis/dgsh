@@ -33,6 +33,8 @@
 #include "dgsh.h"
 #include "dgsh-negotiate.h"
 
+#define PROC_FD_PATH_LEN 20
+
 static const char *program_name;
 static char *guest_program_name = NULL;
 
@@ -166,7 +168,7 @@ main(int argc, char *argv[])
 			(m = strstr(exec_argv[k], "<|"))) {
 
 			size_t size = sizeof(char) *
-				(strlen(exec_argv[k]) + 20 * ninputs);
+				(strlen(exec_argv[k]) + PROC_FD_PATH_LEN * ninputs);
 			DPRINTF("fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
 			if (fds[k] == NULL)
@@ -182,7 +184,7 @@ main(int argc, char *argv[])
 				DPRINTF("Matched: %s", m);
 				char *new_argv = calloc(size, 1);
 				char *argv_start = calloc(size, 1);
-				char *proc_fd = calloc(20, 1);
+				char *proc_fd = calloc(PROC_FD_PATH_LEN, 1);
 				if (new_argv == NULL ||
 						argv_start == NULL ||
 						proc_fd == NULL)
