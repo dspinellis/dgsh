@@ -410,9 +410,9 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
+	#2>../$(PSDIR)/committer-plot.err 
 	cd coreutils && $(DGSHPATH)/bash --dgsh ../$(XDIR)/committer-plot.sh \
 		>../$(PSDIR)/committer-plot.outb \
-		2>../$(PSDIR)/committer-plot.err \
 	&& printf "committer-plot.sh $S\n" \
 	|| (printf "committer-plot.sh $F\n" \
 	&& exit 1)
