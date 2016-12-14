@@ -86,9 +86,11 @@ main(int argc, char *argv[])
 	DPRINTF("guest_program_name: %s", guest_program_name);
 
 	int exec_argv_len = argc - 1;
-	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
 	int i, j;
+	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
 
+	if (exec_argv == NULL)
+		err(1, "Error allocating exec_argv memory");
 	exec_argv[0] = guest_program_name;
 
 	/* Arguments might contain the dgsh-wrap script to executable
@@ -167,6 +169,8 @@ main(int argc, char *argv[])
 				(strlen(exec_argv[k]) + 20 * ninputs);
 			DPRINTF("fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
+			if (fds[k] == NULL)
+				err(1, "Unable to allocate %zu bytes for fds", size);
 			memset(fds[k], 0, size);
 
 			if (!m)	// full match, just substitute
@@ -176,12 +180,13 @@ main(int argc, char *argv[])
 			char *argv_end = NULL;
 			while (m) {	// substring match
 				DPRINTF("Matched: %s", m);
-				char *new_argv = malloc(size);
-				char *argv_start = malloc(size);
-				char *proc_fd = malloc(20);
-				memset(new_argv, 0, size);
-				memset(argv_start, 0, size);
-				memset(proc_fd, 0, 20);
+				char *new_argv = calloc(size, 1);
+				char *argv_start = calloc(size, 1);
+				char *proc_fd = calloc(20, 1);
+				if (new_argv == NULL ||
+						argv_start == NULL ||
+						proc_fd == NULL)
+					err(1, "Error allocating argv memory");
 
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
