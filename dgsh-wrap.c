@@ -50,13 +50,13 @@ int
 main(int argc, char *argv[])
 {
 	int pos = 1;
-	int *ninputs = NULL, *noutputs = NULL;
+	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
 
-	DPRINTF("argc: %d\n", argc);
+	DPRINTF("argc: %d", argc);
 	int k = 0;
 	for (k = 0; k < argc; k++)
-		DPRINTF("argv[%d]: %s\n", k, argv[k]);
+		DPRINTF("argv[%d]: %s", k, argv[k]);
 
 	program_name = argv[0];
 
@@ -65,15 +65,13 @@ main(int argc, char *argv[])
 	 */
 	if (argv[1][0] == '-') {
 		if (argv[1][1] == 'd') {
-			ninputs = (int *)malloc(sizeof(int));
-			*ninputs = 0;
+			ninputs = 0;
 			pos++;
 			// argv[1] may carry also the guest program's name
 			if (argv[1][2] == ' ')
 				guest_program_name = &argv[1][3];
 		} else if (argv[1][1] == 'm') {
-			noutputs = (int *)malloc(sizeof(int));
-			*noutputs = 0;
+			noutputs = 0;
 			pos++;
 			if (argv[1][2] == ' ')
 				guest_program_name = &argv[1][3];
@@ -85,24 +83,26 @@ main(int argc, char *argv[])
 		guest_program_name = argv[pos];
 		pos++;
 	}
-	DPRINTF("guest_program_name: %s\n", guest_program_name);
+	DPRINTF("guest_program_name: %s", guest_program_name);
 
 	int exec_argv_len = argc - 1;
-	char *exec_argv[exec_argv_len];
 	int i, j;
+	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
 
+	if (exec_argv == NULL)
+		err(1, "Error allocating exec_argv memory");
 	exec_argv[0] = guest_program_name;
 
 	/* Arguments might contain the dgsh-wrap script to executable
 	 * Skip the argv item that contains the wrapper script
 	 */
 	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("dgsh-wrap");
-	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d\n",
+	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d",
 			argv[0], argv[pos], compare_chars);
 	if (compare_chars > 0 &&
 			!(cmp = strncmp(argv[pos], argv[0], compare_chars)))
 		pos++;
-	DPRINTF("cmp: %d, pos: %d\n", cmp, pos);
+	DPRINTF("cmp: %d, pos: %d", cmp, pos);
 
 	// Pass argv arguments to exec_argv for exec() call.
 	for (i = pos, j = 1; i < argc; i++, j++)
@@ -111,29 +111,26 @@ main(int argc, char *argv[])
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
-		DPRINTF("exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d]: %s", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
-			if (!ninputs) {
-				ninputs = (int *)malloc(sizeof(int));
-				*ninputs = 1;
-			}
+			ninputs = 1;
 			if (!m)
-				(*ninputs)++;
+				ninputs++;
 			while (m) {
-				(*ninputs)++;
+				ninputs++;
 				m += 2;
 				m = strstr(m, "<|");
 			}
-			DPRINTF("ninputs: %d\n", *ninputs);
+			DPRINTF("ninputs: %d", ninputs);
 		}
 	}
 
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
 	 */
-	DPRINTF("argc: %d\n", argc);
+	DPRINTF("argc: %d", argc);
 	char negotiation_title[100];
 	if (argc >= 5)	// [4] does not exist, [3] is NULL
 		snprintf(negotiation_title, 100, "%s %s %s",
@@ -146,31 +143,34 @@ main(int argc, char *argv[])
 
 	// Participate in negotiation
 	int status;
-	if ((status = dgsh_negotiate(negotiation_title, ninputs, noutputs, &input_fds,
+	if ((status = dgsh_negotiate(negotiation_title,
+					ninputs == -1 ? NULL : &ninputs,
+					noutputs == -1 ? NULL : &noutputs,
+					&input_fds,
 				NULL)) != 0)
 		errx(1, "dgsh negotiation failed for %s with status code %d\n",
 				negotiation_title, status);
 
 	int n = 1;
-	char *fds[argc - 2];		// /proc/self/fd/x or arg=/proc/self/fd/x
-	memset(fds, 0, sizeof(fds));
+	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
-	if (ninputs)
-		DPRINTF("%s returned %d input fds\n",
-				negotiation_title, *ninputs);
+	if (ninputs != -1)
+		DPRINTF("%s returned %d input fds", negotiation_title, ninputs);
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
-		DPRINTF("exec_argv[%d] to sub: %s\n", k, exec_argv[k]);
+		DPRINTF("exec_argv[%d] to sub: %s", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
 			(m = strstr(exec_argv[k], "<|"))) {
 
 			size_t size = sizeof(char) *
-				(strlen(exec_argv[k]) + 20 * *ninputs);
+				(strlen(exec_argv[k]) + 20 * ninputs);
 			DPRINTF("fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
+			if (fds[k] == NULL)
+				err(1, "Unable to allocate %zu bytes for fds", size);
 			memset(fds[k], 0, size);
 
 			if (!m)	// full match, just substitute
@@ -180,12 +180,13 @@ main(int argc, char *argv[])
 			char *argv_end = NULL;
 			while (m) {	// substring match
 				DPRINTF("Matched: %s", m);
-				char new_argv[size];
-				char argv_start[size];
-				char proc_fd[20];
-				memset(new_argv, 0, size);
-				memset(argv_start, 0, size);
-				memset(proc_fd, 0, 20);
+				char *new_argv = calloc(size, 1);
+				char *argv_start = calloc(size, 1);
+				char *proc_fd = calloc(20, 1);
+				if (new_argv == NULL ||
+						argv_start == NULL ||
+						proc_fd == NULL)
+					err(1, "Error allocating argv memory");
 
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
@@ -196,9 +197,9 @@ main(int argc, char *argv[])
 				else
 					strncpy(argv_start, argv_end,
 							m - argv_end);
-				DPRINTF("argv_start: %s\n", argv_start);
+				DPRINTF("argv_start: %s", argv_start);
 				argv_end = m + 2;
-				DPRINTF("argv_end: %s\n", argv_end);
+				DPRINTF("argv_end: %s", argv_end);
 				if (strlen(fds[k]) > 0) {
 					strcpy(new_argv, fds[k]);
 					sprintf(fds[k], "%s%s%s", new_argv,
@@ -212,11 +213,11 @@ main(int argc, char *argv[])
 					sprintf(fds[k], "%s%s",
 						new_argv, argv_end);
 				}
-				DPRINTF("fds[k]: %s\n", fds[k]);
+				DPRINTF("fds[k]: %s", fds[k]);
 			}
 			exec_argv[k] = fds[k];
 		}
-		DPRINTF("After sub exec_argv[%d]: %s\n", k, exec_argv[k]);
+		DPRINTF("After sub exec_argv[%d]: %s", k, exec_argv[k]);
 	}
 
 	// Execute command
@@ -225,17 +226,6 @@ main(int argc, char *argv[])
 	else
 		execvp(guest_program_name, exec_argv);
 
-	if (ninputs)
-		free(ninputs);
-	if (noutputs)
-		free(noutputs);
-
-	if (input_fds)
-		free(input_fds);
-
-	for (k = 0; k < argc - 2; k++)
-		if (fds[k])
-			free(fds[k]);
-
-	return 0;
+	err(1, "Unable to execute %s", guest_program_name);
+	return 1;
 }

@@ -58,7 +58,7 @@ configure:
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
-make:
+make: w
 	$(MAKE) -C bash CFLAGS=$(DEBUGFLAG)
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
@@ -66,7 +66,13 @@ make:
 	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
+
+w: w.c
+ifeq ($(shell uname),FreeBSD)
+	$(CC) $(CFLAGS) $(PATHS) w.c cpow.c -o w $(LIBS) -lm
+else
 	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
+endif
 
 install: cat tee
 	$(MAKE) -C bash install
@@ -410,9 +416,9 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
+	#2>../$(PSDIR)/committer-plot.err 
 	cd coreutils && $(DGSHPATH)/bash --dgsh ../$(XDIR)/committer-plot.sh \
 		>../$(PSDIR)/committer-plot.outb \
-		2>../$(PSDIR)/committer-plot.err \
 	&& printf "committer-plot.sh $S\n" \
 	|| (printf "committer-plot.sh $F\n" \
 	&& exit 1)
