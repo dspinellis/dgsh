@@ -50,7 +50,7 @@ int
 main(int argc, char *argv[])
 {
 	int pos = 1;
-	int *ninputs = NULL, *noutputs = NULL;
+	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
 
 	DPRINTF("argc: %d", argc);
@@ -65,15 +65,13 @@ main(int argc, char *argv[])
 	 */
 	if (argv[1][0] == '-') {
 		if (argv[1][1] == 'd') {
-			ninputs = (int *)malloc(sizeof(int));
-			*ninputs = 0;
+			ninputs = 0;
 			pos++;
 			// argv[1] may carry also the guest program's name
 			if (argv[1][2] == ' ')
 				guest_program_name = &argv[1][3];
 		} else if (argv[1][1] == 'm') {
-			noutputs = (int *)malloc(sizeof(int));
-			*noutputs = 0;
+			noutputs = 0;
 			pos++;
 			if (argv[1][2] == ' ')
 				guest_program_name = &argv[1][3];
@@ -115,18 +113,15 @@ main(int argc, char *argv[])
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
-			if (!ninputs) {
-				ninputs = malloc(sizeof(int));
-				*ninputs = 1;
-			}
+			ninputs = 1;
 			if (!m)
-				(*ninputs)++;
+				ninputs++;
 			while (m) {
-				(*ninputs)++;
+				ninputs++;
 				m += 2;
 				m = strstr(m, "<|");
 			}
-			DPRINTF("ninputs: %d", *ninputs);
+			DPRINTF("ninputs: %d", ninputs);
 		}
 	}
 
@@ -146,7 +141,10 @@ main(int argc, char *argv[])
 
 	// Participate in negotiation
 	int status;
-	if ((status = dgsh_negotiate(negotiation_title, ninputs, noutputs, &input_fds,
+	if ((status = dgsh_negotiate(negotiation_title,
+					ninputs == -1 ? NULL : &ninputs,
+					noutputs == -1 ? NULL : &noutputs,
+					&input_fds,
 				NULL)) != 0)
 		errx(1, "dgsh negotiation failed for %s with status code %d\n",
 				negotiation_title, status);
@@ -154,9 +152,8 @@ main(int argc, char *argv[])
 	int n = 1;
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
-	if (ninputs)
-		DPRINTF("%s returned %d input fds",
-				negotiation_title, *ninputs);
+	if (ninputs != -1)
+		DPRINTF("%s returned %d input fds", negotiation_title, ninputs);
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
@@ -167,7 +164,7 @@ main(int argc, char *argv[])
 			(m = strstr(exec_argv[k], "<|"))) {
 
 			size_t size = sizeof(char) *
-				(strlen(exec_argv[k]) + 20 * *ninputs);
+				(strlen(exec_argv[k]) + 20 * ninputs);
 			DPRINTF("fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
 			memset(fds[k], 0, size);
