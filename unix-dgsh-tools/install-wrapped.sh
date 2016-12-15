@@ -10,7 +10,6 @@ mkdir -p $DGPATH
 sed 's/[ \t]*#.*//;/^$/d' wrapped-commands-posix wrapped-commands-tests |
 while read mode name ; do
   # Continue if command is not available
-  echo "name: $name"
   if ! path=$(which $name 2>/dev/null) ; then
     continue
   fi
@@ -42,7 +41,6 @@ while read mode name ; do
     esac
   done
   target=$DGPATH/$name
-  echo "#!$DGPATH/dgsh-wrap$opt $path"
   echo "#!$DGPATH/dgsh-wrap$opt $path" >$target
   chmod 755 $target
 done

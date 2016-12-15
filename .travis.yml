@@ -3,12 +3,8 @@ dist: trusty
 language: C
 
 install:
-- echo $PATH
-- which pnmtopng
-- which pamscale
-- which pgmmorphconv
 - sudo apt-get -qq update
-- sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo help2man wbritish wamerican libfftw3-dev csh netpbm libnetpbm10-dev
+- sudo apt-get install -y check make automake gcc libtool pkg-config gperf texinfo help2man wbritish wamerican libfftw3-dev csh
 - wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 - tar Jxvf gettext-0.19.5.tar.xz
 - cd gettext-0.19.5 && ./configure && make && sudo make install
@@ -31,9 +27,6 @@ install:
 - cd ..
 - cd simple-shell && wget http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
 - cd ..
-- which pamscale
-- which pgmmorphconv
-- which pnmtopng
 - make config-tools && make DEBUG=1 && sudo make install
 - make setup-test-negotiate
 
