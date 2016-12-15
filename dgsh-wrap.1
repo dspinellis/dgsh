@@ -28,13 +28,17 @@ and then execute the specified program connected to the negotiated
 input and output pipes.
 If the program is not specified through an absolute path,
 it will be executed by searching the existing path.
+.PP
+Arguments specified as \fI<|\fP will be presented as additional
+input channels and will be suitably replaced by named file descriptors
+when the command is invoked.
 
 .SH OPTIONS
 .IP "\fB\-d\fP
-Do not read input; d for deaf.
+The wrapped program is deaf, it will not read any input.
 
 .IP "\fB\-m\fP
-Do not write output; m for mute.
+The wrapped program is mute, it will not produce any output.
 
 .SH "SEE ALSO"
 \fIdgsh\fP(1)
