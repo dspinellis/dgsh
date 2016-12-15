@@ -218,15 +218,15 @@ and outputs to match their natural capabilities.
 This echoes a similar adaptation that was performed in the early
 1970s when Unix and the shell got pipes and the pipeline syntax.
 Many programs that worked with files were adjusted to work as filters.
-The number of inputs and outputs of <em>dgsh</em>-compatible commands are
+The number of input and output channels of <em>dgsh</em>-compatible commands are
 as follows, based on the supplied command-line arguments.
 </p>
 <p>
 <table>
 	<tr>
 		<th>Tool</th>
-		<th>Input channels</th>
-		<th>Output channels</th>
+		<th>Inputs</th>
+		<th>Outputs</th>
 		<th>Notes</th>
 	</tr>
 	<tr>
@@ -308,6 +308,22 @@ as follows, based on the supplied command-line arguments.
 		<td></td>
 	</tr>
 </table>
+</p>
+<p>
+In addition, POSIX user commands executed in a <em>dgsh</em> context
+are wrapped by default so that they execute either as filters
+(providing one input and one output channel) or as commands with
+only input or only output.
+<dl>
+<dt> Filters </dt><dd>
+<!-- #!sed -n '/^f/{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dd>
+<dt> Input-only </dt><dd>
+<!-- #!sed -n '/^[Mm] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dd>
+<dt> Output-only </dt><dd> </dd>
+<!-- #!sed -n '/^[Dd] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dl>
 </p>
 </section> <!-- Adapted tools -->
 
