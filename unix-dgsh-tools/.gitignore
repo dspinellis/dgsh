@@ -17,3 +17,21 @@ share/*
 tar/*
 tee
 w
+# Test files
+A
+A+B.dgsh.ft2
+A-B.dgsh.ft2
+B
+Fig/
+character.txt
+diff_last
+digram.txt
+fft-input
+grep-p100/
+grep2/
+grepp/
+pecho
+results
+top_results
+trigram.txt
+words.txt

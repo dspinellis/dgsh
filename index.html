@@ -309,6 +309,22 @@ as follows, based on the supplied command-line arguments.
 	</tr>
 </table>
 </p>
+<p>
+In addition, POSIX user commands executed in a <em>dgsh</em> context
+are wrapped by default so that they execute either as filters
+(providing one input and one output channel) or as commands with
+only input or only output.
+<dl>
+<dt> Filters </dt><dd>
+<!-- #!sed -n '/^f/{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dd>
+<dt> Input-only </dt><dd>
+<!-- #!sed -n '/^[Mm] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dd>
+<dt> Output-only </dt><dd> </dd>
+<!-- #!sed -n '/^[Dd] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dl>
+</p>
 </section> <!-- Adapted tools -->
 
 
