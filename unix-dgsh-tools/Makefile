@@ -120,7 +120,7 @@ test-bash: test-clean
 	&& exit 1)
 
 	$(DGSHPATH)/bash --dgsh -c ' \
-		dgsh-wrap /bin/cat $(PSDIR)/f1s \
+		cat $(PSDIR)/f1s \
 		| comm $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
@@ -350,7 +350,7 @@ test-bash: test-clean
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh 3 pnmtopng pamscale pgmmorphconv
 	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh 0 file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh 0 pipe access.log
+	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh 0 pipe $(PSDIR)/access.log
 	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh 0 file $(PSDIR)/fft-input.dat
 	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh 3 sfimag sfgrey sfspike sfput sfmath \
 					sfspray sffft1 sffft3 sfcat sflmotretch \

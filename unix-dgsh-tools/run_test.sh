@@ -1,7 +1,8 @@
 #!/bin/sh
 
 PSDIR=$1
-SCRIPT=$(basename $2)
+FSCRIPT=$2
+BSCRIPT=$(basename $2 .sh)
 COMMANDS=$3
 INPUT_TYPE=$4
 INPUT1=$5
@@ -33,20 +34,20 @@ F=${R}failed${EC}
 
 if [ $? -eq 0 ]; then
 	if [ "$INPUT_TYPE" = "pipe" ]; then
-		cat $INPUT | dgsh $SCRIPT.sh \
-			>$PSDIR/$SCRIPT.outb \
-			2>$PSDIR/$SCRIPT.err \
-		&& printf "$SCRIPT $S\n" \
-		|| (printf "$SCRIPT $F\n" \
+		cat $INPUT1 | dgsh $FSCRIPT \
+			>$PSDIR/$BSCRIPT.outb \
+			2>$PSDIR/$BSCRIPT.err \
+		&& printf "$BSCRIPT.sh $S\n" \
+		|| (printf "$BSCRIPT.sh $F\n" \
 		&& exit 1)
 	else
-		dgsh $SCRIPT.sh $INPUT1 $INPUT2 $INPUT3 \
-			>$PSDIR/$SCRIPT.outb \
-			2>$PSDIR/$SCRIPT.err \
-		&& printf "$SCRIPT $S\n" \
-		|| (printf "$SCRIPT $F\n" \
+		dgsh $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
+			>$PSDIR/$BSCRIPT.outb \
+			2>$PSDIR/$BSCRIPT.err \
+		&& printf "$BSCRIPT.sh $S\n" \
+		|| (printf "$BSCRIPT.sh $F\n" \
 		&& exit 1)
 	fi
 else
-	echo "Skip test $SCRIPT"
+	echo "Skip test $BSCRIPT.sh"
 fi
