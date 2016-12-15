@@ -227,65 +227,85 @@ as follows, based on the supplied command-line arguments.
 		<th>Tool</th>
 		<th>Input channels</th>
 		<th>Output channels</th>
+		<th>Notes</th>
 	</tr>
+	<tr>
 		<td>cat (<em>dgsh-tee</em>)</td>
 		<td>0&mdash;N</td>
-		<td>0&mdash;N</td>
+		<td>0&mdash;M</td>
+		<td>No options are supported</td>
 	</tr>
 	<tr>
 		<td>comm</td>
 		<td>0&mdash;2</td>
 		<td>0&mdash;3</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>dgsh (<em>bash</em>)</td>
+		<td>0&mdash;N</td>
+		<td>0&mdash;M</td>
+		<td>When invoked with the <code>--dgsh-negotiate</code> option</td>
 	</tr>
 	<tr>
 		<td>diff</td>
 		<td>0&mdash;2</td>
 		<td>0&mdash;1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>grep</td>
 		<td>0&mdash;2</td>
 		<td>0&mdash;4</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>join</td>
 		<td>0&mdash;2</td>
 		<td>0&mdash;1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>paste</td>
 		<td>0&mdash;N</td>
 		<td>0&mdash;1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>perm</td>
 		<td>1&mdash;N</td>
 		<td>1&mdash;N</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>sort</td>
 		<td>0&mdash;N</td>
 		<td>0&mdash;1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>tee (<em>dgsh-tee</em>)</td>
 		<td>0&mdash;N</td>
-		<td>0&mdash;N</td>
+		<td>0&mdash;M</td>
+		<td>Only the <code>-a</code> option is supported</td>
 	</tr>
 	<tr>
 		<td>dgsh-readval</td>
 		<td>0</td>
 		<td>1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>dgsh-wrap</td>
 		<td>0&mdash;N</td>
 		<td>0&mdash;1</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>dgsh-writeval</td>
 		<td>1</td>
 		<td>0</td>
+		<td></td>
 	</tr>
 </table>
 </p>
