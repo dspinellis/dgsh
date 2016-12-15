@@ -62,6 +62,9 @@ main(int argc, char *argv[])
 
 	program_name = argv[0];
 
+	if (argc < 2)
+		usage();
+		
 	/* Parse any arguments to dgsh-wrap
 	 * Tried getopt, but it swallows spaces in this case
 	 */
