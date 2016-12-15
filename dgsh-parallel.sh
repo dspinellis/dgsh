@@ -1,11 +1,25 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
-# Create a semi-homongeneous dgsh parallel processing block
+# Create and execute a semi-homongeneous dgsh parallel processing block
 #
 
+# Ensure generated script is always removed
 SCRIPT="${TMP:-/tmp}/dgsh-parallel-$$"
 trap 'rm -rf "$SCRIPT"' 0
 trap 'exit 2' 1 2 15
+
+# Remove dgsh from path, so that commands aren't wrapped here
+# See http://stackoverflow.com/a/2108540/20520
+# PATH => /bin:.../libexec/dgsh:/sbin
+WORK=:$PATH:
+# WORK => :/bin:.../libexec/dgsh:/sbin:
+REMOVE='[^:]*/libexec/dgsh'
+WORK=${WORK/:$REMOVE:/:}
+# WORK => :/bin:/sbin:
+WORK=${WORK%:}
+WORK=${WORK#:}
+PATH=$WORK
+# PATH => /bin:/sbin
 
 cat >$SCRIPT <<EOF
 #!/usr/bin/env dgsh
@@ -92,5 +106,4 @@ cat >>$SCRIPT <<EOF
 }}
 EOF
 
-cat $SCRIPT
-rm $SCRIPT
+exec dgsh --dgsh-negotiate $SCRIPT
