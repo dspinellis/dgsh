@@ -330,135 +330,33 @@ test-bash: test-clean
 	printf " $BPaper examples under ../example:${EC}\n"
 
 	# No diff, just check execution exit status
-	$(DGSHPATH)/bash --dgsh $(XDIR)/dir.sh \
-		>$(PSDIR)/dir.outb 2>$(PSDIR)/dir.err \
-	&& printf "dir.sh $S\n" \
-	|| (printf "dir.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	cat $(PSDIR)/data.csv | \
-	$(DGSHPATH)/bash --dgsh $(XDIR)/reorder-columns.sh \
-		>$(PSDIR)/reorder-columns.outb 2>$(PSDIR)/reorder-columns.err \
-	&& printf "reorder-columns.sh $S\n" \
-	|| (printf "reorder-columns.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/manage-results.sh $(PSDIR) \
-		>$(PSDIR)/manage-results.outb 2>$(PSDIR)/manage-results.err \
-	&& printf "manage-results.sh $S\n" \
-	|| (printf "manage-results.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	cat Readme.md | \
-	$(DGSHPATH)/bash --dgsh $(XDIR)/compress-compare.sh \
-		>$(PSDIR)/compress-compare.outb 2>$(PSDIR)/compress-compare.err \
-	&& printf "compress-compare.sh $S\n" \
-	|| (printf "compress-compare.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/commit-stats.sh \
-		>$(PSDIR)/commit-stats.outb 2>$(PSDIR)/commit-stats.err \
-	&& printf "commit-stats.sh $S\n" \
-	|| (printf "commit-stats.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/duplicate-files.sh coreutils \
-		>$(PSDIR)/duplicate-files.outb \
-		2>$(PSDIR)/duplicate-files.err \
-	&& printf "duplicate-files.sh $S\n" \
-	|| (printf "duplicate-files.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	cat Readme.md | \
-	$(DGSHPATH)/bash --dgsh $(XDIR)/spell-highlight.sh \
-		>$(PSDIR)/spell-highlight.outb 2>$(PSDIR)/spell-highlight.err \
-	&& printf "spell-highlight.sh $S\n" \
-	|| (printf "spell-highlight.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/static-functions.sh coreutils \
-		>$(PSDIR)/static-functions.outb 2>$(PSDIR)/static-functions.err \
-	&& printf "static-functions.sh $S\n" \
-	|| (printf "static-functions.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/word-properties.sh Readme.md \
-		>$(PSDIR)/word-properties.outb 2>$(PSDIR)/word-properties.err \
-	&& printf "word-properties.sh $S\n" \
-	|| (printf "word-properties.sh $F\n"	\
-	&& exit 1)
-	
-	# ditto
+	./run_test.sh $(PSDIR) $(XDIR)/dir.sh 0
+	./run_test.sh $(PSDIR) $(XDIR)/reorder-columns.sh 0 pipe $(PSDIR)/data.csv
+	./run_test.sh $(PSDIR) $(XDIR)/manage-results.sh 0 file $(PSDIR)
+	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh 0 pipe Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh 0
+	./run_test.sh $(PSDIR) $(XDIR)/duplicate-files.sh 0 file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/spell-highlight.sh 0 pipe Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/static-functions.sh 0 file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/word-properties.sh 0 file Readme.md
 	-rm -rf grep2 grep-p100
 	cp -R grep grep2 && \
 	cp -R grep2 grep-p100 && \
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
 	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
-	$(DGSHPATH)/bash --dgsh $(XDIR)/map-hierarchy.sh grep2 grep-p100 grepp \
-		>$(PSDIR)/map-hierarchy.outb 2>$(PSDIR)/map-hierarchy.err \
-	&& printf "map-hierarchy.sh $S\n" \
-	|| (printf "map-hierarchy.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/text-properties.sh Readme.md \
-		>$(PSDIR)/text-properties.outb 2>$(PSDIR)/text-properties.err \
-	&& printf "text-properties.sh $S\n" \
-	|| (printf "text-properties.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	#2>../$(PSDIR)/committer-plot.err 
-	cd coreutils && $(DGSHPATH)/bash --dgsh ../$(XDIR)/committer-plot.sh \
-		>../$(PSDIR)/committer-plot.outb \
-	&& printf "committer-plot.sh $S\n" \
-	|| (printf "committer-plot.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/code-metrics.sh coreutils \
-		>$(PSDIR)/code-metrics.outb 2>$(PSDIR)/code-metrics.err \
-	&& printf "code-metrics.sh $S\n" \
-	|| (printf "code-metrics.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	cat $(PSDIR)/access.log | \
-	$(DGSHPATH)/bash --dgsh $(XDIR)/web-log-report.sh \
-		>$(PSDIR)/web-log-report.outb 2>$(PSDIR)/web-log-report.err \
-	&& printf "web-log-report.sh $S\n" \
-	|| (printf "web-log-report.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/fft-block8.sh $(PSDIR)/fft-input.dat \
-		>$(PSDIR)/fft-block8.outb 2>$(PSDIR)/fft-block8.err \
-	&& printf "fft-block8.sh $S\n" \
-	|| (printf "fft-block8.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
-	$(DGSHPATH)/bash --dgsh $(XDIR)/ft2d.sh \
-		>$(PSDIR)/ft2d.outb 2>$(PSDIR)/ft2d.err \
-	&& printf "ft2d.sh $S\n" \
-	|| (printf "ft2d.sh $F\n" \
-	&& exit 1)
-	
-	# ditto
+	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh 0 file grep2 grep-p100 grepp
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh 0 file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh 0 file Readme.md
+	cd coreutils && \
+	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh 3 pnmtopng pamscale pgmmorphconv
+	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh 0 file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh 0 pipe access.log
+	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh 0 file $(PSDIR)/fft-input.dat
+	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh 3 sfimag sfgrey sfspike sfput sfmath \
+					sfspray sffft1 sffft3 sfcat sflmotretch \
+					sfreverse sfwindow vppen sfsmooth
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
-	$(DGSHPATH)/bash --dgsh $(XDIR)/NMRPipe.sh $(PSDIR)/fid \
-		>$(PSDIR)/NMRPipe.outb 2>$(PSDIR)/NMRPipe.err \
-	&& printf "NMRPipe.sh $S\n" \
-	|| (printf "NMRPipe.sh $F\n" \
-	&& exit 1)
+	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh 0 file $(PSDIR)/fid
 	
 test-pseudo: test-clean
 	printf "$B\nPseudo shell tests:${EC}\n"
