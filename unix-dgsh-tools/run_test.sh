@@ -21,7 +21,7 @@ F=${R}failed${EC}
 		i=0
 		for arg in "$@"; do
 			if [ $i -lt $COMMANDS ]; then
-				((i++))
+				(( i++ ))
 				continue
 			fi
 			if [ ! $(type $arg) ]; then
