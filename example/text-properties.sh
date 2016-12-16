@@ -66,20 +66,17 @@ tee <$1 |
 		call 'ranked_frequency >words.txt' &
 	}} &
 
+	# Store number of characters to use in awk below
+	wc -c |
+	dgsh-writeval -s nchars &
+
 	# Character frequency
 	sed 's/./&\
 /g' |
 	# Print absolute
 	call 'ranked_frequency' |
-	tee |
-	{{
-		# Store number of characters to use in awk below
-		wc -c |
-		dgsh-writeval -s nchars &
-
-		awk 'BEGIN {
-			"dgsh-readval -l -x -q -s nchars" | getline NCHARS
-			OFMT = "%.2g%%"}
-			{print $1, $2, $1 / NCHARS * 100}' > character.txt &
-	}} &
+	awk 'BEGIN {
+		"dgsh-readval -l -x -q -s nchars" | getline NCHARS
+		OFMT = "%.2g%%"}
+		{print $1, $2, $1 / NCHARS * 100}' > character.txt &
 }}
