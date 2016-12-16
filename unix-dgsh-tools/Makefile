@@ -356,7 +356,7 @@ test-bash: test-clean
 					sfspray sffft1 sffft3 sfcat sflmotretch \
 					sfreverse sfwindow vppen sfsmooth
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
-	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh 0 file $(PSDIR)/fid
+	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh 5 file $(PSDIR)/fid nmrPipe addNMR
 	
 test-pseudo: test-clean
 	printf "$B\nPseudo shell tests:${EC}\n"
