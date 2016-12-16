@@ -115,4 +115,4 @@ cat >>$SCRIPT <<EOF
 }}
 EOF
 
-exec dgsh --dgsh-negotiate $SCRIPT
+exec dgsh $SCRIPT
