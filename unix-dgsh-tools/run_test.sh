@@ -24,7 +24,7 @@ F=${R}failed${EC}
 				i=$((i+1))
 				continue
 			fi
-			if [ ! $(type $arg) ]; then
+			if ! which $arg >/dev/null; then
 				exit 1
 			fi
 		done
