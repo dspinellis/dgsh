@@ -14,6 +14,7 @@
 #  limitations under the License.
 #
 
+-include .config
 export PREFIX?=/usr/local
 
 ifdef DEBUG
@@ -64,14 +65,15 @@ png/%-pretty.png: graphdot/%.dot
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
-	DRAW_EXIT=1 DGSH_DOT_DRAW_EXIT=$@ ./unix-dgsh-tools/bash/bash --dgsh $<
+	DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-dgsh-tools/bash/bash --dgsh $<
 
 all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
 
 tools:
 	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
 
-config-tools:
+config:
+	echo "export PREFIX?=$(PREFIX)" >.config
 	$(MAKE) -C $(TOOLS) configure
 
 dgsh-readval: dgsh-readval.c kvstore.c negotiate.o

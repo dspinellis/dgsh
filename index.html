@@ -365,7 +365,7 @@ git clone --recursive https://github.com/dspinellis/dgsh.git
 <li>
 Configure <em>bash</em> and the Unix tools adapted for <em>dgsh</em>.
 <pre class="prettyprint lang-bash">
-make config-tools
+make config
 </pre>
 </li>
 <li>
@@ -386,11 +386,11 @@ sudo make install
 By default, the program and its documentation are installed under
 <code>/usr/local</code>.
 You can modify this by setting the <code>PREFIX</code> variable
-in all the above steps, for example:
+in the `config` step, for example:
 <pre class="prettyprint lang-bash">
-make PREFIX=$HOME config-tools
-make PREFIX=$HOME
-make PREFIX=$HOME install
+make PREFIX=$HOME config
+make
+make install
 </pre>
 </p>
     </section>

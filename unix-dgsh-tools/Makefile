@@ -1,3 +1,5 @@
+include ../.config
+
 PREFIX?=/usr/local/dgsh
 DGSHPATH=$(PREFIX)/libexec/dgsh
 

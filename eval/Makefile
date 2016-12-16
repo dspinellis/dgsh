@@ -1,3 +1,5 @@
+include ../.config
+
 all: data WebStats.class TextProperties.class
 	sh perf-eval.sh
 

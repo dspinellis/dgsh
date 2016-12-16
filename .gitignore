@@ -8,6 +8,7 @@
 *.pdf
 *.swp
 *.test
+.config
 charcount
 dgsh
 dgsh-conc

@@ -27,7 +27,7 @@ install:
 - cd ..
 - cd simple-shell && wget http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
 - cd ..
-- make config-tools && make DEBUG=1 && sudo make install
+- make config && make DEBUG=1 && sudo make install
 - make setup-test-negotiate
 
 compiler: gcc
