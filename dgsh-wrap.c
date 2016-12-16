@@ -48,12 +48,59 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * Remove from the PATH environment variable an entry with the specified string
+ */
+static void
+remove_from_path(const char *string)
+{
+	char *start, *end, *path, *strptr;
+
+	path = getenv("PATH");
+	if (!path)
+		return;
+	path = strdup(path);
+	if (!path)
+		err(1, "Error allocating path copy");
+	strptr = strstr(path, string);
+	if (!strptr)
+		return;
+	/* Find start of this path element */
+	for (start = strptr; start != path && *start != ':'; start--)
+		;
+	/* Find end of this path element */
+	for (end = strptr; *end && *end != ':'; end++)
+		;
+	/*
+	 * At this point:
+	 * start can point to : or path,
+	 * end can point to : or \0.
+	 * Work through all cases.
+	 */
+	if (*end == '\0')
+		*start = '\0';
+	else if (*start == ':')
+		memmove(start, end, strlen(end));
+	else /* first element, followed by another */
+		memmove(start, end + 1, strlen(end + 1));
+
+	if (setenv("PATH", path, 1) != 0)
+		err(1, "Setting path");
+
+	free(path);
+}
+
 int
 main(int argc, char *argv[])
 {
 	int pos = 1;
 	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
+
+	/* Preclude recursive wrapping */
+	DPRINTF("PATH before: [%s]", getenv("PATH"));
+	remove_from_path("libexec/dgsh");
+	DPRINTF("PATH after: [%s]", getenv("PATH"));
 
 	DPRINTF("argc: %d", argc);
 	int k = 0;
