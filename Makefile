@@ -14,6 +14,7 @@
 #  limitations under the License.
 #
 
+-include .config
 export PREFIX?=/usr/local
 
 ifdef DEBUG
@@ -71,7 +72,8 @@ all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
 tools:
 	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
 
-config-tools:
+config:
+	echo "export PREFIX?=$(PREFIX)" >.config
 	$(MAKE) -C $(TOOLS) configure
 
 dgsh-readval: dgsh-readval.c kvstore.c negotiate.o
