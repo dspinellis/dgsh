@@ -3,11 +3,10 @@
 PSDIR=$1
 FSCRIPT=$2
 BSCRIPT=$(basename $2 .sh)
-COMMANDS=$3
-INPUT_TYPE=$4
-INPUT1=$5
-INPUT2=$6
-INPUT3=$7
+INPUT_TYPE=$3
+INPUT1=$4
+INPUT2=$5
+INPUT3=$6
 
 GR="\033[0;32m"	# Green
 R="\033[0;31m"	# Red
@@ -17,19 +16,20 @@ S=${GR}successful${EC}
 F=${R}failed${EC}
 
 (
-	if [ $COMMANDS -gt 0 ]; then
-		i=0
-		for arg in "$@"; do
-			if [ $i -lt $COMMANDS ]; then
-				i=$((i+1))
-				continue
-			fi
-			if ! which $arg >/dev/null; then
-				exit 1
-			fi
-		done
-		exit 0
-	fi
+	iscommand=0
+	for arg in "$@"; do
+		if [ "$arg" = "--" ]; then
+			iscommand=1
+			continue
+		fi
+		if [ $iscommand -eq 0 ]; then
+			continue
+		fi
+		if ! which $arg >/dev/null; then
+			exit 1
+		fi
+	done
+	exit 0
 )
 
 if [ $? -eq 0 ]; then

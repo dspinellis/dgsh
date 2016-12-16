@@ -333,32 +333,32 @@ test-bash: test-clean
 
 	# No diff, just check execution exit status
 	./run_test.sh $(PSDIR) $(XDIR)/dir.sh 0
-	./run_test.sh $(PSDIR) $(XDIR)/reorder-columns.sh 0 pipe $(PSDIR)/data.csv
-	./run_test.sh $(PSDIR) $(XDIR)/manage-results.sh 0 file $(PSDIR)
-	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh 0 pipe Readme.md
-	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh 0
-	./run_test.sh $(PSDIR) $(XDIR)/duplicate-files.sh 0 file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/spell-highlight.sh 0 pipe Readme.md
-	./run_test.sh $(PSDIR) $(XDIR)/static-functions.sh 0 file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/word-properties.sh 0 file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/reorder-columns.sh pipe $(PSDIR)/data.csv
+	./run_test.sh $(PSDIR) $(XDIR)/manage-results.sh file $(PSDIR)
+	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh pipe Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh
+	./run_test.sh $(PSDIR) $(XDIR)/duplicate-files.sh file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/spell-highlight.sh pipe Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/static-functions.sh file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/word-properties.sh file Readme.md
 	-rm -rf grep2 grep-p100
 	cp -R grep grep2 && \
 	cp -R grep2 grep-p100 && \
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
 	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
-	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh 0 file grep2 grep-p100 grepp
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh 0 file Readme.md
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh 0 file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
 	cd coreutils && \
-	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh 3 pnmtopng pamscale pgmmorphconv
-	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh 0 file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh 0 pipe $(PSDIR)/access.log
-	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh 0 file $(PSDIR)/fft-input.dat
-	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh 3 sfimag sfgrey sfspike sfput sfmath \
+	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
+	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh file coreutils
+	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh pipe $(PSDIR)/access.log
+	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
+	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
 					sfspray sffft1 sffft3 sfcat sflmotretch \
 					sfreverse sfwindow vppen sfsmooth
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
-	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh 5 file $(PSDIR)/fid nmrPipe addNMR
+	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh file $(PSDIR)/fid -- nmrPipe addNMR
 	
 test-pseudo: test-clean
 	printf "$B\nPseudo shell tests:${EC}\n"
