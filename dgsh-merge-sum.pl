@@ -40,7 +40,12 @@ read_record
 
 # Open input files; opening before reading prevents pipe writers from blocking
 my @file;
-my $i = 0;
+
+# First file is always stdin
+binmode(STDIN,  ":utf8");
+$file[0]->{file} = \*STDIN;
+
+my $i = 1;
 for my $name (@ARGV) {
 	open($file[$i]->{file}, '<:encoding(utf8)', $name) || die "Unable to open $name: $!\n";
 	$i++;
