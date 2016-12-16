@@ -1,0 +1,170 @@
+			WWW server statistics
+			=====================
+
+Summary
+-------
+Number of accesses: 1655
+Number of Gbytes transferred: 0
+Number of hosts: 1507
+Number of domains: 922
+Number of top level domains: 58
+Number of different pages: 948
+Accesses per day: 236
+MBytes per day: 2
+MBytes log file size: 0
+
+
+Top 20 Requests
+---------------
+     24 /pub/atomicbk/catalog/catalog.gif
+     18 /pub/atomicbk/catalog/logo2.gif
+     17 /pub/job/vk/vendela.html
+     17 /pub/atomicbk/catalog/sleazbk.html
+     17 /pub/atomicbk/catalog/home.gif
+     15 /pub/job/vk/view02.jpg
+     15 /pub/atomicbk/catalog/orders.gif
+     14 /pub/job/vk/view07.jpg
+     13 /pub/journalism/awesome.html
+     13 /pub/job/vk/view16.jpg
+     12 /pub/job/vk/view03.jpg
+     12 /pub/job/vk/flowers1.gif
+     12 /pub/job/vendela.jpg
+     12 /pub/atomicbk/catalog/new.gif
+     11 /pub/job/vk/vk-bk.jpg
+     11 /pub/job/vk/view14.jpg
+     11 /pub/atomicbk/catalog/mini.gif
+     10 /pub/job/vk/view15.jpg
+     10 /pub/job/vk/view04.jpg
+     10 /pub/job/vk/v-sig.gif
+
+Top 20 Area Requests
+--------------------
+   1461 pub
+    136 atomicbk
+     10 graphics
+      8 theme
+      7 html
+      4 mc-icons
+      3 mpt
+      3 larouche
+      2 printing
+      2 ntp
+      2 network
+      2 infouser
+      2 ccentral
+      2 aztec
+      2 
+      1 www.clark.net
+      1 winfield
+      1 tara
+      1 rtside
+      1 nrlc
+
+Top 10 Hosts
+------------
+     11 piweba3y.prodigy.com
+      7 www-c3.proxy.aol.com
+      7 www-b5.proxy.aol.com
+      7 www-a1.proxy.aol.com
+      7 webgate1.mot.com
+      6 www-b2.proxy.aol.com
+      5 www-b4.proxy.aol.com
+      5 clark.net
+      5 alweiner.clark.net
+      4 www-d2.proxy.aol.com
+
+Top 10 Hosts by Transfer
+------------------------
+615030 buckman.com
+208591 www-b5.proxy.aol.com
+173690 hel.fi
+169367 in116.brann.co.uk
+169367 149.157.246.44
+108564 london.Informatik.Uni-Oldenburg.DE
+106890 www-b2.proxy.aol.com
+106571 gateway.senate.gov
+106074 gorgon.pwgsc.gc.ca
+97751 HRSB741.RESNET.UPENN.EDU
+
+Top 10 Domains
+--------------
+     80 .proxy.aol.com
+     44 .clark.net
+     34 .compuserve.com
+     29 .ix.netcom.com
+     24 .prodigy.com
+     11 .com
+      9 .Stanford.EDU
+      7 .mot.com
+      6 .urh.uiuc.edu
+      5 .netcom.com
+
+Top 20 Level Domain Accesses
+----------------------------
+    452 com
+    224 edu
+    181 net
+     59 EDU
+     38 ca
+     35 uk
+     28 gov
+     27 jp
+     25 au
+     24 se
+     21 org
+     18 COM
+     16 de
+     16 NET
+     14 us
+     14 no
+     14 fr
+     13 mil
+     11 nl
+      9 ch
+
+Accesses by Day of Week
+-----------------------
+    274 Wed
+    269 Fri
+    267 Tue
+    259 Thu
+    252 Mon
+    171 Sat
+    163 Sun
+
+Accesses by Local Hour
+----------------------
+     64 00
+     50 01
+     49 02
+     40 03
+     32 04
+     31 05
+     29 06
+     41 07
+     49 08
+     66 09
+     78 10
+     86 11
+     92 12
+     95 13
+    100 14
+    105 15
+    102 16
+     95 17
+     89 18
+     79 19
+     73 20
+     71 21
+     72 22
+     67 23
+
+Accesses by Date
+----------------
+    252 28/Aug/1995
+    267 29/Aug/1995
+    274 30/Aug/1995
+    259 31/Aug/1995
+    269 01/Sep/1995
+    171 02/Sep/1995
+    163 03/Sep/1995

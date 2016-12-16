@@ -1,0 +1,28 @@
+
+	digraph "" {
+		rankdir = LR;
+		node [fontname="Courier"];
+		edge [];
+		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+	"NFILES" [id="store:NFILES", shape="box"];
+	node_cmd_0_1_0 -> "NFILES" [id="nps-NFILES"];
+	"NDIRS" [id="store:NDIRS", shape="box"];
+	node_cmd_0_2_0 -> "NDIRS" [id="nps-NDIRS"];
+	"NBYTES" [id="store:NBYTES", shape="box"];
+	node_cmd_0_3_0 -> "NBYTES" [id="nps-NBYTES"];
+	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="awk '!/^total/ {print $6, $7, $8, $1, sprintf(\"%8d\", $5), $9}'\l", shape="ellipse"];
+	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="wc -l\l", shape="ellipse"];
+	node_cmd_0_2_0 [id="node_cmd_0_2_0", label="grep -c '^d'\l", shape="ellipse"];
+	node_cmd_0_3_0 [id="node_cmd_0_3_0", label="awk '{s += $5} END {print s}'\l", shape="ellipse"];
+	gather_node_0 [id="gather_node_0", label="cat /stream/files\l", shape="ellipse"];
+	NFILES -> gather_node_1 [id="store-read"];
+	NBYTES -> gather_node_1 [id="store-read"];
+	gather_node_1 [id="gather_node_1", label="echo \"               `store:NFILES` File(s) `store:NBYTES` bytes\"\l", shape="ellipse"];
+	NDIRS -> gather_node_2 [id="store-read"];
+	gather_node_2 [id="gather_node_2", label="echo \"               `store:NDIRS` Dir(s) $FREE bytes free\"\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
+	node_cmd_0_0_0 -> gather_node_0 [id="npfo-files.0"];
+	node_tee_0 -> node_cmd_0_3_0 [id="npi-0.3.0"];
+	node_tee_0 -> node_cmd_0_2_0 [id="npi-0.2.0"];
+	node_tee_0 -> node_cmd_0_0_0 [id="npi-0.0.0"];
+}
