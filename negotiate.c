@@ -2597,6 +2597,10 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 		return PS_ERROR;
 	}
 	n_io_channels = self_node.dgsh_in + self_node.dgsh_out;
+	if (n_io_channels == 0) {
+		fprintf(stderr, "No channel open for dgsh negotiation. Exiting now\n");
+		return PS_COMPLETE;
+	}
 
 	/* Start negotiation */
 	if (self_node.dgsh_out && !self_node.dgsh_in) {
