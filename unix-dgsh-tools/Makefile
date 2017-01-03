@@ -182,15 +182,15 @@ test-bash: test-clean
 	&& exit 1)
 	
 	#ditto
-	$(DGSHPATH)/bash --dgsh -c ' \
-		grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
-		| diff \
-		> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
-	&& sleep 0.01 \
-	|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
-	&& printf "grep | diff $S\n" \
-	|| (printf "grep | diff $F\n" \
-	&& exit 1)
+	#$(DGSHPATH)/bash --dgsh -c ' \
+	#	grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
+	#	| diff \
+	#	> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
+	#&& sleep 0.01 \
+	#|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
+	#&& printf "grep | diff $S\n" \
+	#|| (printf "grep | diff $F\n" \
+	#&& exit 1)
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
 		grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
@@ -256,25 +256,25 @@ test-bash: test-clean
 	&& exit 1)
 	
 	# ditto
-	$(DGSHPATH)/bash --dgsh -c ' \
-		grep -l -L -w -v match $(PSDIR)/ff $(PSDIR)/F \
-		| {{ \
-			diff & \
-			comm & \
-		}} > $(PSDIR)/grep_diff_comm.outb' \
-		2>$(PSDIR)/grep_diff_comm.errb \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/grep_diff_comm.outb \
-		$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
-	    || diff $(PSDIR)/grep_diff_comm.outb \
-		$(PSDIR)/grep_diff_comm.success2-bash >/dev/null \
-	    || diff $(PSDIR)/grep_diff_comm.outb \
-		$(PSDIR)/grep_diff_comm.success3-bash >/dev/null \
-	    || diff $(PSDIR)/grep_diff_comm.outb \
-		$(PSDIR)/grep_diff_comm.success4-bash >/dev/null) \
-	&& printf "grep | {{ diff & comm & }} $S\n" \
-	|| (printf "grep | {{ diff & comm & }} $F\n" \
-	&& exit 1)
+	#$(DGSHPATH)/bash --dgsh -c ' \
+	#	grep -l -L -w -v match $(PSDIR)/ff $(PSDIR)/F \
+	#	| {{ \
+	#		diff & \
+	#		comm & \
+	#	}} > $(PSDIR)/grep_diff_comm.outb' \
+	#	2>$(PSDIR)/grep_diff_comm.errb \
+	#&& sleep 0.01 \
+	#&& (diff $(PSDIR)/grep_diff_comm.outb \
+	#	$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
+	#    || diff $(PSDIR)/grep_diff_comm.outb \
+	#	$(PSDIR)/grep_diff_comm.success2-bash >/dev/null \
+	#    || diff $(PSDIR)/grep_diff_comm.outb \
+	#	$(PSDIR)/grep_diff_comm.success3-bash >/dev/null \
+	#    || diff $(PSDIR)/grep_diff_comm.outb \
+	#	$(PSDIR)/grep_diff_comm.success4-bash >/dev/null) \
+	#&& printf "grep | {{ diff & comm & }} $S\n" \
+	#|| (printf "grep | {{ diff & comm & }} $F\n" \
+	#&& exit 1)
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
 		comm $(PSDIR)/f4ss $(PSDIR)/f5ss \
@@ -347,7 +347,6 @@ test-bash: test-clean
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
 	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
 	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
 	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
