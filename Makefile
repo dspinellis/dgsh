@@ -32,7 +32,7 @@ DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfi
 EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval
 
 LIBEXECUTABLES=dgsh-tee dgsh-writeval dgsh-monitor \
-	dgsh-conc dgsh-wrap perm
+	dgsh-conc dgsh-wrap perm dgsh-merge-sum
 
 LIBS=libdgsh_negotiate.a
 
@@ -92,6 +92,9 @@ dgsh: dgsh.sh
 	./replace-paths.sh <$? >$@
 
 perm: perm.sh
+	./replace-paths.sh <$? >$@
+
+dgsh-merge-sum: dgsh-merge-sum.pl
 	./replace-paths.sh <$? >$@
 
 test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)

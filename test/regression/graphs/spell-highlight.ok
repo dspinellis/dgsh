@@ -1,0 +1,16 @@
+
+	digraph "" {
+		rankdir = LR;
+		node [fontname="Courier"];
+		edge [];
+		node_tee_0 [id="node_tee_0", label="sgsh-tee ", shape="ellipse"];
+	node_cmd_0_0_0 [id="node_cmd_0_0_0", label="sort /usr/share/dict/words\l", shape="ellipse"];
+	node_cmd_0_1_0 [id="node_cmd_0_1_0", label="tr -cs A-Za-z \\\\n |\ltr A-Z a-z |\lsort -u |\lcomm -23 - /stream/dict\l", shape="ellipse"];
+	node_cmd_0_2_0 [id="node_cmd_0_2_0", label="cat\l", shape="ellipse"];
+	gather_node_0 [id="gather_node_0", label="fgrep -f /stream/errors -i --color -w -C 2 /stream/text\l", shape="ellipse"];
+	node_tee_0 -> node_cmd_0_1_0 [id="npi-0.1.0"];
+	node_tee_0 -> node_cmd_0_2_0 [id="npi-0.2.0"];
+	node_cmd_0_2_0 -> gather_node_0 [id="npfo-text.0"];
+	node_cmd_0_0_0 -> node_cmd_0_1_0 [id="npfo-dict.0"];
+	node_cmd_0_1_0 -> gather_node_0 [id="npfo-errors.0"];
+}

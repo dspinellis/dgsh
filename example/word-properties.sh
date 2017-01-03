@@ -54,7 +54,6 @@ tee |
 		else print ""}' &
 }} |
 # Paste the four streams side-by-side
-# XXX make the streaming input arguments transparent to users
 paste |
 # List only words satisfying one or more properties
-grep :
+fgrep :

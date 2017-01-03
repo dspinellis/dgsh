@@ -111,7 +111,7 @@
 		tee |
 		{{
 			# Number of C files
-			echo -n 'NSTRUCT: ' &
+			echo -n 'NCFILE: ' &
 			wc -l &
 
 			# Number of directories containing C files
@@ -156,7 +156,7 @@
 
 				# Number of constants
 				echo -n 'NCONST: ' &
-				grep -c '[0-9][x0-9][0-9a-f]*' &
+				grep -ohw '[0-9][x0-9][0-9a-f]*' | wc -l &
 
 			}} &
 		}} &

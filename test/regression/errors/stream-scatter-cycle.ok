@@ -1,0 +1,3 @@
+The following dependencies across streams form a cycle:
+ head /stream/d
+ tail /stream/b

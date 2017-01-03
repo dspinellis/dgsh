@@ -1,4 +1,4 @@
-.TH DGSH-TEE 1 "11 December 2016"
+.TH DGSH-TEE 1 "24 December 2016"
 .\"
 .\" (C) Copyright 2013-2016 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -35,10 +35,10 @@ In contrast to \fItee\fP(1), \fIdgsh-tee\fP will buffer the data it handles,
 so it will never cause deadlock or starvation when one or more sinks
 are unable to read data.
 .PP
-\fIdgsh-tee\fP is normally executed from within \fIdgsh\fP-generated scripts,
-rather than through end-user commands.
+\fIdgsh-tee\fP is normally executed within \fIdgsh\fP through wrappers
+that replace the system-provided \fItee\fP and \fIcat\fP commands.
 This manual page serves mainly to document its operation,
-to clarify the flags that can be used at the beginning of an \fIdgsh\fP scatter block, and
+to how it can be used in less common use cases, and
 to allow the creation of plug-compatible replacements
 implementing different record types.
 

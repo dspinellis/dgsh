@@ -1,0 +1,99 @@
+#!/bin/sh
+# Automatically generated file
+# Source file example/compress-compare.sh
+#!/usr/bin/env sgsh
+#
+# SYNOPSIS Compression benchmark
+# DESCRIPTION
+# Report file type, length, and compression performance for
+# data received from the standard input.  The data never touches the
+# disk.
+# Demonstrates the use of stores.
+#
+#  Copyright 2012-2013 Diomidis Spinellis
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+(
+
+	export SGDIR=/tmp/sg-$$.0
+
+	rm -rf $SGDIR
+
+	# Cleanup on exit or interrupt
+	cleanup()
+	{
+		SIGNAL=$1
+		[ $SIGNAL = EXIT ] || echo sgsh interrupted. Cleaning up... 1>&2
+
+		# Stop key-value stores
+		sgsh-readval -q -s "$SGDIR/NBYTES" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/FILETYPE" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/XZ" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/BZIP2" 2>/dev/null
+sgsh-readval -q -s "$SGDIR/GZIP" 2>/dev/null
+
+		# Kill processes we have launched in the background
+		kill $SGPID 2>/dev/null
+
+		# Remove temporary directory
+		rm -rf "$SGDIR"
+
+		# Propagate real signals and exit with non-0
+		if [ $SIGNAL != EXIT ]
+		then
+			trap - $SIGNAL EXIT
+			kill -s $SIGNAL $$
+		fi
+
+		# Exit with the original exit value
+		exit
+
+	}
+
+	for sig in HUP INT QUIT TERM EXIT
+	do
+		trap "cleanup $sig" $sig
+	done
+
+	mkdir $SGDIR
+	
+mkfifo 	$SGDIR/npi-0.0.0 \
+	$SGDIR/npi-0.1.0 \
+	$SGDIR/npi-0.2.0 \
+	$SGDIR/npi-0.3.0 \
+	$SGDIR/npi-0.4.0
+
+sgsh-tee  -o $SGDIR/npi-0.0.0 -o $SGDIR/npi-0.1.0 -o $SGDIR/npi-0.2.0 -o $SGDIR/npi-0.3.0 -o $SGDIR/npi-0.4.0 <&3 3<&-   & SGPID="$! $SGPID"
+ {  wc -c
+} <$SGDIR/npi-0.0.0 | sgsh-writeval  -s $SGDIR/NBYTES  & SGPID="$! $SGPID"
+ {  file -
+} <$SGDIR/npi-0.1.0 | sgsh-writeval  -s $SGDIR/FILETYPE  & SGPID="$! $SGPID"
+ {  xz -c | wc -c
+} <$SGDIR/npi-0.2.0 | sgsh-writeval  -s $SGDIR/XZ  & SGPID="$! $SGPID"
+ {  bzip2 -c | wc -c
+} <$SGDIR/npi-0.3.0 | sgsh-writeval  -s $SGDIR/BZIP2  & SGPID="$! $SGPID"
+ {  gzip -c | wc -c
+} <$SGDIR/npi-0.4.0 | sgsh-writeval  -s $SGDIR/GZIP  & SGPID="$! $SGPID"
+
+# Gather the results
+	cat <<EOF
+File type:	`sgsh-readval -s $SGDIR/FILETYPE`
+Original size:	`sgsh-readval -s $SGDIR/NBYTES` bytes
+gzip:		`sgsh-readval -s $SGDIR/GZIP` bytes
+bzip2:		`sgsh-readval -s $SGDIR/BZIP2` bytes
+xz:		`sgsh-readval -s $SGDIR/XZ` bytes
+EOF
+
+)  3<&0 
