@@ -3,7 +3,7 @@
 # Install the commands wrapped by dgsh-wrap
 #
 
-DGPATH=$PREFIX/libexec/dgsh
+DGPATH=$DESTDIR$PREFIX/libexec/dgsh
 mkdir -p $DGPATH
 
 # Remove comments and blank lines
