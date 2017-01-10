@@ -82,12 +82,12 @@ install: cat tee
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
 	# Install last to overwrite standard tools of coreutils
-	install cat $(DGSHPATH)
-	install tee $(DGSHPATH)
-	install secho $(DGSHPATH)
-	install pecho $(DGSHPATH)
-	install fft-input $(DGSHPATH)
-	install w $(DGSHPATH)
+	install cat $(DESTDIR)$(DGSHPATH)
+	install tee $(DESTDIR)$(DGSHPATH)
+	install secho $(DESTDIR)$(DGSHPATH)
+	install pecho $(DESTDIR)$(DGSHPATH)
+	install fft-input $(DESTDIR)$(DGSHPATH)
+	install w $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
 
 cat: cat.sh
