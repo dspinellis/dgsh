@@ -194,14 +194,14 @@ clean-tools:
 install: install-dgsh install-tools
 
 install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
-	-mkdir -p $(PREFIX)/bin
-	-mkdir -p $(PREFIX)/lib
-	-mkdir -p $(PREFIX)/libexec/dgsh
-	-mkdir -p $(PREFIX)/share/man/man1
-	install $(EXECUTABLES) $(PREFIX)/bin
-	install $(LIBEXECUTABLES) $(PREFIX)/libexec/dgsh
-	install $(LIBS) $(PREFIX)/lib
-	install -m 644 $(MANSRC) $(PREFIX)/share/man/man1
+	-mkdir -p $(DESTDIR)$(PREFIX)/bin
+	-mkdir -p $(DESTDIR)$(PREFIX)/lib
+	-mkdir -p $(DESTDIR)$(PREFIX)/libexec/dgsh
+	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	install $(EXECUTABLES) $(DESTDIR)$(PREFIX)/bin
+	install $(LIBEXECUTABLES) $(DESTDIR)$(PREFIX)/libexec/dgsh
+	install $(LIBS) $(DESTDIR)$(PREFIX)/lib
+	install -m 644 $(MANSRC) $(DESTDIR)$(PREFIX)/share/man/man1
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install
