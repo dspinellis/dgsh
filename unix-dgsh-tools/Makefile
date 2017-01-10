@@ -337,6 +337,7 @@ test-bash: test-clean
 	./run_test.sh $(PSDIR) $(XDIR)/manage-results.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh
+	./run_test.sh $(PSDIR) $(XDIR)/uniform-5x5.sh
 	./run_test.sh $(PSDIR) $(XDIR)/duplicate-files.sh file coreutils
 	./run_test.sh $(PSDIR) $(XDIR)/spell-highlight.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(XDIR)/static-functions.sh file coreutils

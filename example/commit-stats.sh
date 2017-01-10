@@ -28,19 +28,17 @@ forder()
 	sort -rn
 }
 
-export -f forder
-
 git log --format="%an:%ad" --date=default "$@" |
 tee |
 {{
 	echo "Authors ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print $1}' |
-	call 'forder' &
+	forder &
 
 	echo "Days ordered by number of commits" &
 	# Order by frequency
 	awk -F: '{print substr($2, 1, 3)}' |
-	call 'forder' &
+	forder &
 }} |
 cat
