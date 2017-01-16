@@ -339,8 +339,12 @@ only input or only output.
 <p>
 To compile and run <em>dgsh</em> you will need to have the following commands
 installed in your system:
-<!-- #!sed -n -e '/- sudo apt-get install/{;s/- sudo apt-get install -y //;s/ /, /g;s/$/,/p}' .travis.yml -->
+<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //;s/ /, /g;s/$/,/p}' .travis.yml -->
 and gettext (at least 0.19.5).
+
+To test <em>dgsh</em> you will need to have the following commands
+installed in your system:
+<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //;s/ /, /gp}' .travis.yml -->
 
 An installation of <a href="http://www.graphviz.org/">GraphViz</a>
 will allow you to visualize the <em>dgsh</em> graphs that you specify
