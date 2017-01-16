@@ -348,7 +348,7 @@ test-bash: test-clean
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
 	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
 	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
 	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh file coreutils
