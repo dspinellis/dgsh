@@ -30,7 +30,7 @@
 #include <string.h>
 #include <err.h>
 
-#include "dgsh.h"
+#include "dgsh.h"		/* DPRINTF() */
 #include "dgsh-negotiate.h"
 
 #define PROC_FD_PATH_LEN 20
@@ -199,9 +199,11 @@ main(int argc, char *argv[])
 					ninputs == -1 ? NULL : &ninputs,
 					noutputs == -1 ? NULL : &noutputs,
 					&input_fds,
-				NULL)) != 0)
-		errx(1, "dgsh negotiation failed for %s with status code %d\n",
+				NULL)) != 0) {
+		DPRINTF("dgsh negotiation failed for %s with status code %d\n",
 				negotiation_title, status);
+		exit(1);
+	}
 
 	int n = 1;
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x

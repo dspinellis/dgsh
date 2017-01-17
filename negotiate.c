@@ -634,13 +634,13 @@ move(struct dgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
 		if (is_edge_incoming) {
-			if (*from > 0)
+			if (*from >= 0)
 				continue;
 			if (record_move_flexible(&diff, &indexes[j], i,
 				&instances[j], *to) == OP_SUCCESS)
 				j++;
 		} else {
-			if (*to > 0)
+			if (*to >= 0)
 				continue;
 			if (record_move_flexible(&diff, &indexes[j], i,
 				&instances[j], *from) == OP_SUCCESS)
@@ -686,7 +686,7 @@ cross_match_io_constraints(int *free_instances,
 							 */
 		       int n_edges,		/* Number of edges */
                        bool is_edge_incoming,	/* Incoming or outgoing edges*/
-		       int *constraints_matched,
+		       bool *constraints_matched,
 		       int *edges_matched)
 {
 	int i;
@@ -755,13 +755,16 @@ cross_match_io_constraints(int *free_instances,
 		if (matched == *edges_matched)
 			DPRINTF("%s(): WARNING: did not manage to match...",
 					__func__);
-        	DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
+		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d, edge instances: %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to, e->instances);
 	}
 
 	/* Is the matching for this channel in line with the (fixed)
 	 * constraint? */
-	if (this_channel_constraint == -1)
+	if (this_channel_constraint == -1) {
+		*constraints_matched = true;
 		return OP_SUCCESS;
+	}
+
 	int fds = 0;
 	for (i = 0; i < n_edges; i++) {
 		struct dgsh_edge *e = edges[i];
@@ -770,7 +773,8 @@ cross_match_io_constraints(int *free_instances,
 	DPRINTF("%s communication endpoints to setup: %d, constraint: %d",
 			is_edge_incoming ? "Incoming" : "Outgoing",
 			fds, this_channel_constraint);
-	*constraints_matched -= (fds != this_channel_constraint);
+
+	*constraints_matched = (fds == this_channel_constraint);
 
 	return OP_SUCCESS;
 }
@@ -945,13 +949,13 @@ prepare_solution(void)
  * I/O constraints of tools on an dgsh graph.
  */
 static enum op_result
-cross_match_constraints(void)
+cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
 	int n_edges = chosen_mb->n_edges;
 	int edges_matched = 0;
-	int constraints_matched = n_nodes;
+	bool constraints_matched = false;
 	struct dgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 
@@ -1005,9 +1009,22 @@ cross_match_constraints(void)
 				*n_edges_outgoing);
 				return OP_ERROR;
 		}
+		if (!constraints_matched) {
+			DPRINTF("Constraint not matched. index_argc: %d",
+					*index_argc);
+			if (*index_argc == 0)
+				*index_commands_notmatched = (int *)malloc(
+						sizeof(int) *
+						++(*index_argc));
+			else
+				*index_commands_notmatched = (int *)realloc(
+					*index_commands_notmatched,
+					sizeof(int) * ++(*index_argc));
+			*index_commands_notmatched[*index_argc - 1] = i;
+		}
 	}
-	DPRINTF("%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, constraints_matched, n_nodes, edges_matched / 2, n_edges);
-	if (edges_matched / 2 == n_edges && constraints_matched == n_nodes)
+	DPRINTF("%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, n_nodes - *index_argc, n_nodes, edges_matched / 2, n_edges);
+	if (edges_matched / 2 == n_edges && *index_argc == 0)
 		return OP_SUCCESS;
 	else
 		return OP_RETRY;
@@ -1087,6 +1104,8 @@ solve_dgsh_graph(void)
 	char *filename;
 	enum op_result exit_state = OP_SUCCESS;
 	int retries = 0;
+	int index_argc = 0;
+	int *index_commands_notmatched;
 
 	/**
 	 * The initial layout of the solution plays an important
@@ -1110,16 +1129,29 @@ solve_dgsh_graph(void)
 	exit_state = OP_RETRY;
 
 	while (exit_state == OP_RETRY) {
-		if ((exit_state = cross_match_constraints()) == OP_ERROR ||
+		if ((exit_state = cross_match_constraints(
+				&index_commands_notmatched, &index_argc)) ==
+				OP_ERROR ||
 				(exit_state == OP_RETRY && retries > 10)) {
+			int i = 0;
+			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following participating processes: ");
+			for (i = 0; i < index_argc - 1; i++)
+				fprintf(stderr, "%s, ",
+					chosen_mb->node_array[i].name);
+			fprintf(stderr, "%s.\n",
+					chosen_mb->node_array[i].name);
+			free(index_commands_notmatched);
 			exit_state = OP_ERROR;
 			goto exit;
 		}
 		DPRINTF("%s(): exit_state: %d, retries: %d",
 				__func__, exit_state, retries);
 		retries++;
+		if (index_argc > 0) {
+			free(index_commands_notmatched);
+			index_argc = 0;
+		}
 	}
-
 
 	/**
 	 * Substitute pointers to edges with proper edge structures
@@ -1321,7 +1353,7 @@ get_struct_size(int struct_type)
 static int
 do_write (int write_fd, void *datastruct, int datastruct_size, int struct_type)
 {
-	int wsize;
+	int wsize = 0;
 	if (datastruct_size > IOV_MAX) {
 		int all_elements, max_elements, elements = 0, pieces, 
 			prev_elements = 0, size, struct_size, i;
@@ -2682,10 +2714,9 @@ again:
 				    chosen_mb->state == PS_NEGOTIATION) {
 					chosen_mb->state = PS_NEGOTIATION_END;
 					DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
-					if (solve_dgsh_graph() == OP_ERROR) {
+					if (solve_dgsh_graph() == OP_ERROR)
 						chosen_mb->state = PS_ERROR;
-							fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the participating processes.");
-					} else
+					else
 						chosen_mb->state = PS_RUN;
 				}
 				isread = false;

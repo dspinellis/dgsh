@@ -1106,8 +1106,10 @@ main(int argc, char *argv[])
 		ninputfds = noutputfds = permute_n;
 
 	DPRINTF("Calling negotiate");
-	if ((status = dgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0)
-		errx(2, "dgsh negotiation failed with status code %d", status);
+	if ((status = dgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0) {
+		DPRINTF("dgsh negotiation failed with status code %d", status);
+		exit(1);
+	}
 	DPRINTF("nin=%d nout=%d", ninputfds, noutputfds);
 	assert(noutputfds >= 0);
 	assert(ninputfds >= 0);
