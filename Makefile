@@ -213,4 +213,6 @@ web: $(MANPDF) $(MANHTML) $(WEBPNG)
 
 pull:
 	git pull
-	git submodule update --recursive --remote
+	# Reattach detached repositories. These get detached by pulls or
+	# by builds specifying a specific gnulib version.
+	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( cd $$d && git checkout master && git pull ) ; done
