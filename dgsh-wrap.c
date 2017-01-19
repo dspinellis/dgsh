@@ -116,19 +116,28 @@ main(int argc, char *argv[])
 	 * Tried getopt, but it swallows spaces in this case
 	 */
 	if (argv[1][0] == '-') {
-		if (argv[1][1] == 'd') {
-			ninputs = 0;
-			pos++;
-			// argv[1] may carry also the guest program's name
-			if (argv[1][2] == ' ')
-				guest_program_name = &argv[1][3];
-		} else if (argv[1][1] == 'm') {
-			noutputs = 0;
-			pos++;
-			if (argv[1][2] == ' ')
-				guest_program_name = &argv[1][3];
-		} else
-			usage();
+		argv[1]++;
+		char *m = strstr(argv[1], "-");
+		while (m) {
+			if (m[0] == 'd') {
+				ninputs = 0;
+				pos++;
+				// argv[1] may carry also the guest program's name
+				if (m[2] != '-')
+					guest_program_name = &m[2];
+			} else if (m[0] == 'm') {
+				noutputs = 0;
+				pos++;
+				if (m[2] != '-')
+					guest_program_name = &m[2];
+			} else if (m[0] == 's') {
+				ninputs = 1;
+				pos++;
+				if (m[2] != '-')
+					guest_program_name = &m[2];
+			} else
+				usage();
+		}
 	}
 
 	if (!guest_program_name) {
