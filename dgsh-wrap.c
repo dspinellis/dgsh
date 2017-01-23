@@ -96,6 +96,7 @@ main(int argc, char *argv[])
 	int pos = 1;
 	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
+	int feed_stdin = 0;
 
 	/* Preclude recursive wrapping */
 	DPRINTF("PATH before: [%s]", getenv("PATH"));
@@ -116,27 +117,30 @@ main(int argc, char *argv[])
 	 * Tried getopt, but it swallows spaces in this case
 	 */
 	if (argv[1][0] == '-') {
-		argv[1]++;
-		char *m = strstr(argv[1], "-");
+		char *m = ++argv[1];
+		DPRINTF("m: %s", m);
 		while (m) {
 			if (m[0] == 'd') {
 				ninputs = 0;
 				pos++;
 				// argv[1] may carry also the guest program's name
-				if (m[2] != '-')
+				if (strlen(m) > 2 && m[2] != '-')
 					guest_program_name = &m[2];
 			} else if (m[0] == 'm') {
 				noutputs = 0;
 				pos++;
-				if (m[2] != '-')
+				if (strlen(m) > 2 && m[2] != '-')
 					guest_program_name = &m[2];
 			} else if (m[0] == 's') {
+				feed_stdin = 1;
 				ninputs = 1;
 				pos++;
-				if (m[2] != '-')
+				if (strlen(m) > 2 && m[2] != '-')
 					guest_program_name = &m[2];
 			} else
 				usage();
+
+			m = strstr(m, "-");
 		}
 	}
 
@@ -176,7 +180,10 @@ main(int argc, char *argv[])
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
-			ninputs = 1;
+			if (feed_stdin)
+				ninputs = 1;
+			else
+				ninputs = 0;
 			if (!m)
 				ninputs++;
 			while (m) {
@@ -214,7 +221,8 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	int n = 1;
+	int n = feed_stdin ? 1 : 0;
+
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
 	if (ninputs != -1)
