@@ -18,7 +18,7 @@
 dgsh-wrap \- allow any filter program to participate in an dgsh pipeline
 .SH SYNOPSIS
 \fBdgsh-wrap\fP
-[\fB\-d\fP | \fB-m\fP]
+[\fB\-d\fP | \fB-m\fP | \fB\-s\fP]
 \fIprogram\fP [...]
 .SH DESCRIPTION
 \fIdgsh-wrap\fP takes as arguments an absolute path or the name
@@ -39,6 +39,9 @@ The wrapped program is deaf, it will not read any input.
 
 .IP "\fB\-m\fP
 The wrapped program is mute, it will not produce any output.
+
+.IP "\fB\-s\fP
+Include stdin to the channel assignments (used in conjunction with \fI<|\fP)
 
 .SH "SEE ALSO"
 \fIdgsh\fP(1)

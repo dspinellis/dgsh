@@ -96,7 +96,7 @@ main(int argc, char *argv[])
 	int pos = 1;
 	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
-	int feed_stdin = 0;
+	int feed_stdin = 0, special_args = 0;
 
 	/* Preclude recursive wrapping */
 	DPRINTF("PATH before: [%s]", getenv("PATH"));
@@ -112,7 +112,7 @@ main(int argc, char *argv[])
 
 	if (argc < 2)
 		usage();
-		
+
 	/* Parse any arguments to dgsh-wrap
 	 * Tried getopt, but it swallows spaces in this case
 	 */
@@ -133,7 +133,6 @@ main(int argc, char *argv[])
 					guest_program_name = &m[2];
 			} else if (m[0] == 's') {
 				feed_stdin = 1;
-				ninputs = 1;
 				pos++;
 				if (strlen(m) > 2 && m[2] != '-')
 					guest_program_name = &m[2];
@@ -180,10 +179,7 @@ main(int argc, char *argv[])
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
-			if (feed_stdin)
-				ninputs = 1;
-			else
-				ninputs = 0;
+			special_args = 1;
 			if (!m)
 				ninputs++;
 			while (m) {
@@ -194,6 +190,11 @@ main(int argc, char *argv[])
 			DPRINTF("ninputs: %d", ninputs);
 		}
 	}
+	/* originally ninputs = -1, so +1 to 0 and
+	 * +1 if stdin should be included in channel assignments
+	 */
+	if (special_args)
+		ninputs += 1 + feed_stdin;
 
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments

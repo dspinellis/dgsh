@@ -85,7 +85,7 @@ tee |
 		sfimag &
 		#| dgsh-writeval -s airfti &
 	}} |
-	sfmath nostdin=y re=/dev/stdin im="<|" output="sqrt(re*re+im*im)" |
+	sfmath nostdin=y re="<|" im="<|" output="sqrt(re*re+im*im)" |
 	tee |
 	{{
 		sfwindow f1=1 |

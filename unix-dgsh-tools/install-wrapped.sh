@@ -31,6 +31,9 @@ while read mode name ; do
       d)	# Deaf
 	opt="$opt -d"
 	;;
+      s)	# Count stdin in channel assignments
+	opt="$opt -s"
+	;;
       D)	# Deaf unless - is specified or no arguments are provided (TODO)
 	;;
       f)	# Filter

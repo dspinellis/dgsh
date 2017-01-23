@@ -8,7 +8,7 @@ f pamscale
 f perl
 f pgmmorphconv
 f pnmtopng
-f sfcat
+s sfcat
 f sffft1
 f sffft3
 f sfgrey
