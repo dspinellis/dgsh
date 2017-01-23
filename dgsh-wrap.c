@@ -151,7 +151,8 @@ main(int argc, char *argv[])
 
 	int exec_argv_len = argc - 1;
 	int i, j;
-	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
+	char **exec_argv = (char **)malloc((exec_argv_len + 1) *
+			sizeof(char *));
 
 	if (exec_argv == NULL)
 		err(1, "Error allocating exec_argv memory");
