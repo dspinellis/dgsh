@@ -92,12 +92,15 @@ dgsh-parallel: dgsh-parallel.sh
 
 dgsh: dgsh.sh
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 perm: perm.sh
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 dgsh-merge-sum: dgsh-merge-sum.pl
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 	./test-dgsh.sh
