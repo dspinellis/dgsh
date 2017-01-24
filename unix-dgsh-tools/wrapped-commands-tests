@@ -1,26 +1,3 @@
 # Commands required for running the negotiation and performance tests
-f bzip2
-f cpp
 d git
-f gzip
-f nmrPipe
-f pamscale
-f perl
-f pgmmorphconv
-f pnmtopng
 s sfcat
-f sffft1
-f sffft3
-f sfgrey
-f sfimag
-f sflmostretch
-f sfmath
-f sfput
-f sfreal
-f sfreverse
-f sfsmooth
-f sfspike
-f sfspray
-f sfwindow
-f var2pipe
-f xz

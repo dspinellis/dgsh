@@ -2,12 +2,7 @@
 f admin		# SCCS
 d alias
 d ar
-f asa
-f at
-f awk
 d basename
-f batch
-f bc
 dm bg
 d c99
 d cal
@@ -26,111 +21,57 @@ dm cp
 f crontab	# TODO custom
 f csplit	# TODO custom
 f ctags		# TODO custom
-f cut
-f cxref
 d date
-f dd
 f delta		# SCCS
 d df
 c diff
 d dirname
 d du
 d echo
-f ed
 dm env
-f ex
-f expand
 d expr
 dm false
-f fc
 dm fg
-f file
 d find
-f fold
-f fort77
-f fuser
-f gencat
 f get		# SCCS
-f getconf
 d getopts
 c grep
-f hash
-f head
-f iconv
-f id
 d ipcrm
-f ipcs
 d jobs
 c join
 dm kill
-f lex
 dm link
 dm ln
-f locale
-f localedef
-f logger
-f logname
-f lp
 d ls
-f m4
-f mailx
 d make
 d man
 dm mesg
 dm mkdir
 dm mkfifo
-f more
 dm mv
 dm newgrp
 dm nice
-f nl
-f nm
 dm nohup
-f od
 c paste
-f patch
-f pathchk
-f pax
-f pr
 d printf
 f prs		# SCCS
 d ps
 d pwd
 f qalter	# Batch job management
-f qdel
-f qhold
-f qmove
-f qmsg
-f qrerun
-f qrls
-f qselect
-f qsig
-f qstat
-f qsub
 m read
 dm renice
 dm rm
 D rmdel		# SCCS
 dm rmdir
-f sact
 f sccs		# Depends on the command
-f sed
-f sh
 dm sleep
 c sort
-f split
 f strings	# TODO custom
 dm strip
-f stty
-f tabs
-f tail
-f talk
 c tee
 dm test
 f time		# Depends on the command
 dm touch
-f tput
-f tr
 dm true
 D tsort
 d tty
@@ -140,22 +81,11 @@ d umask
 dm unalias
 d uname
 f uncompress	# TODO custom
-f unexpand
 Dm unget
-f uniq
 dm unlink
-f uucp
-f uudecode
-f uuencode
-f uustat
-f uux
 D val		# SCCS
-f vi
 dm wait
-f wc
 d what		# SCCS
 d who
 m write
-f xargs
 dm yacc
-f zcat
