@@ -48,6 +48,8 @@ struct dgsh_negotiation {
 					 * smaller pid will prevail.
 					 */
 	enum prot_state state;		/* State of the negotiation process */
+	bool is_error_confirmed;	/* Error state is confirmed by the initiator
+					   and propagated to the graph */
 	int origin_index;		/* The node from which the message
 					 * block is dispatched.
 					 */

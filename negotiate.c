@@ -20,12 +20,6 @@
  *
  */
 
-/* TODO:
- * - adapt the bash shell
- * Thinking aloud:
- * - substitute DPRINTF with appropriate error reporting function in case of errors.
- */
-
 #ifdef __linux__
 #  ifndef IOV_MAX		/* IOV_MAX LINUX */
 #    define IOV_MAX 1024
@@ -1163,14 +1157,16 @@ solve_dgsh_graph(void)
 			int i = 0, index = 0;
 			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following participating processes: ");
 			for (i = 0; i < index_argc - 1; i++){
-                                index = index_commands_notmatched[i];
+				index = index_commands_notmatched[i];
 				fprintf(stderr, "%s, ",
 					chosen_mb->node_array[index].name);
 			}
-                        index = index_commands_notmatched[i];
-			fprintf(stderr, "%s.\n",
+			if (index_argc > 0) {
+				index = index_commands_notmatched[i];
+				fprintf(stderr, "%s.\n",
 					chosen_mb->node_array[index].name);
-			free(index_commands_notmatched);
+				free(index_commands_notmatched);
+			}
 			exit_state = OP_ERROR;
 			goto exit;
 		}
@@ -1869,7 +1865,7 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 		free(chosen_mb);
 	chosen_mb = fresh_mb;
 
-	if (fresh_mb->state == PS_ERROR)
+	if (fresh_mb->state == PS_ERROR && fresh_mb->is_error_confirmed)
 		(*ntimes_seen_error)++;
 	else if (fresh_mb->state == PS_RUN)
 		(*ntimes_seen_run)++;
@@ -2471,6 +2467,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->n_edges = 0;
 	chosen_mb->initiator_pid = self_pid;
 	chosen_mb->state = PS_NEGOTIATION;
+	chosen_mb->is_error_confirmed = false;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
 	chosen_mb->is_origin_conc = false;
@@ -2733,31 +2730,33 @@ again:
 				 * it leaves negotiation.
 				 */
 				if (self_node.pid ==
-						chosen_mb->initiator_pid &&
-				    (chosen_mb->state == PS_RUN ||
-				     chosen_mb->state == PS_ERROR)) {
-					if (chosen_mb->state == PS_RUN)
+						chosen_mb->initiator_pid) {
+					if (chosen_mb->state == PS_RUN) {
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, programname, self_node.index, chosen_mb->state);
-					goto exit;
-				}
-
-				if (self_node.pid ==
-						chosen_mb->initiator_pid &&
-				    chosen_mb->state == PS_NEGOTIATION) {
+						goto exit;
+					} else if (chosen_mb->state == PS_ERROR) {
+						if (chosen_mb->is_error_confirmed)
+							goto exit;
+						else
+							chosen_mb->is_error_confirmed = true;
+					} else if (chosen_mb->state == PS_NEGOTIATION) {
 					chosen_mb->state = PS_NEGOTIATION_END;
 					DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
-					if (solve_dgsh_graph() == OP_ERROR)
+					if (solve_dgsh_graph() == OP_ERROR) {
 						chosen_mb->state = PS_ERROR;
-					else
+						chosen_mb->is_error_confirmed = true;
+					} else
 						chosen_mb->state = PS_RUN;
+					}
 				}
 				isread = false;
 			}
 		}
 	}
 exit:
-	/* XXX: error handling */
+	DPRINTF("%s(): %s (%d) leaves after %s with state %d.", __func__,
+			programname, self_node.index, isread ? "read" : "write",
+			chosen_mb->state);
 	if (chosen_mb->state == PS_COMPLETE) {
 		if (alloc_io_fds() == OP_ERROR)
 			chosen_mb->state = PS_ERROR;

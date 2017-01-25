@@ -299,7 +299,8 @@ pass_message_blocks(void)
 				write_message_block(i); // XXX check return
 
 				if (pi[i].to_write->state == PS_RUN
-					|| pi[i].to_write->state == PS_ERROR)
+					|| (pi[i].to_write->state == PS_ERROR &&
+						pi[i].to_write->is_error_confirmed))
 					pi[i].written = true;
 
 				// Write side exit
@@ -370,17 +371,22 @@ pass_message_blocks(void)
 					if (seen == nfd - 2) {
 						chosen_mb = rb;
 						if (solve_dgsh_graph() ==
-								OP_ERROR)
+								OP_ERROR) {
 							pi[next].to_write->state = PS_ERROR;
-						else
+							pi[next].to_write->is_error_confirmed = true;
+						} else
 							pi[next].to_write->state = PS_RUN;
 						for (j = 1; j < nfd; j++)
 							pi[j].seen = false;
 						// Don't free
 						chosen_mb = NULL;
 					}
-				} else if (rb->state == PS_RUN || rb->state == PS_ERROR)
+				} else if (rb->state == PS_RUN ||
+						(rb->state == PS_ERROR &&
+						rb->is_error_confirmed))
 					pi[i].seen = true;
+				else if (rb->state == PS_ERROR)
+					rb->is_error_confirmed = true;
 
 				print_state(i, (int)rb->initiator_pid, 1);
 				if (pi[i].seen && pi[i].written) {

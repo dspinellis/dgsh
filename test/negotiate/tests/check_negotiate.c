@@ -2349,6 +2349,7 @@ START_TEST(test_analyse_read)
 	int run_ntimes_same = 0;
 	int error_ntimes_same = 0;
 	fresh_mb->state = PS_ERROR;
+	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
 				&error_ntimes_same, self_node.name,
@@ -2367,6 +2368,7 @@ START_TEST(test_analyse_read)
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct dgsh_node));
 	error_ntimes_same = 0;
 	fresh_mb->state = PS_ERROR;
+	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
 				&error_ntimes_same, self_node.name,
@@ -2386,6 +2388,7 @@ START_TEST(test_analyse_read)
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct dgsh_node));
 	error_ntimes_same = 1;
 	fresh_mb->state = PS_ERROR;
+	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
 				&error_ntimes_same, self_node.name,
@@ -2404,6 +2407,7 @@ START_TEST(test_analyse_read)
 	error_ntimes_same = 1;
 	memcpy(&self_node, &chosen_mb->node_array[1], sizeof(struct dgsh_node));
 	fresh_mb->state = PS_ERROR;
+	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
 				&error_ntimes_same, self_node.name,
