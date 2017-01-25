@@ -26,17 +26,20 @@ export LC_ALL=C
 
 tee |
 {{
+	# Find errors
 	{{
-		# Find errors
+		# Obtain list of words in text
 		tr -cs A-Za-z \\n |
 		tr A-Z a-z |
 		sort -u &
 
-		# Ensure dictionary is sorted consistently with our settings
+		# Ensure dictionary is compatibly sorted
 		sort /usr/share/dict/words &
 	}} |
+	# List errors as a set difference
 	comm -23 &
 
+	# Pass through text
 	cat &
 }} |
-grep -F -f - -i --color -w -C 2
+grep --fixed-strings --file=- --ignore-case --color --word-regex --context=2
