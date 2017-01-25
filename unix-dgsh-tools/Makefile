@@ -523,4 +523,3 @@ clean:
 	$(MAKE) -C bash clean
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
-	HPATH
