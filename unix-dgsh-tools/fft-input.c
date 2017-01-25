@@ -19,7 +19,11 @@ int main(int argc, char **argv)
 	size_t len = sizeof(long double), wsize;
 	char line[len + 1];
 	long double *input = (long double *)malloc(sizeof(long double) * ninput);
-	assert(argc == 2);
+
+	if (argc == 1) {
+		noutputfds = 8;
+		goto negotiate;
+	}
 
 	input_file = argv[1];
 	f = fopen(input_file, "r");
@@ -42,6 +46,8 @@ int main(int argc, char **argv)
 		DPRINTF("Retrieved input %.10Lf\n", input[nlines - 1]);
 	}
 	noutputfds = nlines;
+
+negotiate:
 
 	if ((status = dgsh_negotiate("fft-input", &ninputfds, &noutputfds,
 					&inputfds, &outputfds)) != 0)

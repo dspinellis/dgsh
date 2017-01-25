@@ -12,8 +12,8 @@ STD=/usr/bin
 SCRIPTDIR=tool_scripts
 
 CFLAGS+=-Wall
-PATHS= -I.. -L..
-LIBS= -ldgsh_negotiate
+PATHS= -I..
+LIBS= ../libdgsh_negotiate.a
 
 # Color
 GR=\033[0;32m	# Green
@@ -69,7 +69,7 @@ make: w
 	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
 
-w: w.c
+w: w.c $(LIBS)
 ifeq ($(shell uname),FreeBSD)
 	$(CC) $(CFLAGS) $(PATHS) w.c cpow.c -o w $(LIBS) -lm
 else

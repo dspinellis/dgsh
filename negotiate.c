@@ -213,16 +213,24 @@ process_node_name(char *name, char **processed_name)
 				*processed_name, m, mm);
 }
 
-STATIC void
+STATIC enum op_result
 output_graph(char *filename)
 {
 	char ffilename[strlen(filename) + 5];	// + .dot
 	sprintf(ffilename, "%s.dot", filename);
 	FILE *f = fopen(ffilename, "a");
+	if (f == NULL) {
+		fprintf(stderr, "Unable to open file %s", ffilename);
+		return OP_ERROR;
+	}
 
 	char fnfilename[strlen(filename) + 9];	// + -ngt + .dot
 	sprintf(fnfilename, "%s-ngt.dot", filename);
 	FILE *fn = fopen(fnfilename, "a");
+	if (fn == NULL) {
+		fprintf(stderr, "Unable to open file %s", fnfilename);
+		return OP_ERROR;
+	}
 
 	int i, j;
 	int n_nodes = chosen_mb->n_nodes;
@@ -295,6 +303,7 @@ output_graph(char *filename)
 
 	fclose(f);
 	fclose(fn);
+	return OP_SUCCESS;
 }
 
 /**
@@ -1185,7 +1194,8 @@ solve_dgsh_graph(void)
 		goto exit;
 
 	if ((filename = getenv("DGSH_DOT_DRAW")))
-		output_graph(filename);
+		if ((exit_state = output_graph(filename)) == OP_ERROR)
+			goto exit;
 
 	if (getenv("DRAW_EXIT")) {
 		fprintf(stderr,
@@ -2724,8 +2734,10 @@ again:
 				 */
 				if (self_node.pid ==
 						chosen_mb->initiator_pid &&
-				    chosen_mb->state == PS_RUN) {
-					chosen_mb->state = PS_COMPLETE;
+				    (chosen_mb->state == PS_RUN ||
+				     chosen_mb->state == PS_ERROR)) {
+					if (chosen_mb->state == PS_RUN)
+						chosen_mb->state = PS_COMPLETE;
 					DPRINTF("%s(): %s (%d) leaves after read with state %d.", __func__, programname, self_node.index, chosen_mb->state);
 					goto exit;
 				}

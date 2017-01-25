@@ -21,7 +21,11 @@
 #  limitations under the License.
 #
 
-PSDIR=$1
+if [ -z "$1" ]; then
+	PSDIR=simple-shell
+else
+	PSDIR=$1
+fi
 
 cp $PSDIR/results $PSDIR/res
 
