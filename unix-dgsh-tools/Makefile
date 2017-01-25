@@ -348,14 +348,14 @@ test-bash: test-clean
 	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
 	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
 	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh file Readme.md
+	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
 	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh file coreutils
 	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh pipe $(PSDIR)/access.log
 	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
 	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
-					sfspray sffft1 sffft3 sfcat sflmotretch \
+					sfspray sffft1 sffft3 sfcat sflmostretch \
 					sfreverse sfwindow vppen sfsmooth
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
 	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh file $(PSDIR)/fid -- nmrPipe addNMR

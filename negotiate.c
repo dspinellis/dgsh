@@ -752,10 +752,12 @@ cross_match_io_constraints(int *free_instances,
 					(*edges_matched)++;
 				}
 		}
-		if (matched == *edges_matched)
-			DPRINTF("%s(): WARNING: did not manage to match...",
-					__func__);
 		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d, edge instances: %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to, e->instances);
+		if (matched == *edges_matched){
+			DPRINTF("%s(): WARNING: did not manage to match this edge",
+					__func__);
+			return OP_SUCCESS;
+		}
 	}
 
 	/* Is the matching for this channel in line with the (fixed)
@@ -945,6 +947,29 @@ prepare_solution(void)
 }
 
 /**
+ * Check that a node's input/output channel matched its requirements
+ */
+static void
+check_constraints_matched(int node_index, bool *constraints_matched,
+				int ** index_commands_notmatched, int *index_argc)
+{
+	if (!*constraints_matched) {
+		DPRINTF("Constraint not matched. index_argc: %d",
+				*index_argc);
+		if (*index_argc == 0)
+			*index_commands_notmatched = (int *)malloc(
+					sizeof(int) *
+					++(*index_argc));
+		else
+			*index_commands_notmatched = (int *)realloc(
+				*index_commands_notmatched,
+				sizeof(int) * ++(*index_argc));
+		*index_commands_notmatched[*index_argc - 1] = node_index;
+	}
+	*constraints_matched = false;
+}
+
+/**
  * This function implements the algorithm that tries to satisfy reported
  * I/O constraints of tools on an dgsh graph.
  */
@@ -979,13 +1004,13 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 		/* Try to satisfy the I/O channel constraints at graph level.
 		 * Assign instances to each edge.
 		 */
-		if (*n_edges_outgoing > 0)
+		if (*n_edges_outgoing > 0){
 			if (cross_match_io_constraints(
 		    	    &current_connections->n_instances_outgoing_free,
 			    out_constraint,
 		    	    edges_outgoing, *n_edges_outgoing, 0,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+				DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -993,14 +1018,17 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 				current_node->provides_channels,
 				*n_edges_outgoing);
 				return OP_ERROR;
+			}
+			check_constraints_matched(i, &constraints_matched,
+					index_commands_notmatched, index_argc);
 		}
-		if (*n_edges_incoming > 0)
+		if (*n_edges_incoming > 0){
 			if (cross_match_io_constraints(
 		    	    &current_connections->n_instances_incoming_free,
 			    in_constraint,
 		    	    edges_incoming, *n_edges_incoming, 1,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+				DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -1008,19 +1036,9 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 				current_node->provides_channels,
 				*n_edges_outgoing);
 				return OP_ERROR;
-		}
-		if (!constraints_matched) {
-			DPRINTF("Constraint not matched. index_argc: %d",
-					*index_argc);
-			if (*index_argc == 0)
-				*index_commands_notmatched = (int *)malloc(
-						sizeof(int) *
-						++(*index_argc));
-			else
-				*index_commands_notmatched = (int *)realloc(
-					*index_commands_notmatched,
-					sizeof(int) * ++(*index_argc));
-			*index_commands_notmatched[*index_argc - 1] = i;
+			}
+			check_constraints_matched(i, &constraints_matched,
+					index_commands_notmatched, index_argc);
 		}
 	}
 	DPRINTF("%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, n_nodes - *index_argc, n_nodes, edges_matched / 2, n_edges);
@@ -1133,13 +1151,16 @@ solve_dgsh_graph(void)
 				&index_commands_notmatched, &index_argc)) ==
 				OP_ERROR ||
 				(exit_state == OP_RETRY && retries > 10)) {
-			int i = 0;
+			int i = 0, index = 0;
 			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following participating processes: ");
-			for (i = 0; i < index_argc - 1; i++)
+			for (i = 0; i < index_argc - 1; i++){
+                                index = index_commands_notmatched[i];
 				fprintf(stderr, "%s, ",
-					chosen_mb->node_array[i].name);
+					chosen_mb->node_array[index].name);
+			}
+                        index = index_commands_notmatched[i];
 			fprintf(stderr, "%s.\n",
-					chosen_mb->node_array[i].name);
+					chosen_mb->node_array[index].name);
 			free(index_commands_notmatched);
 			exit_state = OP_ERROR;
 			goto exit;

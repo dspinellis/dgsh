@@ -52,7 +52,7 @@ ngram()
 export -f ranked_frequency
 export -f ngram
 
-tee <$1 |
+tee |
 {{
 	# Split input one word per line
 	tr -cs a-zA-Z \\n |

@@ -96,6 +96,7 @@ main(int argc, char *argv[])
 	int pos = 1;
 	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
+	int feed_stdin = 0, special_args = 0;
 
 	/* Preclude recursive wrapping */
 	DPRINTF("PATH before: [%s]", getenv("PATH"));
@@ -111,24 +112,35 @@ main(int argc, char *argv[])
 
 	if (argc < 2)
 		usage();
-		
+
 	/* Parse any arguments to dgsh-wrap
 	 * Tried getopt, but it swallows spaces in this case
 	 */
 	if (argv[1][0] == '-') {
-		if (argv[1][1] == 'd') {
-			ninputs = 0;
-			pos++;
-			// argv[1] may carry also the guest program's name
-			if (argv[1][2] == ' ')
-				guest_program_name = &argv[1][3];
-		} else if (argv[1][1] == 'm') {
-			noutputs = 0;
-			pos++;
-			if (argv[1][2] == ' ')
-				guest_program_name = &argv[1][3];
-		} else
-			usage();
+		char *m = ++argv[1];
+		DPRINTF("m: %s", m);
+		while (m) {
+			if (m[0] == 'd') {
+				ninputs = 0;
+				pos++;
+				// argv[1] may carry also the guest program's name
+				if (strlen(m) > 2 && m[2] != '-')
+					guest_program_name = &m[2];
+			} else if (m[0] == 'm') {
+				noutputs = 0;
+				pos++;
+				if (strlen(m) > 2 && m[2] != '-')
+					guest_program_name = &m[2];
+			} else if (m[0] == 's') {
+				feed_stdin = 1;
+				pos++;
+				if (strlen(m) > 2 && m[2] != '-')
+					guest_program_name = &m[2];
+			} else
+				usage();
+
+			m = strstr(m, "-");
+		}
 	}
 
 	if (!guest_program_name) {
@@ -139,7 +151,8 @@ main(int argc, char *argv[])
 
 	int exec_argv_len = argc - 1;
 	int i, j;
-	char **exec_argv = malloc(exec_argv_len * sizeof(char *));
+	char **exec_argv = (char **)malloc((exec_argv_len + 1) *
+			sizeof(char *));
 
 	if (exec_argv == NULL)
 		err(1, "Error allocating exec_argv memory");
@@ -167,7 +180,7 @@ main(int argc, char *argv[])
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
-			ninputs = 1;
+			special_args = 1;
 			if (!m)
 				ninputs++;
 			while (m) {
@@ -178,6 +191,11 @@ main(int argc, char *argv[])
 			DPRINTF("ninputs: %d", ninputs);
 		}
 	}
+	/* originally ninputs = -1, so +1 to 0 and
+	 * +1 if stdin should be included in channel assignments
+	 */
+	if (special_args)
+		ninputs += 1 + feed_stdin;
 
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
@@ -205,7 +223,8 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	int n = 1;
+	int n = feed_stdin ? 1 : 0;
+
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
 	if (ninputs != -1)

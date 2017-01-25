@@ -31,7 +31,7 @@ DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfi
 
 EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval
 
-LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-monitor \
+LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
 	dgsh-conc dgsh-wrap perm dgsh-merge-sum
 
 LIBS=libdgsh_negotiate.a
@@ -92,12 +92,15 @@ dgsh-parallel: dgsh-parallel.sh
 
 dgsh: dgsh.sh
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 perm: perm.sh
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 dgsh-merge-sum: dgsh-merge-sum.pl
 	./replace-paths.sh <$? >$@
+	chmod 755 $@
 
 test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 	./test-dgsh.sh
