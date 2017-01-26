@@ -1,6 +1,7 @@
 include ../.config
 
-# All but comm join paste sort
+# All but ginstall comm join paste sort
+# ginstall, renamed from install, is used to install the programs
 DISABLE_COREUTILS_PROGRAMS=\
 who users uptime stty stdbuf pinky nice install hostid df chroot chcon \
 cat basename base64 base32 [ expr expand env echo du dirname dircolors \
