@@ -8,11 +8,13 @@
 *.pdf
 *.swp
 *.test
-.config
 charcount
+.config
 dgsh
 dgsh-conc
 dgsh-conc.html
+dgsh-enumerate
+dgsh-enumerate.html
 dgsh.html
 dgsh-httpval
 dgsh-httpval.html
@@ -20,6 +22,9 @@ dgsh-merge-sum
 dgsh-merge-sum.html
 dgsh-monitor
 dgsh-monitor.html
+dgsh_negotiate.html
+dgsh-parallel
+dgsh-parallel.html
 dgsh-ps
 dgsh-readval
 dgsh-readval.html
@@ -38,5 +43,3 @@ tags
 test/sorted-words
 test/web-log-report/logfile
 unix-dgsh-tools/sf*
-dgsh-enumerate
-dgsh-parallel
