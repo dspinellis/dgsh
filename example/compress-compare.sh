@@ -29,19 +29,19 @@
 
 tee |
 {{
-	echo -n 'File type:' &
+	printf 'File type:\t' &
 	file - &
 
-	echo -n 'Original size:' &
+	printf 'Original size:\t' &
 	wc -c &
 
-	echo -n 'xz:' &
+	printf 'xz:\t\t' &
 	xz -c | wc -c &
 
-	echo -n 'bzip2:' &
+	printf 'bzip2:\t\t' &
 	bzip2 -c | wc -c &
 
-	echo -n 'gzip:' &
+	printf 'gzip:\t\t' &
 	gzip -c | wc -c &
 }} |
 cat
