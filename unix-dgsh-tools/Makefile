@@ -26,7 +26,7 @@ SCRIPTDIR=tool_scripts
 
 CFLAGS+=-Wall
 PATHS= -I..
-LIBS= ../libdgsh_negotiate.a
+LIBS= ../libdgsh.a
 
 # Color
 GR=\033[0;32m	# Green
@@ -360,8 +360,8 @@ test-bash: test-clean
 	-rm -rf grep2 grep-p100
 	cp -R grep grep2 && \
 	cp -R grep2 grep-p100 && \
-	cd grep-p100 && git checkout HEAD~100 >/dev/null 2>/dev/null && \
-	cd ../grep2 && git checkout master >/dev/null 2>/dev/null && cd ..
+	cd grep-p100 && git checkout HEAD~100 >/dev/null && \
+	cd ../grep2 && git checkout master && cd ..
 	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
 	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \

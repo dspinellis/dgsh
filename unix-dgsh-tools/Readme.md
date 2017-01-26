@@ -3,7 +3,7 @@
 While under the dgsh root directory, type the following sequence of commands:
 
 ```bash
-make libdgsh_negotiate.a # compile the dgsh negotiation library
+make libdgsh.a # compile the dgsh negotiation library
 cd unix-dgsh-tools
 make get-submodules   # download repos of Unix tools if not already cloned
                       # with the superproject through --recursive
