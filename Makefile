@@ -232,3 +232,7 @@ pull:
 	# Reattach detached repositories. These get detached by pulls or
 	# by builds specifying a specific gnulib version.
 	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( cd $$d && git checkout master && git pull ) ; done
+
+commit:
+	# Commit -a including submodules with the specified message
+	for i in $$(echo unix-dgsh-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
