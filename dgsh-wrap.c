@@ -30,8 +30,8 @@
 #include <string.h>
 #include <err.h>
 
-#include "dgsh.h"		/* DPRINTF() */
-#include "dgsh-negotiate.h"
+#include "dgsh.h"
+#include "debug.h"		/* DPRINTF() */
 
 #define PROC_FD_PATH_LEN 20
 

@@ -17,8 +17,25 @@
  *
  */
 
+#ifndef KVSTORE_H
+#define KVSTORE_H
+
 #include <stdbool.h>
 
 /* Send to the socket path the specified command */
 void dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
     bool quit, int outfd);
+
+/*
+ * The read/write store communication protocol is as follows
+ * readval -> writeval: L | Q | C
+ * For L (read last) and C (read current)
+ * writeval -> readval: CONTENT_LENGTH content ...
+ * If writeval gets EOF it returns an empty (length 0) record, if no record
+ * can ever appear.
+ * For Q (quit) writeval exits
+ */
+#define CONTENT_LENGTH_DIGITS 10
+#define CONTENT_LENGTH_FORMAT "%010u"
+
+#endif /* KVSTORE_H */

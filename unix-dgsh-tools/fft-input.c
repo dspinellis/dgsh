@@ -6,8 +6,8 @@
 #include <err.h>	// errx()
 #include <errno.h>	// errno
 
-#include "dgsh-negotiate.h"
 #include "dgsh.h"
+#include "debug.h"
 
 int main(int argc, char **argv)
 {

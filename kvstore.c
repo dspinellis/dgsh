@@ -33,6 +33,8 @@
 #include <unistd.h>
 
 #include "dgsh.h"
+#include "kvstore.h"
+#include "debug.h"
 
 #define RETRY_LIMIT 10
 

@@ -31,9 +31,8 @@
 #include <unistd.h>		/* getpid() */
 #include <sys/select.h>
 
-#include "dgsh-negotiate.h"
-#include "dgsh-internal-api.h"
-#include "dgsh.h"		/* DPRINTF */
+#include "negotiate.h"
+#include "debug.h"		/* DPRINTF */
 
 #ifdef TIME
 #include <time.h>

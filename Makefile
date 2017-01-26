@@ -50,8 +50,8 @@ WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 # Files required for dgsh negotiation
-NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
-		     dgsh-conc.c
+NEGOTIATE_TEST_FILES=dgsh.h negotiate.c negotiate.h \
+		     dgsh-conc.c debug.h
 
 png/%-pretty.png: graphdot/%.dot
 	mkdir -p graphdot
@@ -139,7 +139,7 @@ test-kvstore: test-kvstore.sh
 	# Remove the debug build versions
 	$(MAKE) clean
 
-libdgsh.a: negotiate.c
+libdgsh.a: negotiate.o
 	ar rcs $@ negotiate.o
 
 charcount: charcount.sh
@@ -205,6 +205,7 @@ install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 	install $(LIBEXECUTABLES) $(DESTDIR)$(PREFIX)/libexec/dgsh
 	install $(LIBS) $(DESTDIR)$(PREFIX)/lib
 	install -m 644 $(MANSRC) $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 644 dgsh.h $(DESTDIR)$(PREFIX)/include
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install

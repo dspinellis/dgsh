@@ -34,7 +34,8 @@
 #include <unistd.h>
 
 #include "dgsh.h"
-#include "dgsh-negotiate.h"
+#include "debug.h"
+#include "minmax.h"
 
 #if defined(DEBUG_DATA)
 #define DATA_DUMP 1

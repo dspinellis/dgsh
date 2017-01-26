@@ -8,8 +8,8 @@
 #include <errno.h>	//errno
 #include <string.h>	// memcpy()
 
-#include "dgsh-negotiate.h"
 #include "dgsh.h"
+#include "debug.h"
 
 int main(int argc, char** argv)
 {
