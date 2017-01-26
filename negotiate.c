@@ -818,8 +818,8 @@ calculate_conc_fds(void)
 repeat:
 	for (i = 0; i < n_concs; i++) {
 		struct dgsh_conc *c = &chosen_mb->conc_array[i];
-		DPRINTF("%s() for conc %d at index %d",
-				__func__, c->pid, i);
+		DPRINTF("%s() for conc %d at index %d with %d n_proc_pids",
+				__func__, c->pid, i, c->n_proc_pids);
 
 		if (c->input_fds >= 0 && c->output_fds >= 0)
 			continue;
