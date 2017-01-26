@@ -118,7 +118,7 @@ next_fd(int fd, bool *ro)
 		case STDOUT_FILENO:
 			if (!noinput)
 				*ro = true;
-			if (nfd > 2)	// if not, treat it in default
+			if (nfd > 2)	// if ==2, treat in default case
 				return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
@@ -161,15 +161,16 @@ set_io_channels(struct dgsh_negotiation *mb)
 	if (find_conc(mb, pid))
 		return 0;
 
-	DPRINTF("%s", __func__);
 	struct dgsh_conc c;
 	c.pid = pid;
 	c.input_fds = -1;
 	c.output_fds = -1;
-	c.n_proc_pids = nfd - 2;
+	c.n_proc_pids = (nfd > 2 ? nfd - 2 : 1);
 	c.multiple_inputs = multiple_inputs;
 	c.proc_pids = (int *)malloc(sizeof(int) * c.n_proc_pids);
 	int j = 0, i;
+
+	DPRINTF("%s: n_proc_pids: %d", __func__, c.n_proc_pids);
 	if (multiple_inputs) {
 		c.endpoint_pid = pi[STDOUT_FILENO].pid;
 		if (c.endpoint_pid == 0)
@@ -361,7 +362,6 @@ pass_message_blocks(void)
 				if (!noinput)
 					set_io_channels(pi[next].to_write);
 
-				DPRINTF("rb->state: %d", rb->state);
 				if (rb->state == PS_NEGOTIATION &&
 						noinput) {
 					int j, seen = 0;
