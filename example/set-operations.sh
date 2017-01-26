@@ -1,6 +1,6 @@
 #!/usr/bin/env dgsh
 #
-# SYNOPSIS Manage results
+# SYNOPSIS Set operations
 # DESCRIPTION
 # Combine, update, aggregate, summarise results files, such as logs.
 # Demonstrates combined use of tools adapted for use with dgsh:

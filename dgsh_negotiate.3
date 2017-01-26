@@ -1,0 +1,188 @@
+.TH DGSH_NEGOTIATE 3 "26 January 2017"
+.\"
+.\" (C) Copyright 2017 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh_negotiate \- specify and obtain dgsh I/O file descriptors
+.SH SYNOPSIS
+.nf
+.B #include <dgsh.h>
+.sp
+.BI "dgsh_negotiate(const char *" tool_name ",
+.BI "               int *" n_input_fds ", int *" n_output_fds ,
+.BI "               int **" input_fds ", int **" output_fds );
+.fi
+.sp
+Link with \fI\-ldgsh\fP.
+.sp
+.SH DESCRIPTION
+The
+.BR dgsh_negotiate ()
+function is called before a program participates in a
+.IR dgsh (1)
+pipeline to specify the number of input and output file descriptors
+the program can handle, and obtain the file descriptors to be used.
+.PP
+The
+.I tool_name
+parameter should be specified to match the name of the program
+calling the function, to aid error reporting and debugging.
+.PP
+The
+.I n_input_fds
+and
+.I n_output_fds
+parameters are used to pass by reference the number of input
+or output file descriptors required,
+and obtain upon return the corresponding number of descriptors supplied.
+Passing a null pointer indicates that the program can handle zero or
+one descriptor.
+In this case, if a variable contains the value of 1 when the function
+returns, the program can use the standard input or output
+for the corresponding channel and no descriptors are returned through
+.I input_fds
+or
+.IR output_fds .
+Passing a value of -1 indicates that the program can handle an arbitrary
+number of corresponding file descriptors.
+In this case, upon return the variable will contain the actual number
+of file descriptors allocated to the program through the negotiation
+process.
+.PP
+The
+.I input_fds
+and
+.I output_fds parameters
+are used to return a pointer to a sequence of integers
+containing the file descriptors to use for input or output.
+The size of the integer sequence is equal to the returned
+corresponding value of
+.I n_input_fds
+and
+.IR n_output_fds .
+The pointers may subsequently be used as an argument to the function
+.IR free (3).
+.PP
+Each tool in the \fIdgsh\fP graph calls
+.BR dgsh_negotiate ()
+to take part in a peer-to-peer negotiation.
+A message block is circulated among tools and is filled with tools'
+I/O requirements.
+When all requirements are in place, an algorithm runs to find a solution
+that satisfies all requirements.
+If a solution is found, pipes are allocated and set up according to the
+solution.
+The appropriate file descriptors are provided to each tool and the negotiation
+phase ends.
+.SH RETURN VALUE
+On success, the function returns 0, on failure it returns -1.
+.SH EXAMPLES
+.PP
+The following simple implementation of echo does not receive any
+input and provides one output channel.
+.ft C
+.ps -1
+.nf
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "dgsh.h"
+
+int
+main(int argc, char *argv[])
+{
+	int n_input_fds = 0;
+	int n_output_fds = 1;
+
+	if (dgsh_negotiate("echo", &n_input_fds, &n_output_fds, NULL,
+				NULL) != 0)
+		exit(1);
+
+	assert(n_input_fds == 0);
+	assert(n_output_fds == 1);
+
+	++argv;
+	while (*argv) {
+		(void)printf("%s", *argv);
+		if (*++argv)
+			putchar(' ');
+	}
+	putchar('\n');
+
+	return 0;
+}
+.fi
+.ps +1
+.ft P
+.PP
+The following program will enumerate its output channels.
+.ft C
+.ps -1
+.nf
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <err.h>
+#include <unistd.h>
+
+#include "dgsh.h"
+
+int
+main(int argc, char *argv[])
+{
+	int n_input_fds = 0, n_output_fds;
+	int *output_fds;
+	int i;
+
+	switch (argc) {
+	case 1:
+		n_output_fds = -1;
+		break;
+	case 2:
+		n_output_fds = atoi(argv[1]);
+		break;
+	default:
+		errx(1, "usage: %s [n]", argv[0]);
+	}
+
+
+	if (dgsh_negotiate(argv[0], &n_input_fds, &n_output_fds, NULL,
+				&output_fds) != 0)
+		errx(1, "Negotiation failed");
+
+	for (i = 0; i < n_output_fds; i++) {
+		char buff[10];
+
+		snprintf(buff, sizeof(buff), "%d\n", i);
+		write(output_fds[i], buff, strlen(buff));
+		close(output_fds[i]);
+	}
+
+	return 0;
+}
+.fi
+.ps +1
+.ft P
+.SH SEE ALSO
+.BR dgsh (1),
+.BR dgsh-wrap (1).
+.SH AUTHOR
+The
+.B dgsh_negotiate
+API and negotiation algorithm
+were designed by Diomidis Spinellis
+and extended and implemented by Marios Frangoulis.

@@ -32,16 +32,16 @@ DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfi
 EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval dgsh-merge-sum
 
 LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
-	dgsh-conc dgsh-wrap perm
+	dgsh-conc dgsh-wrap perm dgsh-enumerate
 
 LIBS=libdgsh.a
 
 TOOLS=unix-dgsh-tools
 
 # Manual pages
-MANSRC=$(wildcard *.1)
-MANPDF=$(patsubst %.1,%.pdf,$(MANSRC))
-MANHTML=$(patsubst %.1,%.html,$(MANSRC))
+MAN1SRC=$(wildcard *.1)
+MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) dgsh_negotiate.pdf
+MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) dgsh_negotiate.html
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
@@ -61,7 +61,13 @@ png/%-pretty.png: graphdot/%.dot
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
 
+%.pdf: %.3
+	groff -man -Tps $< | ps2pdf - $@
+
 %.html: %.1
+	groff -man -Thtml $< >$@
+
+%.html: %.3
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
@@ -85,6 +91,8 @@ dgsh-httpval: dgsh-httpval.c kvstore.c
 dgsh-conc: dgsh-conc.o libdgsh.a
 
 dgsh-wrap: dgsh-wrap.o libdgsh.a
+
+dgsh-enumerate: dgsh-enumerate.o libdgsh.a
 
 dgsh-tee: dgsh-tee.o libdgsh.a
 
@@ -201,16 +209,20 @@ install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 	-mkdir -p $(DESTDIR)$(PREFIX)/lib
 	-mkdir -p $(DESTDIR)$(PREFIX)/libexec/dgsh
 	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man3
 	install $(EXECUTABLES) $(DESTDIR)$(PREFIX)/bin
 	install $(LIBEXECUTABLES) $(DESTDIR)$(PREFIX)/libexec/dgsh
 	install $(LIBS) $(DESTDIR)$(PREFIX)/lib
-	install -m 644 $(MANSRC) $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 644 $(MAN1SRC) $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 644 dgsh_negotiate.3 $(DESTDIR)$(PREFIX)/share/man/man3
 	install -m 644 dgsh.h $(DESTDIR)$(PREFIX)/include
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install
 
-web: $(MANPDF) $(MANHTML) $(WEBPNG)
+webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
+
+dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)

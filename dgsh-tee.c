@@ -1098,16 +1098,39 @@ main(int argc, char *argv[])
 
 	/* dgsh */
 	int j = 0;
-	int noutputfds = -1;
+	int noutputfds;
 	int *outputfds;
-	int ninputfds = -1;
+	int ninputfds;
 	int *inputfds;
+	char *name;
 
-	if (permute_n)
+	if (permute_n) {
 		ninputfds = noutputfds = permute_n;
+		name = "perm";
+	} else {
+		char *in, *out;
+
+		ninputfds = noutputfds = -1;
+
+		/* Heuristic to determine name */
+		in = getenv("DGSH_IN");
+		if (in && *in == '0')
+			in = NULL;
+		out = getenv("DGSH_OUT");
+		if (out && *out == '0')
+			out = NULL;
+		if (in && !out)
+			name = "cat";
+		else if (!in && out)
+			name = "tee";
+		else
+			name = "dgsh-tee";
+	}
+
+
 
 	DPRINTF("Calling negotiate");
-	if ((status = dgsh_negotiate("scatter-gather", &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0) {
+	if ((status = dgsh_negotiate(name, &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0) {
 		DPRINTF("dgsh negotiation failed with status code %d", status);
 		exit(1);
 	}

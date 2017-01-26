@@ -349,7 +349,7 @@ test-bash: test-clean
 	# No diff, just check execution exit status
 	./run_test.sh $(PSDIR) $(XDIR)/dir.sh 0
 	./run_test.sh $(PSDIR) $(XDIR)/reorder-columns.sh pipe $(PSDIR)/data.csv
-	./run_test.sh $(PSDIR) $(XDIR)/manage-results.sh file $(PSDIR)
+	./run_test.sh $(PSDIR) $(XDIR)/set-operations.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh
 	./run_test.sh $(PSDIR) $(XDIR)/uniform-5x5.sh

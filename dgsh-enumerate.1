@@ -1,0 +1,33 @@
+.TH DGSH-ENUMERATE 1 "26 January 2017"
+.\"
+.\" (C) Copyright 2017 Diomidis Spinellis.  All rights reserved.
+.\"
+.\"  Licensed under the Apache License, Version 2.0 (the "License");
+.\"  you may not use this file except in compliance with the License.
+.\"  You may obtain a copy of the License at
+.\"
+.\"      http://www.apache.org/licenses/LICENSE-2.0
+.\"
+.\"  Unless required by applicable law or agreed to in writing, software
+.\"  distributed under the License is distributed on an "AS IS" BASIS,
+.\"  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\"  See the License for the specific language governing permissions and
+.\"  limitations under the License.
+.\"
+.SH NAME
+dgsh-enumerate \- enumerate an arbitrary number of output channels
+.SH SYNOPSIS
+\fBdgsh-enumerate\fP [\fIn\fP]
+.SH DESCRIPTION
+\fIdgsh-enumerate\fP will output a single newline-terminated ascending
+integer on each one of its output channels.
+If the number of channels is not specified, the command will
+allow its downstream processes to specify the number and use that one.
+.PP
+The command demonstrates the \fIdgsh\fP negotiation API.
+It can also be used as a debug tool.
+.SH "SEE ALSO"
+\fIdgsh\fP(1)
+
+.SH AUTHOR
+Diomidis Spinellis \(em <http://www.spinellis.gr>
