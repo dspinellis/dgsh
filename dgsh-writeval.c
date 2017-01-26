@@ -40,7 +40,9 @@
 #include <unistd.h>
 
 #include "dgsh.h"
-#include "dgsh-negotiate.h"
+#include "kvstore.h"
+#include "debug.h"
+#include "minmax.h"
 
 #ifdef DEBUG
 /* Small buffer size to catch errors with data spanning buffers */

@@ -1,9 +1,95 @@
-#ifndef DGSH_INTERNAL_API_H
-#define DGSH_INTERNAL_API_H
+/*
+ * Copyright 2016-2017 Marios Frangoulis
+ *
+ * Dgsh private negotiation API
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+#ifndef NEGOTIATE_H
+#define NEGOTIATE_H
 
 #include <stdbool.h>
+#include <sys/socket.h> /* struct cmsghdr */
 
-#include "dgsh-negotiate.h"
+#include "dgsh.h"
+
+/* Negotiation protocol states */
+enum prot_state {
+	PS_COMPLETE,		/* Negotiation process is complete */
+	PS_NEGOTIATION,		/* Negotiation phase */
+	PS_NEGOTIATION_END,	/* End of negotiation phase */
+	PS_RUN,			/* Share solution; prepare to run */
+	PS_ERROR,		/* Error in negotiation process */
+};
+
+union fdmsg {
+	struct cmsghdr h;
+	char buf[CMSG_SPACE(sizeof(int))];
+};
+
+/*
+ * Results of operations
+ * Also negative values signify a failed operation's errno value
+ */
+enum op_result {
+	OP_SUCCESS,		/* Successful */
+	OP_ERROR,		/* Unresolvable error due to I/O problem
+				 * constraints provided by the processes
+				 * on the dgsh graph or memory constraints
+				 * of the systems.
+				 */
+	OP_EXISTS,		/* Node or edge already registered with the
+				 * dgsh graph.
+				 */
+	OP_CREATE,		/* Node ar edge registered with the dgsh 
+				 * graph.
+				 */
+	OP_NOOP,		/* No operation when trying to add an edge
+				 * on a graph with just one node at the time.
+				 */
+	OP_RETRY,		/* Not all constraints of an I/O constraint
+				 * problem have been satisfied yet.
+				 * Retry by leveraging flexible constraints.
+				 */
+};
+
+
+#ifdef UNIT_TESTING
+
+#define STATIC
+
+/* Models an I/O connection between tools on an dgsh graph. */
+struct dgsh_edge {
+        int from; /* Index of node on the graph where data comes from (out). */
+        int to; /* Index of node on the graph that receives the data (in). */
+        int instances; /* Number of instances of an edge. */
+	int from_instances; /* Number of instances the origin node of an edge can provide. */
+	int to_instances; /* Number of instances the destination of an edge can require. */
+};
+
+extern bool multiple_inputs;
+extern int nfd;
+extern int next_fd(int fd, bool *ro);
+extern int read_fd(int input_socket);
+extern void write_fd(int output_socket, int fd_to_write);
+#else
+
+#define STATIC static
+
+#endif /* UNIT_TESTING */
+
 
 /* The message block implicitly used by many functions */
 extern struct dgsh_negotiation *chosen_mb;
@@ -87,14 +173,5 @@ void free_mb(struct dgsh_negotiation *mb);
 int read_fd(int input_socket);
 void write_fd(int output_socket, int fd_to_write);
 
-#ifdef UNIT_TESTING
 
-extern bool multiple_inputs;
-extern int nfd;
-extern int next_fd(int fd, bool *ro);
-extern int read_fd(int input_socket);
-extern void write_fd(int output_socket, int fd_to_write);
-
-#endif
-
-#endif
+#endif /* NEGOTIATE_H */

@@ -34,7 +34,7 @@ EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval
 LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
 	dgsh-conc dgsh-wrap perm dgsh-merge-sum
 
-LIBS=libdgsh_negotiate.a
+LIBS=libdgsh.a
 
 TOOLS=unix-dgsh-tools
 
@@ -50,8 +50,8 @@ WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 # Files required for dgsh negotiation
-NEGOTIATE_TEST_FILES=dgsh.h dgsh-negotiate.h negotiate.c dgsh-internal-api.h \
-		     dgsh-conc.c
+NEGOTIATE_TEST_FILES=dgsh.h negotiate.c negotiate.h \
+		     dgsh-conc.c debug.h
 
 png/%-pretty.png: graphdot/%.dot
 	mkdir -p graphdot
@@ -76,17 +76,17 @@ config:
 	echo "export PREFIX?=$(PREFIX)" >.config
 	$(MAKE) -C $(TOOLS) configure
 
-dgsh-readval: dgsh-readval.c kvstore.c negotiate.o
+dgsh-readval: dgsh-readval.c kvstore.c libdgsh.a
 
-dgsh-writeval: dgsh-writeval.c negotiate.o
+dgsh-writeval: dgsh-writeval.c libdgsh.a
 
 dgsh-httpval: dgsh-httpval.c kvstore.c
 
-dgsh-conc: dgsh-conc.o negotiate.o
+dgsh-conc: dgsh-conc.o libdgsh.a
 
-dgsh-wrap: dgsh-wrap.o negotiate.o
+dgsh-wrap: dgsh-wrap.o libdgsh.a
 
-dgsh-tee: dgsh-tee.o negotiate.o
+dgsh-tee: dgsh-tee.o libdgsh.a
 
 dgsh-parallel: dgsh-parallel.sh
 
@@ -139,7 +139,7 @@ test-kvstore: test-kvstore.sh
 	# Remove the debug build versions
 	$(MAKE) clean
 
-libdgsh_negotiate.a: negotiate.c
+libdgsh.a: negotiate.o
 	ar rcs $@ negotiate.o
 
 charcount: charcount.sh
@@ -205,6 +205,7 @@ install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 	install $(LIBEXECUTABLES) $(DESTDIR)$(PREFIX)/libexec/dgsh
 	install $(LIBS) $(DESTDIR)$(PREFIX)/lib
 	install -m 644 $(MANSRC) $(DESTDIR)$(PREFIX)/share/man/man1
+	install -m 644 dgsh.h $(DESTDIR)$(PREFIX)/include
 
 install-tools:
 	$(MAKE) -C $(TOOLS) install

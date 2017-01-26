@@ -39,14 +39,14 @@
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
 				 * STDIN_FILENO, STDOUT_FILENO,
-				 * STDERR_FILENO 
+				 * STDERR_FILENO
 				 */
 #include <time.h>		/* nanosleep() */
 #include <sys/select.h>		/* select(), fd_set, */
 #include <stdio.h>		/* printf family */
-#include "dgsh-negotiate.h"	/* dgsh_negotiate(), dgsh_run(), union fdmsg */
-#include "dgsh-internal-api.h"	/* Message block and I/O */
-#include "dgsh.h"		/* DPRINTF() */
+
+#include "negotiate.h"		/* Message block and I/O */
+#include "debug.h"		/* DPRINTF() */
 
 #ifdef TIME
 #include <time.h>
@@ -2601,7 +2601,7 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
  * The function's return value signifies success or failure of the
  * negotiation phase.
  */
-enum prot_state
+int
 dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
                     int *n_input_fds, /* Input/Output variable:
 				       * number of input file descriptors
@@ -2650,16 +2650,16 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
 							== OP_ERROR)
-		return PS_ERROR;
+		return -1;
 
 	if (get_environment_vars() == OP_ERROR) {
 		DPRINTF("ERROR: Failed to extract DGSH_IN, DGSH_OUT environment variables.");
-		return PS_ERROR;
+		return -1;
 	}
 	n_io_channels = self_node.dgsh_in + self_node.dgsh_out;
 	if (n_io_channels == 0) {
 		fprintf(stderr, "No channel open for dgsh negotiation. Exiting now\n");
-		return PS_COMPLETE;
+		return 0;
 	}
 
 	/* Start negotiation */
@@ -2781,5 +2781,5 @@ exit:
 	}
 #endif
 	free_mb(chosen_mb);
-	return state;
+	return state ? -1 : 0;
 }

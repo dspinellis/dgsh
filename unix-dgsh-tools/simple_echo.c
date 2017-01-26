@@ -1,6 +1,6 @@
 #include <stdio.h>		/* printf() */
 #include <stdlib.h>		/* exit() */
-#include "dgsh-negotiate.h"
+#include "dgsh.h"
 
 int
 main(int argc, char *argv[])

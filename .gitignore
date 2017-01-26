@@ -29,7 +29,7 @@ dgsh-wrap
 dgsh-wrap.html
 dgsh-writeval
 dgsh-writeval.html
-libdgsh_negotiate.a
+libdgsh.a
 negotiate
 perm
 perm.html
