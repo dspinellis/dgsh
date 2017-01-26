@@ -118,7 +118,8 @@ next_fd(int fd, bool *ro)
 		case STDOUT_FILENO:
 			if (!noinput)
 				*ro = true;
-			return FREE_FILENO;
+			if (nfd > 2)	// if not, treat it in default
+				return FREE_FILENO;
 		default:
 			if (fd == nfd - 1)
 				if (!noinput)
@@ -360,6 +361,7 @@ pass_message_blocks(void)
 				if (!noinput)
 					set_io_channels(pi[next].to_write);
 
+				DPRINTF("rb->state: %d", rb->state);
 				if (rb->state == PS_NEGOTIATION &&
 						noinput) {
 					int j, seen = 0;
@@ -367,7 +369,8 @@ pass_message_blocks(void)
 					for (j = 1; j < nfd; j++)
 						if (pi[j].seen)
 							seen++;
-					if (seen == nfd - 2) {
+					if ((nfd > 2 && seen == nfd - 2) ||
+							seen == nfd - 1) {
 						chosen_mb = rb;
 						if (solve_dgsh_graph() ==
 								OP_ERROR) {
@@ -404,7 +407,9 @@ pass_message_blocks(void)
 				nfds++;
 			print_state(i, nfds, 2);
 		}
-		if (nfds == nfd - 1 || (noinput && nfds == nfd - 2)) {
+		if ((nfd > 2 && (nfds == nfd - 1 ||
+					(noinput && nfds == nfd - 2))) ||
+		    (nfds == nfd || (noinput && nfds == nfd - 1))) {
 			assert(chosen_mb != NULL);
 			DPRINTF("%s(): conc leaves negotiation", __func__);
 			return chosen_mb->state;
@@ -531,7 +536,10 @@ main(int argc, char *argv[])
 	/* +1 for stdin when scatter/stdout when gather
 	 * +1 for stderr which is not used
 	 */
-	nfd = atoi(argv[0]) + 2;
+	if (atoi(argv[0]) == 1)
+		nfd = 2;
+	else
+		nfd = atoi(argv[0]) + 2;
 	pi = (struct portinfo *)calloc(nfd, sizeof(struct portinfo));
 
 	chosen_mb = NULL;
