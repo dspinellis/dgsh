@@ -17,7 +17,7 @@ SECTION='compress-compare
 	ft2d
 	NMRPipe
 	fft-block8
-	manage-results
+	set-operations
 	reorder-columns
 	dir'
 
