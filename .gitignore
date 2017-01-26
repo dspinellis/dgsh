@@ -38,3 +38,5 @@ tags
 test/sorted-words
 test/web-log-report/logfile
 unix-dgsh-tools/sf*
+dgsh-enumerate
+dgsh-parallel

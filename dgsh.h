@@ -20,43 +20,8 @@
 #ifndef DGSH_H
 #define DGSH_H
 
-/**
- * Each tool in the dgsh graph calls dgsh_negotiate() to take part in
- * peer-to-peer negotiation. A message block (MB) is circulated among tools
- * and is filled with tools' I/O requirements. When all requirements are in
- * place, an algorithm runs that tries to find a solution that satisfies
- * all requirements. If a solution is found, pipes are allocated and
- * set up according to the solution. The appropriate file descriptors
- * are provided to each tool and the negotiation phase ends.
- * The function's return value is zero for success and a non-zero for failure.
- */
 int
-dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
-                    int *n_input_fds, /* Input/Output variable:
-				       * number of input file descriptors
-				       * required. The number may be changed
-				       * by the API and will reflect the size
-				       * of the input file descriptor array.
-				       * If NULL is provided, then 0 or 1
-				       * is implied and no file descriptor
-				       * array is returned. The input file
-				       * descriptor to return (in case of 1)
-				       * substitutes stdin.
-				       */
-                    int *n_output_fds,/* Input/Output variable:
-				       * number of output file descriptors
-				       * provided. The semantics for n_input_fds
-				       * apply here respectively.
-				       */
-                    int **input_fds,  /* Output variable:
-				       * input file descriptor array
-				       * The caller has the responsbility
-				       * to free the array.
-				       */
-                    int **output_fds);/* Output variable:
-				       * output file descriptor array
-				       * The caller has the responsbility
-				       * to free the array.
-				       */
+dgsh_negotiate(const char *tool_name, int *n_input_fds, int *n_output_fds,
+                    int **input_fds, int **output_fds);
 
 #endif
