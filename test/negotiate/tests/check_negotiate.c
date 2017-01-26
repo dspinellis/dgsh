@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/socket.h> /* socket */
 #include <sys/un.h> /* sockaddr_un */
-#include "../src/dgsh-negotiate.h"
+#include "../src/negotiate.h"
 #include "../src/negotiate.c"	/* struct definitions, static structures */
 #include "../src/dgsh-conc.c"			/* pi */
 //#include "../src/dgsh-internal-api.h"		/* chosen_mb */
@@ -2790,7 +2790,7 @@ START_TEST(test_dgsh_negotiate)
 	int *output_fds;
 	int n_output_fds = 0;
 	ck_assert_int_eq(dgsh_negotiate("test", &n_input_fds, &n_output_fds,
-				&input_fds, &output_fds), PS_ERROR);
+				&input_fds, &output_fds), -1);
 }
 END_TEST
 
