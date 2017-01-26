@@ -65,7 +65,7 @@ png/%-pretty.png: graphdot/%.dot
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
-	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-dgsh-tools/bash/bash --dgsh $<
+	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-dgsh-tools/bash/bash --dgsh $< </dev/null
 
 all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
 
