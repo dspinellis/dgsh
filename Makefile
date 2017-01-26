@@ -40,8 +40,8 @@ TOOLS=unix-dgsh-tools
 
 # Manual pages
 MAN1SRC=$(wildcard *.1)
-MANPDF=$(patsubst %.1,%.pdf,$(MANSRC)) dgsh_negotiate.pdf
-MANHTML=$(patsubst %.1,%.html,$(MANSRC)) dgsh_negotiate.html
+MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) dgsh_negotiate.pdf
+MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) dgsh_negotiate.html
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
