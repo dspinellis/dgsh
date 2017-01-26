@@ -220,7 +220,9 @@ install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 install-tools:
 	$(MAKE) -C $(TOOLS) install
 
-web: $(MANPDF) $(MANHTML) $(WEBPNG)
+webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
+
+dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
