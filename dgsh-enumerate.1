@@ -1,4 +1,4 @@
-.TH DGSH-ENUMERATE 1 "26 January 2017"
+.TH DGSH-ENUMERATE 1 "27 January 2017"
 .\"
 .\" (C) Copyright 2017 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -26,8 +26,33 @@ allow its downstream processes to specify the number and use that one.
 .PP
 The command demonstrates the \fIdgsh\fP negotiation API.
 It can also be used as a debug tool.
+.SH EXAMPLES
+.PP
+Enumerate the specified four output streams.
+.ft C
+.ps -1
+.nf
+$ dgsh -c 'dgsh-enumerate 4 | cat'
+0
+1
+2
+3
+.fi
+.ps +1
+.ft P
+.PP
+Enumerate the two output streams required by the downstream multipipe block.
+.ft C
+.ps -1
+.nf
+$ dgsh -c 'dgsh-enumerate | {{ sed "s/^/A /" & sed "s/^/B /" & }} | cat'
+A 0
+B 1
+.fi
+.ps +1
+.ft P
 .SH "SEE ALSO"
-\fIdgsh\fP(1)
-
+.IR dgsh (1),
+.IR dgsh_negotiate (3).
 .SH AUTHOR
 Diomidis Spinellis \(em <http://www.spinellis.gr>
