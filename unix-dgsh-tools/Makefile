@@ -93,7 +93,8 @@ endif
 
 install: cat tee
 	$(MAKE) -C bash install
-	install $(DGSHPATH)/bash $(PREFIX)/bin/dgsh
+	rm -f $(PREFIX)/bin/dgsh
+	ln $(DGSHPATH)/bash $(PREFIX)/bin/dgsh || install $(DGSHPATH)/bash $(PREFIX)/bin/dgsh
 	$(MAKE) -C coreutils install
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
