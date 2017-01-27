@@ -1,5 +1,4 @@
 # Commands specified by POSIX
-f admin		# SCCS
 d alias
 d ar
 d basename
@@ -22,7 +21,6 @@ f crontab	# TODO custom
 f csplit	# TODO custom
 f ctags		# TODO custom
 d date
-f delta		# SCCS
 d df
 c diff
 d dirname
@@ -33,7 +31,6 @@ d expr
 dm false
 dm fg
 d find
-f get		# SCCS
 d getopts
 c grep
 d ipcrm
@@ -54,16 +51,13 @@ dm nice
 dm nohup
 c paste
 d printf
-f prs		# SCCS
 d ps
 d pwd
-f qalter	# Batch job management
 m read
 dm renice
 dm rm
 D rmdel		# SCCS
 dm rmdir
-f sccs		# Depends on the command
 dm sleep
 c sort
 f strings	# TODO custom
