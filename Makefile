@@ -207,7 +207,8 @@ install: install-dgsh install-tools
 install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
 	-mkdir -p $(DESTDIR)$(PREFIX)/bin
 	-mkdir -p $(DESTDIR)$(PREFIX)/lib
-	-mkdir -p $(DESTDIR)$(PREFIX)/libexec/dgsh
+	rm -rf $(DESTDIR)$(PREFIX)/libexec/dgsh
+	mkdir -p $(DESTDIR)$(PREFIX)/libexec/dgsh
 	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
 	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man3
 	install $(EXECUTABLES) $(DESTDIR)$(PREFIX)/bin

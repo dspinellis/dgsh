@@ -28,4 +28,4 @@ dgsh-tee -s |
 # Emulate Java's default StringTokenizer, sort, count
 dgsh-parallel -n 4 "tr -s ' \t\n\r\f' '\n' | sort -S 512M | uniq -c" |
 # Merge sorted counts
-dgsh-wrap dgsh-merge-sum '<|' '<|' '<|' '<|'
+dgsh-merge-sum '<|' '<|' '<|' '<|'
