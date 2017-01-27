@@ -20,10 +20,6 @@
 use strict;
 use warnings;
 
-use Unicode::Collate::Locale;
-
-my $Collator = Unicode::Collate->new(locale => $ENV{'LANG'});
-
 # Read a record from the specified file reference
 sub
 read_record
@@ -75,14 +71,14 @@ for (;;) {
 	my $sum = 0;
 	my $key = $smallest->{key};
 	for my $r (@file) {
-		if (defined($r->{key}) && $Collator->cmp($r->{key}, $key) == 0) {
+		if (defined($r->{key}) && ($r->{key} cmp $key) == 0) {
 			$sum += $r->{value};
 			read_record($r);
 		}
 	}
 
 	# Verify that input is sorted
-	if (defined($prev) && $Collator->cmp($key, $prev) < 0) {
+	if (defined($prev) && ($key cmp $prev) < 0) {
 		print STDERR "Input is not sorted: [$key] came after [$prev]\n";
 		exit 1;
 	}

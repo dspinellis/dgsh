@@ -21,9 +21,11 @@
 #  limitations under the License.
 #
 
+export LC_ALL=C
+
 # Scatter input
 dgsh-tee -s |
 # Emulate Java's default StringTokenizer, sort, count
-dgsh-parallel -n 4 "tr -s ' \t\n\r\f' '\n' | LC_ALL=C sort -S 512M | uniq -c" |
+dgsh-parallel -n 4 "tr -s ' \t\n\r\f' '\n' | sort -S 512M | uniq -c" |
 # Merge sorted counts
-dgsh-merge-sum '<|' '<|' '<|' '<|'
+dgsh-wrap dgsh-merge-sum '<|' '<|' '<|' '<|'
