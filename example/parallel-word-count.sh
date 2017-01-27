@@ -1,4 +1,4 @@
-#!/usr/bin/env sgsh
+#!/usr/bin/env dgsh
 #
 # SYNOPSIS Parallel word count
 # DESCRIPTION
@@ -21,11 +21,15 @@
 #  limitations under the License.
 #
 
+# Number of processes
+N=8
+
+# Collation order for sorting
 export LC_ALL=C
 
 # Scatter input
 dgsh-tee -s |
 # Emulate Java's default StringTokenizer, sort, count
-dgsh-parallel -n 4 "tr -s ' \t\n\r\f' '\n' | sort -S 512M | uniq -c" |
-# Merge sorted counts
-dgsh-merge-sum '<|' '<|' '<|' '<|'
+dgsh-parallel -n $N "tr -s ' \t\n\r\f' '\n' | sort -S 512M | uniq -c" |
+# Merge sorted counts by providing N input channels
+dgsh-merge-sum $(for i in $(seq $N) ; do printf '<| ' ; done)
