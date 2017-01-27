@@ -29,10 +29,10 @@ endif
 
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
-EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval
+EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval dgsh-merge-sum
 
 LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
-	dgsh-conc dgsh-wrap perm dgsh-merge-sum dgsh-enumerate
+	dgsh-conc dgsh-wrap perm dgsh-enumerate
 
 LIBS=libdgsh.a
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 Marios Frangoulis
+ * Copyright 2016-2017 Marios Fragkoulis
  *
  * Dgsh private negotiation API
  *
