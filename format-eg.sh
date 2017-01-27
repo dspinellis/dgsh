@@ -14,6 +14,7 @@ SECTION='compress-compare
 	static-functions
 	map-hierarchy
 	committer-plot
+	parallel-word-count
 	ft2d
 	NMRPipe
 	fft-block8
