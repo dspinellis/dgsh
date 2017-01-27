@@ -29,7 +29,7 @@ endif
 
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
-EXECUTABLES=dgsh-monitor dgsh-httpval dgsh dgsh-readval dgsh-merge-sum
+EXECUTABLES=dgsh-monitor dgsh-httpval dgsh-readval dgsh-merge-sum
 
 LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
 	dgsh-conc dgsh-wrap perm dgsh-enumerate
@@ -97,10 +97,6 @@ dgsh-enumerate: dgsh-enumerate.o libdgsh.a
 dgsh-tee: dgsh-tee.o libdgsh.a
 
 dgsh-parallel: dgsh-parallel.sh
-
-dgsh: dgsh.sh
-	./replace-paths.sh <$? >$@
-	chmod 755 $@
 
 perm: perm.sh
 	./replace-paths.sh <$? >$@

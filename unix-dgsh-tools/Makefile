@@ -93,6 +93,7 @@ endif
 
 install: cat tee
 	$(MAKE) -C bash install
+	install $(DGSHPATH)/bash $(PREFIX)/bin/dgsh
 	$(MAKE) -C coreutils install
 	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
@@ -536,6 +537,7 @@ test-pseudo: test-clean
 
 clean:
 	$(MAKE) -C bash clean
+	rm $(PREFIX)/bin/dgsh
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
 	$(MAKE) -C grep clean
