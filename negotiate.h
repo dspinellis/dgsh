@@ -92,10 +92,6 @@ extern void write_fd(int output_socket, int fd_to_write);
 
 #endif /* UNIT_TESTING */
 
-/* Alarm mechanism and on_exit handling */
-extern volatile sig_atomic_t negotiation_completed;
-void dgsh_alarm_handler(int);
-
 /* The message block implicitly used by many functions */
 extern struct dgsh_negotiation *chosen_mb;
 
@@ -177,6 +173,8 @@ enum op_result write_message_block(int write_fd);
 void free_mb(struct dgsh_negotiation *mb);
 int read_fd(int input_socket);
 void write_fd(int output_socket, int fd_to_write);
-
+/* Alarm mechanism and on_exit handling */
+void set_negotiation_complete();
+void dgsh_alarm_handler(int);
 
 #endif /* NEGOTIATE_H */

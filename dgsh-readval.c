@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 		if (dgsh_negotiate(program_name, &ninputs, &noutputs, NULL, NULL) != 0)
 			exit(1);
 	} else
-		negotiation_completed = 1;
+		set_negotiation_complete();
 
 	dgsh_send_command(socket_path, cmd, retry_connection, quit, STDOUT_FILENO);
 

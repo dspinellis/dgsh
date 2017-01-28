@@ -143,16 +143,16 @@ static struct node_io_side self_node_io_side;	/* Dispatch info for this tool. */
 static struct dgsh_node_pipe_fds self_pipe_fds;	/* A tool's read and write file
 						 * descriptors to use at execution.
 						 */
-bool init_error = false;
-volatile sig_atomic_t negotiation_completed = 0;
+static bool init_error = false;
+static volatile sig_atomic_t negotiation_completed = 0;
 #ifndef UNIT_TESTING
 static void
 dgsh_on_exit_handler(int v, void *ptr)
 {
 	if (negotiation_completed == 1)
 		return;
-	else
-		init_error = true;
+	init_error = true;
+	DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
 	dgsh_negotiate(programname, NULL, NULL, NULL, NULL);
 }
 #endif
@@ -162,8 +162,8 @@ dgsh_alarm_handler(int signal)
 {
 	if (signal == SIGALRM)
 		if (negotiation_completed == 0) {
-			char msg[50];
-			sprintf(msg, "%d dgsh: timeout for negotiation. Exit.",
+			char msg[50] = "\0";
+			sprintf(msg, "%d dgsh: timeout for negotiation. Exit.\n",
 					getpid());
 			negotiation_completed = 1;
 			write(2, msg, sizeof(msg));
@@ -2623,6 +2623,12 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 	}
 	/* so that after select() we try both 0 and 1 to see if they are set */
 	return 2;
+}
+
+void
+set_negotiation_complete()
+{
+	negotiation_completed = 1;
 }
 
 /**

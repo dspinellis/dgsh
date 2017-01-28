@@ -32,7 +32,8 @@
 #include <sys/select.h>
 #include <signal.h>		/* sig_atomic_t */
 
-#include "negotiate.h"
+#include "negotiate.h"		/* read/write_message_block(),
+				   set_negotiation_complete() */
 #include "debug.h"		/* DPRINTF */
 
 /* Alarm mechanism and on_exit handling */
@@ -575,7 +576,7 @@ main(int argc, char *argv[])
 
 	}
 #endif
-	negotiation_completed = 1;
+	set_negotiation_complete();
 	alarm(0);			// Cancel alarm
 	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
 	return exit;
