@@ -28,11 +28,16 @@
 #include <errno.h>
 #include <limits.h>
 #include <string.h>
-#include <unistd.h>		/* getpid() */
+#include <unistd.h>		/* getpid(), alarm() */
 #include <sys/select.h>
+#include <signal.h>		/* sig_atomic_t */
 
-#include "negotiate.h"
+#include "negotiate.h"		/* read/write_message_block(),
+				   set_negotiation_complete() */
 #include "debug.h"		/* DPRINTF */
+
+/* Alarm mechanism and on_exit handling */
+extern volatile sig_atomic_t negotiation_completed;
 
 #ifdef TIME
 #include <time.h>
@@ -533,6 +538,9 @@ main(int argc, char *argv[])
 	if (argc != 1)
 		usage();
 
+	signal(SIGALRM, dgsh_alarm_handler);
+	alarm(5);
+
 	/* +1 for stdin when scatter/stdout when gather
 	 * +1 for stderr which is not used
 	 */
@@ -568,6 +576,9 @@ main(int argc, char *argv[])
 
 	}
 #endif
+	set_negotiation_complete();
+	alarm(0);			// Cancel alarm
+	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
 	return exit;
 }
 

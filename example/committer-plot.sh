@@ -138,6 +138,3 @@ tee |
 	pamscale -width 640 |
 	pnmtopng >small.png &
 }}
-
-# Close dgsh-writeval
-#dgsh-readval -l -x -q -s committers
