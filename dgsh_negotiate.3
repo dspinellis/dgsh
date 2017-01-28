@@ -88,6 +88,25 @@ The appropriate file descriptors are provided to each tool and the negotiation
 phase ends.
 .SH RETURN VALUE
 On success, the function returns 0, on failure it returns -1.
+.SH ERROR MANAGEMENT
+Things can go wrong in two ways.
+First, a command might exit before reaching the call to
+.BR dgsh_negotiate ()
+because of invalid command-line arguments for instance.
+Second, a command might not be able to complete the negotiation procedure
+because another command aborted during the negotiation.
+For commands that aborted before stepping into the negotiation procedure,
+a handler function is called on their exit and starts a negotiation
+procedure to inform the other commands on the
+\fIdgsh\fP graph of the error state.
+The exit handler is there for commands that link to the \fIdgsh\fP library.
+This happens by calling
+.BR dgsh_negotiate ()
+and linking to the library or with the use of \fIdgsh-wrap(1)\fP.
+For commands that stuck in the negotiation procedure because another
+command aborted during it, an alarm signal triggers an exit after 5
+seconds spent in negotiation to help commands exit it.
+
 .SH EXAMPLES
 .PP
 The following simple implementation of echo does not receive any
@@ -185,4 +204,4 @@ The
 .B dgsh_negotiate
 API and negotiation algorithm
 were designed by Diomidis Spinellis
-and extended and implemented by Marios Frangoulis.
+and extended and implemented by Marios Fragkoulis.
