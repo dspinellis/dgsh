@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <sys/socket.h> /* struct cmsghdr */
 
+#include <signal.h>	/* sig_atomic_t */
+
 #include "dgsh.h"
 
 /* Negotiation protocol states */
@@ -90,6 +92,9 @@ extern void write_fd(int output_socket, int fd_to_write);
 
 #endif /* UNIT_TESTING */
 
+/* Alarm mechanism and on_exit handling */
+extern volatile sig_atomic_t negotiation_completed;
+void dgsh_alarm_handler(int);
 
 /* The message block implicitly used by many functions */
 extern struct dgsh_negotiation *chosen_mb;

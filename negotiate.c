@@ -157,13 +157,17 @@ dgsh_on_exit_handler(int v, void *ptr)
 }
 #endif
 
-static void
+void
 dgsh_alarm_handler(int signal)
 {
 	if (signal == SIGALRM)
 		if (negotiation_completed == 0) {
+			char msg[50];
+			sprintf(msg, "%d dgsh: timeout for negotiation. Exit.",
+					getpid());
 			negotiation_completed = 1;
-			errx(1, "dgsh negotiation is not complete after 5 sec. Exit");
+			write(2, msg, sizeof(msg));
+			_exit(10);
 		}
 }
 
@@ -2816,6 +2820,7 @@ exit:
 #endif
 	free_mb(chosen_mb);
 	negotiation_completed = 1;
-	alarm(0);	// Cancel alarm
+	alarm(0);			// Cancel alarm
+	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
 	return state ? -1 : 0;
 }

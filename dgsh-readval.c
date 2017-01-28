@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 #include "dgsh.h"
+#include "negotiate.h"
 #include "kvstore.h"
 #include "debug.h"
 
@@ -103,9 +104,11 @@ main(int argc, char *argv[])
 	if (argc != 0 || socket_path == NULL)
 		usage();
 
-	if (should_negotiate)
+	if (should_negotiate) {
 		if (dgsh_negotiate(program_name, &ninputs, &noutputs, NULL, NULL) != 0)
 			exit(1);
+	} else
+		negotiation_completed = 1;
 
 	dgsh_send_command(socket_path, cmd, retry_connection, quit, STDOUT_FILENO);
 
