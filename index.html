@@ -245,7 +245,7 @@ as follows, based on the supplied command-line arguments.
 		<td>dgsh (<em>bash</em>)</td>
 		<td>0&mdash;N</td>
 		<td>0&mdash;M</td>
-		<td>When invoked with the <code>--dgsh-negotiate</code> option</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>diff</td>
@@ -281,7 +281,7 @@ as follows, based on the supplied command-line arguments.
 		<td>sort</td>
 		<td>0&mdash;N</td>
 		<td>0&mdash;1</td>
-		<td>Sort N input streams</td>
+		<td>With the <code>-m</code> option, merge sort N input streams</td>
 	</tr>
 	<tr>
 		<td>tee (<em>dgsh-tee</em>)</td>
@@ -310,19 +310,22 @@ as follows, based on the supplied command-line arguments.
 </table>
 </p>
 <p>
-In addition, POSIX user commands executed in a <em>dgsh</em> context
-are wrapped by default so that they execute either as filters
-(providing one input and one output channel) or as commands with
-only input or only output.
+In addition, POSIX user commands that receive no input
+or only generate no output, when executed in a <em>dgsh</em> context
+are wrapped to specify the corresponding input or output capability.
+For example, an <code>echo</code> command in a multipipe block
+will appear to receive no input, but will provide one output stream.
+By default <code>dgsh</code> automatically wrapps all other
+commands as filters.
 <dl>
-<dt> Filters </dt><dd>
-<!-- #!sed -n '/^f/{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
-</dd>
 <dt> Input-only </dt><dd>
-<!-- #!sed -n '/^[Mm] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+<!-- #!sed -n '/^m /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
 </dd>
 <dt> Output-only </dt><dd> </dd>
-<!-- #!sed -n '/^[Dd] /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+<!-- #!sed -n '/^d /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
+</dl>
+<dt> No input and output </dt><dd> </dd>
+<!-- #!sed -n '/^dm /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
 </dl>
 </p>
 </section> <!-- Adapted tools -->

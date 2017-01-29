@@ -43,7 +43,8 @@ usage(void)
 {
 	fprintf(stderr, "Usage: %s [-d | -m] program [arguments ...]\n"
 			"-d"		"Requires no input; d for deaf\n"
-			"-m"		"Provides no output; m for mute\n",
+			"-m"		"Provides no output; m for mute\n"
+			"-s"		"Include stdin to the channel assignments\n",
 		program_name);
 	exit(1);
 }
@@ -139,7 +140,7 @@ main(int argc, char *argv[])
 			} else
 				usage();
 
-			m = strstr(m, "-");
+			m = strchr(m, '-');
 		}
 	}
 

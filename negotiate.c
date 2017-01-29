@@ -39,8 +39,9 @@
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
 				 * STDIN_FILENO, STDOUT_FILENO,
-				 * STDERR_FILENO
+				 * STDERR_FILENO, alarm()
 				 */
+#include <signal.h>		/* signal(), SIGALRM */
 #include <time.h>		/* nanosleep() */
 #include <sys/select.h>		/* select(), fd_set, */
 #include <stdio.h>		/* printf family */
@@ -52,7 +53,6 @@
 #include <time.h>
 static struct timespec tstart={0,0}, tend={0,0};
 #endif
-
 
 #ifndef UNIT_TESTING
 
@@ -136,17 +136,49 @@ struct dgsh_node_pipe_fds {
 /* The message block implicitly used by many functions */
 struct dgsh_negotiation *chosen_mb;
 static struct dgsh_node self_node;		/* The dgsh node that models
-						 * this tool.
-						 */
-static char programname[100];
+						   this tool. */
+static char programname[100] = "";
 
-static struct node_io_side self_node_io_side;	/* Dispatch info for this tool.
+static struct node_io_side self_node_io_side;	/* Dispatch info for this tool. */
+static struct dgsh_node_pipe_fds self_pipe_fds;	/* A tool's read and write file
+						 * descriptors to use at execution.
 						 */
-static struct dgsh_node_pipe_fds self_pipe_fds;		/* A tool's read and
-							 * write file
-							 * descriptors to use
-							 * at execution.
-							 */
+static bool init_error = false;
+static volatile sig_atomic_t negotiation_completed = 0;
+#ifndef UNIT_TESTING
+static void
+dgsh_on_exit_handler(int v, void *ptr)
+{
+	if (negotiation_completed == 1)
+		return;
+	init_error = true;
+	DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
+	dgsh_negotiate(programname, NULL, NULL, NULL, NULL);
+}
+#endif
+
+void
+dgsh_alarm_handler(int signal)
+{
+	if (signal == SIGALRM)
+		if (negotiation_completed == 0) {
+			char msg[50] = "\0";
+			sprintf(msg, "%d dgsh: timeout for negotiation. Exit.\n",
+					getpid());
+			negotiation_completed = 1;
+			write(2, msg, sizeof(msg));
+			_exit(10);
+		}
+}
+
+#ifndef UNIT_TESTING
+__attribute__((constructor))
+static void
+install_on_exit_handler(void)
+{
+	on_exit(dgsh_on_exit_handler, NULL);
+}
+#endif
 
 /**
  * Remove path to command to save space in the graph plot
@@ -1865,6 +1897,9 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 		free(chosen_mb);
 	chosen_mb = fresh_mb;
 
+	if (init_error)
+		fresh_mb->state = PS_ERROR;
+
 	if (fresh_mb->state == PS_ERROR && fresh_mb->is_error_confirmed)
 		(*ntimes_seen_error)++;
 	else if (fresh_mb->state == PS_RUN)
@@ -2466,7 +2501,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->edge_array = NULL;
 	chosen_mb->n_edges = 0;
 	chosen_mb->initiator_pid = self_pid;
-	chosen_mb->state = PS_NEGOTIATION;
+	chosen_mb->state = (init_error ? PS_ERROR : PS_NEGOTIATION);
 	chosen_mb->is_error_confirmed = false;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
@@ -2590,6 +2625,12 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 	return 2;
 }
 
+void
+set_negotiation_complete()
+{
+	negotiation_completed = 1;
+}
+
 /**
  * Each tool in the dgsh graph calls dgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -2647,6 +2688,9 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	strcpy(programname, tool_name);
 	DPRINTF("%s(): Tool %s with pid %d entered dgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
+
+	signal(SIGALRM, dgsh_alarm_handler);
+	alarm(5);
 
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
 							== OP_ERROR)
@@ -2781,5 +2825,8 @@ exit:
 	}
 #endif
 	free_mb(chosen_mb);
+	negotiation_completed = 1;
+	alarm(0);			// Cancel alarm
+	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
 	return state ? -1 : 0;
 }

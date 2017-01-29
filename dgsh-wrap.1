@@ -32,6 +32,10 @@ it will be executed by searching the existing path.
 Arguments specified as \fI<|\fP will be presented as additional
 input channels and will be suitably replaced by named file descriptors
 when the command is invoked.
+.PP
+In the context of a \fIdgsh\fP graph, \fIdgsh(1)\fP uses \fIdgsh-wrap\fP
+to allow non-dgsh compatible commands to participate in the negotiation
+procedure.
 
 .SH OPTIONS
 .IP "\fB\-d\fP
