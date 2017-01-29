@@ -64,7 +64,7 @@ if [ ! "$1" ] ; then
 fi
 
 # Ensure exactly one sharding target is specified
-if [ ! "$nspec" ] || expr match $nspec .. >/dev/null ; then
+if [ ! "$nspec" ] || expr $nspec : .. >/dev/null ; then
   usage
 fi
 
