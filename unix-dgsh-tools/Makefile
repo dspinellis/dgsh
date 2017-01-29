@@ -69,7 +69,8 @@ get-submodules:
 
 configure:
 	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
-	cd coreutils && ./bootstrap && ./configure --prefix=$(PREFIX) \
+	cd coreutils && ./bootstrap && ../cygwin-sys-select-patch.sh && \
+	./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
 		--enable-no-install-program="$(DISABLE_COREUTILS_PROGRAMS)"
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
