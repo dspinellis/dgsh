@@ -10,6 +10,7 @@ usage()
 }
 
 # Get first argument. Its syntax will be validated by dgsh-tee
+test "$1" || usage
 p="$1"
 shift
 
