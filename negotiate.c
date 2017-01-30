@@ -34,7 +34,7 @@
 #include <limits.h>		/* IOV_MAX */
 #include <stdbool.h>		/* bool, true, false */
 #include <stdio.h>		/* fprintf() in DPRINTF() */
-#include <stdlib.h>		/* getenv(), errno */
+#include <stdlib.h>		/* getenv(), errno, atexit() */
 #include <string.h>		/* memcpy() */
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
@@ -147,7 +147,7 @@ static bool init_error = false;
 static volatile sig_atomic_t negotiation_completed = 0;
 #ifndef UNIT_TESTING
 static void
-dgsh_on_exit_handler(int v, void *ptr)
+dgsh_exit_handler(int v, void *ptr)
 {
 	if (negotiation_completed == 1)
 		return;
@@ -174,9 +174,9 @@ dgsh_alarm_handler(int signal)
 #ifndef UNIT_TESTING
 __attribute__((constructor))
 static void
-install_on_exit_handler(void)
+install_exit_handler(void)
 {
-	on_exit(dgsh_on_exit_handler, NULL);
+	atexit(dgsh_exit_handler);
 }
 #endif
 

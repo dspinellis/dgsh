@@ -5,7 +5,7 @@ include ../.config
 DISABLE_COREUTILS_PROGRAMS=\
 who users uptime stty stdbuf pinky nice install hostid df chroot chcon \
 cat basename base64 base32 [ expr expand env echo du dirname dircolors \
-dir dd date cut csplit cp cksum chown chmod chgrp nproc nl mv \
+dir dd date csplit cp cksum chown chmod chgrp nproc nl mv \
 mktemp mknod mkfifo mkdir md5sum ls logname ln link kill id head \
 groups fold fmt false factor sha512sum sha384sum sha256sum sha224sum \
 sha1sum seq runcon rmdir rm realpath readlink pwd ptx printf printenv \
@@ -69,7 +69,8 @@ get-submodules:
 
 configure:
 	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
-	cd coreutils && ./bootstrap && ./configure --prefix=$(PREFIX) \
+	cd coreutils && ./bootstrap && ../cygwin-sys-select-patch.sh && \
+	./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
 		--enable-no-install-program="$(DISABLE_COREUTILS_PROGRAMS)"
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
