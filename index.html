@@ -44,7 +44,8 @@
     <h1>dgsh &mdash; directed graph shell</h1>
   </div>
 <p>
-The directed graph shell, <em>dgsh</em>,
+The directed graph shell, <em>dgsh</em>
+(<a href="https://en.wiktionary.org/wiki/Appendix:English_pronunciation">pronounced</a> /dæɡʃ/ &mdash; <em>dagsh</em>),
 provides an expressive way to construct
 sophisticated and efficient big data set and stream processing pipelines
 using existing Unix tools as well as custom-built components.
@@ -85,15 +86,17 @@ will make the output appear in its customary format.
 </dd>
 
 <dt>Multipipe blocks {{ ... }}</dt><dd>
-a) send the input received on their input side to the asynchronously-running
-processes that reside within the block, and, b) pass the output
-produced by the processes within the block to their output side.
+a) send (multiple) input streams
+received on their input side to the asynchronously-running
+processes that reside within the block, and,
+b) pass the output produced by the processes within the block as
+(multiple) streams on their output side.
 Multipipe blocks typically receive input from more than one channel
 and produce more than one output channel.
 For example, a multipipe block that runs <code>md5sum</code> and <code>wc -c</code>
 receives two inputs and produces two outputs:
 the MD5 hash of its input and the input's size.
-Data to multipipe blocks are typically provided with an
+Data to multipipe blocks are typically provided with a
 <em>dgsh</em>-aware version of <code>tee</code> and collected by
 <em>dgsh</em>-aware versions of programs such as
 <code>cat</code> and <code>paste</code>.
@@ -248,12 +251,6 @@ as follows, based on the supplied command-line arguments.
 		<td>With <code>--multistream</code> output each range into a different stream</td>
 	</tr>
 	<tr>
-		<td>dgsh (<em>bash</em>)</td>
-		<td>0&mdash;N</td>
-		<td>0&mdash;M</td>
-		<td></td>
-	</tr>
-	<tr>
 		<td>diff</td>
 		<td>0&mdash;2</td>
 		<td>0&mdash;1</td>
@@ -321,7 +318,7 @@ or only generate no output, when executed in a <em>dgsh</em> context
 are wrapped to specify the corresponding input or output capability.
 For example, an <code>echo</code> command in a multipipe block
 will appear to receive no input, but will provide one output stream.
-By default <code>dgsh</code> automatically wrapps all other
+By default <code>dgsh</code> automatically wraps all other
 commands as filters.
 <dl>
 <dt> Input-only </dt><dd>
@@ -333,6 +330,11 @@ commands as filters.
 <dt> No input and output </dt><dd> </dd>
 <!-- #!sed -n '/^dm /{;s/. //;s/[ \t].*//;s/$/,/;p;}' unix-dgsh-tools/wrapped-commands-posix | sed '$s/,/./' -->
 </dl>
+</p>
+<p>
+Finally, note that any <em>dgsh</em> script will accept and generate
+the number of inputs and outputs associated with the commands or
+multipipe blocks at its two endpoints.
 </p>
 </section> <!-- Adapted tools -->
 
