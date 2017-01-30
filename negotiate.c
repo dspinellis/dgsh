@@ -147,7 +147,7 @@ static bool init_error = false;
 static volatile sig_atomic_t negotiation_completed = 0;
 #ifndef UNIT_TESTING
 static void
-dgsh_exit_handler(int v, void *ptr)
+dgsh_exit_handler(void)
 {
 	if (negotiation_completed == 1)
 		return;
