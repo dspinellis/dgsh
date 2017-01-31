@@ -36,7 +36,7 @@ LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
 
 LIBS=libdgsh.a
 
-TOOLS=unix-dgsh-tools
+TOOLS=unix-tools
 
 # Manual pages
 MAN1SRC=$(wildcard *.1)
@@ -71,7 +71,7 @@ png/%-pretty.png: graphdot/%.dot
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
-	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-dgsh-tools/bash/bash --dgsh $<
+	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $<
 
 all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
 
@@ -232,4 +232,4 @@ pull:
 
 commit:
 	# Commit -a including submodules with the specified message
-	for i in $$(echo unix-dgsh-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
+	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done

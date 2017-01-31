@@ -20,7 +20,7 @@ DGSHDIR=..
 PSDIR=../simple-shell
 XDIR=../example
 # TOOLDIR
-TD=unix-dgsh-tools
+TD=unix-tools
 STD=/usr/bin
 SCRIPTDIR=tool_scripts
 

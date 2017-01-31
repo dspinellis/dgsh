@@ -4,7 +4,7 @@ While under the dgsh root directory, type the following sequence of commands:
 
 ```bash
 make libdgsh.a # compile the dgsh negotiation library
-cd unix-dgsh-tools
+cd unix-tools
 make get-submodules   # download repos of Unix tools if not already cloned
                       # with the superproject through --recursive
 make configure        # configure tools
@@ -18,7 +18,7 @@ Of those currently *comm*, *join*, *paste*, and *sort* have been adapted for use
 
 ## Adaptation workflow
 
-Head to the tool's repo, e.g., unix-dgsh-tools/coreutils and locate its source code, e.g., src/comm.c
+Head to the tool's repo, e.g., unix-tools/coreutils and locate its source code, e.g., src/comm.c
 
 The workflow includes the following steps:
 
@@ -55,8 +55,8 @@ main(int argc, char *argv[])
   - run the test with *python simple_shell.py secho_paste.dgsh secho_paste.out* to produce and store the output in file *secho_paste.out*.
 
 ```bash
-1 /home/mfg/dds/dgsh/unix-dgsh-tools/bin/secho hello
-2 /home/mfg/dds/dgsh/unix-dgsh-tools/bin/paste - world
+1 /home/mfg/dds/dgsh/unix-tools/bin/secho hello
+2 /home/mfg/dds/dgsh/unix-tools/bin/paste - world
 
 %
 socketpipe 1 2

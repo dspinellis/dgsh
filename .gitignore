@@ -42,4 +42,4 @@ png/*.png
 tags
 test/sorted-words
 test/web-log-report/logfile
-unix-dgsh-tools/sf*
+unix-tools/sf*
