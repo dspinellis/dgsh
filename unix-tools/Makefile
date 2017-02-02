@@ -88,7 +88,7 @@ else
 	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
 endif
 
-install: cat tee
+install: cat tee w make
 	$(MAKE) -C bash install
 	rm -f $(DESTDIR)$(PREFIX)/bin/dgsh
 	ln $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh || install $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh
