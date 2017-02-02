@@ -44,7 +44,6 @@ WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 png/%-pretty.png: graphdot/%.dot
-	mkdir -p graphdot
 	dot $(DOTFLAGS) -Tpng $< >$@
 
 %.pdf: %.1
@@ -60,6 +59,7 @@ png/%-pretty.png: graphdot/%.dot
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
+	mkdir -p graphdot
 	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./$(UNIX_TOOLS)/bash/bash --dgsh $< 2>err
 
 all: tools
