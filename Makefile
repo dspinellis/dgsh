@@ -34,8 +34,8 @@ CORE_TOOLS=core-tools
 
 # Manual pages
 MAN1SRC=$(wildcard $(CORE_TOOLS)/src/*.1)
-MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) dgsh_negotiate.pdf
-MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) dgsh_negotiate.html
+MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) core-tools/src/dgsh_negotiate.pdf
+MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) core-tools/src/dgsh_negotiate.html
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
@@ -49,13 +49,13 @@ png/%-pretty.png: graphdot/%.dot
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
 
-%.pdf: $(CORE_TOOLS)/src/%.3
+%.pdf: %.3
 	groff -man -Tps $< | ps2pdf - $@
 
 %.html: %.1
 	groff -man -Thtml $< >$@
 
-%.html: $(CORE_TOOLS)/src/%.3
+%.html: %.3
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
@@ -160,8 +160,8 @@ webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
 
 dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' web/index.html >$(WEBDIST)/index.html
-	cd $(CORE_TOOLS)/src && cp $(MANHTML) $(MANPDF) $(WEBDIST)
-	cd $(CORE_TOOLS)/src && cp $(WEBPNG) $(WEBDIST)
+	cp $(MANHTML) $(MANPDF) $(WEBDIST)
+	cp $(WEBPNG) $(WEBDIST)
 
 pull:
 	git pull

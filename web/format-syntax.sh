@@ -9,4 +9,4 @@ sed -n '/^<dgsh_block/,/^\.fi/ {
 	s/>/\&gt;/g
 	/^\.fi/d
 	p
-}' dgsh.1
+}' core-tools/src/dgsh.1
