@@ -105,10 +105,10 @@ install: cat tee
 	./install-wrapped.sh
 
 cat: cat.sh
-	../replace-paths.sh <$? >$@
+	../core-tools/src/replace-paths.sh <$? >$@
 
 tee: tee.sh
-	../replace-paths.sh <$? >$@
+	../core-tools/src/replace-paths.sh <$? >$@
 
 test-clean-bash:
 	-rm $(PSDIR)/*.outb
