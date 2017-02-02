@@ -29,17 +29,11 @@ endif
 
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
-EXECUTABLES=dgsh-monitor dgsh-httpval dgsh-readval dgsh-merge-sum
-
-LIBEXECUTABLES=dgsh-tee dgsh-parallel dgsh-writeval dgsh-readval dgsh-monitor \
-	dgsh-conc dgsh-wrap perm dgsh-enumerate
-
-LIBS=libdgsh.a
-
-TOOLS=unix-tools
+UNIX_TOOLS=unix-tools
+CORE_TOOLS=core-tools
 
 # Manual pages
-MAN1SRC=$(wildcard *.1)
+MAN1SRC=$(wildcard $(CORE_TOOLS)/src/*.1)
 MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) dgsh_negotiate.pdf
 MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) dgsh_negotiate.html
 
@@ -49,62 +43,36 @@ EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
 WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
-# Files required for dgsh negotiation
-NEGOTIATE_TEST_FILES=dgsh.h negotiate.c negotiate.h \
-		     dgsh-conc.c debug.h
-
 png/%-pretty.png: graphdot/%.dot
 	mkdir -p graphdot
 	dot $(DOTFLAGS) -Tpng $< >$@
 
-
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
 
-%.pdf: %.3
+%.pdf: $(CORE_TOOLS)/src/%.3
 	groff -man -Tps $< | ps2pdf - $@
 
 %.html: %.1
 	groff -man -Thtml $< >$@
 
-%.html: %.3
+%.html: $(CORE_TOOLS)/src/%.3
 	groff -man -Thtml $< >$@
 
 graphdot/%.dot: example/%.sh
-	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $<
+	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./$(UNIX_TOOLS)/bash/bash --dgsh $< 2>err
 
-all: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS) tools
+all: tools
 
 tools:
-	$(MAKE) -C $(TOOLS) make MAKEFLAGS=
+	$(MAKE) -C $(CORE_TOOLS) CFLAGS="$(CFLAGS)"
+	$(MAKE) -C $(UNIX_TOOLS) make MAKEFLAGS=
 
-config:
+export-prefix:
 	echo "export PREFIX?=$(PREFIX)" >.config
-	$(MAKE) -C $(TOOLS) configure
 
-dgsh-readval: dgsh-readval.c kvstore.c libdgsh.a
-
-dgsh-writeval: dgsh-writeval.c libdgsh.a
-
-dgsh-httpval: dgsh-httpval.c kvstore.c
-
-dgsh-conc: dgsh-conc.o libdgsh.a
-
-dgsh-wrap: dgsh-wrap.o libdgsh.a
-
-dgsh-enumerate: dgsh-enumerate.o libdgsh.a
-
-dgsh-tee: dgsh-tee.o libdgsh.a
-
-dgsh-parallel: dgsh-parallel.sh
-
-perm: perm.sh
-	./replace-paths.sh <$? >$@
-	chmod 755 $@
-
-dgsh-merge-sum: dgsh-merge-sum.pl
-	./replace-paths.sh <$? >$@
-	chmod 755 $@
+config: export-prefix config-$(CORE_TOOLS)
+	$(MAKE) -C $(UNIX_TOOLS) configure
 
 test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 	./test-dgsh.sh
@@ -112,28 +80,24 @@ test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 test-tee: dgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
-test-negotiate: copy_files build-run-ng-tests test-tools
+test: unit-tests test-tools
 
-setup-test-negotiate: copy_files autoreconf-ng-tests
-
-copy_files: $(NEGOTIATE_TEST_FILES) test/negotiate/tests/check_negotiate.c
-	cp $(NEGOTIATE_TEST_FILES) test/negotiate/src/
-
-autoreconf-ng-tests: test/negotiate/configure.ac test/negotiate/Makefile.am test/negotiate/src/Makefile.am test/negotiate/tests/Makefile.am
-	-mkdir test/negotiate/m4
-	cd test/negotiate && \
+config-$(CORE_TOOLS): $(CORE_TOOLS)/configure.ac $(CORE_TOOLS)/Makefile.am $(CORE_TOOLS)/src/Makefile.am $(CORE_TOOLS)/tests/Makefile.am
+	-mkdir $(CORE_TOOLS)/m4
+	cd $(CORE_TOOLS) && \
 	autoreconf --install && \
-	./configure && \
+	./configure --prefix=$(PREFIX) \
+	--bindir=$(PREFIX)/bin && \
 	cd tests && \
 	patch Makefile <Makefile.patch
 
-build-run-ng-tests:
-	cd test/negotiate && \
+unit-tests:
+	cd $(CORE_TOOLS)/tests && \
 	$(MAKE) && \
 	$(MAKE) check
 
 test-tools:
-	$(MAKE) -C $(TOOLS) -s test
+	$(MAKE) -C $(UNIX_TOOLS) -s test
 
 test-kvstore: test-kvstore.sh
 	# Make versions that will exercise the buffers
@@ -142,12 +106,6 @@ test-kvstore: test-kvstore.sh
 	./test-kvstore.sh
 	# Remove the debug build versions
 	$(MAKE) clean
-
-libdgsh.a: negotiate.o
-	ar rcs $@ negotiate.o
-
-charcount: charcount.sh
-	install charcount.sh charcount
 
 # Regression test based on generated output files
 test-regression:
@@ -189,40 +147,21 @@ seed-regression:
 		/usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
 	done
 
-clean: clean-dgsh clean-tools
+clean:
+	rm -f *.o *.exe *.a $(MANPDF) $(MANHTML) $(EGPNG)
+	$(MAKE) -C $(CORE_TOOLS) clean
+	$(MAKE) -C $(UNIX_TOOLS) clean
 
-clean-dgsh:
-	rm -f *.o *.exe *.a $(EXECUTABLES) $(LIBEXECUTABLES) $(MANPDF) \
-		$(MANHTML) $(EGPNG)
-
-clean-tools:
-	$(MAKE) -C $(TOOLS) clean
-
-install: install-dgsh install-tools
-
-install-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES) $(LIBS)
-	-mkdir -p $(DESTDIR)$(PREFIX)/bin
-	-mkdir -p $(DESTDIR)$(PREFIX)/lib
-	rm -rf $(DESTDIR)$(PREFIX)/libexec/dgsh
-	mkdir -p $(DESTDIR)$(PREFIX)/libexec/dgsh
-	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
-	-mkdir -p $(DESTDIR)$(PREFIX)/share/man/man3
-	install $(EXECUTABLES) $(DESTDIR)$(PREFIX)/bin
-	install $(LIBEXECUTABLES) $(DESTDIR)$(PREFIX)/libexec/dgsh
-	install $(LIBS) $(DESTDIR)$(PREFIX)/lib
-	install -m 644 $(MAN1SRC) $(DESTDIR)$(PREFIX)/share/man/man1
-	install -m 644 dgsh_negotiate.3 $(DESTDIR)$(PREFIX)/share/man/man3
-	install -m 644 dgsh.h $(DESTDIR)$(PREFIX)/include
-
-install-tools:
-	$(MAKE) -C $(TOOLS) install
+install:
+	$(MAKE) -C $(CORE_TOOLS) install
+	$(MAKE) -C $(UNIX_TOOLS) install
 
 webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
 
 dist: $(MANPDF) $(MANHTML) $(WEBPNG)
-	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' index.html >$(WEBDIST)/index.html
-	cp $(MANHTML) $(MANPDF) $(WEBDIST)
-	cp $(WEBPNG) $(WEBDIST)
+	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' web/index.html >$(WEBDIST)/index.html
+	cd $(CORE_TOOLS)/src && cp $(MANHTML) $(MANPDF) $(WEBDIST)
+	cd $(CORE_TOOLS)/src && cp $(WEBPNG) $(WEBDIST)
 
 pull:
 	git pull
@@ -232,4 +171,4 @@ pull:
 
 commit:
 	# Commit -a including submodules with the specified message
-	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
+	for i in $$(echo $(UNIX_TOOLS)/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done

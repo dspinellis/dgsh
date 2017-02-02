@@ -16,7 +16,7 @@ shred yes whoami wc vdir unlink uniq
 PREFIX?=/usr/local/dgsh
 DGSHPATH=$(PREFIX)/libexec/dgsh
 
-DGSHDIR=..
+DGSHDIR=../core-tools/src
 PSDIR=../simple-shell
 XDIR=../example
 # TOOLDIR
@@ -24,9 +24,8 @@ TD=unix-tools
 STD=/usr/bin
 SCRIPTDIR=tool_scripts
 
-CFLAGS+=-Wall
-PATHS= -I..
-LIBS= ../libdgsh.a
+PATHS= -I$(DGSHDIR)
+LIBS= $(DGSHDIR)/libdgsh.a
 
 # Color
 GR=\033[0;32m	# Green
@@ -37,10 +36,7 @@ S=${GR}successful${EC}
 F=${R}failed${EC}
 
 ifdef DEBUG
-DEBUGFLAG=-DDEBUG
 CFLAGS+=-DDEBUG
-else
-DEBUGFLAG=
 endif
 
 OS = $(shell uname -s)
@@ -77,7 +73,7 @@ configure:
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
 make: w
-	$(MAKE) -C bash CFLAGS=$(DEBUGFLAG)
+	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
 	$(MAKE) -C grep
