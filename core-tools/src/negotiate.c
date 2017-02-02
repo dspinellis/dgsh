@@ -999,7 +999,7 @@ check_constraints_matched(int node_index, bool *constraints_matched,
 			*index_commands_notmatched = (int *)realloc(
 				*index_commands_notmatched,
 				sizeof(int) * ++(*index_argc));
-		*index_commands_notmatched[*index_argc - 1] = node_index;
+		(*index_commands_notmatched)[*index_argc - 1] = node_index;
 	}
 	*constraints_matched = false;
 }
@@ -1187,7 +1187,8 @@ solve_dgsh_graph(void)
 				OP_ERROR ||
 				(exit_state == OP_RETRY && retries > 10)) {
 			int i = 0, index = 0;
-			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following participating processes: ");
+			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
+					index_argc);
 			for (i = 0; i < index_argc - 1; i++){
 				index = index_commands_notmatched[i];
 				fprintf(stderr, "%s, ",
