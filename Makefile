@@ -29,11 +29,8 @@ endif
 
 DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfillcolor=yellow:white
 
-UNIX_TOOLS=unix-tools
-CORE_TOOLS=core-tools
-
 # Manual pages
-MAN1SRC=$(wildcard $(CORE_TOOLS)/src/*.1)
+MAN1SRC=$(wildcard core-tools/src/*.1)
 MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) core-tools/src/dgsh_negotiate.pdf
 MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) core-tools/src/dgsh_negotiate.html
 
@@ -60,19 +57,19 @@ png/%-pretty.png: graphdot/%.dot
 
 graphdot/%.dot: example/%.sh
 	mkdir -p graphdot
-	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./$(UNIX_TOOLS)/bash/bash --dgsh $< 2>err
+	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $< 2>err
 
 all: tools
 
 tools:
-	$(MAKE) -C $(CORE_TOOLS) CFLAGS="$(CFLAGS)"
-	$(MAKE) -C $(UNIX_TOOLS) make MAKEFLAGS=
+	$(MAKE) -C core-tools CFLAGS="$(CFLAGS)"
+	$(MAKE) -C unix-tools make MAKEFLAGS=
 
 export-prefix:
 	echo "export PREFIX?=$(PREFIX)" >.config
 
-config: export-prefix config-$(CORE_TOOLS)
-	$(MAKE) -C $(UNIX_TOOLS) configure
+config: export-prefix config-core-tools
+	$(MAKE) -C unix-tools configure
 
 test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 	./test-dgsh.sh
@@ -82,9 +79,9 @@ test-tee: dgsh-tee charcount test-tee.sh
 
 test: unit-tests test-tools
 
-config-$(CORE_TOOLS): $(CORE_TOOLS)/configure.ac $(CORE_TOOLS)/Makefile.am $(CORE_TOOLS)/src/Makefile.am $(CORE_TOOLS)/tests/Makefile.am
-	-mkdir $(CORE_TOOLS)/m4
-	cd $(CORE_TOOLS) && \
+config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src/Makefile.am core-tools/tests/Makefile.am
+	-mkdir core-tools/m4
+	cd core-tools && \
 	autoreconf --install && \
 	./configure --prefix=$(PREFIX) \
 	--bindir=$(PREFIX)/bin && \
@@ -92,12 +89,12 @@ config-$(CORE_TOOLS): $(CORE_TOOLS)/configure.ac $(CORE_TOOLS)/Makefile.am $(COR
 	patch Makefile <Makefile.patch
 
 unit-tests:
-	cd $(CORE_TOOLS)/tests && \
+	cd core-tools/tests && \
 	$(MAKE) && \
 	$(MAKE) check
 
 test-tools:
-	$(MAKE) -C $(UNIX_TOOLS) -s test
+	$(MAKE) -C unix-tools -s test
 
 test-kvstore: test-kvstore.sh
 	# Make versions that will exercise the buffers
@@ -149,12 +146,12 @@ seed-regression:
 
 clean:
 	rm -f *.o *.exe *.a $(MANPDF) $(MANHTML) $(EGPNG)
-	$(MAKE) -C $(CORE_TOOLS) clean
-	$(MAKE) -C $(UNIX_TOOLS) clean
+	$(MAKE) -C core-tools clean
+	$(MAKE) -C unix-tools clean
 
 install:
-	$(MAKE) -C $(CORE_TOOLS) install
-	$(MAKE) -C $(UNIX_TOOLS) install
+	$(MAKE) -C core-tools install
+	$(MAKE) -C unix-tools install
 
 webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
 
@@ -171,4 +168,4 @@ pull:
 
 commit:
 	# Commit -a including submodules with the specified message
-	for i in $$(echo $(UNIX_TOOLS)/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
+	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
