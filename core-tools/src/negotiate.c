@@ -2631,6 +2631,26 @@ set_negotiation_complete()
 	negotiation_completed = 1;
 }
 
+static int
+setup_file_descriptors(int *n_input_fds, int *n_output_fds,
+		int **input_fds, int **output_fds)
+{
+	if (n_input_fds != NULL && (*n_input_fds == 1 || *n_input_fds == -1) &&
+			input_fds != NULL) {
+		*n_input_fds = 1;
+		*input_fds = malloc(sizeof(int));
+		(*input_fds)[0] = STDIN_FILENO;
+	}
+	if (n_output_fds != NULL && (*n_output_fds == 1 || *n_output_fds == -1) &&
+			output_fds != NULL) {
+		*n_output_fds = 1;
+		*output_fds = malloc(sizeof(int));
+		(*output_fds)[0] = STDOUT_FILENO;
+	}
+	return 0;
+}
+
+
 /**
  * Each tool in the dgsh graph calls dgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -2696,14 +2716,20 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 							== OP_ERROR)
 		return -1;
 
-	if (get_environment_vars() == OP_ERROR) {
-		DPRINTF("ERROR: Failed to extract DGSH_IN, DGSH_OUT environment variables.");
-		return -1;
-	}
+	self_node.dgsh_in = 0;
+	self_node.dgsh_out = 0;
+	get_environment_vars();
 	n_io_channels = self_node.dgsh_in + self_node.dgsh_out;
 	if (n_io_channels == 0) {
-		fprintf(stderr, "No channel open for dgsh negotiation. Exiting now\n");
-		return 0;
+		if ((n_input_fds != NULL && *n_input_fds > 1) ||
+				(n_output_fds != NULL && *n_output_fds > 1)) {
+			fprintf(stderr, "Cannot serve more than one input or output channel without dgsh negotiation. %d input and %d output channels requested for command %s\n",
+					*n_input_fds, *n_output_fds, tool_name);
+			errno = ENOTSOCK;
+			return -1;
+		} else
+			return setup_file_descriptors(n_input_fds, n_output_fds,
+					input_fds, output_fds);
 	}
 
 	/* Start negotiation */
