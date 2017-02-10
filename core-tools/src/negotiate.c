@@ -2517,36 +2517,32 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 }
 
 /* Get environment variable env_var. */
-static enum op_result
+static void
 get_env_var(const char *env_var,int *value)
 {
 	char *string_value = getenv(env_var);
-	if (!string_value) {
-		DPRINTF("ERROR: Getting environment variable %s failed.\n", env_var);
-		return OP_ERROR;
-	} else
+	if (!string_value)
+		DPRINTF("Getting environment variable %s failed.\n",
+				env_var);
+	else {
 		DPRINTF("getenv() returned string value %s.\n", string_value);
-	*value = atoi(string_value);
-	DPRINTF("Integer form of value is %d.\n", *value);
-	return OP_SUCCESS;
+		*value = atoi(string_value);
+		DPRINTF("Integer form of value is %d.\n", *value);
+	}
 }
 
 /**
  * Get environment variables DGSH_IN, DGSH_OUT set up by
  * the shell (through execvpe()).
  */
-static enum op_result
+static void
 get_environment_vars()
 {
 	DPRINTF("Try to get environment variable DGSH_IN.");
-	if (get_env_var("DGSH_IN", &self_node.dgsh_in) == OP_ERROR)
-		return OP_ERROR;
+	get_env_var("DGSH_IN", &self_node.dgsh_in);
 
 	DPRINTF("Try to get environment variable DGSH_OUT.");
-	if (get_env_var("DGSH_OUT", &self_node.dgsh_out) == OP_ERROR)
-		return OP_ERROR;
-
-	return OP_SUCCESS;
+	get_env_var("DGSH_OUT", &self_node.dgsh_out);
 }
 
 /**
@@ -2636,14 +2632,17 @@ static int
 setup_file_descriptors(int *n_input_fds, int *n_output_fds,
 		int **input_fds, int **output_fds)
 {
-	if (n_input_fds != NULL && (*n_input_fds == 1 || *n_input_fds == -1) &&
-			input_fds != NULL) {
+	DPRINTF("%s()", __func__);
+	if (n_input_fds != NULL && (*n_input_fds == 1 ||
+			*n_input_fds == -1) && input_fds != NULL) {
+		DPRINTF("n_input_fds: %d\n", *n_input_fds);
 		*n_input_fds = 1;
 		*input_fds = malloc(sizeof(int));
 		(*input_fds)[0] = STDIN_FILENO;
 	}
-	if (n_output_fds != NULL && (*n_output_fds == 1 || *n_output_fds == -1) &&
-			output_fds != NULL) {
+	if (n_output_fds != NULL && (*n_output_fds == 1 ||
+			*n_output_fds == -1) && output_fds != NULL) {
+		DPRINTF("n_output_fds: %d\n", *n_output_fds);
 		*n_output_fds = 1;
 		*output_fds = malloc(sizeof(int));
 		(*output_fds)[0] = STDOUT_FILENO;
@@ -2710,12 +2709,11 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	DPRINTF("%s(): Tool %s with pid %d entered dgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
-	signal(SIGALRM, dgsh_alarm_handler);
-	alarm(5);
-
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
-							== OP_ERROR)
+							== OP_ERROR) {
+		negotiation_completed = 1;
 		return -1;
+	}
 
 	self_node.dgsh_in = 0;
 	self_node.dgsh_out = 0;
@@ -2727,11 +2725,17 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 			fprintf(stderr, "Cannot serve more than one input or output channel without dgsh negotiation. %d input and %d output channels requested for command %s\n",
 					*n_input_fds, *n_output_fds, tool_name);
 			errno = ENOTSOCK;
+			negotiation_completed = 1;
 			return -1;
-		} else
+		} else {
+			negotiation_completed = 1;
 			return setup_file_descriptors(n_input_fds, n_output_fds,
 					input_fds, output_fds);
+		}
 	}
+
+	signal(SIGALRM, dgsh_alarm_handler);
+	alarm(5);
 
 	/* Start negotiation */
 	if (self_node.dgsh_out && !self_node.dgsh_in) {
