@@ -110,11 +110,6 @@ cat: cat.sh
 tee: tee.sh
 	../core-tools/src/replace-paths.sh <$? >$@
 
-test-clean-bash:
-	-rm $(PSDIR)/*.outb
-
-test-clean:
-	-rm $(PSDIR)/*.out
 
 test: test-bash
 
@@ -122,7 +117,8 @@ path:
 	export PATH
 	echo $(PATH)
 
-test-bash: test-clean
+test-bash:
+	-rm $(PSDIR)/*.out $(PSDIR)/*.outb
 	printf "$B\nBash tests:${EC}\n"
 	
 	$(DGSHPATH)/bash --dgsh -c ' \
@@ -373,8 +369,10 @@ test-bash: test-clean
 					sfreverse sfwindow vppen sfsmooth
 	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
 	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh file $(PSDIR)/fid -- nmrPipe addNMR
-	
-test-pseudo: test-clean
+
+# Test small pseudo-shell
+test-pseudo:
+	-rm $(PSDIR)/*.out $(PSDIR)/*.outb
 	printf "$B\nPseudo shell tests:${EC}\n"
 	
 	cd $(PSDIR) && \
