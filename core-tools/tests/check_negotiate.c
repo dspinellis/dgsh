@@ -2706,12 +2706,12 @@ START_TEST(test_get_env_var)
 	DPRINTF("%s()...", __func__);
 	int value = -1;
 	putenv("DGSH_IN=0");
-	ck_assert_int_eq(get_env_var("DGSH_IN", &value), OP_SUCCESS);
+	get_env_var("DGSH_IN", &value);
 	ck_assert_int_eq(value, 0);
 
 	value = -1;
 	putenv("DGSH_OUT=1");
-	ck_assert_int_eq(get_env_var("DGSH_OUT", &value), OP_SUCCESS);
+	get_env_var("DGSH_OUT", &value);
 	ck_assert_int_eq(value, 1);
 }
 END_TEST
@@ -2723,7 +2723,7 @@ START_TEST(test_get_environment_vars)
 	putenv("DGSH_IN=0");
 	putenv("DGSH_OUT=1");
 
-	ck_assert_int_eq(get_environment_vars(), OP_SUCCESS);
+	get_environment_vars();
 	ck_assert_int_eq(self_node.dgsh_in, 0);
 	ck_assert_int_eq(self_node.dgsh_out, 1);
 
