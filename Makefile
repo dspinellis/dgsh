@@ -77,7 +77,7 @@ test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
 test-tee: dgsh-tee charcount test-tee.sh
 	./test-tee.sh
 
-test: unit-tests test-tools
+test: test-negotiate test-unix-tools
 
 config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src/Makefile.am core-tools/tests/Makefile.am
 	-mkdir core-tools/m4
@@ -88,12 +88,12 @@ config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src
 	cd tests && \
 	patch Makefile <Makefile.patch
 
-unit-tests:
+test-negotiate:
 	cd core-tools/tests && \
 	$(MAKE) && \
 	$(MAKE) check
 
-test-tools:
+test-unix-tools:
 	$(MAKE) -C unix-tools -s test
 
 test-kvstore: test-kvstore.sh

@@ -3,13 +3,16 @@
 # Tests for dgsh-merge-sum
 #
 
+MERGE_SUM=../src/dgsh-merge-sum.pl
+
 # Shortcut
 testcase()
 {
 	local name="$1"
 	local expect="$2"
-	shift 2
-	if ! diff <(perl dgsh-merge-sum.pl "$@") $expect
+	local in="$3"
+	shift 3
+	if ! diff <(perl $MERGE_SUM <"$in" "$@") $expect
 	then
 		echo 1>&2 "Test $name failed"
 		exit 1
