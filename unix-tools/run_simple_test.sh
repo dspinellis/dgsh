@@ -8,12 +8,14 @@ EC="\033[0m"	# End color
 S=${GR}successful${EC}
 F=${R}failed${EC}
 
-DGSHPATH=$1
-PSDIR=$2
-FILENAME=$3
-SCRIPT=$4
+DGSH='bash/bash --dgsh'
 
-$DGSHPATH/bash --dgsh -c "$SCRIPT > $PSDIR/$FILENAME.outb" \
+PSDIR=$1
+FILENAME=$2
+SCRIPT=$3
+
+PATH="`pwd`/bash/../../build/libexec/dgsh:$PATH" \
+$DGSH -c "$SCRIPT > $PSDIR/$FILENAME.outb" \
 2>$PSDIR/$FILENAME.errb \
 && diff $PSDIR/$FILENAME.outb $PSDIR/$FILENAME.success \
 && printf "$FILENAME $S\n" \

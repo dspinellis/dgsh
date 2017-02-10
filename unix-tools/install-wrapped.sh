@@ -3,8 +3,13 @@
 # Install the commands wrapped by dgsh-wrap
 #
 
-DGPATH=$DESTDIR$PREFIX/libexec/dgsh
-mkdir -p $DGPATH
+if [ "$1" = "" ] ; then
+	DGPATH=$DESTDIR$PREFIX/libexec/dgsh
+	mkdir -p $DGPATH
+else
+	DGPATH=$1/libexec/dgsh
+	mkdir -p $DGPATH
+fi
 
 # Remove comments and blank lines
 sed 's/[ \t]*#.*//;/^$/d' wrapped-commands-posix wrapped-commands-tests |

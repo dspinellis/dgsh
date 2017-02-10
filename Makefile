@@ -94,6 +94,9 @@ test-negotiate:
 	$(MAKE) check
 
 test-unix-tools:
+	mkdir -p build/bin build/libexec/dgsh
+	cd core-tools/src && $(MAKE) build-install
+	$(MAKE) -C unix-tools build-install
 	$(MAKE) -C unix-tools -s test
 
 test-kvstore: test-kvstore.sh
@@ -150,6 +153,7 @@ clean:
 	$(MAKE) -C unix-tools clean
 
 install:
+	-rm -r build
 	$(MAKE) -C core-tools install
 	$(MAKE) -C unix-tools install
 

@@ -72,7 +72,7 @@ configure:
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
-make: w
+make: w cat tee
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
@@ -87,6 +87,21 @@ ifeq ($(shell uname),FreeBSD)
 else
 	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
 endif
+
+build-install: cat tee w make
+	cp bash/bash ../build/libexec/dgsh/
+	cp coreutils/src/comm ../build/libexec/dgsh/
+	cp coreutils/src/cut ../build/libexec/dgsh/
+	cp coreutils/src/join ../build/libexec/dgsh/
+	cp coreutils/src/paste ../build/libexec/dgsh/
+	cp coreutils/src/sort ../build/libexec/dgsh/
+	cp diffutils/src/diff ../build/libexec/dgsh/
+	cp grep/src/grep ../build/libexec/dgsh/
+	cp grep/src/egrep ../build/libexec/dgsh/
+	cp grep/src/fgrep ../build/libexec/dgsh/
+	chmod 755 tee cat
+	cp -p secho pecho fft-input w cat tee ../build/libexec/dgsh/
+	./install-wrapped.sh ../build
 
 install: cat tee w make
 	$(MAKE) -C bash install
@@ -105,10 +120,10 @@ install: cat tee w make
 	./install-wrapped.sh
 
 cat: cat.sh
-	../core-tools/src/replace-paths.sh <$? >$@
+	../core-tools/src/replace-paths.sh $(shell pwd)/../build <$? >$@
 
 tee: tee.sh
-	../core-tools/src/replace-paths.sh <$? >$@
+	../core-tools/src/replace-paths.sh $(shell pwd)/../build <$? >$@
 
 
 test: test-bash
@@ -121,32 +136,32 @@ test-bash:
 	-rm $(PSDIR)/*.out $(PSDIR)/*.outb
 	printf "$B\nBash tests:${EC}\n"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) secho_paste \
+	./run_simple_test.sh $(PSDIR) secho_paste \
 		"secho hello \
 		| paste $(PSDIR)/world"
 
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) wrap-cat_comm_sort \
+	./run_simple_test.sh $(PSDIR) wrap-cat_comm_sort \
 		"cat $(PSDIR)/f1s \
 		| comm $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
 		| tr -d \" \""
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_sort \
+	./run_simple_test.sh $(PSDIR) comm_sort \
 		"comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
 		| tr -d \" \""
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_paste \
+	./run_simple_test.sh $(PSDIR) comm_paste \
 		"comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| paste"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) join_sort \
+	./run_simple_test.sh $(PSDIR) join_sort \
 		"join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) paste_diff \
+	./run_simple_test.sh $(PSDIR) paste_diff \
 		"paste $(PSDIR)/f1s $(PSDIR)/f2s \
 		| diff $(PSDIR)/f1s \
 		| cat"
@@ -155,11 +170,11 @@ test-bash:
 	#	"grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
 	#	| diff"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) grep_comm \
+	./run_simple_test.sh $(PSDIR) grep_comm \
 		"grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
 		| comm"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) join_sort_diff \
+	./run_simple_test.sh $(PSDIR) join_sort_diff \
 		"join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
 		| diff $(PSDIR)/f3s \
@@ -167,14 +182,14 @@ test-bash:
 	
 	# `date`: Check that command substitution
 	# does not mess pipe substitution
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) secho_secho_fgrep \
+	./run_simple_test.sh $(PSDIR) secho_secho_fgrep \
 		"{{ \
 			secho match & \
 			secho \"not `date`\" & \
 		}} \
 		| grep -F -h match"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) tee-copy_diff_comm \
+	./run_simple_test.sh $(PSDIR) tee-copy_diff_comm \
 		"tee <$(PSDIR)/hello \
 		| {{ \
 			diff $(PSDIR)/world & \
@@ -190,7 +205,7 @@ test-bash:
 	#		comm & \
 	#	}}"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_paste_join_diff \
+	./run_simple_test.sh $(PSDIR) comm_paste_join_diff \
 		"comm $(PSDIR)/f4ss $(PSDIR)/f5ss \
 		| {{ \
 			paste $(PSDIR)/p1 & \
@@ -199,14 +214,14 @@ test-bash:
 		}} \
 		| cat"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) sort_sort_comm \
+	./run_simple_test.sh $(PSDIR) sort_sort_comm \
 		"{{ \
 			sort $(PSDIR)/f4s 2>$(PSDIR)/f4s.errb & \
 			sort $(PSDIR)/f5s 2>$(PSDIR)/f5s.errb & \
 		}} \
 		| comm"
 	
-	./run_simple_test.sh $(DGSHPATH) $(PSDIR) sort_sort_comm_paste_join_diff \
+	./run_simple_test.sh $(PSDIR) sort_sort_comm_paste_join_diff \
 		"{{ \
 			sort $(PSDIR)/f4s & \
 			sort $(PSDIR)/f5s & \

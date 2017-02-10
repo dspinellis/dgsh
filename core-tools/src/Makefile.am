@@ -37,16 +37,20 @@ dgsh_tee_LDADD = libdgsh.a
 dgsh_enumerate_LDADD = libdgsh.a
 
 dgsh-parallel: dgsh-parallel.sh
-	cp $? $@
+	./replace-paths.sh `pwd`/../../unix-tools/bash <$? >$@
+	chmod 755 $@
 
 perm: perm.sh
-	./replace-paths.sh <$? >$@
+	./replace-paths.sh `pwd`/../../build <$? >$@
 	chmod 755 $@
 
 dgsh-merge-sum: dgsh-merge-sum.pl
-	./replace-paths.sh <$? >$@
+	./replace-paths.sh `pwd`/../../build <$? >$@
 	chmod 755 $@
 
 charcount: charcount.sh
 	install charcount.sh charcount
 
+build-install:
+	cp $(bin_PROGRAMS) $(bin_SCRIPTS) ../../build/bin/
+	cp $(libexec_PROGRAMS) $(libexec_SCRIPTS) ../../build/libexec/dgsh/

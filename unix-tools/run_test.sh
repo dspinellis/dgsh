@@ -8,6 +8,12 @@ INPUT1=$4
 INPUT2=$5
 INPUT3=$6
 
+if [ -d "bash" ]; then
+	DGSH='bash/bash --dgsh'
+else
+	DGSH='../bash/bash --dgsh'
+fi
+
 GR="\033[0;32m"	# Green
 R="\033[0;31m"	# Red
 B="\033[0;34m"	# Blue
@@ -34,14 +40,17 @@ F=${R}failed${EC}
 
 if [ $? -eq 0 ]; then
 	if [ "$INPUT_TYPE" = "pipe" ]; then
-		cat $INPUT1 | dgsh $FSCRIPT \
+		cat $INPUT1 | \
+		PATH="`pwd`/bash/../../build/libexec/dgsh:$PATH" \
+		$DGSH $FSCRIPT \
 			>$PSDIR/$BSCRIPT.outb \
 			2>$PSDIR/$BSCRIPT.err \
 		&& printf "$BSCRIPT.sh $S\n" \
 		|| (printf "$BSCRIPT.sh $F\n" \
 		&& exit 1)
 	else
-		dgsh $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
+		PATH="`pwd`/bash/../../build/libexec/dgsh:$PATH" \
+		$DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
 			>$PSDIR/$BSCRIPT.outb \
 			2>$PSDIR/$BSCRIPT.err \
 		&& printf "$BSCRIPT.sh $S\n" \
