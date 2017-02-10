@@ -125,205 +125,93 @@ path:
 test-bash: test-clean
 	printf "$B\nBash tests:${EC}\n"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		secho hello \
-		| paste $(PSDIR)/world \
-		> $(PSDIR)/secho_paste.outb' 2>$(PSDIR)/secho_paste.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/secho_paste.outb $(PSDIR)/secho_paste.success \
-	&& printf "secho | paste $S\n" \
-	|| (printf "secho | paste $F\n" \
-	&& exit 1)
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) secho_paste \
+		"secho hello \
+		| paste $(PSDIR)/world"
 
-	$(DGSHPATH)/bash --dgsh -c ' \
-		cat $(PSDIR)/f1s \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) wrap-cat_comm_sort \
+		"cat $(PSDIR)/f1s \
 		| comm $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
-		| tr -d " " \
-		> $(PSDIR)/wrap-cat_comm_sort.outb' \
-		2>$(PSDIR)/wrap-cat_comm_sort.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/wrap-cat_comm_sort.outb \
-		$(PSDIR)/wrap-cat_comm_sort.success \
-	&& printf "dgsh-wrap cat | comm | sort $S\n" \
-	|| (printf "dgsh-wrap cat | comm | sort $F\n" \
-	&& exit 1)
+		| tr -d \" \""
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		comm $(PSDIR)/f1s $(PSDIR)/f2s \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_sort \
+		"comm $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
 		| wc -l \
-		| tr -d " " > $(PSDIR)/comm_sort.outb' 2>$(PSDIR)/comm_sort.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/comm_sort.outb $(PSDIR)/comm_sort.success \
-	&& printf "comm | sort $S\n" \
-	|| (printf "comm | sort $F\n" \
-	&& exit 1)
+		| tr -d \" \""
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		comm $(PSDIR)/f1s $(PSDIR)/f2s \
-		| paste \
-		> $(PSDIR)/comm_paste.outb' 2>$(PSDIR)/comm_paste.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/comm_paste.outb \
-		$(PSDIR)/comm_paste.success \
-	&& printf "comm | paste $S\n" \
-	|| (printf "comm | paste $F\n" \
-	&& exit 1)
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_paste \
+		"comm $(PSDIR)/f1s $(PSDIR)/f2s \
+		| paste"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		join $(PSDIR)/f1s $(PSDIR)/f2s \
-		| sort \
-		> $(PSDIR)/join_sort.outb' 2>$(PSDIR)/join_sort.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/join_sort.outb \
-		$(PSDIR)/join_sort.success \
-	&& printf "join | sort $S\n" \
-	|| (printf "join | sort $F\n" \
-	&& exit 1)
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) join_sort \
+		"join $(PSDIR)/f1s $(PSDIR)/f2s \
+		| sort"
 	
-	# || instead of && in the following test because diff's exit 
-	# status becomes the command's exit status
-	$(DGSHPATH)/bash --dgsh -c ' \
-		paste $(PSDIR)/f1s $(PSDIR)/f2s \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) paste_diff \
+		"paste $(PSDIR)/f1s $(PSDIR)/f2s \
 		| diff $(PSDIR)/f1s \
-		> $(PSDIR)/paste_diff.outb' 2>$(PSDIR)/paste_diff.errb \
-	&& sleep 0.01 \
-	|| diff $(PSDIR)/paste_diff.outb $(PSDIR)/paste_diff.success \
-	&& printf "paste | diff $S\n" \
-	|| (printf "paste | diff $F\n" \
-	&& exit 1)
+		| cat"
 	
-	#ditto
-	#$(DGSHPATH)/bash --dgsh -c ' \
-	#	grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
-	#	| diff \
-	#	> $(PSDIR)/grep_diff.outb' 2>$(PSDIR)/grep_diff.errb \
-	#&& sleep 0.01 \
-	#|| diff $(PSDIR)/grep_diff.outb $(PSDIR)/grep_diff.success-bash \
-	#&& printf "grep | diff $S\n" \
-	#|| (printf "grep | diff $F\n" \
-	#&& exit 1)
+	#./run_simple_test.sh $(DGSHPATH) $(PSDIR) grep_diff \
+	#	"grep -v -w match $(PSDIR)/F $(PSDIR)/ff \
+	#	| diff"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
-		| comm \
-		> $(PSDIR)/grep_comm.outb' 2>$(PSDIR)/grep_comm.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/grep_comm.outb $(PSDIR)/grep_comm.success-bash \
-	&& printf "grep | comm $S\n" \
-	|| (printf "grep | comm $F\n" \
-	&& exit 1)
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) grep_comm \
+		"grep -l -L match $(PSDIR)/ff $(PSDIR)/F \
+		| comm"
 	
-	# ditto
-	$(DGSHPATH)/bash --dgsh -c ' \
-		join $(PSDIR)/f1s $(PSDIR)/f2s \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) join_sort_diff \
+		"join $(PSDIR)/f1s $(PSDIR)/f2s \
 		| sort \
 		| diff $(PSDIR)/f3s \
-		> $(PSDIR)/join_sort_diff.outb' 2>$(PSDIR)/join_sort_diff.errb \
-	&& sleep 0.01 \
-	|| diff $(PSDIR)/join_sort_diff.outb \
-		$(PSDIR)/join_sort_diff.success \
-	&& printf "join | sort | diff $S\n" \
-	|| (printf "join | sort | diff $F\n" \
-	&& exit 1)
+		| cat"
 	
-	# No diff, just check execution exit status
-	$(DGSHPATH)/bash --dgsh $(PSDIR)/dir-plain.sh \
-		>$(PSDIR)/dir-plain.outb 2>$(PSDIR)/dir-plain.errb \
-	&& printf "ls -n | {{ awk & awk & }} $S\n" \
-	|| (printf "ls -n | {{ awk & awk & }} $F\n" \
-	&& exit 1)
-	
-	# ditto
 	# `date`: Check that command substitution
 	# does not mess pipe substitution
-	$(DGSHPATH)/bash --dgsh -c ' \
-		{{ \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) secho_secho_fgrep \
+		"{{ \
 			secho match & \
-			secho "not `date`" & \
+			secho \"not `date`\" & \
 		}} \
-		| grep -F -h match \
-	> $(PSDIR)/secho_secho_fgrep.outb' 2>$(PSDIR)/secho_secho_fgrep.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/secho_secho_fgrep.outb \
-		$(PSDIR)/secho_secho_fgrep.success \
-	&& printf "{{ secho & secho & }} | grep -F $S\n" \
-	|| (printf "{{ secho & secho & }} | grep -F $F\n" \
-	&& exit 1)
+		| grep -F -h match"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		tee <$(PSDIR)/hello \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) tee-copy_diff_comm \
+		"tee <$(PSDIR)/hello \
 		| {{ \
 			diff $(PSDIR)/world & \
 			comm $(PSDIR)/hello & \
-		}} > $(PSDIR)/tee-copy_diff_comm.outb' \
-		2>$(PSDIR)/tee-copy_diff_comm.errb \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/tee-copy_diff_comm.outb \
-			$(PSDIR)/tee-copy_diff_comm.success1 >/dev/null \
-		|| diff $(PSDIR)/tee-copy_diff_comm.outb \
-			$(PSDIR)/tee-copy_diff_comm.success2 >/dev/null) \
-	&& printf "tee | {{ diff & comm & }} $S\n" \
-	|| (printf "tee | {{ diff & comm & }} $F\n" \
-	&& exit 1)
+		}} \
+		| cat"
 	
 	# ditto
-	#$(DGSHPATH)/bash --dgsh -c ' \
-	#	grep -l -L -w -v match $(PSDIR)/ff $(PSDIR)/F \
+	#./run_simple_test.sh $(DGSHPATH) $(PSDIR) grep_diff_comm \
+	#	"grep -l -L -w -v match $(PSDIR)/ff $(PSDIR)/F \
 	#	| {{ \
 	#		diff & \
 	#		comm & \
-	#	}} > $(PSDIR)/grep_diff_comm.outb' \
-	#	2>$(PSDIR)/grep_diff_comm.errb \
-	#&& sleep 0.01 \
-	#&& (diff $(PSDIR)/grep_diff_comm.outb \
-	#	$(PSDIR)/grep_diff_comm.success1-bash >/dev/null \
-	#    || diff $(PSDIR)/grep_diff_comm.outb \
-	#	$(PSDIR)/grep_diff_comm.success2-bash >/dev/null \
-	#    || diff $(PSDIR)/grep_diff_comm.outb \
-	#	$(PSDIR)/grep_diff_comm.success3-bash >/dev/null \
-	#    || diff $(PSDIR)/grep_diff_comm.outb \
-	#	$(PSDIR)/grep_diff_comm.success4-bash >/dev/null) \
-	#&& printf "grep | {{ diff & comm & }} $S\n" \
-	#|| (printf "grep | {{ diff & comm & }} $F\n" \
-	#&& exit 1)
+	#	}}"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		comm $(PSDIR)/f4ss $(PSDIR)/f5ss \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) comm_paste_join_diff \
+		"comm $(PSDIR)/f4ss $(PSDIR)/f5ss \
 		| {{ \
 			paste $(PSDIR)/p1 & \
 			join $(PSDIR)/j2 & \
 			diff $(PSDIR)/d3 & \
-		}} > $(PSDIR)/comm_paste_join_diff.outb' \
-		2>$(PSDIR)/comm_paste_join_diff.errb \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/comm_paste_join_diff.outb \
-		$(PSDIR)/comm_paste_join_diff.success1 >/dev/null \
-	|| diff $(PSDIR)/comm_paste_join_diff.outb \
-		$(PSDIR)/comm_paste_join_diff.success2 > /dev/null) \
-	&& printf "comm | {{ paste & join & diff & }} $S\n" \
-	|| (printf "comm | {{ paste & join & diff & }} $F\n" \
-	&& exit 1)
+		}} \
+		| cat"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		{{ \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) sort_sort_comm \
+		"{{ \
 			sort $(PSDIR)/f4s 2>$(PSDIR)/f4s.errb & \
 			sort $(PSDIR)/f5s 2>$(PSDIR)/f5s.errb & \
 		}} \
-		| comm \
-		> $(PSDIR)/sort_sort_comm.outb' \
-		2>$(PSDIR)/sort_sort_comm.errb \
-	&& sleep 0.01 \
-	&& diff $(PSDIR)/sort_sort_comm.outb \
-		$(PSDIR)/sort_sort_comm.success \
-	&& printf "{{ sort & sort & }} | comm $S\n" \
-	|| (printf "{{ sort & sort & }} | comm $F\n" \
-	&& exit 1)
+		| comm"
 	
-	$(DGSHPATH)/bash --dgsh -c ' \
-		{{ \
+	./run_simple_test.sh $(DGSHPATH) $(PSDIR) sort_sort_comm_paste_join_diff \
+		"{{ \
 			sort $(PSDIR)/f4s & \
 			sort $(PSDIR)/f5s & \
 		}} \
@@ -332,16 +220,8 @@ test-bash: test-clean
 			paste $(PSDIR)/p1 & \
 			join $(PSDIR)/j2 & \
 			diff $(PSDIR)/d3 & \
-		}} > $(PSDIR)/sort_sort_comm_paste_join_diff.outb' \
-			2>$(PSDIR)/sort_sort_comm_paste_join_diff.errb \
-	&& sleep 0.01 \
-	&& (diff $(PSDIR)/sort_sort_comm_paste_join_diff.outb \
-		$(PSDIR)/sort_sort_comm_paste_join_diff.success1 >/dev/null \
-	|| diff $(PSDIR)/sort_sort_comm_paste_join_diff.outb \
-		$(PSDIR)/sort_sort_comm_paste_join_diff.success2 >/dev/null) \
-	&& printf "{{ sort & sort & }} | comm | {{ paste & join & diff & }} $S\n" \
-	|| (printf "{{ sort & sort & }} | comm | {{ paste & join & diff & }} $F\n" \
-	&& exit 1)
+		}} \
+		| cat"
 	
 	printf " $BPaper examples under ../example:${EC}\n"
 
