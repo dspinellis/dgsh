@@ -55,16 +55,37 @@ EOF
 
 tee |
 {{
+	# Number of accesses
+	echo -n 'Number of accesses: ' &
+	dgsh-readval -l -s nAccess &
 
-	awk '{s += $NF} END {print s / 1024 / 1024 / 1024}' |
+	# Number of transferred bytes
+	awk '{s += $NF} END {print s}' |
 	tee |
 	{{
-		# Number of transferred bytes
 		echo -n 'Number of Gbytes transferred: ' &
-		cat &
+		awk '{print $1 / 1024 / 1024 / 1024}' &
 
 		dgsh-writeval -s nXBytes &
 	}} &
+
+	echo -n 'Number of hosts: ' &
+	dgsh-readval -l -q -s nHosts &
+
+	echo -n 'Number of domains: ' &
+	dgsh-readval -l -q -s nDomains &
+
+	echo -n 'Number of top level domains: ' &
+	dgsh-readval -l -q -s nTLDs &
+
+	echo -n 'Number of different pages: ' &
+	dgsh-readval -l -q -s nUniqPages &
+
+	echo -n 'Accesses per day: ' &
+	dgsh-readval -l -q -s nDayAccess &
+
+	echo -n 'MBytes per day: ' &
+	dgsh-readval -l -q -s nDayMB &
 
 	# Number of log file bytes
 	echo -n 'MBytes log file size: ' &
@@ -75,15 +96,8 @@ tee |
 	awk '{print $1}' |
 	tee |
 	{{
-		wc -l |
-		tee |
-		{{
-			# Number of accesses
-			echo -n 'Number of accesses: ' &
-			cat &
-
-			dgsh-writeval -s nAccess &
-		}} &
+		# Number of accesses
+		wc -l | dgsh-writeval -s nAccess &
 
 		# Sorted hosts
 		sort |
@@ -95,14 +109,13 @@ tee |
 			tee |
 			{{
 				# Number of hosts
-				echo -n 'Number of hosts: ' &
-				wc -l &
+				wc -l | dgsh-writeval -s nHosts &
 
 				# Number of TLDs
-				echo -n 'Number of top level domains: ' &
 				awk -F. '$NF !~ /[0-9]/ {print $NF}' |
 				sort -u |
-				wc -l &
+				wc -l |
+				dgsh-writeval -s nTLDs &
 			}} &
 
 			# Top 10 hosts
@@ -127,9 +140,9 @@ tee |
 		tee |
 		{{
 			# Number of domains
-			echo -n 'Number of domains: ' &
 			uniq |
-			wc -l &
+			wc -l |
+			dgsh-writeval -s nDomains &
 
 			# Top 10 domains
 			{{
@@ -162,9 +175,9 @@ tee |
 		}} &
 
 		# Number of different pages
-		echo -n 'Number of different pages: ' &
 		uniq |
-		wc -l &
+		wc -l |
+		dgsh-writeval -s nUniqPages &
 
 		# Top 20 requests
 		{{
@@ -183,26 +196,22 @@ tee |
 		tee |
 		{{
 
+			# Number of days
 			uniq |
 			wc -l |
 			tee |
 			{{
-				# Number of days
-				echo -n 'Number of days: ' &
-				cat &
-				#|store:nDays
-
-				echo -n 'Accesses per day: ' &
 				awk '
 					BEGIN {
-					"dgsh-readval -l -x -q -s nAccess" | getline NACCESS;}
-					{print NACCESS / $1}' &
+					"dgsh-readval -l -x -s nAccess" | getline NACCESS;}
+					{print NACCESS / $1}' |
+				dgsh-writeval -s nDayAccess &
 
-				echo -n 'MBytes per day: ' &
 				awk '
 					BEGIN {
 					"dgsh-readval -l -x -q -s nXBytes" | getline NXBYTES;}
-					{print NXBYTES / $1 / 1024 / 1024}' &
+					{print NXBYTES / $1 / 1024 / 1024}' |
+				dgsh-writeval -s nDayMB &
 			}} &
 
 			{{
@@ -229,5 +238,7 @@ tee |
 			uniq -c &
 		}} &
 	}} &
+	dgsh-readval -q -s nAccess &
 }} |
 cat
+
