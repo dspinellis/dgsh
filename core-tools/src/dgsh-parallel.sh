@@ -6,6 +6,7 @@
 # Remove dgsh from path, so that commands aren't wrapped here
 # See http://stackoverflow.com/a/2108540/20520
 # PATH => /bin:.../libexec/dgsh:/sbin
+OPATH="$PATH"
 WORK=:$PATH:
 # WORK => :/bin:.../libexec/dgsh:/sbin:
 REMOVE='[^:]*/libexec/dgsh'
@@ -16,47 +17,44 @@ WORK=${WORK#:}
 PATH=$WORK
 # PATH => /bin:/sbin
 
+# Remove DGSH_IN, OUT so that commands don't negotiate
+test "$DGSH_IN" && ODGSH_IN="$DGSH_IN"
+test "$DGSH_OUT" && ODGSH_OUT="$DGSH_OUT"
+unset DGSH_IN
+unset DGSH_OUT
+
 usage()
 {
-   echo 'Usage: dgsh-parallel [-d] -n n|-f file|-l list command ...'
-   exit 2
+  echo 'Usage: dgsh-parallel [-d] -n n|-f file|-l list command ...' 1>&2
+  exit 2
 }
 
 # Process flags
-args=$(getopt df:l:n: "$@")
-if [ $? -ne 0 ]; then
-  usage
-fi
-
-for i in $args; do
-   case "$1" in
-   -d)
-     DEBUG=1
-     shift
-     ;;
-   -n)
-     n="$2"
-     nspec=X$nspec
-     shift
-     shift
-     ;;
-   -f)
-     file="$2"
-     nspec=X$nspec
-     shift
-     shift
-     ;;
-   -l)
-     list=$(echo "$2" | sed 's/,/ /g')
-     nspec=X$nspec
-     shift
-     shift
-     ;;
-   --)
-	   shift; break
-	   ;;
-   esac
+while getopts 'df:l:n:' o; do
+  case "$o" in
+    d)
+      DEBUG=1
+      ;;
+    n)
+      n="$OPTARG"
+      nspec=X$nspec
+      ;;
+    f)
+      file="$OPTARG"
+      nspec=X$nspec
+      ;;
+    -l)
+      list=$(echo "$OPTARG" | sed 's/,/ /g')
+      nspec=X$nspec
+      ;;
+    *)
+      usage
+      ;;
+  esac
 done
+
+shift $((OPTIND-1))
+
 
 # Ensure commands is specified
 if [ ! "$1" ] ; then
@@ -114,5 +112,11 @@ done >>$SCRIPT
 cat >>$SCRIPT <<EOF
 }}
 EOF
+
+# Restore dgsh settings
+PATH="$OPATH"
+# Remove DGSH_IN, OUT so that commands don't negotiate
+test "$ODGSH_IN" && export DGSH_IN="$ODGSH_IN"
+test "$ODGSH_OUT" && export DGSH_OUT="$ODGSH_OUT"
 
 dgsh $SCRIPT

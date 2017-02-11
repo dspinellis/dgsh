@@ -3,23 +3,23 @@
 # Implementation of POSIX tee through dgsh-tee
 #
 
-# Process flags
-args=$(getopt u "$@")
-if [ $? -ne 0 ]; then
-   echo 'Usage: cat [-u] [file ...]'
-   exit 2
-fi
+usage()
+{
+  echo 'Usage: cat [-u] [file ...]' 1>&2
+  exit 2
+}
 
-for i in $args; do
-   case "$1" in
-   -u)
-	   shift
-	   ;;
-   --)
-	   shift; break
-	   ;;
-   esac
+while getopts 'u' o; do
+  case "$o" in
+    u)
+      ;;
+    *)
+      usage
+      ;;
+  esac
 done
+
+shift $((OPTIND-1))
 
 declare -a opts
 

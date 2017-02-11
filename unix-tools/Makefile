@@ -89,8 +89,10 @@ else
 endif
 
 build-install: cat tee w make
+	mkdir -p ../build/libexec/dgsh ../build/bin
 	cp bash/bash ../build/libexec/dgsh/
-	-ln bash/bash ../build/bin/dgsh
+	rm -f ../build/bin/dgsh
+	ln bash/bash ../build/bin/dgsh
 	cp coreutils/src/comm ../build/libexec/dgsh/
 	cp coreutils/src/cut ../build/libexec/dgsh/
 	cp coreutils/src/join ../build/libexec/dgsh/
@@ -102,7 +104,7 @@ build-install: cat tee w make
 	cp grep/src/fgrep ../build/libexec/dgsh/
 	chmod 755 tee cat
 	cp -p secho pecho fft-input w cat tee ../build/libexec/dgsh/
-	./install-wrapped.sh ../build
+	./install-wrapped.sh `pwd`/../build
 
 install: cat tee w make
 	$(MAKE) -C bash install
