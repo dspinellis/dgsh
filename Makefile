@@ -111,16 +111,8 @@ test-negotiate: tools
 test-unix-tools: tools
 	$(MAKE) -C unix-tools -s test
 
-test-kvstore:
-	# Make versions that will exercise the buffers
-	$(MAKE) -C core-tools/src clean
-	$(MAKE) -C core-tools/src
-	rm core-tools/src/dgsh-writeval.o
-	$(MAKE) -C core-tools/src CFLAGS=-DDEBUG
+test-kvstore: core-tools
 	cd core-tools/tests-regression && ./test-kvstore.sh
-	# Remove the debug build versions
-	$(MAKE) -C core-tools/src clean
-	$(MAKE) -C core-tools/src
 
 clean:
 	rm -f *.o *.exe *.a $(MANPDF) $(MANHTML) $(EGPNG)
