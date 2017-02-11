@@ -43,20 +43,21 @@ if [ $? -ne 0 ]; then
 	echo "Skip test $BSCRIPT.sh"
 fi
 
-PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH"
+PATH="$(pwd)/../build/bin:$(pwd)/../build/libexec/dgsh:$PATH"
 
-if [ "$INPUT_TYPE" = "pipe" ]; then
-	<$INPUT1 $DGSH $FSCRIPT \
-		>$PSDIR/$BSCRIPT.outb \
-		2>$PSDIR/$BSCRIPT.err \
-	&& printf "$BSCRIPT.sh $S\n" \
-	|| (printf "$BSCRIPT.sh $F\n" \
-	&& exit 1)
+if [ "$INPUT_TYPE" = pipe ]; then
+  if $DGSH $FSCRIPT <$INPUT1 >$PSDIR/$BSCRIPT.outb 2>$PSDIR/$BSCRIPT.err ; then
+    printf "$BSCRIPT.sh $S\n"
+  else
+    printf "$BSCRIPT.sh $F\n"
+    exit 1
+  fi
 else
-	$DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
-		>$PSDIR/$BSCRIPT.outb \
-		2>$PSDIR/$BSCRIPT.err \
-	&& printf "$BSCRIPT.sh $S\n" \
-	|| (printf "$BSCRIPT.sh $F\n" \
-	&& exit 1)
+  if $DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 >$PSDIR/$BSCRIPT.outb \
+	  2>$PSDIR/$BSCRIPT.err ; then
+    printf "$BSCRIPT.sh $S\n"
+  else
+    printf "$BSCRIPT.sh $F\n"
+    exit 1
+  fi
 fi
