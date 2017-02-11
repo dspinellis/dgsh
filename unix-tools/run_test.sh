@@ -43,7 +43,7 @@ if [ $? -ne 0 ]; then
 	echo "Skip test $BSCRIPT.sh"
 fi
 
-PATH="$(pwd)/../build/bin:$(pwd)/../build/libexec/dgsh:$PATH"
+PATH="$(pwd)/../build/libexec/dgsh:$(pwd)/../build/bin:$PATH"
 
 if [ "$INPUT_TYPE" = pipe ]; then
   if $DGSH $FSCRIPT <$INPUT1 >$PSDIR/$BSCRIPT.outb 2>$PSDIR/$BSCRIPT.err ; then
