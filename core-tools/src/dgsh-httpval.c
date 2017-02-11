@@ -203,7 +203,8 @@ main(int argc, char *argv[])
 		if ((newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0)
 			err(2, "accept");
 
-		if (localhost_access && strcmp(inet_ntoa(cli_addr.sin_addr), "127.0.0.1")) {
+		if (localhost_access && memcmp(inet_ntoa(cli_addr.sin_addr), "127.", 4)) {
+			warnx("Non-localhost access: %s", inet_ntoa(cli_addr.sin_addr));
 			close(newsockfd);
 			continue;
 		}
