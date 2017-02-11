@@ -457,6 +457,7 @@ echo -n "	Running"
 
 if [ ! -r test/sorted-words ]
 then
+	mkdir -p test
 	{
 		cat /usr/share/dict/words 2>/dev/null ||
 		curl -s https://raw.githubusercontent.com/freebsd/freebsd/master/share/dict/web2
