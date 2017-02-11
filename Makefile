@@ -173,3 +173,8 @@ pull:
 commit:
 	# Commit -a including submodules with the specified message
 	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
+
+# Rough uninstall rule to verify that tests pick up correct files
+uninstall:
+	rm -rf $(PREFIX)/bin/dgsh-* $(PREFIX)/libexec/dgsh \
+		$(PREFIX)/lib/libdgsh.a
