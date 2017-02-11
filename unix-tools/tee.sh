@@ -3,29 +3,29 @@
 # Implementation of POSIX tee through dgsh-tee
 #
 
-# Process flags
-args=$(getopt ai "$@")
-if [ $? -ne 0 ]; then
-   echo 'Usage: tee [-ai] [file ...]'
-   exit 2
-fi
+usage()
+{
+  echo 'Usage: tee [-ai] [file ...]' 1>&2
+  exit 2
+}
 
 declare -a opts
 
-for i in $args; do
-   case "$1" in
-   -a)
-	   opts=(-a)
-	   shift
-	   ;;
-   -i)
-	   shift
-	   ;;
-   --)
-	   shift; break
-	   ;;
-   esac
+# Process flags
+while getopts 'ai' o; do
+  case "$o" in
+    a)
+      opts=(-a)
+      ;;
+    i)
+      ;;
+    *)
+      usage
+      ;;
+  esac
 done
+
+shift $((OPTIND-1))
 
 # Process file arguments
 for i; do
