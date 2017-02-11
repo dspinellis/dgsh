@@ -19,4 +19,4 @@ for i; do
     usage
 done
 
-exec @libexecdir@/dgsh/dgsh-tee -p "$p"
+exec dgsh-tee -p "$p"

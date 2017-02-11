@@ -115,4 +115,4 @@ cat >>$SCRIPT <<EOF
 }}
 EOF
 
-@dgshdir@/bash --dgsh $SCRIPT
+dgsh $SCRIPT
