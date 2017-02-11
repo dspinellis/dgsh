@@ -52,5 +52,6 @@ clean-local:
 	-rm -rf dgsh-parallel perm degsh-merge-sum charcount
 
 build-install:
+	mkdir -p build/bin build/libexec/dgsh
 	cp $(bin_PROGRAMS) $(bin_SCRIPTS) ../../build/bin/
 	cp $(libexec_PROGRAMS) $(libexec_SCRIPTS) ../../build/libexec/dgsh/
