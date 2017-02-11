@@ -135,8 +135,12 @@ path:
 	export PATH
 	echo $(PATH)
 
-test-bash:
-	-rm $(PSDIR)/*.out $(PSDIR)/*.outb
+../simple-shell/fid:
+	wget -O $@ http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid 
+
+test-bash: ../simple-shell/fid
+
+	rm -f $(PSDIR)/*.out $(PSDIR)/*.outb
 	printf "$B\nBash tests:${EC}\n"
 	
 	./run_simple_test.sh $(PSDIR) secho_paste \

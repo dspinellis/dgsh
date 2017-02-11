@@ -28,8 +28,6 @@ install:
 - sudo install nmrbin.linux212_64/var2pipe nmrbin.linux212_64/nmrPipe /usr/local/bin
 - sudo install nmrbin.linux212_64/addNMR /usr/bin
 - cd ..
-- cd simple-shell && wget http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
-- cd ..
 - make config && make DEBUG=1
 
 compiler: gcc
