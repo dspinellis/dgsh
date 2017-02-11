@@ -13,12 +13,14 @@ pr pathchk od numfmt nohup unexpand uname tty tsort truncate true \
 tr touch timeout test tee tail tac sync sum stat split sleep shuf \
 shred yes whoami wc vdir unlink uniq
 
+FID=http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid 
+
 PREFIX?=/usr/local/dgsh
 DGSHPATH=$(PREFIX)/libexec/dgsh
 
 DGSHDIR=../core-tools/src
 PSDIR=../simple-shell
-XDIR=../example
+EGDIR=../example
 # TOOLDIR
 TD=unix-tools
 STD=/usr/bin
@@ -136,7 +138,7 @@ path:
 	echo $(PATH)
 
 ../simple-shell/fid:
-	wget -O $@ http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid 
+	wget -O $@ $(FID) || curl $(FID) >$@
 
 test-bash: ../simple-shell/fid
 
@@ -244,33 +246,33 @@ test-bash: ../simple-shell/fid
 	printf " $BPaper examples under ../example:${EC}\n"
 
 	# No diff, just check execution exit status
-	./run_test.sh $(PSDIR) $(XDIR)/dir.sh 0
-	./run_test.sh $(PSDIR) $(XDIR)/reorder-columns.sh pipe $(PSDIR)/data.csv
-	./run_test.sh $(PSDIR) $(XDIR)/set-operations.sh file $(PSDIR)
-	./run_test.sh $(PSDIR) $(XDIR)/compress-compare.sh pipe Readme.md
-	./run_test.sh $(PSDIR) $(XDIR)/commit-stats.sh
-	./run_test.sh $(PSDIR) $(XDIR)/uniform-5x5.sh
-	./run_test.sh $(PSDIR) $(XDIR)/duplicate-files.sh file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/spell-highlight.sh pipe Readme.md
-	./run_test.sh $(PSDIR) $(XDIR)/static-functions.sh file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/word-properties.sh file Readme.md
+	./run_test.sh $(PSDIR) $(EGDIR)/dir.sh 0
+	./run_test.sh $(PSDIR) $(EGDIR)/reorder-columns.sh pipe $(PSDIR)/data.csv
+	./run_test.sh $(PSDIR) $(EGDIR)/set-operations.sh file $(PSDIR)
+	./run_test.sh $(PSDIR) $(EGDIR)/compress-compare.sh pipe Readme.md
+	./run_test.sh $(PSDIR) $(EGDIR)/commit-stats.sh
+	./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
+	./run_test.sh $(PSDIR) $(EGDIR)/duplicate-files.sh file coreutils
+	./run_test.sh $(PSDIR) $(EGDIR)/spell-highlight.sh pipe Readme.md
+	./run_test.sh $(PSDIR) $(EGDIR)/static-functions.sh file coreutils
+	./run_test.sh $(PSDIR) $(EGDIR)/word-properties.sh file Readme.md
 	-rm -rf grep2 grep-p100
 	cp -R grep grep2 && \
 	cp -R grep2 grep-p100 && \
 	cd grep-p100 && git checkout HEAD~100 >/dev/null && \
 	cd ../grep2 && git checkout master && cd ..
-	./run_test.sh $(PSDIR) $(XDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
-	./run_test.sh $(PSDIR) $(XDIR)/text-properties.sh pipe Readme.md
+	./run_test.sh $(PSDIR) $(EGDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
+	./run_test.sh $(PSDIR) $(EGDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
-	../run_test.sh ../$(PSDIR) ../$(XDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
-	./run_test.sh $(PSDIR) $(XDIR)/code-metrics.sh file coreutils
-	./run_test.sh $(PSDIR) $(XDIR)/web-log-report.sh pipe $(PSDIR)/access.log
-	./run_test.sh $(PSDIR) $(XDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
-	./run_test.sh $(PSDIR) $(XDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
+	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
+	./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils
+	./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
+	./run_test.sh $(PSDIR) $(EGDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
+	./run_test.sh $(PSDIR) $(EGDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
 					sfspray sffft1 sffft3 sfcat sflmostretch \
 					sfreverse sfwindow vppen sfsmooth
-	# Requires file fid in $(PSDIR). See $(XDIR)/NMRPipe.sh
-	./run_test.sh $(PSDIR) $(XDIR)/NMRPipe.sh file $(PSDIR)/fid -- nmrPipe addNMR
+	# Requires file fid in $(PSDIR). See $(EGDIR)/NMRPipe.sh
+	./run_test.sh $(PSDIR) $(EGDIR)/NMRPipe.sh file $(PSDIR)/fid -- nmrPipe addNMR
 
 clean:
 	$(MAKE) -C bash clean
