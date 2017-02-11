@@ -167,8 +167,9 @@ dd if=/dev/zero bs=1M count=1 2>/dev/null |
 $DGSH_WRITEVAL -l 1000000 -s testsocket 2>/dev/null &
 start_server -m application/octet-stream
 # -s40: silent, IPv4 HTTP 1.0
-BYTES=`curl -s40 http://localhost:$PORT/testsocket |
-wc -c`
+BYTES=$(curl -s40 http://localhost:$PORT/testsocket |
+  wc -c |
+  sed 's/^[^0-9]*//')
 stop_server
 $DGSH_READVAL -q -s testsocket 2>/dev/null 1>/dev/null
 if [ "$BYTES" != 1000000 ]
