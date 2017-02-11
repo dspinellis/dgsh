@@ -13,12 +13,13 @@ export DGSHPATH="$TOP/build/libexec/dgsh"
 # Ensure that the files passed as 2nd and 3rd arguments are the same
 ensure_same()
 {
-	echo "$1"
+	echo -n "$1 "
 	if ! diff $2 $3 >/dev/null
 	then
 		echo "$1: $2 and $3 differ" 1>&2
 		exit 1
 	fi
+	echo OK
 }
 
 # Produce statistics on the character count of the data received from
@@ -37,7 +38,7 @@ charcount()
 # Buffers allocated: 1025 Freed: 1024 Maximum allocated: 960
 ensure_similar_buffers()
 {
-	echo "$1"
+	echo -n "$1 "
 	for nr in 2 3
 	do
 		for nf in 3 5 8
@@ -56,6 +57,7 @@ ensure_similar_buffers()
 			fi
 		done
 	done
+	echo OK
 }
 
 
