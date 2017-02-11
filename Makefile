@@ -59,6 +59,12 @@ graphdot/%.dot: example/%.sh
 	mkdir -p graphdot
 	-DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $< 2>err
 
+.PHONY: all tools core-tools unix-tools export-prefix \
+	config config-core-tools \
+	test test-dgsh test-merge-sum test-tee test-negotiate \
+	test-unix-tools test-kvstore \
+	clean install webfiles dist pull commit uninstall
+
 all: tools
 
 tools: core-tools unix-tools
