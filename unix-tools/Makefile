@@ -267,7 +267,6 @@ test-bash:
 
 clean:
 	$(MAKE) -C bash clean
-	rm $(PREFIX)/bin/dgsh
 	$(MAKE) -C coreutils clean
 	$(MAKE) -C diffutils clean
 	$(MAKE) -C grep clean
