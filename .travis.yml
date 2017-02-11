@@ -28,7 +28,7 @@ install:
 - sudo install nmrbin.linux212_64/var2pipe nmrbin.linux212_64/nmrPipe /usr/local/bin
 - sudo install nmrbin.linux212_64/addNMR /usr/bin
 - cd ..
-- make config && make DEBUG=1
+- make config && make
 
 compiler: gcc
 
