@@ -21,6 +21,7 @@ EC="\033[0m"	# End color
 S=${GR}successful${EC}
 F=${R}failed${EC}
 
+# Skip test if required custom commands are missing
 (
 	iscommand=0
 	for arg in "$@"; do
@@ -38,25 +39,25 @@ F=${R}failed${EC}
 	exit 0
 )
 
-if [ $? -eq 0 ]; then
-	if [ "$INPUT_TYPE" = "pipe" ]; then
-		cat $INPUT1 | \
-		PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
-		$DGSH $FSCRIPT \
-			>$PSDIR/$BSCRIPT.outb \
-			2>$PSDIR/$BSCRIPT.err \
-		&& printf "$BSCRIPT.sh $S\n" \
-		|| (printf "$BSCRIPT.sh $F\n" \
-		&& exit 1)
-	else
-		PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
-		$DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
-			>$PSDIR/$BSCRIPT.outb \
-			2>$PSDIR/$BSCRIPT.err \
-		&& printf "$BSCRIPT.sh $S\n" \
-		|| (printf "$BSCRIPT.sh $F\n" \
-		&& exit 1)
-	fi
-else
+if [ $? -ne 0 ]; then
 	echo "Skip test $BSCRIPT.sh"
+fi
+
+if [ "$INPUT_TYPE" = "pipe" ]; then
+	cat $INPUT1 | \
+	PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
+	$DGSH $FSCRIPT \
+		>$PSDIR/$BSCRIPT.outb \
+		2>$PSDIR/$BSCRIPT.err \
+	&& printf "$BSCRIPT.sh $S\n" \
+	|| (printf "$BSCRIPT.sh $F\n" \
+	&& exit 1)
+else
+	PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
+	$DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
+		>$PSDIR/$BSCRIPT.outb \
+		2>$PSDIR/$BSCRIPT.err \
+	&& printf "$BSCRIPT.sh $S\n" \
+	|| (printf "$BSCRIPT.sh $F\n" \
+	&& exit 1)
 fi
