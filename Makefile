@@ -61,10 +61,14 @@ graphdot/%.dot: example/%.sh
 
 all: tools
 
-tools:
+tools: core-tools unix-tools
+
+core-tools:
 	$(MAKE) -C core-tools CFLAGS="$(CFLAGS)"
-	$(MAKE) -C unix-tools make MAKEFLAGS=
 	cd core-tools/src && $(MAKE) build-install
+
+unix-tools:
+	$(MAKE) -C unix-tools make MAKEFLAGS=
 	$(MAKE) -C unix-tools build-install
 
 export-prefix:
@@ -72,14 +76,6 @@ export-prefix:
 
 config: export-prefix config-core-tools
 	$(MAKE) -C unix-tools configure
-
-test-dgsh: $(EXECUTABLES) $(LIBEXECUTABLES)
-	./test-dgsh.sh
-
-test-tee: dgsh-tee charcount test-tee.sh
-	./test-tee.sh
-
-test: test-negotiate test-unix-tools
 
 config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src/Makefile.am core-tools/tests/Makefile.am
 	-mkdir core-tools/m4
@@ -90,6 +86,17 @@ config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src
 	cd tests && \
 	patch Makefile <Makefile.patch
 
+test: test-negotiate test-tee test-kvstore test-unix-tools test-merge-sum test-dgsh
+
+test-dgsh: tools
+	cd core-tools/tests-regression && ./test-dgsh.sh
+
+test-merge-sum:
+	cd core-tools/tests-regression && ./test-merge-sum.sh
+
+test-tee: tools
+	cd core-tools/tests-regression && ./test-tee.sh
+
 test-negotiate: tools
 	cd core-tools/tests && \
 	$(MAKE) && \
@@ -98,53 +105,16 @@ test-negotiate: tools
 test-unix-tools: tools
 	$(MAKE) -C unix-tools -s test
 
-test-kvstore: test-kvstore.sh
+test-kvstore:
 	# Make versions that will exercise the buffers
-	$(MAKE) clean
-	$(MAKE) DEBUG=1
-	./test-kvstore.sh
+	$(MAKE) -C core-tools/src clean
+	$(MAKE) -C core-tools/src
+	rm core-tools/src/dgsh-writeval.o
+	$(MAKE) -C core-tools/src CFLAGS=-DDEBUG
+	cd core-tools/tests-regression && ./test-kvstore.sh
 	# Remove the debug build versions
-	$(MAKE) clean
-
-# Regression test based on generated output files
-test-regression:
-	# Sort files by size to get the easiest problems first
-	# Generated dot graphs
-	for i in `ls -rS example/*.sh` ; do \
-		perl dgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.test ; \
-		diff -b test/regression/graphs/`basename $$i .sh`.* || exit 1 ; \
-	done
-	# Generated code
-	for i in `ls -rS example/*.sh` ; do \
-		perl dgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.test ; \
-		diff -b test/regression/scripts/`basename $$i .sh`.* || exit 1 ; \
-	done
-	# Error messages
-	for i in test/regression/errors/*.sh ; do \
-		! /usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.test || exit 1; \
-		diff -b test/regression/errors/`basename $$i .sh`.{ok,test} || exit 1 ; \
-	done
-	# Warning messages
-	for i in test/regression/warnings/*.sh ; do \
-		/usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.test || exit 1; \
-		diff -b test/regression/warnings/`basename $$i .sh`.{ok,test} || exit 1 ; \
-	done
-
-# Seed the regression test data
-seed-regression:
-	for i in example/*.sh ; do \
-		echo $$i ; \
-		/usr/bin/perl dgsh.pl -o - $$i >test/regression/scripts/`basename $$i .sh`.ok ; \
-		/usr/bin/perl dgsh.pl -g plain $$i >test/regression/graphs/`basename $$i .sh`.ok ; \
-	done
-	for i in test/regression/errors/*.sh ; do \
-		echo $$i ; \
-		! /usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/errors/`basename $$i .sh`.ok ; \
-	done
-	for i in test/regression/warnings/*.sh ; do \
-		echo $$i ; \
-		/usr/bin/perl dgsh.pl -o /dev/null $$i 2>test/regression/warnings/`basename $$i .sh`.ok ; \
-	done
+	$(MAKE) -C core-tools/src clean
+	$(MAKE) -C core-tools/src
 
 clean:
 	rm -f *.o *.exe *.a $(MANPDF) $(MANHTML) $(EGPNG)
