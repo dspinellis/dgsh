@@ -2,6 +2,7 @@
 
 DGSH_READVAL=../src/dgsh-readval
 DGSH_WRITEVAL=../src/dgsh-writeval
+DGSH_HTTPVAL=../src/dgsh-httpval
 
 # Helper functions {{{1
 # Repeat x times
@@ -57,7 +58,7 @@ testcase()
 # Start the HTTP server
 start_server()
 {
-	./dgsh-httpval -p $PORT "$@" &
+	$DGSH_HTTPVAL -p $PORT "$@" &
 	SERVER_PID=$!
 }
 
