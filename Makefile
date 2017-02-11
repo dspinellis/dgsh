@@ -94,7 +94,6 @@ test-negotiate:
 	$(MAKE) check
 
 test-unix-tools:
-	mkdir -p build/bin build/libexec/dgsh
 	cd core-tools/src && $(MAKE) build-install
 	$(MAKE) -C unix-tools build-install
 	$(MAKE) -C unix-tools -s test
