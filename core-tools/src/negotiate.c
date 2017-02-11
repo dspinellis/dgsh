@@ -2565,16 +2565,6 @@ validate_input(int *channels_required, int *channels_provided, const char *tool_
 			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
-	if (*channels_required == 0 && *channels_provided == 0) {
-		DPRINTF("ERROR: I/O requirements entered for tool %s are zero. \nChannels required %d \nChannels provided: %d",
-			tool_name, *channels_required, *channels_provided);
-		return OP_ERROR;
-	}
-	if (*channels_required > 1000 || *channels_provided > 1000) {
-		DPRINTF("ERROR: I/O requirements entered for tool %s are too high (> 1000). \nChannels required %d \nChannels provided: %d",
-			tool_name, *channels_required, *channels_provided);
-		return OP_ERROR;
-	}
 	return OP_SUCCESS;
 }
 

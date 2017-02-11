@@ -1110,7 +1110,9 @@ main(int argc, char *argv[])
 	} else {
 		char *in, *out;
 
-		ninputfds = noutputfds = -1;
+		/* No stdin or stdout, if these have been specified via args */
+		ninputfds = ifiles ? 0 : -1;
+		noutputfds = ofiles ? 0 : -1;
 
 		/* Heuristic to determine name */
 		in = getenv("DGSH_IN");
@@ -1129,7 +1131,7 @@ main(int argc, char *argv[])
 
 
 
-	DPRINTF("Calling negotiate");
+	DPRINTF("Calling negotiate in=%d out=%d", ninputfds, noutputfds);
 	if ((status = dgsh_negotiate(name, &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0) {
 		DPRINTF("dgsh negotiation failed with status code %d", status);
 		exit(1);

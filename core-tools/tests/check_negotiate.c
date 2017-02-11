@@ -2738,7 +2738,7 @@ START_TEST(test_validate_input)
 	ck_assert_int_eq(validate_input(NULL, &o, "test"), OP_SUCCESS); 
 	ck_assert_int_eq(validate_input(&i, NULL, "test"), OP_SUCCESS); 
 	ck_assert_int_eq(validate_input(NULL, NULL, "test"), OP_SUCCESS); 
-	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
+	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
 	i = 0;
 	o = 1;
 	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
@@ -2757,12 +2757,6 @@ START_TEST(test_validate_input)
 	i = 1000;
 	o = 1000;
 	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_SUCCESS);
-	i = 1000;
-	o = 1001;
-	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
-	i = 1001;
-	o = 1000;
-	ck_assert_int_eq(validate_input(&i, &o, "test"), OP_ERROR);
 }
 END_TEST
 
@@ -2790,7 +2784,7 @@ START_TEST(test_dgsh_negotiate)
 	int *output_fds;
 	int n_output_fds = 0;
 	ck_assert_int_eq(dgsh_negotiate("test", &n_input_fds, &n_output_fds,
-				&input_fds, &output_fds), -1);
+				&input_fds, &output_fds), 0);
 }
 END_TEST
 
