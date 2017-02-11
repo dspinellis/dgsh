@@ -72,7 +72,7 @@ configure:
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
-make: w cat tee
+make: w
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
@@ -120,10 +120,10 @@ install: cat tee w make
 	./install-wrapped.sh
 
 cat: cat.sh
-	../core-tools/src/replace-paths.sh $(shell pwd)/../build <$? >$@
+	install $? $@
 
 tee: tee.sh
-	../core-tools/src/replace-paths.sh $(shell pwd)/../build <$? >$@
+	install $? $@
 
 
 test: test-bash

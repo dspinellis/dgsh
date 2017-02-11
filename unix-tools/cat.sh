@@ -29,4 +29,4 @@ for i; do
     shift
 done
 
-exec @libexecdir@/dgsh/dgsh-tee "${opts[@]}"
+exec dgsh-tee "${opts[@]}"
