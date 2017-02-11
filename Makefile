@@ -64,6 +64,8 @@ all: tools
 tools:
 	$(MAKE) -C core-tools CFLAGS="$(CFLAGS)"
 	$(MAKE) -C unix-tools make MAKEFLAGS=
+	cd core-tools/src && $(MAKE) build-install
+	$(MAKE) -C unix-tools build-install
 
 export-prefix:
 	echo "export PREFIX?=$(PREFIX)" >.config
@@ -94,8 +96,6 @@ test-negotiate:
 	$(MAKE) check
 
 test-unix-tools:
-	cd core-tools/src && $(MAKE) build-install
-	$(MAKE) -C unix-tools build-install
 	$(MAKE) -C unix-tools -s test
 
 test-kvstore: test-kvstore.sh
