@@ -6,6 +6,7 @@
 *.pdf
 *.swp
 *.test
+.deps
 charcount
 .config
 dgsh
