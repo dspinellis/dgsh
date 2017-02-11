@@ -104,7 +104,7 @@ build-install: cat tee w make
 	cp grep/src/fgrep ../build/libexec/dgsh/
 	chmod 755 tee cat
 	cp -p secho pecho fft-input w cat tee ../build/libexec/dgsh/
-	./install-wrapped.sh `pwd`/../build
+	./install-wrapped.sh $$(cd .. ; pwd)/build
 
 install: cat tee w make
 	$(MAKE) -C bash install

@@ -3,8 +3,11 @@
 # Regression testing of the provided examples
 #
 
-DGSH='../../unix-tools/bash/bash --dgsh'
-EXAMPLE=../../example
+TOP=$(cd ../.. ; pwd)
+DGSH="$TOP/build/bin/dgsh"
+PATH="$TOP/build/bin:$PATH"
+export DGSHPATH="$TOP/build/libexec/dgsh"
+EXAMPLE="$TOP/example"
 
 # Ensure that the generated test file matches the reference one
 # File names are by conventions $base/out.{ok,test}
@@ -75,7 +78,7 @@ cd text-properties
 rm -rf out.test
 mkdir out.test
 cd out.test
-../../$DGSH ../../$EXAMPLE/text-properties.sh <../../word-properties/LostWorldChap1-3
+$DGSH $EXAMPLE/text-properties.sh <../../word-properties/LostWorldChap1-3
 )
 ensure_same "$flags" text-properties
 
