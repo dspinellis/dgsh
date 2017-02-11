@@ -45,11 +45,8 @@ perm: perm.sh
 dgsh-merge-sum: dgsh-merge-sum.pl
 	install $? $@
 
-charcount: charcount.sh
-	install $? $@
-
 clean-local:
-	-rm -rf dgsh-parallel perm degsh-merge-sum charcount
+	-rm -rf dgsh-parallel perm degsh-merge-sum
 
 build-install:
 	mkdir -p ../../build/bin ../../build/libexec/dgsh

@@ -3,8 +3,12 @@
 # Regression tests for dgsh-tee
 #
 
-DGSH_TEE=../src/dgsh-tee
+TOP=$(cd ../.. ; pwd)
+DGSH_TEE=$TOP/build/libexec/dgsh/dgsh-tee
 DGSH_TEE_C=../src/dgsh-tee.c
+DGSH="$TOP/build/bin/dgsh"
+PATH="$TOP/build/bin:$PATH"
+export DGSHPATH="$TOP/build/libexec/dgsh"
 
 # Ensure that the files passed as 2nd and 3rd arguments are the same
 ensure_same()
@@ -15,6 +19,16 @@ ensure_same()
 		echo "$1: $2 and $3 differ" 1>&2
 		exit 1
 	fi
+}
+
+# Produce statistics on the character count of the data received from
+# standard input
+charcount()
+{
+  sed 's/./&\
+  /g' |
+  sort |
+  uniq -c
 }
 
 # Ensure that the numbers in the files passed as 2nd and 3rd arguments
@@ -77,18 +91,10 @@ do
 	cat -n /usr/share/dict/words >words
 	for buffer in 128 1000000
 	do
-		perl dgsh.pl -o - -p . <<EOF |
-		scatter |{ -s -p 8
-			-| cat |-
-		|} gather |{
-			# Merge sorted counts
-			sort -mn <-
-		|} <words >a
-EOF
-		sed "s/dgsh-tee  *-s/dgsh-tee -s -b $buffer/" |
-		# Logging for the debug version
-		# sed 's/-o $SGDIR\/npfo-_unnamed_0.\(.\)/& 2>ilog.\1/' |
-		sh
+		$DGSH -c "
+		dgsh-tee -b $buffer -s -i words |
+		dgsh-parallel -n 8 cat |
+		sort -mn >a"
 		ensure_same "Scatter to blocking sinks $flags -b $buffer" words a
 	done
 	rm a
@@ -112,8 +118,8 @@ EOF
 
 	# Test block scatter
 	$DGSH_TEE $flags -s -b 64 <$DGSH_TEE_C -o a -o b -o c -o d
-	./charcount <$DGSH_TEE_C >orig
-	cat a b c d | ./charcount >new
+	charcount <$DGSH_TEE_C >orig
+	cat a b c d | charcount >new
 	ensure_same "Block scatter $flags" orig new
 	rm a b c d orig new
 
@@ -133,11 +139,11 @@ EOF
 	for flags2 in '' '-m 2k' '-m 2k -f'
 	do
 		test="tee-fastout$flags$flags2"
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | $DGSH_TEE -M $flags $flags2 -b 1024 >/dev/null 2>"test/tee/$test.test"
-		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | $DGSH_TEE -M $flags $flags2 -b 1024 >/dev/null 2>"tee/$test.test"
+		ensure_similar_buffers "$test" "tee/$test.ok" "tee/$test.test"
 		test="tee-lagout$flags$flags2"
-		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | $DGSH_TEE -M $flags $flags2 -b 1024 2>"test/tee/$test.test" | (sleep 1 ; cat >/dev/null)
-		ensure_similar_buffers "$test" "test/tee/$test.ok" "test/tee/$test.test"
+		dd bs=1k count=1024 if=/dev/zero 2>/dev/null | $DGSH_TEE -M $flags $flags2 -b 1024 2>"tee/$test.test" | (sleep 1 ; cat >/dev/null)
+		ensure_similar_buffers "$test" "tee/$test.ok" "tee/$test.test"
 	done
 
 	# Test low-memory behavior (memory)
@@ -149,7 +155,7 @@ EOF
 	wait
 	if [ "$flags" = '-I' ]
 	then
-		ensure_same "Low-memory $flags error" err test/tee/oom.err
+		ensure_same "Low-memory $flags error" err tee/oom.err
 	else
 		ensure_same "Low-memory (try) $flags" lines try.out
 		ensure_same "Low-memory (try2) $flags" lines try2.out

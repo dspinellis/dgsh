@@ -1,2 +1,4 @@
+*.err
+*.errb
 fid
 res
