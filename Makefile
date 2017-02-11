@@ -90,12 +90,12 @@ config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src
 	cd tests && \
 	patch Makefile <Makefile.patch
 
-test-negotiate:
+test-negotiate: tools
 	cd core-tools/tests && \
 	$(MAKE) && \
 	$(MAKE) check
 
-test-unix-tools:
+test-unix-tools: tools
 	$(MAKE) -C unix-tools -s test
 
 test-kvstore: test-kvstore.sh
