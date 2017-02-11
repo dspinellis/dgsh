@@ -167,7 +167,7 @@ pull:
 	git pull
 	# Reattach detached repositories. These get detached by pulls or
 	# by builds specifying a specific gnulib version.
-	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( cd $$d && git checkout master && git pull ) ; done
+	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( cd $$d && old=$$(git rev-parse HEAD) && git checkout master && git pull && git checkout $$old ) ; done
 
 commit:
 	# Commit -a including submodules with the specified message
