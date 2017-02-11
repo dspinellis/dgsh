@@ -90,6 +90,7 @@ endif
 
 build-install: cat tee w make
 	cp bash/bash ../build/libexec/dgsh/
+	-ln bash/bash ../build/bin/dgsh
 	cp coreutils/src/comm ../build/libexec/dgsh/
 	cp coreutils/src/cut ../build/libexec/dgsh/
 	cp coreutils/src/join ../build/libexec/dgsh/

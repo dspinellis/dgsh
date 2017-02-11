@@ -41,7 +41,7 @@ F=${R}failed${EC}
 if [ $? -eq 0 ]; then
 	if [ "$INPUT_TYPE" = "pipe" ]; then
 		cat $INPUT1 | \
-		PATH="`pwd`/bash/../../build/libexec/dgsh:$PATH" \
+		PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
 		$DGSH $FSCRIPT \
 			>$PSDIR/$BSCRIPT.outb \
 			2>$PSDIR/$BSCRIPT.err \
@@ -49,7 +49,7 @@ if [ $? -eq 0 ]; then
 		|| (printf "$BSCRIPT.sh $F\n" \
 		&& exit 1)
 	else
-		PATH="`pwd`/bash/../../build/libexec/dgsh:$PATH" \
+		PATH="`pwd`/../build/bin:`pwd`/../build/libexec/dgsh:$PATH" \
 		$DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 \
 			>$PSDIR/$BSCRIPT.outb \
 			2>$PSDIR/$BSCRIPT.err \
