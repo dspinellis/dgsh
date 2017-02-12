@@ -116,7 +116,7 @@ test-kvstore: core-tools
 	cd core-tools/tests-regression && ./test-kvstore.sh
 
 clean:
-	rm -f *.o *.exe *.a $(MANPDF) $(MANHTML) $(EGPNG)
+	rm -rf build $(MANPDF) $(MANHTML) $(EGPNG)
 	$(MAKE) -C core-tools clean
 	$(MAKE) -C unix-tools clean
 
