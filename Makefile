@@ -18,9 +18,10 @@
 export PREFIX?=/usr/local
 
 ifdef DEBUG
-CFLAGS=-g -DDEBUG -Wall
+CPPFLAGS=-DDEBUG
+CXXFLAGS=-g -Wall -O0
 else
-CFLAGS=-O -Wall
+CXXFLAGS=-O -Wall
 endif
 
 ifdef TIME
