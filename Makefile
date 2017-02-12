@@ -141,6 +141,9 @@ pull:
 	# were detached.
 	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( echo "Pulling $$d" && cd $$d && old=$$(if [ $$(git rev-parse master) = $$(git rev-parse HEAD) ] ; then echo master ; else git rev-parse HEAD ; fi)  && git checkout master && git pull && git checkout -q $$old ) ; done
 
+push:
+	git push --recurse-submodules=on-demand
+
 commit:
 	# Commit -a including submodules with the specified message
 	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
