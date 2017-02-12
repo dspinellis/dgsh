@@ -133,9 +133,12 @@ dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 
 pull:
 	git pull
-	# Reattach detached repositories. These get detached by pulls or
-	# by builds specifying a specific gnulib version.
-	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( cd $$d && old=$$(git rev-parse HEAD) && git checkout master && git pull && git checkout $$old ) ; done
+	# Pull master on all sub-repositories.
+	# Note that the gnulib ones get detached by by builds specifying
+	# a specific gnulib version.  Through this pull repos on master
+	# stay on master; detached repos (gnulib) stay in the version they
+	# were detached.
+	git submodule status --recursive | awk '{print $$2}' | sort -r | while read d ; do ( echo "Pulling $$d" && cd $$d && old=$$(if [ $$(git rev-parse master) = $$(git rev-parse HEAD) ] ; then echo master ; else git rev-parse HEAD ; fi)  && git checkout master && git pull && git checkout -q $$old ) ; done
 
 commit:
 	# Commit -a including submodules with the specified message
