@@ -53,7 +53,7 @@ tee |
 		awk '{print $1}' &
 	}} |
 	# Gather last and first commit timestamp
-	tee |
+	cat |
 	# Make one space-delimeted record
 	tr '\n' ' ' |
 	# Compute the difference in days
