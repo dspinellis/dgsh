@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -x
+
 DGSH_READVAL=../src/dgsh-readval
 DGSH_WRITEVAL=../src/dgsh-writeval
 DGSH_HTTPVAL=../src/dgsh-httpval
@@ -20,6 +22,7 @@ fail()
 	then
 		stop_server
 	fi
+	echo
 	echo Server errors:
 	test server.err && cat server.err
 	echo Client errors:
