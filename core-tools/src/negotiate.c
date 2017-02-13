@@ -1894,18 +1894,22 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 			const char *tool_name,
 			pid_t pid, int *n_input_fds, int *n_output_fds)
 {
-	if (chosen_mb)
-		free(chosen_mb);
-	chosen_mb = fresh_mb;
+	if (fresh_mb != NULL) {
+		if (chosen_mb != NULL)
+			free(chosen_mb);
+		chosen_mb = fresh_mb;
+	} else
+		if (chosen_mb == NULL)
+			construct_message_block(tool_name, pid);
 
 	if (init_error)
-		fresh_mb->state = PS_ERROR;
+		chosen_mb->state = PS_ERROR;
 
-	if (fresh_mb->state == PS_ERROR && fresh_mb->is_error_confirmed)
+	if (chosen_mb->state == PS_ERROR && chosen_mb->is_error_confirmed)
 		(*ntimes_seen_error)++;
-	else if (fresh_mb->state == PS_RUN)
+	else if (chosen_mb->state == PS_RUN)
 		(*ntimes_seen_run)++;
-	else if (fresh_mb->state == PS_NEGOTIATION)
+	else if (chosen_mb->state == PS_NEGOTIATION)
 		if (register_node_edge(tool_name, pid, n_input_fds,
 				n_output_fds) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
@@ -2775,7 +2779,8 @@ again:
 				DPRINTF("read on fd %d is active.", i);
 				/* Read message block et al. */
 				if (read_message_block(i, &fresh_mb)
-						== OP_ERROR)
+						== OP_ERROR &&
+						fresh_mb != NULL)
 					fresh_mb->state = PS_ERROR;
 				/* Check state */
 				if (analyse_read(fresh_mb,
