@@ -2695,6 +2695,11 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	bool isread = false;
 	fd_set read_fds, write_fds;
 
+	if (negotiation_completed) {
+		errno = EALREADY;
+		return -1;
+	}
+
 #ifndef UNIT_TESTING
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
