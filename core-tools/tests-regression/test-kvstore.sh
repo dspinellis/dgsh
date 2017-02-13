@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -x
-
 DGSH_READVAL=../src/dgsh-readval
 DGSH_WRITEVAL=../src/dgsh-writeval
 DGSH_HTTPVAL=../src/dgsh-httpval
