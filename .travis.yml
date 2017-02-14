@@ -12,8 +12,8 @@ install:
 - tar Jxvf gettext-0.19.5.tar.xz
 - cd gettext-0.19.5 && ./configure && make && sudo make install
 - cd ..
-- git clone https://github.com/ahay/src.git madagascar
-- cd madagascar && git checkout madagascar-devel-2016 && rm -rf trip
+- git clone --depth=1 -b madagascar-devel-2016 https://github.com/ahay/src.git madagascar
+- cd madagascar && rm -rf trip
 - sudo ./configure --prefix=/usr/local && sudo make && sudo make install
 - cd ..
 - mkdir nmrpipe && cd nmrpipe
