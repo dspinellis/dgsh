@@ -96,24 +96,28 @@ tee |
 	awk '{print $1, $2}' &
 
 	perl -na -e '
-	BEGIN { open(my $ncf, "-|", "dgsh-readval -l -x -q -s committers3");
-		$ncommitters = <$ncf>;
-		@empty[$ncommitters - 1] = 0; @committers = @empty; }
-		sub out { print join("", map($_ ? "1" : "0", @committers)), "\n"; }
+	  BEGIN {
+	    open(my $ncf, "-|", "dgsh-readval -l -x -q -s committers3");
+	    $ncommitters = <$ncf>;
+	    @empty[$ncommitters - 1] = 0; @committers = @empty;
+	  }
+	  sub out {
+		  print join("", map($_ ? "1" : "0", @committers)), "\n";
+	  }
 
-		$day = int($F[1] / 60 / 60 / 24);
-		$pday = $day if (!defined($pday));
+	  $day = int($F[1] / 60 / 60 / 24);
+	  $pday = $day if (!defined($pday));
 
-		while ($day != $pday) {
-			out();
-			@committers = @empty;
-			$pday++;
-		}
+	  while ($day != $pday) {
+		  out();
+		  @committers = @empty;
+		  $pday++;
+	  }
 
-		$committers[$F[2]] = 1;
+	  $committers[$F[2]] = 1;
 
-		END { out(); }
-		' &
+	  END { out(); }
+	' &
 }} |
 cat |
 # Enlarge points into discs through morphological convolution
