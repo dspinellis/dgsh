@@ -55,7 +55,12 @@ ensure_same "$flags" spell-highlight
 $DGSH $EXAMPLE/map-hierarchy.sh map-hierarchy/in/a map-hierarchy/in/b map-hierarchy/out.test
 ensure_same "$flags" map-hierarchy
 
-$DGSH $EXAMPLE/commit-stats.sh --until '{2013-07-15 23:59 UTC}' >commit-stats/out.test
+(
+cd $TOP/unix-tools/grep
+$DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
+  --until=2015-12-31Z23:59 \
+  >$TOP/core-tools/tests-regression/commit-stats/out.test
+)
 ensure_same "$flags" commit-stats
 
 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test
