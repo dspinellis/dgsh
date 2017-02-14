@@ -16,7 +16,7 @@ ensure_same()
   local flags=$1
   local base=$2
   echo -n "$base.sh "
-  if diff -rw $base/out.ok $base/out.test >/dev/null
+  if diff -rw $base/out.ok $base/out.test
   then
     echo OK
   else
