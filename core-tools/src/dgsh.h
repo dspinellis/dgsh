@@ -20,8 +20,10 @@
 #ifndef DGSH_H
 #define DGSH_H
 
+#define DGSH_HANDLE_ERROR 0x100
+
 int
-dgsh_negotiate(const char *tool_name, int *n_input_fds, int *n_output_fds,
-                    int **input_fds, int **output_fds);
+dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
+		int *n_output_fds, int **input_fds, int **output_fds);
 
 #endif

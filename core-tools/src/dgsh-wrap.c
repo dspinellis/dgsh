@@ -213,17 +213,10 @@ main(int argc, char *argv[])
 		snprintf(negotiation_title, 100, "%s", guest_program_name);
 
 	// Participate in negotiation
-	int status;
-	if ((status = dgsh_negotiate(negotiation_title,
+	dgsh_negotiate(DGSH_HANDLE_ERROR, negotiation_title,
 					ninputs == -1 ? NULL : &ninputs,
 					noutputs == -1 ? NULL : &noutputs,
-					&input_fds,
-				NULL)) != 0) {
-		DPRINTF("dgsh negotiation failed for %s with status code %d\n",
-				negotiation_title, status);
-		exit(1);
-	}
-
+					&input_fds, NULL);
 	int n = feed_stdin ? 1 : 0;
 
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x

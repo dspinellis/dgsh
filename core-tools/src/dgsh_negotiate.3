@@ -1,4 +1,4 @@
-.TH DGSH_NEGOTIATE 3 "26 January 2017"
+.TH DGSH_NEGOTIATE 3 "16 February 2017"
 .\"
 .\" (C) Copyright 2017 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -20,7 +20,7 @@ dgsh_negotiate \- specify and obtain dgsh I/O file descriptors
 .nf
 .B #include <dgsh.h>
 .sp
-.BI "dgsh_negotiate(const char *" tool_name ",
+.BI "dgsh_negotiate(int " flags ", const char *" program_name ",
 .BI "               int *" n_input_fds ", int *" n_output_fds ,
 .BI "               int **" input_fds ", int **" output_fds );
 .fi
@@ -36,7 +36,18 @@ graph to specify the number of input and output file descriptors
 the program can handle, and obtain the file descriptors to be used.
 .PP
 The
-.I tool_name
+.I flags
+parameter adjusts the function's behavior.
+Currently, the only value supported is
+.IR DGSH_HANDLE_ERROR .
+When this flag is set and the function encounters an error,
+it will print (if required) an error message to standard error
+and cause the calling program to exit with the error value
+.I EX_PROTOCOL
+(76).
+.PP
+The
+.I program_name
 parameter should be specified to match the name of the program
 calling the function, to aid error reporting and debugging.
 .PP
@@ -126,9 +137,8 @@ main(int argc, char *argv[])
 	int n_input_fds = 0;
 	int n_output_fds = 1;
 
-	if (dgsh_negotiate("echo", &n_input_fds, &n_output_fds, NULL,
-				NULL) != 0)
-		exit(1);
+	dgsh_negotiate(DGSH_HANDLE_ERROR, "echo", &n_input_fds, &n_output_fds,
+			NULL, NULL);
 
 	assert(n_input_fds == 0);
 	assert(n_output_fds == 1);

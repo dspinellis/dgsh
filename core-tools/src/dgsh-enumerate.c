@@ -45,9 +45,8 @@ main(int argc, char *argv[])
 	}
 
 
-	if (dgsh_negotiate(argv[0], &n_input_fds, &n_output_fds, NULL,
-				&output_fds) != 0)
-		errx(1, "Negotiation failed");
+	dgsh_negotiate(DGSH_HANDLE_ERROR, argv[0], &n_input_fds,
+				&n_output_fds, NULL, &output_fds);
 
 	for (i = 0; i < n_output_fds; i++) {
 		char buff[10];

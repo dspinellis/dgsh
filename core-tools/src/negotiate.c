@@ -36,6 +36,7 @@
 #include <stdio.h>		/* fprintf() in DPRINTF() */
 #include <stdlib.h>		/* getenv(), errno, atexit() */
 #include <string.h>		/* memcpy() */
+#include <sysexits.h>		/* EX_PROTOCOL */
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
 				 * STDIN_FILENO, STDOUT_FILENO,
@@ -137,7 +138,7 @@ struct dgsh_node_pipe_fds {
 struct dgsh_negotiation *chosen_mb;
 static struct dgsh_node self_node;		/* The dgsh node that models
 						   this tool. */
-static char programname[100] = "";
+static char *programname;
 
 static struct node_io_side self_node_io_side;	/* Dispatch info for this tool. */
 static struct dgsh_node_pipe_fds self_pipe_fds;	/* A tool's read and write file
@@ -2645,6 +2646,23 @@ setup_file_descriptors(int *n_input_fds, int *n_output_fds,
 }
 
 
+/*
+ * Return function for dgsh_negotiate
+ * Exit by printing an error (if needed)
+ * otherwise return the passed return value
+ */
+static int
+dgsh_exit(int ret, int flags)
+{
+	if (ret == 0)
+		return 0;
+	if (!(flags & DGSH_HANDLE_ERROR))
+		return ret;
+	if (errno == ECONNRESET)
+		exit(EX_PROTOCOL);
+	err(EX_PROTOCOL, "%s: dgsh negotiation failed", programname);
+}
+
 /**
  * Each tool in the dgsh graph calls dgsh_negotiate() to take part in
  * peer-to-peer negotiation. A message block (MB) is circulated among tools
@@ -2657,33 +2675,8 @@ setup_file_descriptors(int *n_input_fds, int *n_output_fds,
  * negotiation phase.
  */
 int
-dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
-                    int *n_input_fds, /* Input/Output variable:
-				       * number of input file descriptors
-				       * required. The number may be changed
-				       * by the API and will reflect the size
-				       * of the input file descriptor array.
-				       * If NULL is given, then 0 or 1
-				       * is implied and no file descriptor
-				       * array is returned. The input file
-				       * descriptor not returned (in case of 1)
-				       * substitutes stdin.
-				       */
-                    int *n_output_fds, /* Input/Output variable:
-				       * number of output file descriptors
-				       * provided. The semantics for n_input_fds
-				       * apply here respectively.
-				       */
-                    int **input_fds,  /* Output variable:
-				       * input file descriptor array
-				       * The caller has the responsbility
-				       * to free the array.
-				       */
-                    int **output_fds) /* Output variable:
-				       * output file descriptor array
-				       * The caller has the responsbility
-				       * to free the array.
-				       */
+dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
+		int *n_output_fds, int **input_fds, int **output_fds)
 {
 	int i = 0;
 	int ntimes_seen_run = 0;
@@ -2697,21 +2690,21 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 
 	if (negotiation_completed) {
 		errno = EALREADY;
-		return -1;
+		return dgsh_exit(-1, flags);
 	}
 
 #ifndef UNIT_TESTING
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
-	strcpy(programname, tool_name);
+	programname = strdup(tool_name);
 	DPRINTF("%s(): Tool %s with pid %d entered dgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
 							== OP_ERROR) {
 		negotiation_completed = 1;
-		return -1;
+		return dgsh_exit(-1, flags);
 	}
 
 	self_node.dgsh_in = 0;
@@ -2725,11 +2718,11 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 					*n_input_fds, *n_output_fds, tool_name);
 			errno = ENOTSOCK;
 			negotiation_completed = 1;
-			return -1;
+			return dgsh_exit(-1, flags);
 		} else {
 			negotiation_completed = 1;
-			return setup_file_descriptors(n_input_fds, n_output_fds,
-					input_fds, output_fds);
+			return dgsh_exit(setup_file_descriptors(n_input_fds,
+						n_output_fds, input_fds, output_fds), flags);
 		}
 	}
 
@@ -2859,5 +2852,5 @@ exit:
 	negotiation_completed = 1;
 	alarm(0);			// Cancel alarm
 	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
-	return state ? -1 : 0;
+	return dgsh_exit(state ? -1 : 0, flags);
 }

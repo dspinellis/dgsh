@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 	char *input_file;
 	FILE *f;
 	int ninput = 4, nlines = 0, i;
-	int ninputfds = 0, noutputfds, status;
+	int ninputfds = 0, noutputfds;
 	int *inputfds = NULL, *outputfds = NULL;
 	size_t len = sizeof(long double), wsize;
 	char line[len + 1];
@@ -49,9 +49,8 @@ int main(int argc, char **argv)
 
 negotiate:
 
-	if ((status = dgsh_negotiate("fft-input", &ninputfds, &noutputfds,
-					&inputfds, &outputfds)) != 0)
-		errx(2, "dgsh negotiation failed with status code %d", status);
+	dgsh_negotiate(DGSH_HANDLE_ERROR, "fft-input", &ninputfds, &noutputfds,
+					&inputfds, &outputfds);
 	DPRINTF("Read %d inputs, received %d fds", nlines, noutputfds);
 	assert(ninputfds == 0);
 	assert(noutputfds == nlines);

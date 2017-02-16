@@ -1017,7 +1017,7 @@ main(int argc, char *argv[])
 	struct sink_info *ofiles = NULL, *ofp;
 	struct source_info *ifiles = NULL, *ifp, *end = NULL;
 	struct source_info *front_ifp;	/* To keep output sequential, never output past this one */
-	int ch, status;
+	int ch;
 	const char *progname = argv[0];
 	enum state state = read_ob;
 	bool opt_memory_stats = false;
@@ -1132,10 +1132,7 @@ main(int argc, char *argv[])
 
 
 	DPRINTF("Calling negotiate in=%d out=%d", ninputfds, noutputfds);
-	if ((status = dgsh_negotiate(name, &ninputfds, &noutputfds, &inputfds, &outputfds)) != 0) {
-		DPRINTF("dgsh negotiation failed with status code %d", status);
-		exit(1);
-	}
+	dgsh_negotiate(DGSH_HANDLE_ERROR, name, &ninputfds, &noutputfds, &inputfds, &outputfds);
 	DPRINTF("nin=%d nout=%d", ninputfds, noutputfds);
 	assert(noutputfds >= 0);
 	assert(ninputfds >= 0);

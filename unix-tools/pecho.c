@@ -9,8 +9,7 @@ main(int argc, char *argv[])
 	int ps = getpagesize();
 	char buf[ps];
 	int n = 1;
-	if (dgsh_negotiate("secho", NULL, NULL, NULL, NULL) != 0)
-		exit(1);
+	dgsh_negotiate(DGSH_HANDLE_ERROR, "secho", NULL, NULL, NULL, NULL);
 
 	++argv;
 	while (*argv) {

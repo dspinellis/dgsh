@@ -1226,8 +1226,8 @@ main(int argc, char *argv[])
 
 	parse_arguments(argc, argv);
 
-        if (dgsh_negotiate(program_name, &ninputs, &noutputs, NULL, NULL) != 0)
-		                exit(1);
+        dgsh_negotiate(DGSH_HANDLE_ERROR, program_name, &ninputs, &noutputs,
+			NULL, NULL);
 
 	if (strlen(socket_path) >= sizeof(local.sun_path) - 1)
 		errx(6, "Socket name [%s] must be shorter than %lu characters",
