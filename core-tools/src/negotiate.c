@@ -146,15 +146,24 @@ static struct dgsh_node_pipe_fds self_pipe_fds;	/* A tool's read and write file
 						 */
 static bool init_error = false;
 static volatile sig_atomic_t negotiation_completed = 0;
+
+static void get_environment_vars();
+
+
 #ifndef UNIT_TESTING
 static void
 dgsh_exit_handler(void)
 {
-	if (negotiation_completed == 1)
+	if (negotiation_completed)
 		return;
 	init_error = true;
-	DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
-	dgsh_negotiate(programname, NULL, NULL, NULL, NULL);
+	/* Finish negotiation, if required */
+	get_environment_vars();
+	if (self_node.dgsh_in != 0 || self_node.dgsh_out != 0) {
+		DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
+		dgsh_negotiate(0, programname ? programname : "dgsh client", NULL,
+				NULL, NULL, NULL);
+	}
 }
 #endif
 
