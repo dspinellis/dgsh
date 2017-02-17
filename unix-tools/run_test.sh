@@ -8,11 +8,10 @@ INPUT1=$4
 INPUT2=$5
 INPUT3=$6
 
-if [ -d "bash" ]; then
-	DGSH='bash/bash --dgsh'
-else
-	DGSH='../bash/bash --dgsh'
-fi
+TOP=$(cd $(dirname $0)/.. ; pwd)
+DGSH="$TOP/build/bin/dgsh"
+PATH="$TOP/build/bin:$PATH"
+export DGSHPATH="$TOP/build/libexec/dgsh"
 
 GR="\033[0;32m"	# Green
 R="\033[0;31m"	# Red
@@ -42,8 +41,6 @@ F=${R}failed${EC}
 if [ $? -ne 0 ]; then
 	echo "Skip test $BSCRIPT.sh"
 fi
-
-PATH="$(pwd)/../build/libexec/dgsh:$(pwd)/../build/bin:$PATH"
 
 if [ "$INPUT_TYPE" = pipe ]; then
   if $DGSH $FSCRIPT <$INPUT1 >$PSDIR/$BSCRIPT.outb 2>$PSDIR/$BSCRIPT.err ; then
