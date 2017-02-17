@@ -38,13 +38,15 @@ the program can handle, and obtain the file descriptors to be used.
 The
 .I flags
 parameter adjusts the function's behavior.
-Currently, the only value supported is
-.IR DGSH_HANDLE_ERROR .
-When this flag is set and the function encounters an error,
-it will print (if required) an error message to standard error
+The following flags are defined.
+.TP
+.B DGSH_HANDLE_ERROR .
+When this flag is set and the negotiation for creating the graph
+of communicating processes encounters an error,
+the function will print an error message to standard error
+(if required)
 and cause the calling program to exit with the error value
-.I EX_PROTOCOL
-(76).
+.IR EX_PROTOCOL " (76)."
 .PP
 The
 .I program_name
