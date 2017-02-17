@@ -163,6 +163,7 @@ dgsh_exit_handler(void)
 	/* Finish negotiation, if required */
 	get_environment_vars();
 	if (self_node.dgsh_in != 0 || self_node.dgsh_out != 0) {
+		warnx("exiting before dgsh negotiation is complete");
 		DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
 		dgsh_negotiate(0, programname ? programname : "dgsh client", NULL,
 				NULL, NULL, NULL);
