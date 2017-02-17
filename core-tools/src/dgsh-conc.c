@@ -377,13 +377,13 @@ pass_message_blocks(void)
 					if ((nfd > 2 && seen == nfd - 2) ||
 							seen == nfd - 1) {
 						chosen_mb = rb;
-						DPRINTF(1, "%s(): completed gathering I/O requirements.", __func__);
+						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
 						if (solve_dgsh_graph() ==
 								OP_ERROR) {
 							pi[next].to_write->state = PS_ERROR;
 							pi[next].to_write->is_error_confirmed = true;
 						} else {
-							DPRINTF(1, "%s(): computed solution", __func__);
+							DPRINTF(1, "%s(): Computed solution", __func__);
 							pi[next].to_write->state = PS_RUN;
 						}
 						for (j = 1; j < nfd; j++)
@@ -556,7 +556,7 @@ main(int argc, char *argv[])
 	chosen_mb = NULL;
 	exit = pass_message_blocks();
 	if (exit == PS_RUN) {
-		DPRINTF(1, "%s(): completed sharing the solution", __func__);
+		DPRINTF(1, "%s(): Communicated the solution", __func__);
 		if (multiple_inputs)
 			gather_input_fds(chosen_mb);
 		else if (!noinput)	// Output noinput conc has no job here

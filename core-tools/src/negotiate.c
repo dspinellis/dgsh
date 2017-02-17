@@ -2826,7 +2826,7 @@ again:
 				if (self_node.pid ==
 						chosen_mb->initiator_pid) {
 					if (chosen_mb->state == PS_RUN) {
-						DPRINTF(1, "%s(): completed sharing the solution", __func__);
+						DPRINTF(1, "%s(): Communicated the solution", __func__);
 						chosen_mb->state = PS_COMPLETE;
 						goto exit;
 					} else if (chosen_mb->state == PS_ERROR) {
@@ -2836,12 +2836,12 @@ again:
 							chosen_mb->is_error_confirmed = true;
 					} else if (chosen_mb->state == PS_NEGOTIATION) {
 						chosen_mb->state = PS_NEGOTIATION_END;
-						DPRINTF(1, "%s(): completed gathering I/O requirements.", __func__);
+						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
 						if (solve_dgsh_graph() == OP_ERROR) {
 							chosen_mb->state = PS_ERROR;
 							chosen_mb->is_error_confirmed = true;
 						} else {
-							DPRINTF(1, "%s(): computed solution", __func__);
+							DPRINTF(1, "%s(): Computed solution", __func__);
 							chosen_mb->state = PS_RUN;
 						}
 					}

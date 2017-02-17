@@ -101,6 +101,24 @@ The appropriate file descriptors are provided to each tool and the negotiation
 phase ends.
 .SH RETURN VALUE
 On success, the function returns 0, on failure it returns -1.
+.SH DEBUGGING
+The DGSH_DEBUG_LEVEL environment variable controls
+debug output, which appears in \fIstderr\fP.
+The default level 0 produces no debug output.
+.TP
+.B DGSH_DEBUG_LEVEL=1
+Level 1 outputs the phases of the negotiation process, that
+is gather I/O requirements, compute the solution, and
+communicate the solution.
+.TP
+.B DGSH_DEBUG_LEVEL=2
+Level 2 outputs the reading and writing of the message block
+by each command as it flows across the process graph.
+.TP
+.B DGSH_DEBUG_LEVEL=3
+Level 3 outputs the complete debug output including the
+shell's initial setup of the process graph.
+This is very verbose.
 .SH ERROR MANAGEMENT
 Things can go wrong in two ways.
 First, a command might exit before reaching the call to
