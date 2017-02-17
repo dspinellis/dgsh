@@ -145,8 +145,9 @@ push:
 	git push --recurse-submodules=on-demand
 
 commit:
-	# Commit -a including submodules with the specified message
-	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do (cd $$i && git commit -am $(MESSAGE) ; done
+	# Commit -a including submodules with the message in the specified
+	# MESSAGEFILE
+	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do cat $(MESSAGEFILE) | (cd $$i && git commit -a -F -) ; done
 
 # Rough uninstall rule to verify that tests pick up correct files
 uninstall:

@@ -17,7 +17,6 @@ int main(int argc, char** argv)
 	int *outputfds = NULL;
 	int ninputfds = 2;
 	int *inputfds = NULL;
-	int status;
 	long double x1 = -1.0, x2 = -1.0;
 	long double complex xc1, xc2;
 	long double complex y1, y2, w, wmn;
@@ -37,9 +36,8 @@ int main(int argc, char** argv)
 	n = atoi(argv[2]);
 
 	sprintf(negotiation_title, "%s %s %s", argv[0], argv[1], argv[2]);
-	if ((status = dgsh_negotiate(negotiation_title, &ninputfds, &noutputfds,
-					&inputfds, &outputfds)) != 0)
-		errx(2, "dgsh negotiation failed with status code %d", status);
+	dgsh_negotiate(DGSH_HANDLE_ERROR, negotiation_title, &ninputfds,
+			&noutputfds, &inputfds, &outputfds);
 	assert(ninputfds == 2);
 	assert(noutputfds == 2);
 

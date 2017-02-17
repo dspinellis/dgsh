@@ -2783,7 +2783,7 @@ START_TEST(test_dgsh_negotiate)
 	int n_input_fds = 0;
 	int *output_fds;
 	int n_output_fds = 0;
-	ck_assert_int_eq(dgsh_negotiate("test", &n_input_fds, &n_output_fds,
+	ck_assert_int_eq(dgsh_negotiate(0, "test", &n_input_fds, &n_output_fds,
 				&input_fds, &output_fds), 0);
 }
 END_TEST
