@@ -54,6 +54,9 @@
 static struct timespec tstart={0,0}, tend={0,0};
 #endif
 
+/* Default negotiation timeout (s) */
+#define DGSH_TIMEOUT 5
+
 #ifndef UNIT_TESTING
 
 /* Models an I/O connection between tools on an dgsh graph. */
@@ -2694,6 +2697,7 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	int nfds = 0, n_io_channels;
 	bool isread = false;
 	fd_set read_fds, write_fds;
+	char *timeout;
 
 	if (negotiation_completed) {
 		errno = EALREADY;
@@ -2734,7 +2738,10 @@ dgsh_negotiate(const char *tool_name, /* Input variable: the program's name */
 	}
 
 	signal(SIGALRM, dgsh_alarm_handler);
-	alarm(5);
+	if ((timeout = getenv("DGSH_TIMEOUT")) != NULL)
+		alarm(atoi(timeout));
+	else
+		alarm(DGSH_TIMEOUT);
 
 	/* Start negotiation */
 	if (self_node.dgsh_out && !self_node.dgsh_in) {

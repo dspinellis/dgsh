@@ -107,6 +107,24 @@ For commands that stuck in the negotiation procedure because another
 command aborted during it, an alarm signal triggers an exit after 5
 seconds spent in negotiation to help commands exit it.
 
+.SH ENVIRONMENT
+The following environment variables affect the negotiation to create
+the communication graph.
+.TP
+.B DGSH_DOT_DRAW
+Setting this variable to a file path causes the \fIdgsh\fP negotiation
+to save the graph of the communication processes in that file.
+The graph is saved in
+.IR dot (1)
+format.
+.TP
+.B DGSH_TIMEOUT
+Setting this variable to an integer value specifies the number of
+seconds \fIdgsh\fP processes will wait for the negotiation to comlete
+before timing out and exiting.
+The default value is five seconds, but this value may need to be increased
+for negotiations that take a long time to complete.
+
 .SH EXAMPLES
 .PP
 The following simple implementation of echo does not receive any
