@@ -1229,7 +1229,7 @@ solve_dgsh_graph(void)
 		if ((exit_state = output_graph(filename)) == OP_ERROR)
 			goto exit;
 
-	if (getenv("DRAW_EXIT")) {
+	if (getenv("DGSH_DRAW_EXIT")) {
 		fprintf(stderr,
 			"Fake an error and exit after outputting the graph\n");
 		exit_state = OP_ERROR;
