@@ -164,7 +164,7 @@ dgsh_exit_handler(void)
 	get_environment_vars();
 	if (self_node.dgsh_in != 0 || self_node.dgsh_out != 0) {
 		warnx("exiting before dgsh negotiation is complete");
-		DPRINTF("dgsh: error state. Enter negotiation to inform the graph");
+		DPRINTF(3, "dgsh: error state. Enter negotiation to inform the graph");
 		dgsh_negotiate(0, programname ? programname : "dgsh client", NULL,
 				NULL, NULL, NULL);
 	}
@@ -194,6 +194,16 @@ install_exit_handler(void)
 }
 #endif
 
+static int dgsh_debug_level = 0;
+
+void
+dgsh_dprintf(int debug_level, const char *fmt, ...)
+{
+	if (debug_level < dgsh_debug_level)
+		fprintf(stderr, "%d: " fmt " \n",
+				(int)getpid(), ##__VA_ARGS__);
+}
+
 /**
  * Remove path to command to save space in the graph plot
  * Find first space if any and take the name up to there
@@ -208,36 +218,36 @@ process_node_name(char *name, char **processed_name)
 	memset(no_path_name, 0, sizeof(no_path_name));
 	char *s = strstr(name, " ");
 
-	DPRINTF("Node name to process: %s", name);
+	DPRINTF(3, "Node name to process: %s", name);
 	if (s)
 		strncpy(no_path_name, name, s - name);
 	else
 		strcpy(no_path_name, name);
 
-	DPRINTF("no_path_name: %s, s: %s", no_path_name, s);
+	DPRINTF(3, "no_path_name: %s, s: %s", no_path_name, s);
 	char *p = no_path_name;
 	char *m = strstr(no_path_name, "/");
 	while (m) {
 		p = ++m;
 		m = strstr(m, "/");
 	}
-	DPRINTF("no_path_name: %s, m: %s", no_path_name, m);
+	DPRINTF(3, "no_path_name: %s, m: %s", no_path_name, m);
 
 	if (s)
 		sprintf(no_path_name, "%s%s", p, s);
 
-	DPRINTF("no_path_name: %s, p: %s", no_path_name, p);
+	DPRINTF(3, "no_path_name: %s, p: %s", no_path_name, p);
 	m = strstr(no_path_name, "\"");
 	char *mm = NULL;
 	while (m) {
-		DPRINTF("processed_name: %s, m: %s, mm: %s",
+		DPRINTF(3, "processed_name: %s, m: %s, mm: %s",
 				*processed_name, m, mm);
 		if (strlen(*processed_name) == 0)
 			strncpy(*processed_name, no_path_name, m - no_path_name);
 		else {
 			strcat(*processed_name, "\\");
 			strncat(*processed_name, mm, m - mm);
-			DPRINTF("processed_name: %s, m - mm: %ld",
+			DPRINTF(3, "processed_name: %s, m - mm: %ld",
 					*processed_name, (long)(m - mm));
 		}
 		mm = m;
@@ -249,7 +259,7 @@ process_node_name(char *name, char **processed_name)
 	} else
 		strcpy(*processed_name, no_path_name);
 
-	DPRINTF("final processed_name: %s, m: %s, mm: %s",
+	DPRINTF(3, "final processed_name: %s, m: %s, mm: %s",
 				*processed_name, m, mm);
 }
 
@@ -277,7 +287,7 @@ output_graph(char *filename)
 	struct dgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 
-	DPRINTF("Output graph in file %s for %d nodes and %d edges",
+	DPRINTF(3, "Output graph in file %s for %d nodes and %d edges",
 			filename, n_nodes, chosen_mb->n_edges);
 
 	fprintf(f, "digraph {\n");
@@ -289,7 +299,7 @@ output_graph(char *filename)
 						&graph_solution[i];
 		int n_edges_outgoing = connections->n_edges_outgoing;
 
-		DPRINTF("Output node: %s", node->name);
+		DPRINTF(3, "Output node: %s", node->name);
 		// Reserve space for quotes
 		int q = 0;
 		char *m = strstr(node->name, "\"");
@@ -299,7 +309,7 @@ output_graph(char *filename)
 		}
 		char *processed_name = (char *)malloc(sizeof(char) *
 						(strlen(node->name) + q + 1));
-		DPRINTF("Malloc %d bytes for processed_name",
+		DPRINTF(3, "Malloc %d bytes for processed_name",
 					(int)strlen(node->name) + q + 1);
 		memset(processed_name, 0, strlen(node->name) + q + 1);
 		process_node_name(node->name, &processed_name);
@@ -317,7 +327,7 @@ output_graph(char *filename)
 		fprintf(fn, "	n%d [label=\"%s\"];\n",
 				node->index, processed_name);
 #endif
-		DPRINTF("Node: (%d) %s", node->index, processed_name);
+		DPRINTF(3, "Node: (%d) %s", node->index, processed_name);
 
 		free(processed_name);
 		for (j = 0; j < n_edges_outgoing; j++) {
@@ -331,7 +341,7 @@ output_graph(char *filename)
 			fprintf(f, "	n%d -> n%d;\n",
 				node->index,
 				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
-			DPRINTF("Edge: (%d) %s -> %s (%d)",
+			DPRINTF(3, "Edge: (%d) %s -> %s (%d)",
 				node->index, node->name,
 				chosen_mb->node_array[connections->edges_outgoing[j].to].name,
 				chosen_mb->node_array[connections->edges_outgoing[j].to].index);
@@ -355,22 +365,22 @@ alloc_node_connections(struct dgsh_edge **nc_edges, int nc_n_edges, int type,
 								int node_index)
 {
 	if (!nc_edges) {
-		DPRINTF("ERROR: Double pointer to node connection edges is NULL.\n");
+		DPRINTF(3, "ERROR: Double pointer to node connection edges is NULL.\n");
 		return OP_ERROR;
 	}
 	if (node_index < 0) {
-		DPRINTF("ERROR: Index of node whose connections will be allocated is negative number.\n");
+		DPRINTF(3, "ERROR: Index of node whose connections will be allocated is negative number.\n");
 		return OP_ERROR;
 	}
 	if (type > 1 || type < 0) {
-		DPRINTF("ERROR: Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
+		DPRINTF(3, "ERROR: Type of edge is neither incoming (1) nor outgoing(0).\ntyep is: %d.\n", type);
 		return OP_ERROR;
 	}
 
 	*nc_edges = (struct dgsh_edge *)malloc(sizeof(struct dgsh_edge) *
 								nc_n_edges);
 	if (!*nc_edges) {
-		DPRINTF("ERROR: Memory allocation for node's index %d %s connections \
+		DPRINTF(3, "ERROR: Memory allocation for node's index %d %s connections \
 failed.\n", node_index, (type) ? "incoming" : "outgoing");
 
 		return OP_ERROR;
@@ -391,21 +401,21 @@ make_compact_edge_array(struct dgsh_edge **nc_edges, int nc_n_edges,
 	int array_size = sizeof(struct dgsh_edge) * nc_n_edges;
 
 	if (nc_n_edges <= 0) {
-		DPRINTF("ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", nc_n_edges);
+		DPRINTF(3, "ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", nc_n_edges);
 		return OP_ERROR;
 	}
 	if (nc_edges == NULL) {
-		DPRINTF("ERROR: Compact edge array to put edges (connections) is NULL.\n");
+		DPRINTF(3, "ERROR: Compact edge array to put edges (connections) is NULL.\n");
 		return OP_ERROR;
 	}
 	if (p_edges == NULL) {
-		DPRINTF("ERROR: Pointer to edge array is NULL.\n");
+		DPRINTF(3, "ERROR: Pointer to edge array is NULL.\n");
 		return OP_ERROR;
 	}
 
 	*nc_edges = (struct dgsh_edge *)malloc(array_size);
 	if (!(*nc_edges)) {
-		DPRINTF("ERROR: Memory allocation of size %d for edge array failed.\n",
+		DPRINTF(3, "ERROR: Memory allocation of size %d for edge array failed.\n",
 								array_size);
 		return OP_ERROR;
 	}
@@ -416,7 +426,7 @@ make_compact_edge_array(struct dgsh_edge **nc_edges, int nc_n_edges,
 	 */
 	for (i = 0; i < nc_n_edges; i++) {
 		if (p_edges[i] == NULL) {
-			DPRINTF("ERROR: Pointer to edge array contains NULL pointer.\n");
+			DPRINTF(3, "ERROR: Pointer to edge array contains NULL pointer.\n");
 			return OP_ERROR;
 		}
 		/**
@@ -424,7 +434,7 @@ make_compact_edge_array(struct dgsh_edge **nc_edges, int nc_n_edges,
 		 * sizeof(struct dgsh_edge), and point to that memory block.
 		 */
 		memcpy(&(*nc_edges)[i], p_edges[i], sizeof(struct dgsh_edge));
-		DPRINTF("%s():Copied edge %d -> %d (%d) at index %d.",
+		DPRINTF(3, "%s():Copied edge %d -> %d (%d) at index %d.",
 				__func__, p_edges[i]->from, p_edges[i]->to,
 				p_edges[i]->instances, i);
 	}
@@ -438,11 +448,11 @@ reallocate_edge_pointer_array(struct dgsh_edge ***edge_array, int n_elements)
 {
 	void **p = NULL;
 	if (edge_array == NULL) {
-		DPRINTF("ERROR: Edge array is NULL pointer.\n");
+		DPRINTF(3, "ERROR: Edge array is NULL pointer.\n");
 		return OP_ERROR;
 	}
 	if (n_elements <= 0) {
-		DPRINTF("ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
+		DPRINTF(3, "ERROR: Size identifier to be used in malloc() is non-positive number: %d.\n", n_elements);
 		return OP_ERROR;
 	} else if (n_elements == 1)
 		p = malloc(sizeof(struct dgsh_edge *) * n_elements);
@@ -450,7 +460,7 @@ reallocate_edge_pointer_array(struct dgsh_edge ***edge_array, int n_elements)
 		p = realloc(*edge_array,
 				sizeof(struct dgsh_edge *) * n_elements);
 	if (!p) {
-		DPRINTF("ERROR: Memory reallocation for edge failed.\n");
+		DPRINTF(3, "ERROR: Memory reallocation for edge failed.\n");
 		return OP_ERROR;
 	} else
 		*edge_array = (struct dgsh_edge **)p;
@@ -505,9 +515,9 @@ satisfy_io_constraints(int *free_instances,
 			edges[i]->from_instances = weight + (modulo > 0);
 		if (modulo > 0)
 			modulo--;
-        	DPRINTF("%s(): edge from %d to %d, is_edge_incoming: %d, free_instances: %d, weight: %d, modulo: %d, from_instances: %d, to_instances: %d.\n", __func__, edges[i]->from, edges[i]->to, is_edge_incoming, *free_instances, weight, modulo, edges[i]->from_instances, edges[i]->to_instances);
+        	DPRINTF(3, "%s(): edge from %d to %d, is_edge_incoming: %d, free_instances: %d, weight: %d, modulo: %d, from_instances: %d, to_instances: %d.\n", __func__, edges[i]->from, edges[i]->to, is_edge_incoming, *free_instances, weight, modulo, edges[i]->from_instances, edges[i]->to_instances);
 	}
-	DPRINTF("%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
+	DPRINTF(3, "%s(): Number of edges: %d, this_channel_constraint: %d, free instances: %d.\n", __func__, n_edges, this_channel_constraint, *free_instances);
 	return OP_SUCCESS;
 }
 
@@ -535,7 +545,7 @@ dry_match_io_constraints(struct dgsh_node *current_node,
 	/* Gather incoming/outgoing edges for node at node_index. */
 	for (i = 0; i < n_edges; i++) {
 		struct dgsh_edge *edge = &chosen_mb->edge_array[i];
-		DPRINTF("%s(): edge at index %d from %d to %d, instances %d, from_instances %d, to_instances %d.", __func__, i, edge->from, edge->to, edge->instances, edge->from_instances, edge->to_instances);
+		DPRINTF(3, "%s(): edge at index %d from %d to %d, instances %d, from_instances %d, to_instances %d.", __func__, i, edge->from, edge->to, edge->instances, edge->from_instances, edge->to_instances);
 		if (edge->from == node_index) {
 			(*n_edges_outgoing)++;
 			if (reallocate_edge_pointer_array(edges_outgoing,
@@ -551,7 +561,7 @@ dry_match_io_constraints(struct dgsh_node *current_node,
 			(*edges_incoming)[*n_edges_incoming - 1] = edge;
 		}
 	}
-	DPRINTF("%s(): Node at index %d has %d outgoing edges and %d incoming.",
+	DPRINTF(3, "%s(): Node at index %d has %d outgoing edges and %d incoming.",
 				__func__, node_index, *n_edges_outgoing,
 				*n_edges_incoming);
 
@@ -591,7 +601,7 @@ free_graph_solution(int node_index)
 	}
 	free(graph_solution);
 	chosen_mb->graph_solution = NULL;
-	DPRINTF("%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
+	DPRINTF(3, "%s: freed %d nodes.", __func__, chosen_mb->n_nodes);
 	return OP_SUCCESS;
 }
 
@@ -625,7 +635,7 @@ static enum op_result
 record_move_unbalanced(int *diff, int *index, int to_move_index,
 		int *instances, int to_move, int pair)
 {
-	DPRINTF("%s(): to_move: %d, pair: %d, diff: %d", __func__, to_move, pair, *diff);
+	DPRINTF(3, "%s(): to_move: %d, pair: %d, diff: %d", __func__, to_move, pair, *diff);
 	/* Can either to_move or pair be 0? I don't think so */
 	if ((*diff > 0 && to_move < pair) ||
 	    (*diff < 0 && to_move > pair)) {
@@ -636,7 +646,7 @@ record_move_unbalanced(int *diff, int *index, int to_move_index,
 		else
 			*instances = *diff;
 		*diff -= *instances;
-		DPRINTF("%s(): move successful: to_move: %d, pair: %d, diff: %d, instances: %d, edge index: %d", __func__, to_move, pair, *diff, *instances, *index);
+		DPRINTF(3, "%s(): move successful: to_move: %d, pair: %d, diff: %d, instances: %d, edge index: %d", __func__, to_move, pair, *diff, *instances, *index);
 		return OP_SUCCESS;
 	}
 	return OP_NOOP;
@@ -661,7 +671,7 @@ move(struct dgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 		struct dgsh_edge *edge = edges[i];
 		int *from = &edge->from_instances;
 		int *to = &edge->to_instances;
-		DPRINTF("%s(): before move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
+		DPRINTF(3, "%s(): before move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
 		if (*from == -1 || *to == -1)
 			continue;
 		if (is_edge_incoming) {
@@ -673,7 +683,7 @@ move(struct dgsh_edge** edges, int n_edges, int diff, bool is_edge_incoming)
 				&instances[j], *from, *to) == OP_SUCCESS)
 				j++;
 		}
-		DPRINTF("%s(): after move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
+		DPRINTF(3, "%s(): after move %s edge %d: from: %d, to: %d, diff %d.", __func__, is_edge_incoming ? "incoming" : "outgoing", i, *from, *to, diff);
 		if (diff == 0)
 			goto checkout;
 	}
@@ -708,7 +718,7 @@ checkout:
 			else
 				edges[indexes[k]]->from_instances +=
 								instances[k];
-			DPRINTF("%s(): succeeded: move %d from edge %d.", __func__, instances[k], indexes[k]);
+			DPRINTF(3, "%s(): succeeded: move %d from edge %d.", __func__, instances[k], indexes[k]);
 		}
 		return OP_SUCCESS;
 	}
@@ -748,7 +758,7 @@ cross_match_io_constraints(int *free_instances,
 		int *to = &e->to_instances;
 		int matched = *edges_matched;
 		if (*from == -1 || *to == -1) {
-        		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
+        		DPRINTF(3, "%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to);
 			if (*from == -1 && *to == -1) {
 				from_flex++;
 				to_flex++;
@@ -801,9 +811,9 @@ cross_match_io_constraints(int *free_instances,
 					(*edges_matched)++;
 				}
 		}
-		DPRINTF("%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d, edge instances: %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to, e->instances);
+		DPRINTF(3, "%s(): edge from %d to %d, this_channel_constraint: %d, is_incoming: %d, from_instances: %d, to_instances %d, edge instances: %d.\n", __func__, e->from, e->to, this_channel_constraint, is_edge_incoming, *from, *to, e->instances);
 		if (matched == *edges_matched){
-			DPRINTF("%s(): WARNING: did not manage to match this edge",
+			DPRINTF(3, "%s(): WARNING: did not manage to match this edge",
 					__func__);
 			return OP_SUCCESS;
 		}
@@ -821,7 +831,7 @@ cross_match_io_constraints(int *free_instances,
 		struct dgsh_edge *e = edges[i];
 		fds += e->instances;
 	}
-	DPRINTF("%s communication endpoints to setup: %d, constraint: %d",
+	DPRINTF(3, "%s communication endpoints to setup: %d, constraint: %d",
 			is_edge_incoming ? "Incoming" : "Outgoing",
 			fds, this_channel_constraint);
 
@@ -857,14 +867,14 @@ calculate_conc_fds(void)
 	int i, calculated = 0, retries = 0;
 	int n_concs = chosen_mb->n_concs;
 
-	DPRINTF("%s for %d n_concs", __func__, n_concs);
+	DPRINTF(3, "%s for %d n_concs", __func__, n_concs);
 	if (n_concs == 0)
 		return OP_SUCCESS;
 
 repeat:
 	for (i = 0; i < n_concs; i++) {
 		struct dgsh_conc *c = &chosen_mb->conc_array[i];
-		DPRINTF("%s() for conc %d at index %d with %d n_proc_pids",
+		DPRINTF(3, "%s() for conc %d at index %d with %d n_proc_pids",
 				__func__, c->pid, i, c->n_proc_pids);
 
 		if (c->input_fds >= 0 && c->output_fds >= 0)
@@ -880,7 +890,7 @@ repeat:
 			c->input_fds = get_provided_fds_n(chosen_mb,
 					c->endpoint_pid);
 
-		DPRINTF("%s(): conc pid %d at index %d: %d %s fds for endpoint pid %d recovered",
+		DPRINTF(3, "%s(): conc pid %d at index %d: %d %s fds for endpoint pid %d recovered",
 				__func__, c->pid, i,
 				c->multiple_inputs ? c->output_fds : c->input_fds,
 				c->multiple_inputs ? "outgoing" : "incoming",
@@ -897,7 +907,7 @@ repeat:
 
 			if (find_conc(chosen_mb, c->proc_pids[j]) && fds == -1) {
 				c->input_fds = c->output_fds = -1;
-				DPRINTF("%s(): conc pid %d at index %d: fds for conc with pid %d not yet available",
+				DPRINTF(3, "%s(): conc pid %d at index %d: fds for conc with pid %d not yet available",
 					__func__, c->pid, i, c->proc_pids[j]);
 				break;
 			} else
@@ -905,7 +915,7 @@ repeat:
 					c->input_fds += fds;
 				else
 					c->output_fds += fds;
-			DPRINTF("%s(): conc pid %d at index %d: %d %s fds for pid %d recovered",
+			DPRINTF(3, "%s(): conc pid %d at index %d: %d %s fds for pid %d recovered",
 				__func__, c->pid, i, fds,
 				c->multiple_inputs ? "incoming" : "outgoing",
 				c->proc_pids[j]);
@@ -921,13 +931,13 @@ repeat:
 			assert(c->input_fds == c->output_fds);
 			calculated++;
 		}
-		DPRINTF("%s(): Conc pid %d at index %d has %d %s fds and %d %s fds",
+		DPRINTF(3, "%s(): Conc pid %d at index %d has %d %s fds and %d %s fds",
 				__func__, c->pid, i,
 				c->multiple_inputs ? c->input_fds : c->output_fds,
 				c->multiple_inputs ? "incoming" : "outgoing",
 				c->multiple_inputs ? c->output_fds : c->input_fds,
 				c->multiple_inputs ? "outgoing" : "incoming");
-		DPRINTF("%s(): Calculated fds for %d concs so far", __func__,
+		DPRINTF(3, "%s(): Calculated fds for %d concs so far", __func__,
 				calculated);
 
 	}
@@ -968,7 +978,7 @@ prepare_solution(void)
 		current_connections->edges_outgoing = NULL;
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
-		DPRINTF("%s(): Node %s, pid: %d, connections in: %d, connections out: %d.",
+		DPRINTF(3, "%s(): Node %s, pid: %d, connections in: %d, connections out: %d.",
 				__func__, chosen_mb->node_array[i].name,
 				chosen_mb->node_array[i].pid,
 				*n_edges_incoming, *n_edges_outgoing);
@@ -1003,7 +1013,7 @@ check_constraints_matched(int node_index, bool *constraints_matched,
 				int ** index_commands_notmatched, int *index_argc)
 {
 	if (!*constraints_matched) {
-		DPRINTF("Constraint not matched. index_argc: %d",
+		DPRINTF(3, "Constraint not matched. index_argc: %d",
 				*index_argc);
 		if (*index_argc == 0)
 			*index_commands_notmatched = (int *)malloc(
@@ -1048,7 +1058,7 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 		int in_constraint = current_node->requires_channels;
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
-		DPRINTF("%s(): node %s, index %d, channels required %d, channels_provided %d, dgsh_in %d, dgsh_out %d.", __func__, current_node->name, current_node->index, in_constraint, out_constraint, current_node->dgsh_in, current_node->dgsh_out);
+		DPRINTF(3, "%s(): node %s, index %d, channels required %d, channels_provided %d, dgsh_in %d, dgsh_out %d.", __func__, current_node->name, current_node->index, in_constraint, out_constraint, current_node->dgsh_in, current_node->dgsh_out);
 
 		/* Try to satisfy the I/O channel constraints at graph level.
 		 * Assign instances to each edge.
@@ -1059,7 +1069,7 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 			    out_constraint,
 		    	    edges_outgoing, *n_edges_outgoing, 0,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-				DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+				DPRINTF(3, "ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -1077,7 +1087,7 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 			    in_constraint,
 		    	    edges_incoming, *n_edges_incoming, 1,
 			    &constraints_matched, &edges_matched) == OP_ERROR) {
-				DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+				DPRINTF(3, "ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -1090,7 +1100,7 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 					index_commands_notmatched, index_argc);
 		}
 	}
-	DPRINTF("%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, n_nodes - *index_argc, n_nodes, edges_matched / 2, n_edges);
+	DPRINTF(3, "%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, n_nodes - *index_argc, n_nodes, edges_matched / 2, n_edges);
 	if (edges_matched / 2 == n_edges && *index_argc == 0)
 		return OP_SUCCESS;
 	else
@@ -1116,13 +1126,13 @@ node_match_constraints(void)
 	struct dgsh_node_connections *graph_solution =
 					chosen_mb->graph_solution;
 	if (!graph_solution) {
-		DPRINTF("ERROR: Failed to allocate memory of size %d for dgsh negotiation graph solution structure.\n", graph_solution_size);
+		DPRINTF(3, "ERROR: Failed to allocate memory of size %d for dgsh negotiation graph solution structure.\n", graph_solution_size);
 		return OP_ERROR;
 	}
 
 	/* Check constraints for each node on the dgsh graph. */
 	for (i = 0; i < n_nodes; i++) {
-		DPRINTF("%s(): node at index %d.", __func__, i);
+		DPRINTF(3, "%s(): node at index %d.", __func__, i);
 		struct dgsh_node_connections *current_connections =
 							&graph_solution[i];
 		memset(current_connections, 0,
@@ -1131,14 +1141,14 @@ node_match_constraints(void)
 		struct dgsh_edge **edges_outgoing;
 		struct dgsh_node *current_node = &chosen_mb->node_array[i];
 		current_connections->node_index = current_node->index;
-		DPRINTF("Node %s, index %d, channels required %d, channels_provided %d, dgsh_in %d, dgsh_out %d.", current_node->name, current_node->index, current_node->requires_channels, current_node->provides_channels, current_node->dgsh_in, current_node->dgsh_out);
+		DPRINTF(3, "Node %s, index %d, channels required %d, channels_provided %d, dgsh_in %d, dgsh_out %d.", current_node->name, current_node->index, current_node->requires_channels, current_node->provides_channels, current_node->dgsh_in, current_node->dgsh_out);
 
 		/* Find and store pointers to node's at node_index edges.
 		 * Try to satisfy the I/O channel constraints at node level.
 		 */
 		if (dry_match_io_constraints(current_node, current_connections,
 			&edges_incoming, &edges_outgoing) == OP_ERROR) {
-			DPRINTF("ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
+			DPRINTF(3, "ERROR: Failed to satisfy requirements for tool %s, pid %d: requires %d and gets %d, provides %d and is offered %d.\n",
 				current_node->name,
 				current_node->pid,
 				current_node->requires_channels,
@@ -1217,7 +1227,7 @@ solve_dgsh_graph(void)
 			exit_state = OP_ERROR;
 			goto exit;
 		}
-		DPRINTF("%s(): exit_state: %d, retries: %d",
+		DPRINTF(3, "%s(): exit_state: %d, retries: %d",
 				__func__, exit_state, retries);
 		retries++;
 		if (index_argc > 0) {
@@ -1246,7 +1256,7 @@ solve_dgsh_graph(void)
 		exit_state = OP_ERROR;
 	}
 
-	DPRINTF("%s: exit_state: %d", __func__, exit_state);
+	DPRINTF(3, "%s: exit_state: %d", __func__, exit_state);
 
 exit:
 	if (exit_state == OP_ERROR)
@@ -1264,7 +1274,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 							int *n_output_fds)
 {
 	enum op_result re = OP_SUCCESS;
-	DPRINTF("%s(): input fds: %d, output fds: %d", __func__,
+	DPRINTF(3, "%s(): input fds: %d, output fds: %d", __func__,
 			self_pipe_fds.n_input_fds, self_pipe_fds.n_output_fds);
 
 	if (self_pipe_fds.n_input_fds > 0) {
@@ -1276,7 +1286,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 			err(1, "Close stdin failed");
 		if ((self_pipe_fds.input_fds[0] = dup(fd_to_dup)) == -1)
 			err(1, "dup failed with errno %d", errno);
-		DPRINTF("%s(): closed STDIN, dup %d returned %d",
+		DPRINTF(3, "%s(): closed STDIN, dup %d returned %d",
 				__func__,fd_to_dup, self_pipe_fds.input_fds[0]);
 		assert(self_pipe_fds.input_fds[0] == STDIN_FILENO);
 		close(fd_to_dup);
@@ -1304,7 +1314,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 			err(1, "Close stdout failed");
 		if ((self_pipe_fds.output_fds[0] = dup(fd_to_dup)) == -1)
 			err(1, "dup failed with errno %d", errno);
-		DPRINTF("%s(): closed STDOUT, dup %d returned %d",
+		DPRINTF(3, "%s(): closed STDOUT, dup %d returned %d",
 				__func__,fd_to_dup,self_pipe_fds.output_fds[0]);
 		assert(self_pipe_fds.output_fds[0] == STDOUT_FILENO);
 		close(fd_to_dup);
@@ -1322,7 +1332,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
 		if (n_output_fds)
 			*n_output_fds = 0;
 
-	DPRINTF("**%s(): %s for node %s at index %d", __func__,
+	DPRINTF(2, "%s(): %s for node %s at index %d", __func__,
 			(re == OP_SUCCESS ? "successful" : "failed"),
 			self_node.name, self_node.index);
 
@@ -1343,7 +1353,7 @@ write_output_fds(int output_socket, int *output_fds)
 					chosen_mb->graph_solution;
 	struct dgsh_node_connections *this_nc =
 					&graph_solution[self_node.index];
-	DPRINTF("%s(): for node at index %d with %d outgoing edges.", __func__,
+	DPRINTF(3, "%s(): for node at index %d with %d outgoing edges.", __func__,
 				self_node.index, this_nc->n_edges_outgoing);
 	assert(this_nc->node_index == self_node.index);
 	int i;
@@ -1373,7 +1383,7 @@ write_output_fds(int output_socket, int *output_fds)
 				perror("pipe open failed");
 				exit(1);
 			}
-			DPRINTF("%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
+			DPRINTF(3, "%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
 
 			write_fd(output_socket, fd[0]);
 			close(fd[0]);
@@ -1386,7 +1396,7 @@ write_output_fds(int output_socket, int *output_fds)
 			break;
 	}
 	if (re == OP_ERROR) {
-		DPRINTF("%s(): ERROR. Aborting.", __func__);
+		DPRINTF(3, "%s(): ERROR. Aborting.", __func__);
 		free_graph_solution(chosen_mb->n_nodes - 1);
 		free(self_pipe_fds.output_fds);
 	}
@@ -1398,7 +1408,7 @@ write_piece (int write_fd, void *datastruct, int struct_size)
 {
 	int retries = 0, wsize;
 retry:
-	DPRINTF("Try write struct of size: %d", struct_size);
+	DPRINTF(3, "Try write struct of size: %d", struct_size);
 	wsize = write(write_fd, datastruct, struct_size);
 	if (wsize == -1 && errno == ENOBUFS && retries < 3) {	// sleep for 10ms
 		nanosleep((const struct timespec[]){{0, 10000000L}}, NULL);
@@ -1437,7 +1447,7 @@ do_write (int write_fd, void *datastruct, int datastruct_size, int struct_type)
 		max_elements = IOV_MAX / struct_size;
 		pieces = all_elements / max_elements;
 		pieces += (all_elements % max_elements > 0);
-		DPRINTF("struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
+		DPRINTF(3, "struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
 			struct_type, pieces, all_elements, max_elements);
 
 		for (i = 0; i < pieces; i++) {
@@ -1447,7 +1457,7 @@ do_write (int write_fd, void *datastruct, int datastruct_size, int struct_type)
 				elements = all_elements;
 			all_elements -= elements;
 			size = struct_size * elements;
-			DPRINTF("Round %d: elements: %d, size: %d, prev_elements: %d",
+			DPRINTF(3, "Round %d: elements: %d, size: %d, prev_elements: %d",
 				i, elements, size, prev_elements);
 
 			if (size > 0) {
@@ -1501,20 +1511,20 @@ write_concs(int write_fd)
 
 	wsize = do_write(write_fd, chosen_mb->conc_array, conc_size, 3);
 	if (wsize == -1) {
-		DPRINTF("ERROR: write failed: errno: %d", errno);
+		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
 	}
-	DPRINTF("%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
+	DPRINTF(3, "%s(): Wrote conc structures of size %d bytes ", __func__, wsize);
 
 	for (i = 0; i < n_concs; i++) {
 		struct dgsh_conc *c = &chosen_mb->conc_array[i];
 		int proc_pids_size = sizeof(int) * c->n_proc_pids;
 		wsize = do_write(write_fd, c->proc_pids, proc_pids_size, 5);
 		if (wsize == -1) {
-			DPRINTF("ERROR: write failed: errno: %d", errno);
+			DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 			return OP_ERROR;
 		}
-		DPRINTF("%s(): Wrote %d proc_pids for conc %d at index %d of size %d bytes ",
+		DPRINTF(3, "%s(): Wrote %d proc_pids for conc %d at index %d of size %d bytes ",
 				__func__, c->n_proc_pids, c->pid, i, wsize);
 	}
 
@@ -1536,10 +1546,10 @@ write_graph_solution(int write_fd)
 	/* Transmit node connection structures. */
 	wsize = do_write(write_fd, graph_solution, graph_solution_size, 4);
 	if (wsize == -1) {
-		DPRINTF("ERROR: write failed: errno: %d", errno);
+		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
 	}
-	DPRINTF("%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
+	DPRINTF(3, "%s(): Wrote graph solution of size %d bytes ", __func__, wsize);
 
 	/* We haven't invalidated pointers to arrays of node indices. */
 
@@ -1552,10 +1562,10 @@ write_graph_solution(int write_fd)
 			wsize = do_write(write_fd, nc->edges_incoming,
 							in_edges_size, 2);
 			if (wsize == -1) {
-				DPRINTF("ERROR: write failed: errno: %d", errno);
+				DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
 			}
-			DPRINTF("%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
+			DPRINTF(3, "%s(): Wrote node's %d %d incoming edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_incoming, wsize);
 		}
 
 		if (nc->n_edges_outgoing) {
@@ -1563,10 +1573,10 @@ write_graph_solution(int write_fd)
 			wsize = do_write(write_fd, nc->edges_outgoing,
 							out_edges_size, 2);
 			if (wsize == -1) {
-				DPRINTF("ERROR: write failed: errno: %d", errno);
+				DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
 			}
-			DPRINTF("%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
+			DPRINTF(3, "%s(): Wrote node's %d %d outgoing edges of size %d bytes ", __func__, nc->node_index, nc->n_edges_outgoing, wsize);
 		}
 	}
 	return OP_SUCCESS;
@@ -1588,7 +1598,7 @@ set_dispatcher(void)
 	chosen_mb->origin_fd_direction = self_node_io_side.fd_direction;
 	chosen_mb->is_origin_conc = false;
 	chosen_mb->conc_pid = -1;
-	DPRINTF("%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin_index,
+	DPRINTF(3, "%s(): message block origin set to %d and writing on the %s side", __func__, chosen_mb->origin_index,
 	(chosen_mb->origin_fd_direction == 0) ? "input" : "output");
 }
 
@@ -1604,7 +1614,7 @@ write_message_block(int write_fd)
 	int edges_size = chosen_mb->n_edges * sizeof(struct dgsh_edge);
 	struct dgsh_node *p_nodes = chosen_mb->node_array;
 
-	DPRINTF("**%s(): %s (%d)", __func__, programname, self_node.index);
+	DPRINTF(2, "%s(): %s (%d)", __func__, programname, self_node.index);
 
 	/**
 	 * Prepare and perform message block transmission.
@@ -1612,22 +1622,22 @@ write_message_block(int write_fd)
 	 * to avoid accidents on the receiver's side.
 	 */
 	chosen_mb->node_array = NULL;
-	DPRINTF("%s(): Write message block.", __func__);
+	DPRINTF(3, "%s(): Write message block.", __func__);
 	wsize = do_write(write_fd, chosen_mb, mb_size, 0);
 	if (wsize == -1) {
-		DPRINTF("ERROR: write failed: errno: %d", errno);
+		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 		return OP_ERROR;
 	}
-	DPRINTF("%s(): Wrote message block of size %d bytes ", __func__, wsize);
+	DPRINTF(3, "%s(): Wrote message block of size %d bytes ", __func__, wsize);
 
 	/* Transmit nodes. */
 	if (chosen_mb->n_nodes > 0) {
 		wsize = do_write(write_fd, p_nodes, nodes_size, 1);
 		if (wsize == -1) {
-			DPRINTF("ERROR: write failed: errno: %d", errno);
+			DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 			return OP_ERROR;
 		}
-		DPRINTF("%s(): Wrote nodes of size %d bytes ",
+		DPRINTF(3, "%s(): Wrote nodes of size %d bytes ",
 				__func__, wsize);
 	}
 
@@ -1643,10 +1653,10 @@ write_message_block(int write_fd)
 			chosen_mb->edge_array = NULL;
 			wsize = do_write(write_fd, p_edges, edges_size, 2);
 			if (wsize == -1) {
-				DPRINTF("ERROR: write failed: errno: %d", errno);
+				DPRINTF(3, "ERROR: write failed: errno: %d", errno);
 				return OP_ERROR;
 			}
-			DPRINTF("%s(): Wrote edges of size %d bytes ", __func__, wsize);
+			DPRINTF(3, "%s(): Wrote edges of size %d bytes ", __func__, wsize);
 
 			chosen_mb->edge_array = p_edges; /* Reinstate edges. */
 		}
@@ -1656,7 +1666,7 @@ write_message_block(int write_fd)
 			return OP_ERROR;
 	}
 
-	DPRINTF("%s(): Shipped message block or solution to next node in graph from file descriptor: %d.\n", __func__, write_fd);
+	DPRINTF(3, "%s(): Shipped message block or solution to next node in graph from file descriptor: %d.\n", __func__, write_fd);
 	return OP_SUCCESS;
 }
 
@@ -1669,7 +1679,7 @@ add_node(void)
 	void *p = realloc(chosen_mb->node_array,
 		sizeof(struct dgsh_node) * (n_nodes + 1));
 	if (!p) {
-		DPRINTF("ERROR: Node array expansion for adding a new node failed.\n");
+		DPRINTF(3, "ERROR: Node array expansion for adding a new node failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->node_array = (struct dgsh_node *)p;
@@ -1677,7 +1687,7 @@ add_node(void)
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node,
 					sizeof(struct dgsh_node));
 		self_node_io_side.index = n_nodes;
-		DPRINTF("**%s(): Added node %s in position %d on dgsh graph, initiator: %d\n",
+		DPRINTF(2, "%s(): Added node %s in position %d on dgsh graph, initiator: %d\n",
 				__func__, self_node.name, self_node_io_side.index,
 				chosen_mb->initiator_pid);
 		chosen_mb->n_nodes++;
@@ -1695,7 +1705,7 @@ lookup_dgsh_edge(struct dgsh_edge *e)
 			chosen_mb->edge_array[i].to == e->to) ||
 		    (chosen_mb->edge_array[i].from == e->to &&
 		     chosen_mb->edge_array[i].to == e->from)) {
-			DPRINTF("**%s(): Edge %d to %d exists.", __func__,
+			DPRINTF(3, "%s(): Edge %d to %d exists.", __func__,
 								e->from, e->to);
 			return OP_EXISTS;
 		}
@@ -1716,7 +1726,7 @@ fill_dgsh_edge(struct dgsh_edge *e)
 		if (i == chosen_mb->origin_index)
 			break;
 	if (i == n_nodes) {
-		DPRINTF("ERROR: Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin_index);
+		DPRINTF(3, "ERROR: Dispatcher node with index position %d not present in graph.\n", chosen_mb->origin_index);
 		return OP_ERROR;
 	}
 	if (chosen_mb->origin_fd_direction == STDIN_FILENO) {
@@ -1750,7 +1760,7 @@ fill_dgsh_edge(struct dgsh_edge *e)
 	e->instances = 0;
 	e->from_instances = 0;
 	e->to_instances = 0;
-        DPRINTF("New dgsh edge from %d to %d with %d instances.", e->from, e->to, e->instances);
+        DPRINTF(3, "New dgsh edge from %d to %d with %d instances.", e->from, e->to, e->instances);
 	return OP_SUCCESS;
 }
 
@@ -1762,13 +1772,13 @@ add_edge(struct dgsh_edge *edge)
 	void *p = realloc(chosen_mb->edge_array,
 			sizeof(struct dgsh_edge) * (n_edges + 1));
 	if (!p) {
-		DPRINTF("ERROR: Edge array expansion for adding a new edge failed.\n");
+		DPRINTF(3, "ERROR: Edge array expansion for adding a new edge failed.\n");
 		return OP_ERROR;
 	} else {
 		chosen_mb->edge_array = (struct dgsh_edge *)p;
 		memcpy(&chosen_mb->edge_array[n_edges], edge,
 						sizeof(struct dgsh_edge));
-		DPRINTF("**Added edge (%d -> %d) in dgsh graph.\n",
+		DPRINTF(3, "Added edge (%d -> %d) in dgsh graph.\n",
 					edge->from, edge->to);
 		chosen_mb->n_edges++;
 	}
@@ -1785,7 +1795,7 @@ try_add_dgsh_edge(void)
 		if (lookup_dgsh_edge(&new_edge) == OP_CREATE) {
 			if (add_edge(&new_edge) == OP_ERROR)
 				return OP_ERROR;
-			DPRINTF("**Dgsh graph now has %d edges.\n",
+			DPRINTF(3, "Dgsh graph now has %d edges.\n",
 							chosen_mb->n_edges);
 			return OP_SUCCESS;
 		}
@@ -1809,7 +1819,7 @@ fill_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 			self_node.requires_channels = 0;
 	else
 		self_node.requires_channels = *n_input_fds;
-	DPRINTF("%s(): dgsh_in: %d, self_node.requires_channels: %d", __func__,
+	DPRINTF(3, "%s(): dgsh_in: %d, self_node.requires_channels: %d", __func__,
 			self_node.dgsh_in, self_node.requires_channels);
 
 	if (n_output_fds == NULL) {
@@ -1819,10 +1829,10 @@ fill_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 			self_node.provides_channels = 0;
 	} else
 		self_node.provides_channels = *n_output_fds;
-	DPRINTF("%s(): dgsh_out: %d, self_node.provides_channels: %d", __func__,
+	DPRINTF(3, "%s(): dgsh_out: %d, self_node.provides_channels: %d", __func__,
 			self_node.dgsh_out, self_node.provides_channels);
 
-	DPRINTF("Dgsh node for tool %s with pid %d created.\n", tool_name,
+	DPRINTF(3, "Dgsh node for tool %s with pid %d created.\n", tool_name,
 			self_pid);
 }
 
@@ -1837,7 +1847,7 @@ try_add_dgsh_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 	int n_nodes = chosen_mb->n_nodes;
 	int i;
 	for (i = 0; i < n_nodes; i++) {
-		DPRINTF("node name: %s, pid: %d",
+		DPRINTF(3, "node name: %s, pid: %d",
 						chosen_mb->node_array[i].name,
 						chosen_mb->node_array[i].pid);
 		if (chosen_mb->node_array[i].pid == self_pid)
@@ -1847,7 +1857,7 @@ try_add_dgsh_node(const char *tool_name, pid_t self_pid, int *n_input_fds,
 		fill_node(tool_name, self_pid, n_input_fds, n_output_fds);
 		if (add_node() == OP_ERROR)
 			return OP_ERROR;
-		DPRINTF("Dgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
+		DPRINTF(3, "Dgsh graph now has %d nodes.\n", chosen_mb->n_nodes);
 		return OP_SUCCESS;
 	}
 	return OP_EXISTS;
@@ -1876,7 +1886,7 @@ free_mb(struct dgsh_negotiation *mb)
 	if (mb->conc_array)
 		free_conc_array(mb);
 	free(mb);
-	DPRINTF("%s(): Freed message block.", __func__);
+	DPRINTF(3, "%s(): Freed message block.", __func__);
 }
 
 static enum op_result
@@ -1933,12 +1943,12 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 static enum op_result
 check_read(int bytes_read, int buf_size, int expected_read_size) {
 	if (bytes_read != expected_read_size) {
-		DPRINTF("%s(): ERROR: Read %d bytes of message block, expected to read %d.\n",
+		DPRINTF(3, "%s(): ERROR: Read %d bytes of message block, expected to read %d.\n",
 			__func__, bytes_read, expected_read_size);
 		return OP_ERROR;
 	}
 	if (bytes_read > buf_size) {
-		DPRINTF("%s(): ERROR: Read %d bytes of message block, but buffer can hold up to %d.",
+		DPRINTF(3, "%s(): ERROR: Read %d bytes of message block, but buffer can hold up to %d.",
 				__func__, bytes_read, buf_size);
 		return OP_ERROR;
 	}
@@ -2006,7 +2016,7 @@ alloc_copy_nodes(struct dgsh_negotiation *mb, char *buf, int bytes_read,
 		return OP_ERROR;
 	mb->node_array = (struct dgsh_node *)malloc(bytes_read);
 	memcpy(mb->node_array, buf, bytes_read);
-	DPRINTF("%s(): Node array recovered.", __func__);
+	DPRINTF(3, "%s(): Node array recovered.", __func__);
 	return OP_SUCCESS;
 }
 
@@ -2035,7 +2045,7 @@ static enum op_result
 call_read(int fd, char *buf, int buf_size, int *bytes_read, int *error_code)
 {
 	*error_code = 0;
-	DPRINTF("Try read from fd %d.", fd);
+	DPRINTF(3, "Try read from fd %d.", fd);
 	if ((*bytes_read = read(fd, buf, buf_size)) == -1) {
 		*error_code = -errno;
 		return OP_ERROR;
@@ -2053,7 +2063,7 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
 						int struct_type)
 {
 	int error_code;
-	DPRINTF("%s(): buf_size: %d, IOV_MAX: %d",
+	DPRINTF(3, "%s(): buf_size: %d, IOV_MAX: %d",
 			__func__, buf_size, IOV_MAX);
 
 	if (buf_size > IOV_MAX) {
@@ -2065,7 +2075,7 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
 		max_elements = IOV_MAX / struct_size;
 		pieces = all_elements / max_elements;
 		pieces += (all_elements % max_elements > 0);
-		DPRINTF("struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
+		DPRINTF(3, "struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
 			struct_type, pieces, all_elements, max_elements);
 		
 		for (i = 0; i < pieces; i++) {
@@ -2076,7 +2086,7 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
 				elements = all_elements;
 			all_elements -= elements;
 			buf_size_piece = struct_size * elements;
-			DPRINTF("Round %d: elements: %d, size: %d",
+			DPRINTF(3, "Round %d: elements: %d, size: %d",
 				i, elements, buf_size_piece);
 
 			if (buf_size_piece > 0) {
@@ -2099,11 +2109,11 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
 		call_read(read_fd, buf, buf_size, bytes_read, &error_code);
 
 	if (*bytes_read == -1) {  /* Read failed. */
-	 	DPRINTF("ERROR: Reading from fd %d failed with error code %d.",
+	 	DPRINTF(3, "ERROR: Reading from fd %d failed with error code %d.",
 			read_fd, error_code);
 		return error_code;
 	} else  /* Read succeeded. */
-		DPRINTF("Read succeeded: %d bytes read from %d.\n",
+		DPRINTF(3, "Read succeeded: %d bytes read from %d.\n",
 		*bytes_read, read_fd);
 	return OP_SUCCESS;
 }
@@ -2127,7 +2137,7 @@ alloc_io_fds()
 	int i = 0;
 	struct dgsh_node_connections *this_nc =
 				&chosen_mb->graph_solution[self_node.index];
-	DPRINTF("%s(): self node: %d, incoming edges: %d, outgoing edges: %d", __func__, self_node.index, this_nc->n_edges_incoming, this_nc->n_edges_outgoing);
+	DPRINTF(3, "%s(): self node: %d, incoming edges: %d, outgoing edges: %d", __func__, self_node.index, this_nc->n_edges_incoming, this_nc->n_edges_outgoing);
 
 	self_pipe_fds.n_input_fds = 0; /* For safety. */
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
@@ -2301,7 +2311,7 @@ read_input_fds(int input_socket, int *input_fds)
 	int total_edge_instances = 0;
 	enum op_result re = OP_SUCCESS;
 
-	DPRINTF("%s(): %d incoming edges to inspect of node %d.", __func__,
+	DPRINTF(3, "%s(): %d incoming edges to inspect of node %d.", __func__,
 			this_nc->n_edges_incoming, self_node.index);
 	for (i = 0; i < this_nc->n_edges_incoming; i++) {
 		int k;
@@ -2311,7 +2321,7 @@ read_input_fds(int input_socket, int *input_fds)
 		 */
 		for (k = 0; k < this_nc->edges_incoming[i].instances; k++) {
 			input_fds[total_edge_instances] = read_fd(input_socket);
-			DPRINTF("%s: Node %d received file descriptor %d.",
+			DPRINTF(3, "%s: Node %d received file descriptor %d.",
 					__func__, this_nc->node_index,
 					input_fds[total_edge_instances]);
 			total_edge_instances++;
@@ -2354,7 +2364,7 @@ read_concs(int read_fd, struct dgsh_negotiation *fresh_mb)
 			return error_code;
 		error_code = alloc_copy_proc_pids(c, buf, bytes_read, buf_size);
 		free(buf);
-		DPRINTF("%s(): Read %d proc_pids for conc %d at index %d of size %d bytes ",
+		DPRINTF(3, "%s(): Read %d proc_pids for conc %d at index %d of size %d bytes ",
 				__func__, c->n_proc_pids, c->pid, i, bytes_read);
 	}
 
@@ -2385,7 +2395,7 @@ read_graph_solution(int read_fd, struct dgsh_negotiation *fresh_mb)
 					fresh_mb->graph_solution;
 	for (i = 0; i < n_nodes; i++) {
 		struct dgsh_node_connections *nc = &graph_solution[i];
-		DPRINTF("Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
+		DPRINTF(3, "Node %d with %d incoming edges at %lx and %d outgoing edges at %lx.", nc->node_index, nc->n_edges_incoming, (long)nc->edges_incoming, nc->n_edges_outgoing, (long)nc->edges_outgoing);
 		int in_edges_size = sizeof(struct dgsh_edge) * nc->n_edges_incoming;
 		int out_edges_size = sizeof(struct dgsh_edge) * nc->n_edges_outgoing;
 
@@ -2396,7 +2406,7 @@ read_graph_solution(int read_fd, struct dgsh_negotiation *fresh_mb)
 				&bytes_read, 2)) != OP_SUCCESS)
 				return error_code;
 			if (in_edges_size != bytes_read) {
-				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
+				DPRINTF(3, "%s(): ERROR: Expected %d bytes, got %d.", __func__,
 						in_edges_size, bytes_read);
 				return OP_ERROR;
 			}
@@ -2414,7 +2424,7 @@ read_graph_solution(int read_fd, struct dgsh_negotiation *fresh_mb)
 				&bytes_read, 2)) != OP_SUCCESS)
 				return error_code;
 			if (out_edges_size != bytes_read) {
-				DPRINTF("%s(): ERROR: Expected %d bytes, got %d.", __func__,
+				DPRINTF(3, "%s(): ERROR: Expected %d bytes, got %d.", __func__,
 						out_edges_size, bytes_read);
 				return OP_ERROR;
 			}
@@ -2447,7 +2457,7 @@ read_message_block(int read_fd, struct dgsh_negotiation **fresh_mb)
 	int bytes_read = 0;
 	enum op_result error_code = 0;
 
-	DPRINTF("**%s(): %s (%d)", __func__, programname, self_node.index);
+	DPRINTF(2, "%s(): %s (%d)", __func__, programname, self_node.index);
 
 	memset(buf, 0, buf_size);
 
@@ -2476,7 +2486,7 @@ read_message_block(int read_fd, struct dgsh_negotiation **fresh_mb)
 
 	if ((*fresh_mb)->state == PS_NEGOTIATION) {
 		if ((*fresh_mb)->n_edges > 0) {
-			DPRINTF("%s(): Read %d negotiation graph edges.",
+			DPRINTF(3, "%s(): Read %d negotiation graph edges.",
 					__func__, (*fresh_mb)->n_edges);
 			buf_size = sizeof(struct dgsh_edge) * (*fresh_mb)->n_edges;
 			buf = (char *)malloc(buf_size);
@@ -2498,7 +2508,7 @@ read_message_block(int read_fd, struct dgsh_negotiation **fresh_mb)
 		if (read_graph_solution(read_fd, *fresh_mb) == OP_ERROR)
 			return OP_ERROR;
 	}
-	DPRINTF("%s(): Read message block or solution from node %d sent from file descriptor: %s.\n", __func__, (*fresh_mb)->origin_index, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
+	DPRINTF(3, "%s(): Read message block or solution from node %d sent from file descriptor: %s.\n", __func__, (*fresh_mb)->origin_index, ((*fresh_mb)->origin_fd_direction) ? "stdout" : "stdin");
 	return OP_SUCCESS;
 }
 
@@ -2510,7 +2520,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb = (struct dgsh_negotiation *)malloc(
 				memory_allocation_size);
 	if (!chosen_mb) {
-		DPRINTF("ERROR: Memory allocation of message block failed.");
+		DPRINTF(3, "ERROR: Memory allocation of message block failed.");
 		return OP_ERROR;
 	}
 
@@ -2529,23 +2539,24 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->graph_solution = NULL;
 	chosen_mb->conc_array = NULL;
 	chosen_mb->n_concs = 0;
-	DPRINTF("Message block created by process %s with pid %d.\n",
+	DPRINTF(2, "Message block created by process %s with pid %d.\n",
 						tool_name, (int)self_pid);
 	return OP_SUCCESS;
 }
 
 /* Get environment variable env_var. */
 static void
-get_env_var(const char *env_var,int *value)
+get_env_var(const char *env_var, int *value)
 {
 	char *string_value = getenv(env_var);
-	if (!string_value)
-		DPRINTF("Getting environment variable %s failed.\n",
+	if (string_value == NULL)
+		DPRINTF(3, "Getting environment variable %s failed.",
 				env_var);
 	else {
-		DPRINTF("getenv() returned string value %s.\n", string_value);
+		DPRINTF(3, "getenv() returned string value %s.",
+				string_value);
 		*value = atoi(string_value);
-		DPRINTF("Integer form of value is %d.\n", *value);
+		DPRINTF(3, "Integer form of value is %d.", *value);
 	}
 }
 
@@ -2556,10 +2567,10 @@ get_env_var(const char *env_var,int *value)
 static void
 get_environment_vars()
 {
-	DPRINTF("Try to get environment variable DGSH_IN.");
+	DPRINTF(3, "Try to get environment variable DGSH_IN.");
 	get_env_var("DGSH_IN", &self_node.dgsh_in);
 
-	DPRINTF("Try to get environment variable DGSH_OUT.");
+	DPRINTF(3, "Try to get environment variable DGSH_OUT.");
 	get_env_var("DGSH_OUT", &self_node.dgsh_out);
 }
 
@@ -2573,13 +2584,13 @@ validate_input(int *channels_required, int *channels_provided, const char *tool_
 {
 
 	if (!tool_name) {
-		DPRINTF("ERROR: NULL pointer provided as tool name.\n");
+		DPRINTF(3, "ERROR: NULL pointer provided as tool name.\n");
 		return OP_ERROR;
 	}
 	if (channels_required == NULL || channels_provided == NULL)
 		return OP_SUCCESS;
 	if (*channels_required < -1 || *channels_provided < -1) {
-		DPRINTF("ERROR: I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
+		DPRINTF(3, "ERROR: I/O requirements entered for tool %s are less than -1. \nChannels required %d \nChannels provided: %d",
 			tool_name, *channels_required, *channels_provided);
 		return OP_ERROR;
 	}
@@ -2593,7 +2604,7 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 	FD_ZERO(read_fds);
 	FD_ZERO(write_fds);
 
-	DPRINTF("Next operation is a %s", isread ? "read" : "write");
+	DPRINTF(3, "Next operation is a %s", isread ? "read" : "write");
 	/* The next operation is a read or a write */
 	if (isread)
 		fds = read_fds;
@@ -2618,11 +2629,11 @@ set_fds(fd_set *read_fds, fd_set *write_fds, bool isread)
 			if (chosen_mb->origin_fd_direction == STDOUT_FILENO) {
 				FD_SET(STDOUT_FILENO, fds);
 				self_node_io_side.fd_direction = STDOUT_FILENO;
-				DPRINTF("STDOUT set for write");
+				DPRINTF(3, "STDOUT set for write");
 			} else {
 				FD_SET(STDIN_FILENO, fds);
 				self_node_io_side.fd_direction = STDIN_FILENO;
-				DPRINTF("STDIN set for write");
+				DPRINTF(3, "STDIN set for write");
 			}
 		}
 	}
@@ -2640,17 +2651,17 @@ static int
 setup_file_descriptors(int *n_input_fds, int *n_output_fds,
 		int **input_fds, int **output_fds)
 {
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 	if (n_input_fds != NULL && (*n_input_fds == 1 ||
 			*n_input_fds == -1) && input_fds != NULL) {
-		DPRINTF("n_input_fds: %d\n", *n_input_fds);
+		DPRINTF(3, "n_input_fds: %d\n", *n_input_fds);
 		*n_input_fds = 1;
 		*input_fds = malloc(sizeof(int));
 		(*input_fds)[0] = STDIN_FILENO;
 	}
 	if (n_output_fds != NULL && (*n_output_fds == 1 ||
 			*n_output_fds == -1) && output_fds != NULL) {
-		DPRINTF("n_output_fds: %d\n", *n_output_fds);
+		DPRINTF(3, "n_output_fds: %d\n", *n_output_fds);
 		*n_output_fds = 1;
 		*output_fds = malloc(sizeof(int));
 		(*output_fds)[0] = STDOUT_FILENO;
@@ -2701,18 +2712,26 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	bool isread = false;
 	fd_set read_fds, write_fds;
 	char *timeout;
+	char *debug_level;
 
 	if (negotiation_completed) {
 		errno = EALREADY;
 		return dgsh_exit(-1, flags);
 	}
 
+	/* Get and set user-provided debug level.
+	 * dgsh_debug_level is defined in debug.h.
+	 */
+	debug_level = getenv("DGSH_DEBUG_LEVEL");
+	if (debug_level != NULL)
+		dgsh_debug_level = atoi(debug_level);
+
 #ifndef UNIT_TESTING
 	self_pipe_fds.input_fds = NULL;		/* Clean garbage */
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
 	programname = strdup(tool_name);
-	DPRINTF("%s(): Tool %s with pid %d entered dgsh negotiation.",
+	DPRINTF(2, "%s(): Tool %s with pid %d entered dgsh negotiation.",
 			__func__, tool_name, (int)self_pid);
 
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
@@ -2765,7 +2784,7 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	/* Perform phases and rounds. */
 	while (1) {
 again:
-		DPRINTF("%s(): perform round", __func__);
+		DPRINTF(3, "%s(): perform round", __func__);
 		nfds = set_fds(&read_fds, &write_fds, isread);
 		if (select(nfds, &read_fds, &write_fds, NULL, NULL) < 0) {
 			if (errno == EINTR)
@@ -2776,7 +2795,7 @@ again:
 
 		for (i = 0; i < nfds; i++) {
 			if (FD_ISSET(i, &write_fds)) {
-				DPRINTF("write on fd %d is active.", i);
+				DPRINTF(3, "write on fd %d is active.", i);
 				/* Write message block et al. */
 				set_dispatcher();
 				if (write_message_block(i) == OP_ERROR)
@@ -2785,13 +2804,13 @@ again:
 				    n_io_channels == ntimes_seen_error) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF("**%s(): %s (%d) leaves after write with state %d.", __func__, programname, self_node.index, chosen_mb->state);
+					DPRINTF(2, "%s(): %s (%d) leaves after write with state %d.", __func__, programname, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = true;
 			}
 			if (FD_ISSET(i, &read_fds)) {
-				DPRINTF("read on fd %d is active.", i);
+				DPRINTF(3, "read on fd %d is active.", i);
 				/* Read message block et al. */
 				if (read_message_block(i, &fresh_mb)
 						== OP_ERROR &&
@@ -2817,6 +2836,7 @@ again:
 				if (self_node.pid ==
 						chosen_mb->initiator_pid) {
 					if (chosen_mb->state == PS_RUN) {
+						DPRINTF(1, "%s(): completed sharing the solution", __func__);
 						chosen_mb->state = PS_COMPLETE;
 						goto exit;
 					} else if (chosen_mb->state == PS_ERROR) {
@@ -2825,13 +2845,15 @@ again:
 						else
 							chosen_mb->is_error_confirmed = true;
 					} else if (chosen_mb->state == PS_NEGOTIATION) {
-					chosen_mb->state = PS_NEGOTIATION_END;
-					DPRINTF("%s(): ***Negotiation protocol state change: end of negotiation phase.***\n", __func__);
-					if (solve_dgsh_graph() == OP_ERROR) {
-						chosen_mb->state = PS_ERROR;
-						chosen_mb->is_error_confirmed = true;
-					} else
-						chosen_mb->state = PS_RUN;
+						chosen_mb->state = PS_NEGOTIATION_END;
+						DPRINTF(1, "%s(): completed gathering I/O requirements.", __func__);
+						if (solve_dgsh_graph() == OP_ERROR) {
+							chosen_mb->state = PS_ERROR;
+							chosen_mb->is_error_confirmed = true;
+						} else {
+							DPRINTF(1, "%s(): computed solution", __func__);
+							chosen_mb->state = PS_RUN;
+						}
 					}
 				}
 				isread = false;
@@ -2839,7 +2861,7 @@ again:
 		}
 	}
 exit:
-	DPRINTF("%s(): %s (%d) leaves after %s with state %d.", __func__,
+	DPRINTF(2, "%s(): %s (%d) leaves after %s with state %d.", __func__,
 			programname, self_node.index, isread ? "read" : "write",
 			chosen_mb->state);
 	if (chosen_mb->state == PS_COMPLETE) {

@@ -31,7 +31,7 @@
 #include <err.h>
 
 #include "dgsh.h"
-#include "debug.h"		/* DPRINTF() */
+#include "debug.h"		/* DPRINTF(3, ) */
 
 #define PROC_FD_PATH_LEN 20
 
@@ -100,14 +100,14 @@ main(int argc, char *argv[])
 	int feed_stdin = 0, special_args = 0;
 
 	/* Preclude recursive wrapping */
-	DPRINTF("PATH before: [%s]", getenv("PATH"));
+	DPRINTF(3, "PATH before: [%s]", getenv("PATH"));
 	remove_from_path("libexec/dgsh");
-	DPRINTF("PATH after: [%s]", getenv("PATH"));
+	DPRINTF(3, "PATH after: [%s]", getenv("PATH"));
 
-	DPRINTF("argc: %d", argc);
+	DPRINTF(3, "argc: %d", argc);
 	int k = 0;
 	for (k = 0; k < argc; k++)
-		DPRINTF("argv[%d]: %s", k, argv[k]);
+		DPRINTF(3, "argv[%d]: %s", k, argv[k]);
 
 	program_name = argv[0];
 
@@ -119,7 +119,7 @@ main(int argc, char *argv[])
 	 */
 	if (argv[1][0] == '-') {
 		char *m = ++argv[1];
-		DPRINTF("m: %s", m);
+		DPRINTF(3, "m: %s", m);
 		while (m) {
 			if (m[0] == 'd') {
 				ninputs = 0;
@@ -148,7 +148,7 @@ main(int argc, char *argv[])
 		guest_program_name = argv[pos];
 		pos++;
 	}
-	DPRINTF("guest_program_name: %s", guest_program_name);
+	DPRINTF(3, "guest_program_name: %s", guest_program_name);
 
 	int exec_argv_len = argc - 1;
 	int i, j;
@@ -163,12 +163,12 @@ main(int argc, char *argv[])
 	 * Skip the argv item that contains the wrapper script
 	 */
 	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("dgsh-wrap");
-	DPRINTF("argv[0]: %s, argv[2]: %s, compare_chars: %d",
+	DPRINTF(3, "argv[0]: %s, argv[2]: %s, compare_chars: %d",
 			argv[0], argv[pos], compare_chars);
 	if (compare_chars > 0 &&
 			!(cmp = strncmp(argv[pos], argv[0], compare_chars)))
 		pos++;
-	DPRINTF("cmp: %d, pos: %d", cmp, pos);
+	DPRINTF(3, "cmp: %d, pos: %d", cmp, pos);
 
 	// Pass argv arguments to exec_argv for exec() call.
 	for (i = pos, j = 1; i < argc; i++, j++)
@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 
 	// Mark special argument "<|" that means input from /proc/self/fd/x
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
-		DPRINTF("exec_argv[%d]: %s", k, exec_argv[k]);
+		DPRINTF(3, "exec_argv[%d]: %s", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
 				(m = strstr(exec_argv[k], "<|"))) {
@@ -189,7 +189,7 @@ main(int argc, char *argv[])
 				m += 2;
 				m = strstr(m, "<|");
 			}
-			DPRINTF("ninputs: %d", ninputs);
+			DPRINTF(3, "ninputs: %d", ninputs);
 		}
 	}
 	/* originally ninputs = -1, so +1 to 0 and
@@ -201,7 +201,7 @@ main(int argc, char *argv[])
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
 	 */
-	DPRINTF("argc: %d", argc);
+	DPRINTF(3, "argc: %d", argc);
 	char negotiation_title[100];
 	if (argc >= 5)	// [4] does not exist, [3] is NULL
 		snprintf(negotiation_title, 100, "%s %s %s",
@@ -222,19 +222,19 @@ main(int argc, char *argv[])
 	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
 
 	if (ninputs != -1)
-		DPRINTF("%s returned %d input fds", negotiation_title, ninputs);
+		DPRINTF(3, "%s returned %d input fds", negotiation_title, ninputs);
 	/* Substitute special argument "<|" with /proc/self/fd/x received
 	 * from negotiation
 	 */
 	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
 		char *m = NULL;
-		DPRINTF("exec_argv[%d] to sub: %s", k, exec_argv[k]);
+		DPRINTF(3, "exec_argv[%d] to sub: %s", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
 			(m = strstr(exec_argv[k], "<|"))) {
 
 			size_t size = sizeof(char) *
 				(strlen(exec_argv[k]) + PROC_FD_PATH_LEN * ninputs);
-			DPRINTF("fds[k] size: %d", (int)size);
+			DPRINTF(3, "fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
 			if (fds[k] == NULL)
 				err(1, "Unable to allocate %zu bytes for fds", size);
@@ -246,7 +246,7 @@ main(int argc, char *argv[])
 
 			char *argv_end = NULL;
 			while (m) {	// substring match
-				DPRINTF("Matched: %s", m);
+				DPRINTF(3, "Matched: %s", m);
 				char *new_argv = calloc(size, 1);
 				char *argv_start = calloc(size, 1);
 				char *proc_fd = calloc(PROC_FD_PATH_LEN, 1);
@@ -257,16 +257,16 @@ main(int argc, char *argv[])
 
 				sprintf(proc_fd, "/proc/self/fd/%d",
 						input_fds[n++]);
-				DPRINTF("proc_fd: %s", proc_fd);
+				DPRINTF(3, "proc_fd: %s", proc_fd);
 				if (!argv_end)
 					strncpy(argv_start, exec_argv[k],
 							m - exec_argv[k]);
 				else
 					strncpy(argv_start, argv_end,
 							m - argv_end);
-				DPRINTF("argv_start: %s", argv_start);
+				DPRINTF(3, "argv_start: %s", argv_start);
 				argv_end = m + 2;
-				DPRINTF("argv_end: %s", argv_end);
+				DPRINTF(3, "argv_end: %s", argv_end);
 				if (strlen(fds[k]) > 0) {
 					strcpy(new_argv, fds[k]);
 					sprintf(fds[k], "%s%s%s", new_argv,
@@ -280,11 +280,11 @@ main(int argc, char *argv[])
 					sprintf(fds[k], "%s%s",
 						new_argv, argv_end);
 				}
-				DPRINTF("fds[k]: %s", fds[k]);
+				DPRINTF(3, "fds[k]: %s", fds[k]);
 			}
 			exec_argv[k] = fds[k];
 		}
-		DPRINTF("After sub exec_argv[%d]: %s", k, exec_argv[k]);
+		DPRINTF(3, "After sub exec_argv[%d]: %s", k, exec_argv[k]);
 	}
 
 	// Execute command

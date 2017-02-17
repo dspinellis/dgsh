@@ -1067,7 +1067,7 @@ retire_test_set_io_channels(void)
 
 START_TEST(test_solve_dgsh_graph)
 {
-	DPRINTF("%s", __func__);
+	DPRINTF(3, "%s", __func__);
         /* A normal case with fixed, tight constraints. */
 	ck_assert_int_eq(solve_dgsh_graph(), OP_SUCCESS);
 	struct dgsh_node_connections *graph_solution =
@@ -1132,7 +1132,7 @@ END_TEST
 
 START_TEST(test_calculate_conc_fds)
 {
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 	chosen_mb->conc_array[0].input_fds = -1;
 	chosen_mb->conc_array[0].output_fds = -1;
 	chosen_mb->conc_array[1].input_fds = -1;
@@ -1177,7 +1177,7 @@ START_TEST(test_establish_io_connections)
 		exit(1);
 	}
 	self_pipe_fds.input_fds[0] = fd[0];
-	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output: %d",
+	DPRINTF(3, "%s: Opened pipe pair: input_fds[0]: %d, output: %d",
 			__func__, fd[0], fd[1]);
 
 	ck_assert_int_eq(establish_io_connections(NULL, NULL, NULL, NULL),
@@ -1194,7 +1194,7 @@ START_TEST(test_establish_io_connections)
 		exit(1);
 	}
 	self_pipe_fds.input_fds[0] = fd[0];
-	DPRINTF("%s: Opened pipe pair: input_fds[0]: %d, output: %d",
+	DPRINTF(3, "%s: Opened pipe pair: input_fds[0]: %d, output: %d",
 			__func__, fd[0], fd[1]);
 	self_pipe_fds.input_fds[1] = 6;
 	ck_assert_int_eq(establish_io_connections(&input_fds, &n_input_fds,
@@ -1224,7 +1224,7 @@ retire_dmic(void)
 
 START_TEST(test_node_match_constraints)
 {
-	DPRINTF("%s()\n", __func__);
+	DPRINTF(3, "%s()\n", __func__);
 
 	/* Default topology; take a look at setup_chosen_mb() */
 	chosen_mb->node_array[3].requires_channels = 2;
@@ -1259,7 +1259,7 @@ END_TEST
 	
 START_TEST(test_dry_match_io_constraints)
 {
-	DPRINTF("%s", __func__);
+	DPRINTF(3, "%s", __func__);
 
 	struct dgsh_node_connections *graph_solution =
 		chosen_mb->graph_solution;
@@ -1359,7 +1359,7 @@ START_TEST(test_move)
 {
 	int diff = 1;
 	bool is_edge_incoming = true;
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 	pointers_to_edges[0]->from_instances = 1;
 	pointers_to_edges[0]->to_instances = 2;
 	pointers_to_edges[1]->from_instances = 2;
@@ -1557,28 +1557,28 @@ START_TEST(test_write_concs)
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("%s()...", __func__);
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+	DPRINTF(3, "%s()...", __func__);
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);
 
 	pid = fork();
 	if (pid <= 0) {
 		int rsize = -1;
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 
 		close(fd[1]);
-		DPRINTF("Child reads concs of size %d.",
+		DPRINTF(3, "Child reads concs of size %d.",
 					concs_size);
 		rsize = read(fd[0], conc_array, concs_size);
 		if (rsize == -1) {
-			DPRINTF("Write concs failed.");
+			DPRINTF(3, "Write concs failed.");
 			exit(1);
 		}
 
-		DPRINTF("Child: closes fd %d.", fd[0]);
+		DPRINTF(3, "Child: closes fd %d.", fd[0]);
 		close(fd[0]);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(write_concs(fd[1]), OP_SUCCESS);
 	}
 }
@@ -1601,20 +1601,20 @@ START_TEST(test_write_graph_solution)
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("%s()...", __func__);
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+	DPRINTF(3, "%s()...", __func__);
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);
 
 	pid = fork();
 	if (pid <= 0) {
 		int rsize = -1;
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 
 		close(fd[1]);
-		DPRINTF("Child reads graph solution of size %d.",
+		DPRINTF(3, "Child reads graph solution of size %d.",
 					graph_solution_size);
         	rsize = read(fd[0], graph_solution, graph_solution_size);
 		if (rsize == -1) {
-			DPRINTF("Write graph solution failed.");
+			DPRINTF(3, "Write graph solution failed.");
 			exit(1);
 		}
 
@@ -1626,31 +1626,31 @@ START_TEST(test_write_graph_solution)
 							nc->n_edges_outgoing;
                 	if ((in_edges_size > buf_size) || 
 						(out_edges_size > buf_size)) {
-                        	DPRINTF("Dgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+                        	DPRINTF(3, "Dgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
                         	exit(1);
                 	}
 
-			DPRINTF("Child reads incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
+			DPRINTF(3, "Child reads incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
                 	rsize = read(fd[0], nc->edges_incoming, in_edges_size);
 			if (rsize == -1) {
-				DPRINTF("Read edges incoming failed.");
+				DPRINTF(3, "Read edges incoming failed.");
 				exit(1);
 			}
 
-			DPRINTF("Child reads outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
+			DPRINTF(3, "Child reads outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
                 	rsize = read(fd[0], nc->edges_outgoing, out_edges_size);
 			if (rsize == -1) {
-				DPRINTF("Read edges outgoing failed.");
+				DPRINTF(3, "Read edges outgoing failed.");
 				exit(1);
 			}
         	}
-		DPRINTF("Child: closes fd %d.", fd[0]);
+		DPRINTF(3, "Child: closes fd %d.", fd[0]);
 		close(fd[0]);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(write_graph_solution(fd[1]), OP_SUCCESS);
 	}
 }
@@ -1661,17 +1661,17 @@ START_TEST(test_write_message_block)
 {
 	int fd[2];
 	int pid;
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);	
 
 	pid = fork();
 	if (pid <= 0) {
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 		struct dgsh_negotiation *test_mb = (struct dgsh_negotiation *)
 				malloc(sizeof(struct dgsh_negotiation));
         	int mb_struct_size = sizeof(struct dgsh_negotiation);
@@ -1679,11 +1679,11 @@ START_TEST(test_write_message_block)
 		int rsize = -1;
 
 		close(fd[1]);
-		DPRINTF("Child reads message block structure of size %d.",
+		DPRINTF(3, "Child reads message block structure of size %d.",
 					mb_struct_size);
         	rsize = read(fd[0], test_mb, mb_struct_size);
 		if (rsize == -1) {
-			DPRINTF("Read message block failed.");
+			DPRINTF(3, "Read message block failed.");
 			exit(1);
 		}
         	int n_nodes = test_mb->n_nodes;
@@ -1693,32 +1693,32 @@ START_TEST(test_write_message_block)
         	int mb_edges_size = sizeof(struct dgsh_edge) * n_edges;
 		test_mb->edge_array = (struct dgsh_edge *)malloc(mb_edges_size);
 
-		DPRINTF("Child reads message block node array of size %d.",
+		DPRINTF(3, "Child reads message block node array of size %d.",
 					mb_nodes_size);
         	rsize = read(fd[0], test_mb->node_array, mb_nodes_size);
 		if (rsize == -1) {
-			DPRINTF("Read node array failed.");
+			DPRINTF(3, "Read node array failed.");
 			exit(1);
 		}
 
-		DPRINTF("Child reads message block edge array of size %d.",
+		DPRINTF(3, "Child reads message block edge array of size %d.",
 					mb_edges_size);
 		rsize = read(fd[0], test_mb->edge_array, mb_edges_size);
 		if (rsize == -1) {
-			DPRINTF("Read edge array failed.");
+			DPRINTF(3, "Read edge array failed.");
 			exit(1);
 		}
                 for (i = 0; i < test_mb->n_edges; i++) {
                         struct dgsh_edge *e = &test_mb->edge_array[i];
-                        DPRINTF("Edge from: %d, to: %d", e->from, e->to);
+                        DPRINTF(3, "Edge from: %d, to: %d", e->from, e->to);
                 }
 
-		DPRINTF("Child: closes fd %d.", fd[0]);
+		DPRINTF(3, "Child: closes fd %d.", fd[0]);
 		close(fd[0]);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 		retire_mb(test_mb);
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(write_message_block(fd[1]), OP_SUCCESS);
 	}
 }
@@ -1729,17 +1729,17 @@ START_TEST(test_read_message_block)
 {
 	int fd[2];
 	int pid;
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);
 
 	pid = fork();
 	if (pid <= 0) {
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 		struct dgsh_negotiation *test_mb;
 		setup_mb(&test_mb);
         	int n_nodes = test_mb->n_nodes;
@@ -1754,11 +1754,11 @@ START_TEST(test_read_message_block)
 		tm.tv_nsec = 1000000;
 
 		close(fd[0]);
-		DPRINTF("Child writes message block structure of size %d.",
+		DPRINTF(3, "Child writes message block structure of size %d.",
 					mb_struct_size);
         	wsize = write(fd[1], test_mb, mb_struct_size);
 		if (wsize == -1) {
-			DPRINTF("Write message block structure failed.");
+			DPRINTF(3, "Write message block structure failed.");
 			exit(1);
 		}
 		/* Sleep for 1 millisecond to write-read orderly.
@@ -1767,34 +1767,34 @@ START_TEST(test_read_message_block)
 		 */
 		nanosleep(&tm, NULL);
 
-		DPRINTF("Child writes message block node array of size %d.",
+		DPRINTF(3, "Child writes message block node array of size %d.",
 					mb_nodes_size);
         	wsize = write(fd[1], test_mb->node_array, mb_nodes_size);
 		if (wsize == -1) {
-			DPRINTF("Write message block node array failed.");
+			DPRINTF(3, "Write message block node array failed.");
 			exit(1);
 		}
 		/* Sleep for 1 millisecond before the next operation. */
 		nanosleep(&tm, NULL);
 
-		DPRINTF("Child writes message block edge array of size %d.",
+		DPRINTF(3, "Child writes message block edge array of size %d.",
 					mb_edges_size);
                 for (i = 0; i < test_mb->n_edges; i++) {
                         struct dgsh_edge *e = &test_mb->edge_array[i];
-                        DPRINTF("Edge from: %d, to: %d", e->from, e->to);
+                        DPRINTF(3, "Edge from: %d, to: %d", e->from, e->to);
                 }
 		wsize = write(fd[1], test_mb->edge_array, mb_edges_size);
 		if (wsize == -1) {
-			DPRINTF("Write message block edge array failed.");
+			DPRINTF(3, "Write message block edge array failed.");
 			exit(1);
 		}
 
-		DPRINTF("Child: closes fd %d.", fd[1]);
+		DPRINTF(3, "Child: closes fd %d.", fd[1]);
 		close(fd[1]);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 		retire_mb(test_mb);
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_message_block(fd[0], &fresh_mb),
 				OP_SUCCESS);
 	}
@@ -1814,28 +1814,28 @@ START_TEST(test_read_graph_solution)
 	struct timespec tm;
 	tm.tv_sec = 0;
 	tm.tv_nsec = 1000000;
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);	
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);	
 
 	pid = fork();
 	if (pid <= 0) {
 		int wsize = -1;
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 		setup_graph_solution();
 		struct dgsh_node_connections *graph_solution =
 			chosen_mb->graph_solution;
 
 		close(fd[0]);
-		DPRINTF("Child writes graph solution of size %d.",
+		DPRINTF(3, "Child writes graph solution of size %d.",
 					graph_solution_size);
         	wsize = write(fd[1], graph_solution, graph_solution_size);
 		if (wsize == -1) {
-			DPRINTF("Write graph solution failed.");
+			DPRINTF(3, "Write graph solution failed.");
 			exit(1);
 		}
 		/* Sleep for 1 millisecond before the next operation. */
@@ -1850,36 +1850,36 @@ START_TEST(test_read_graph_solution)
 			int wsize = -1;
 			if ((in_edges_size > buf_size) || 
 						(out_edges_size > buf_size)) {
-                        	DPRINTF("Dgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
+                        	DPRINTF(3, "Dgsh negotiation graph solution for node at index %d: incoming connections of size %d or outgoing connections of size %d do not fit to buffer of size %d.\n", nc->node_index, in_edges_size, out_edges_size, buf_size);
                         	exit(1);
                 	}
 
-			DPRINTF("Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
+			DPRINTF(3, "Child writes incoming edges of node %d in fd %d. Total size: %d", i, fd[1], in_edges_size);
                 	/* Transmit a node's incoming connections. */
                 	wsize = write(fd[1], nc->edges_incoming, in_edges_size);
 			if (wsize == -1) {
-				DPRINTF("Write edges incoming failed.");
+				DPRINTF(3, "Write edges incoming failed.");
 				exit(1);
 			}
 			/* Sleep for 1 millisecond before the next operation. */
 			nanosleep(&tm, NULL);
 
-			DPRINTF("Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
+			DPRINTF(3, "Child writes outgoing edges of node %d in fd %d. Total size: %d", i, fd[1], out_edges_size);
                 	/* Transmit a node's outgoing connections. */
                 	wsize = write(fd[1], nc->edges_outgoing, out_edges_size);
 			if (wsize == -1) {
-				DPRINTF("Write edges outgoing failed.");
+				DPRINTF(3, "Write edges outgoing failed.");
 				exit(1);
 			}
 			/* Sleep for 1 millisecond before the next operation. */
 			nanosleep(&tm, NULL);
         	}
-		DPRINTF("Child: closes fd %d.", fd[1]);
+		DPRINTF(3, "Child: closes fd %d.", fd[1]);
 		close(fd[1]);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 		retire_graph_solution(graph_solution, chosen_mb->n_nodes - 1);
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_graph_solution(fd[0],
 					fresh_mb), OP_SUCCESS);
 	}
@@ -1894,32 +1894,32 @@ START_TEST(test_read_concs)
         int n_concs = fresh_mb->n_concs;
 	int buf_size = getpagesize();
         int concs_size = sizeof(struct dgsh_conc) * n_concs;
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
-	DPRINTF("Opened pipe pair %d - %d.", fd[0], fd[1]);
+	DPRINTF(3, "Opened pipe pair %d - %d.", fd[0], fd[1]);
 
 	pid = fork();
 	if (pid <= 0) {
 		int wsize = -1;
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 		setup_graph_solution();
 		struct dgsh_conc *concs =
 			chosen_mb->conc_array;
 
 		close(fd[0]);
-		DPRINTF("Child writes concs of size %d.",
+		DPRINTF(3, "Child writes concs of size %d.",
 					concs_size);
 		wsize = write(fd[1], concs, concs_size);
 		if (wsize == -1) {
-			DPRINTF("Write concs failed.");
+			DPRINTF(3, "Write concs failed.");
 			exit(1);
 		}
 	} else {
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_concs(fd[0],
 					fresh_mb), OP_SUCCESS);
 	}
@@ -2063,18 +2063,18 @@ START_TEST(test_read_input_fds)
 	int wsize = -1;
 
 	memset(&msg, 0, sizeof(struct msghdr));
-	DPRINTF("%s()...pid %d", __func__, (int)getpid());
+	DPRINTF(3, "%s()...pid %d", __func__, (int)getpid());
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets) < 0) {
 		perror("Error opening stream socket pair. Exiting now.");
 		exit(1);
 	}
-	DPRINTF("Opened socket pair %d - %d.", sockets[0], sockets[1]);
+	DPRINTF(3, "Opened socket pair %d - %d.", sockets[0], sockets[1]);
 
 	fd = open("unit-test-dgsh", O_CREAT | O_RDWR, 0660);
 	wsize = write(fd, "Unit testing dgsh...", 21);
 	if (wsize == -1) {
-		DPRINTF("Write to 'unit-test-dgsh' failed.");
+		DPRINTF(3, "Write to 'unit-test-dgsh' failed.");
 		exit(1);
 	}
         close(fd);
@@ -2086,9 +2086,9 @@ START_TEST(test_read_input_fds)
 
         int pid = fork();
 	if (pid <= 0) {
-		DPRINTF("Child speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Child speaking with pid %d.", (int)getpid());
 
-		DPRINTF("Child closes socket %d.", sockets[1]);
+		DPRINTF(3, "Child closes socket %d.", sockets[1]);
 		close(sockets[1]);
 
 		vec[0].iov_base = &ping;
@@ -2108,14 +2108,14 @@ START_TEST(test_read_input_fds)
 		h->cmsg_len = CMSG_LEN(sizeof(int));
 		*((int*)CMSG_DATA(h)) = fd;
 
-		DPRINTF("Child goes sendmsg()");
+		DPRINTF(3, "Child goes sendmsg()");
 		if((sendmsg(sockets[0], &msg, 0)) < 0){
 			perror("sendmsg()");
 			exit(EXIT_FAILURE);
 		}
-		DPRINTF("Child: closes fd %d.", fd);
+		DPRINTF(3, "Child: closes fd %d.", fd);
 		close(fd);
-		DPRINTF("Child with pid %d exits.", (int)getpid());
+		DPRINTF(3, "Child with pid %d exits.", (int)getpid());
 	} else {
 		struct dgsh_node_connections *graph_solution =
 			chosen_mb->graph_solution;
@@ -2130,7 +2130,7 @@ START_TEST(test_read_input_fds)
 		int *input_fds = (int *)malloc(sizeof(int));
 		input_fds[0] = -1;
 	
-		DPRINTF("Parent speaking with pid %d.", (int)getpid());
+		DPRINTF(3, "Parent speaking with pid %d.", (int)getpid());
 		ck_assert_int_eq(read_input_fds(sockets[1], input_fds),
 				OP_SUCCESS);
 		ck_assert_int_ge(input_fds[0], 3);
@@ -2139,7 +2139,7 @@ START_TEST(test_read_input_fds)
 		 */
 		ck_assert_int_le(input_fds[0], 20);
 		free(input_fds);
-		DPRINTF("Parent with pid %d exits.", (int)getpid()); 
+		DPRINTF(3, "Parent with pid %d exits.", (int)getpid()); 
 	}
 	close(sockets[0]);
 	close(sockets[1]);
@@ -2161,7 +2161,7 @@ START_TEST(test_read_chunk)
 	 */
 	int fd[2];
 	int wsize = -1;
-	DPRINTF("%s()...", __func__);
+	DPRINTF(3, "%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
@@ -2171,7 +2171,7 @@ START_TEST(test_read_chunk)
 	//close(fd[0]);
 	wsize = write(fd[1], "test-in", 9);
 	if (wsize == -1) {
-		DPRINTF("Write to 'test-in' failed.");
+		DPRINTF(3, "Write to 'test-in' failed.");
 		exit(1);
 	}
 	char buf[32];
@@ -2189,14 +2189,14 @@ START_TEST(test_call_read)
 {
 	int fd[2];
 	int wsize = -1;
-	DPRINTF("%s()...", __func__);
+	DPRINTF(3, "%s()...", __func__);
 	if(pipe(fd) == -1){
 		perror("pipe open failed");
 		exit(1);
 	}
 
 	if ((wsize = write(fd[1], "test", 5)) == -1) {
-		DPRINTF("Write to 'test' failed.\n");
+		DPRINTF(3, "Write to 'test' failed.\n");
 		exit(1);
 	}
 
@@ -2340,7 +2340,7 @@ END_TEST
 
 START_TEST(test_analyse_read)
 {
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 	/* error state flag seen; terminal process such as node 3
 	 * which is the current node leave.
 	 */
@@ -2686,7 +2686,7 @@ END_TEST
 
 START_TEST(test_construct_message_block)
 {
-	DPRINTF("%s()", __func__);
+	DPRINTF(3, "%s()", __func__);
 	int pid = 7;
 	const char tool_name[10] = "test";
 	ck_assert_int_eq(construct_message_block(tool_name, pid), OP_SUCCESS);
@@ -2703,7 +2703,7 @@ END_TEST
 
 START_TEST(test_get_env_var)
 {
-	DPRINTF("%s()...", __func__);
+	DPRINTF(3, "%s()...", __func__);
 	int value = -1;
 	putenv("DGSH_IN=0");
 	get_env_var("DGSH_IN", &value);
@@ -2719,7 +2719,7 @@ END_TEST
 
 START_TEST(test_get_environment_vars)
 {
-	DPRINTF("%s()...", __func__);
+	DPRINTF(3, "%s()...", __func__);
 	putenv("DGSH_IN=0");
 	putenv("DGSH_OUT=1");
 
@@ -2870,7 +2870,7 @@ START_TEST(test_set_io_channels)
 	multiple_inputs = true;
 	ck_assert_int_eq(set_io_channels(chosen_mb), 0);
 	ck_assert_int_eq(chosen_mb->n_concs, 2);
-	DPRINTF("%d", chosen_mb->conc_array[0].pid);
+	DPRINTF(3, "%d", chosen_mb->conc_array[0].pid);
 	ck_assert_int_eq(chosen_mb->conc_array[1].pid, 2001);
 	ck_assert_int_eq(chosen_mb->conc_array[1].input_fds, -1);
 	ck_assert_int_eq(chosen_mb->conc_array[1].output_fds, -1);

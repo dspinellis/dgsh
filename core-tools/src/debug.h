@@ -20,11 +20,14 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#ifdef DEBUG
+#include <stdarg.h>
+
+/* The debug level can be set by users
+ * with env var DGSH_DEBUG_LEVEL
+ */
+void dgsh_dprintf(int debug_level, const char *fmt, ...);
+
 /* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(fmt, ...) fprintf(stderr, "%d: " fmt "\n", (int)getpid(), ##__VA_ARGS__)
-#else
-#define DPRINTF(fmt, ...)
-#endif
+#define DPRINTF(debug_level, fmt, ...) dgsh_dprintf(debug_level, fmt, ##__VA_ARGS__)
 
 #endif /* DEBUG_H */

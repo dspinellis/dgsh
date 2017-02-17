@@ -50,7 +50,7 @@ write_command(const char *name, char cmd, bool retry_connection)
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		err(1, "socket");
 
-	DPRINTF("Connecting to %s", name);
+	DPRINTF(3, "Connecting to %s", name);
 
 	remote.sun_family = AF_UNIX;
 	if (strlen(name) >= sizeof(remote.sun_path) - 1)
@@ -63,17 +63,17 @@ again:
 		if (retry_connection &&
 		    (errno == ENOENT || errno == ECONNREFUSED) &&
 		    counter++ < RETRY_LIMIT) {
-			DPRINTF("Retrying connection setup");
+			DPRINTF(3, "Retrying connection setup");
 			sleep(1);
 			goto again;
 		}
 		err(2, "connect %s", name);
 	}
-	DPRINTF("Connected");
+	DPRINTF(3, "Connected");
 
 	if (write(s, &cmd, 1) == -1)
 		err(3, "write");
-	DPRINTF("Wrote command");
+	DPRINTF(3, "Wrote command");
 	return s;
 }
 
@@ -103,13 +103,13 @@ dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 		iov[1].iov_len = sizeof(buff);
 		if ((n = readv(s, iov, 2)) == -1)
 			err(5, "readv");
-		DPRINTF("Read %d characters", n);
+		DPRINTF(3, "Read %d characters", n);
 		cbuff[CONTENT_LENGTH_DIGITS] = 0;
 		if (sscanf(cbuff, "%u", &content_length) != 1) {
 			fprintf(stderr, "Unable to read content length from string [%s]\n", cbuff);
 			exit(1);
 		}
-		DPRINTF("Content length is %u", content_length);
+		DPRINTF(3, "Content length is %u", content_length);
 		n -= CONTENT_LENGTH_DIGITS;
 		if (write(outfd, buff, n) == -1)
 			err(4, "write");
@@ -119,7 +119,7 @@ dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 		while (content_length > 0) {
 			if ((n = read(s, buff, sizeof(buff))) == -1)
 				err(5, "read");
-			DPRINTF("Read %d bytes", n);
+			DPRINTF(3, "Read %d bytes", n);
 			if (write(outfd, buff, n) == -1)
 				err(4, "write");
 			content_length -= n;

@@ -141,7 +141,7 @@ static const char *socket_path;
 static bool
 dpointer_increment(struct dpointer *dp)
 {
-	DPRINTF("%p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "%p pos=%d", dp->b, dp->pos);
 	dp->pos++;
 	if (dp->pos == dp->b->size) {
 		if (!dp->b->next)
@@ -149,7 +149,7 @@ dpointer_increment(struct dpointer *dp)
 		dp->b = dp->b->next;
 		dp->pos = 0;
 	}
-	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
@@ -157,7 +157,7 @@ dpointer_increment(struct dpointer *dp)
 static bool
 dpointer_decrement(struct dpointer *dp)
 {
-	DPRINTF("%p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "%p pos=%d", dp->b, dp->pos);
 	dp->pos--;
 	if (dp->pos == -1) {
 		if (!dp->b->prev) {
@@ -167,7 +167,7 @@ dpointer_decrement(struct dpointer *dp)
 		dp->b = dp->b->prev;
 		dp->pos = dp->b->size - 1;
 	}
-	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
@@ -180,7 +180,7 @@ dpointer_decrement(struct dpointer *dp)
 static bool
 dpointer_add(struct dpointer *dp, int n)
 {
-	DPRINTF("%p pos=%d n=%d", dp->b, dp->pos, n);
+	DPRINTF(3, "%p pos=%d n=%d", dp->b, dp->pos, n);
 	while (n > 0) {
 		int add = MIN(dp->b->size - dp->pos, n);
 		n -= add;
@@ -192,7 +192,7 @@ dpointer_add(struct dpointer *dp, int n)
 			dp->pos = 0;
 		}
 	}
-	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
@@ -205,7 +205,7 @@ dpointer_add(struct dpointer *dp, int n)
 static bool
 dpointer_subtract(struct dpointer *dp, int n)
 {
-	DPRINTF("%p pos=%d n=%d", dp->b, dp->pos, n);
+	DPRINTF(3, "%p pos=%d n=%d", dp->b, dp->pos, n);
 	while (n > 0) {
 		int subtract = MIN((dp->pos + 1) - 0, n);
 		n -= subtract;
@@ -217,7 +217,7 @@ dpointer_subtract(struct dpointer *dp, int n)
 			dp->pos = dp->b->size - 1;
 		}
 	}
-	DPRINTF("return %p pos=%d", dp->b, dp->pos);
+	DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 	return true;
 }
 
@@ -233,18 +233,18 @@ dpointer_subtract(struct dpointer *dp, int n)
 static bool
 dpointer_move_back(struct dpointer *dp, int n)
 {
-	DPRINTF("%p pos=%d (size=%d, prev=%p) n=%d",
+	DPRINTF(3, "%p pos=%d (size=%d, prev=%p) n=%d",
 		dp->b, dp->pos, dp->b->size, dp->b->prev, n);
 	for (;;) {
 		if (dpointer_decrement(dp)) {
 			if (dp->b->data[dp->pos] == rt && --n == -1) {
 				dpointer_increment(dp);
-				DPRINTF("return %p pos=%d", dp->b, dp->pos);
+				DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 				return true;
 			}
 		} else {
 			if (--n == -1) {
-				DPRINTF("(at begin) returns: %p pos=%d", dp->b, dp->pos);
+				DPRINTF(3, "(at begin) returns: %p pos=%d", dp->b, dp->pos);
 				return true;
 			} else
 				return false;	/* Not enough records available */
@@ -260,17 +260,17 @@ dpointer_move_back(struct dpointer *dp, int n)
 static bool
 dpointer_move_forward(struct dpointer *dp, int n)
 {
-	DPRINTF("%p pos=%d (size=%d, next=%p) n=%d",
+	DPRINTF(3, "%p pos=%d (size=%d, next=%p) n=%d",
 		dp->b, dp->pos, dp->b->size, dp->b->next, n);
 	/* Cover the case where we are already at the beginning of the record */
 	if (!dpointer_decrement(dp)) {
-		DPRINTF("return %p pos=%d (at head)", dp->b, dp->pos);
+		DPRINTF(3, "return %p pos=%d (at head)", dp->b, dp->pos);
 		return true;
 	}
 	for (;;) {
 		if (dp->b->data[dp->pos] == rt && --n == -1) {
 			dpointer_increment(dp);
-			DPRINTF("return %p pos=%d", dp->b, dp->pos);
+			DPRINTF(3, "return %p pos=%d", dp->b, dp->pos);
 			return true;
 		}
 		if (!dpointer_increment(dp))
@@ -310,7 +310,7 @@ update_oldest_buffer(void)
 		if (clients[i].state == s_sending_response)
 			oldest_buffer_being_written =
 				oldest_buffer(oldest_buffer_being_written, clients[i].write_begin.b);
-	DPRINTF("Oldest buffer beeing written is %p", oldest_buffer_being_written);
+	DPRINTF(3, "Oldest buffer beeing written is %p", oldest_buffer_being_written);
 }
 
 /* Free buffers preceding in position the used buffer */
@@ -323,11 +323,11 @@ free_unused_buffers_by_position(struct buffer *used)
 		if (b == used || b == oldest_buffer_being_written) {
 			head = b;
 			b->prev = NULL;
-			DPRINTF("After freeing buffer(s) head=%p tail=%p", head, tail);
+			DPRINTF(3, "After freeing buffer(s) head=%p tail=%p", head, tail);
 			return;
 		}
 		bnext = b->next;
-		DPRINTF("Freeing buffer %p prev=%p next=%p", b, b->prev, b->next);
+		DPRINTF(3, "Freeing buffer %p prev=%p next=%p", b, b->prev, b->next);
 		free(b);
 	}
 	/* Should have encountered used along the way. */
@@ -340,7 +340,7 @@ free_unused_buffers_by_time(struct timeval *used)
 {
 	struct buffer *b;
 
-	DPRINTF("Free buffers older than %lld.%06d",
+	DPRINTF(3, "Free buffers older than %lld.%06d",
 		(long long)used->tv_sec, (int)used->tv_usec);
 
 	/* Find first useful record */
@@ -349,7 +349,7 @@ free_unused_buffers_by_time(struct timeval *used)
 			break;
 	assert(b);	/* Should have encountered used along the way. */
 
-	DPRINTF("First used buffer is %p", b);
+	DPRINTF(3, "First used buffer is %p", b);
 	/* Must now leave another record in case a record extends backward */
 	if (rl) {
 		int n = rl;
@@ -362,7 +362,7 @@ free_unused_buffers_by_time(struct timeval *used)
 			b = b->prev;
 		} while (b && !memchr(b->data, rt, b->size));
 	}
-	DPRINTF("After extending back %p", b);
+	DPRINTF(3, "After extending back %p", b);
 	if (b)
 		free_unused_buffers_by_position(b);
 }
@@ -382,7 +382,7 @@ content_length(struct client *c)
 			length += bp->size;
 		length +=  c->write_end.pos;
 	}
-	DPRINTF("return %u", length);
+	DPRINTF(3, "return %u", length);
 	return length;
 }
 
@@ -486,7 +486,7 @@ update_current_record_by_rl_time(struct buffer *begin, struct buffer *end)
 {
 	int mod;
 
-	DPRINTF("Adjusting begin");
+	DPRINTF(3, "Adjusting begin");
 	current_record_begin.b = begin;
 	current_record_begin.pos = 0;
 	if (begin->prev && (mod = begin->prev->byte_count % rl) != 0)
@@ -497,7 +497,7 @@ update_current_record_by_rl_time(struct buffer *begin, struct buffer *end)
 		if (!dpointer_add(&current_record_begin, rl - mod))
 			return;		/* Next record not there */
 
-	DPRINTF("Adjusting end");
+	DPRINTF(3, "Adjusting end");
 	current_record_end.b = end;
 	current_record_end.pos = end->size;
 	if ((mod = end->byte_count % rl) != 0) {
@@ -510,7 +510,7 @@ update_current_record_by_rl_time(struct buffer *begin, struct buffer *end)
 		 */
 		if (!dpointer_decrement(&current_record_end) ||
 		    !dpointer_add(&current_record_end, rl - mod)) {
-			DPRINTF("incomplete last record");
+			DPRINTF(3, "incomplete last record");
 			/* Try going back */
 			current_record_end.b = end;
 			current_record_end.pos = end->size;
@@ -535,14 +535,14 @@ dump_buffer_times(void)
 
 	gettimeofday(&now, NULL);
 
-	DPRINTF("update_current_record: now=%lld.%06d rend=%lld.%06d rbegin=%lld.%06d",
+	DPRINTF(3, "update_current_record: now=%lld.%06d rend=%lld.%06d rbegin=%lld.%06d",
 		(long long)now.tv_sec, (int)now.tv_usec,
 		(long long)record_rend.t.tv_sec, (int)record_rend.t.tv_usec,
 		(long long)record_rbegin.t.tv_sec, (int)record_rbegin.t.tv_usec);
 	for (bp = head; bp != NULL; bp = bp->next) {
 		timersub(&now, &bp->timestamp, &t);
 
-		DPRINTF("\t%p size=%3d byte_count=%5lld Tr=%3lld.%06d Ta=%3lld.%06d [%.*s]",
+		DPRINTF(3, "\t%p size=%3d byte_count=%5lld Tr=%3lld.%06d Ta=%3lld.%06d [%.*s]",
 			bp, bp->size, bp->byte_count,
 			(long long)t.tv_sec, (int)t.tv_usec,
 			(long long)bp->timestamp.tv_sec, (int)bp->timestamp.tv_usec,
@@ -555,7 +555,7 @@ timestamp(const char *msg)
 {
 	struct timeval now;
 	gettimeofday(&now, NULL);
-	DPRINTF("%lld.%06d %s", (long long)now.tv_sec, (int)now.tv_usec, msg);
+	DPRINTF(3, "%lld.%06d %s", (long long)now.tv_sec, (int)now.tv_usec, msg);
 }
 
 #define TIMESTAMP(x) timestamp(x)
@@ -586,7 +586,7 @@ update_current_record(void)
 		gettimeofday(&now, NULL);
 		timersub(&now, &record_rend.t, &tbegin);
 
-		DPRINTF("tail->timestamp=%lld.%06d tbegin=%lld.%06d",
+		DPRINTF(3, "tail->timestamp=%lld.%06d tbegin=%lld.%06d",
 			(long long)tail->timestamp.tv_sec, (int)tail->timestamp.tv_usec,
 			(long long)tbegin.tv_sec, (int)tbegin.tv_usec);
 
@@ -597,7 +597,7 @@ update_current_record(void)
 
 		timersub(&now, &record_rbegin.t, &tend);
 
-		DPRINTF("head->timestamp=%lld.%06d tend=%lld.%06d",
+		DPRINTF(3, "head->timestamp=%lld.%06d tend=%lld.%06d",
 			(long long)head->timestamp.tv_sec, (int)head->timestamp.tv_usec,
 			(long long)tend.tv_sec, (int)tend.tv_usec);
 
@@ -605,10 +605,10 @@ update_current_record(void)
 			return;		/* No records old enough */
 
 		/* Find the record range */
-		DPRINTF("Looking for record range");
+		DPRINTF(3, "Looking for record range");
 		for (bend = tail; timercmp(&bend->timestamp, &tend, >); bend = bend->prev)
 			;
-		DPRINTF("bend=%p %lld.%06d", bend, (long long)bend->timestamp.tv_sec, (int)bend->timestamp.tv_usec);
+		DPRINTF(3, "bend=%p %lld.%06d", bend, (long long)bend->timestamp.tv_sec, (int)bend->timestamp.tv_usec);
 
 		for (bbegin = bend; bbegin && timercmp(&bbegin->timestamp, &tbegin, >); bbegin = bbegin->prev)
 			begin_candidate = bbegin;
@@ -618,7 +618,7 @@ update_current_record(void)
 			return;		/* No records within the window */
 		}
 		bbegin = begin_candidate;
-		DPRINTF("bbegin=%p %lld.%06d", bbegin, (long long)bbegin->timestamp.tv_sec, (int)bbegin->timestamp.tv_usec);
+		DPRINTF(3, "bbegin=%p %lld.%06d", bbegin, (long long)bbegin->timestamp.tv_sec, (int)bbegin->timestamp.tv_usec);
 
 		if (rl)
 			update_current_record_by_rl_time(bbegin, bend);
@@ -627,7 +627,7 @@ update_current_record(void)
 
 		free_unused_buffers_by_time(&tbegin);
 	} else {
-		DPRINTF("tail->record_count=%lld record_rend.r=%d",
+		DPRINTF(3, "tail->record_count=%lld record_rend.r=%d",
 			tail->record_count, record_rend.r);
 		if (tail->record_count - record_rend.r < 0)
 			/* Not enough records */
@@ -641,9 +641,9 @@ update_current_record(void)
 		free_unused_buffers_by_position(current_record_begin.b);
 	}
 
-	DPRINTF("have_record=%d", have_record);
-	DPRINTF("begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
-	DPRINTF("end b=%p pos=%d", current_record_end.b, current_record_end.pos);
+	DPRINTF(3, "have_record=%d", have_record);
+	DPRINTF(3, "begin b=%p pos=%d", current_record_begin.b, current_record_begin.pos);
+	DPRINTF(3, "end b=%p pos=%d", current_record_end.b, current_record_end.pos);
 }
 
 /*
@@ -663,7 +663,7 @@ read_command(struct client *c)
 	case -1: 		/* Error */
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF("EAGAIN on client socket read");
+			DPRINTF(3, "EAGAIN on client socket read");
 			break;
 		default:
 			err(3, "Read from socket");
@@ -672,11 +672,11 @@ read_command(struct client *c)
 	case 0:			/* EOF */
 		close(c->fd);
 		c->state = s_inactive;
-		DPRINTF("Done with client %p", c);
+		DPRINTF(3, "Done with client %p", c);
 		update_oldest_buffer();
 		break;
 	default:		/* Have data. Insert buffer at the end of the queue. */
-		DPRINTF("Read command %c from client %p", cmd, c);
+		DPRINTF(3, "Read command %c from client %p", cmd, c);
 		switch (cmd) {
 		case 'L':
 			c->state = s_send_last;
@@ -714,21 +714,21 @@ write_record(struct client *c, bool write_length)
 	struct iovec iov[2], *iovptr;
 	char length[CONTENT_LENGTH_DIGITS + 2];
 
-	DPRINTF("Write %srecord for client %p", write_length ? "first " : "", c);
+	DPRINTF(3, "Write %srecord for client %p", write_length ? "first " : "", c);
 	if (c->write_begin.b == c->write_end.b) {
 		towrite = c->write_end.pos - c->write_begin.pos;
-		DPRINTF("Single buffer %p: writing %d bytes. write_end.pos=%d write_begin.pos=%d",
+		DPRINTF(3, "Single buffer %p: writing %d bytes. write_end.pos=%d write_begin.pos=%d",
 			c->write_begin.b, towrite, c->write_end.pos, c->write_begin.pos);
 	} else {
 		towrite = c->write_begin.b->size - c->write_begin.pos;
-		DPRINTF("Multiple buffers %p %p: writing %d bytes. write_begin.b->size=%d write_begin.pos=%d",
+		DPRINTF(3, "Multiple buffers %p %p: writing %d bytes. write_begin.b->size=%d write_begin.pos=%d",
 			c->write_begin.b, c->write_end.b,
 			towrite, c->write_begin.b->size, c->write_begin.pos);
 	}
 
 	iov[1].iov_base = c->write_begin.b->data + c->write_begin.pos;
 	iov[1].iov_len = towrite;
-	DPRINTF("Writing [%.*s]", (int)iov[1].iov_len, (char *)iov[1].iov_base);
+	DPRINTF(3, "Writing [%.*s]", (int)iov[1].iov_len, (char *)iov[1].iov_base);
 
 	if (write_length) {
 		snprintf(length, sizeof(length), CONTENT_LENGTH_FORMAT, content_length(c));
@@ -741,7 +741,7 @@ write_record(struct client *c, bool write_length)
 	if ((n = writev(c->fd, iovptr, write_length ? 2 : 1)) == -1)
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF("EAGAIN on client socket write");
+			DPRINTF(3, "EAGAIN on client socket write");
 			return;
 		default:
 			err(3, "Write to socket");
@@ -754,7 +754,7 @@ write_record(struct client *c, bool write_length)
 	}
 
 	c->write_begin.pos += n;
-	DPRINTF("Wrote %u data bytes. Current buffer position=%d", n, c->write_begin.pos);
+	DPRINTF(3, "Wrote %u data bytes. Current buffer position=%d", n, c->write_begin.pos);
 	/*
 	 * More data to write from this buffer?
 	 * Yes, if there is still more data in the buffer
@@ -763,7 +763,7 @@ write_record(struct client *c, bool write_length)
 	 */
 	if (c->write_begin.pos < c->write_begin.b->size &&
 	    (c->write_begin.b != c->write_end.b || c->write_begin.pos < c->write_end.pos)) {
-		DPRINTF("Continuing with same buffer");
+		DPRINTF(3, "Continuing with same buffer");
 		return;
 	}
 
@@ -771,12 +771,12 @@ write_record(struct client *c, bool write_length)
 	if (c->write_begin.b != c->write_end.b) {
 		c->write_begin.b = c->write_begin.b->next;
 		c->write_begin.pos = 0;
-		DPRINTF("Moving to next buffer %p with size %u", c->write_begin.b, c->write_begin.b->size);
+		DPRINTF(3, "Moving to next buffer %p with size %u", c->write_begin.b, c->write_begin.b->size);
 		return;
 	}
 
 	/* Done with this client */
-	DPRINTF("No more data to write for client %p", c);
+	DPRINTF(3, "No more data to write for client %p", c);
 	c->state = s_wait_close;
 }
 
@@ -818,12 +818,12 @@ buffer_read(void)
 	if ((b = malloc(sizeof(struct buffer))) == NULL)
 		err(1, "Unable to allocate read buffer");
 
-	DPRINTF("Calling read on stdin for buffer %p", b);
+	DPRINTF(3, "Calling read on stdin for buffer %p", b);
 	switch (b->size = read(STDIN_FILENO, b->data, sizeof(b->data))) {
 	case -1: 		/* Error */
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF("EAGAIN on standard input");
+			DPRINTF(3, "EAGAIN on standard input");
 			free(b);
 			break;
 		default:
@@ -865,7 +865,7 @@ buffer_read(void)
 		tail = b;
 		if (!head)
 			head = b;
-		DPRINTF("Read %d bytes into %p prev=%p next=%p head=%p tail=%p",
+		DPRINTF(3, "Read %d bytes into %p prev=%p next=%p head=%p tail=%p",
 			b->size, b, b->prev, b->next, head, tail);
 		set_buffer_counters(b);
 		update_current_record();
@@ -1117,7 +1117,7 @@ handle_events(int sock)
 
 		gettimeofday(&now, NULL);
 		timersub(&now, &record_rbegin.t, &abs_rbegin_time);
-		DPRINTF("have to wait for a buffer to enter window %lld.%06d",
+		DPRINTF(3, "have to wait for a buffer to enter window %lld.%06d",
 			(long long)abs_rbegin_time.tv_sec, (int)abs_rbegin_time.tv_usec);
 		/*
 		 * rbegin = 10
@@ -1130,13 +1130,13 @@ handle_events(int sock)
 			/* There is a buffer worth waiting for */
 			waitptr = &wait_time;
 			timersub(&candidate_buffer->timestamp, &abs_rbegin_time, waitptr);
-			DPRINTF("waiting %lld.%06d for %p %lld.%06d to enter the window",
+			DPRINTF(3, "waiting %lld.%06d for %p %lld.%06d to enter the window",
 				(long long)wait_time.tv_sec, (int)wait_time.tv_usec,
 				candidate_buffer,
 				(long long)candidate_buffer->timestamp.tv_sec,
 				(int)candidate_buffer->timestamp.tv_usec);
 		} else
-			DPRINTF("No candidate buffer found");
+			DPRINTF(3, "No candidate buffer found");
 	}
 
 	TIMESTAMP("Calling select");
