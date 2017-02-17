@@ -33,7 +33,7 @@
 #include "dgsh.h"
 #include "negotiate.h"
 #include "kvstore.h"
-#include "debug.h"
+#include "dgsh-debug.h"
 
 static const char *program_name;
 

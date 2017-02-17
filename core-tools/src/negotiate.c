@@ -48,7 +48,7 @@
 #include <stdio.h>		/* printf family */
 
 #include "negotiate.h"		/* Message block and I/O */
-#include "debug.h"		/* DPRINTF() */
+#include "dgsh-debug.h"		/* DPRINTF() */
 
 #ifdef TIME
 #include <time.h>
@@ -149,6 +149,7 @@ static struct dgsh_node_pipe_fds self_pipe_fds;	/* A tool's read and write file
 						 */
 static bool init_error = false;
 static volatile sig_atomic_t negotiation_completed = 0;
+int dgsh_debug_level = 0;
 
 static void get_environment_vars();
 
@@ -193,16 +194,6 @@ install_exit_handler(void)
 	atexit(dgsh_exit_handler);
 }
 #endif
-
-static int dgsh_debug_level = 0;
-
-void
-dgsh_dprintf(int debug_level, const char *fmt, ...)
-{
-	if (debug_level < dgsh_debug_level)
-		fprintf(stderr, "%d: " fmt " \n",
-				(int)getpid(), ##__VA_ARGS__);
-}
 
 /**
  * Remove path to command to save space in the graph plot
@@ -2804,7 +2795,6 @@ again:
 				    n_io_channels == ntimes_seen_error) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
-					DPRINTF(2, "%s(): %s (%d) leaves after write with state %d.", __func__, programname, self_node.index, chosen_mb->state);
 					goto exit;
 				}
 				isread = true;

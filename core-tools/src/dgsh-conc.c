@@ -34,7 +34,7 @@
 
 #include "negotiate.h"		/* read/write_message_block(),
 				   set_negotiation_complete() */
-#include "debug.h"		/* DPRINTF */
+#include "dgsh-debug.h"		/* DPRINTF */
 
 /* Alarm mechanism and on_exit handling */
 extern volatile sig_atomic_t negotiation_completed;

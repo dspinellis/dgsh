@@ -41,7 +41,7 @@
 
 #include "dgsh.h"
 #include "kvstore.h"
-#include "debug.h"
+#include "dgsh-debug.h"
 #include "minmax.h"
 
 #ifdef DEBUG

@@ -31,7 +31,7 @@
 #include <err.h>
 
 #include "dgsh.h"
-#include "debug.h"		/* DPRINTF(3, ) */
+#include "dgsh-debug.h"		/* DPRINTF(3, ) */
 
 #define PROC_FD_PATH_LEN 20
 
