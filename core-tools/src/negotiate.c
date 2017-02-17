@@ -175,12 +175,12 @@ dgsh_alarm_handler(int signal)
 {
 	if (signal == SIGALRM)
 		if (negotiation_completed == 0) {
-			char msg[50] = "\0";
+			char msg[100];
 			sprintf(msg, "%d dgsh: timeout for negotiation. Exit.\n",
 					getpid());
 			negotiation_completed = 1;
-			write(2, msg, sizeof(msg));
-			_exit(10);
+			write(2, msg, strlen(msg));
+			_exit(EX_PROTOCOL);
 		}
 }
 
