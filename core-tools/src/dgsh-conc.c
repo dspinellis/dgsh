@@ -511,6 +511,7 @@ main(int argc, char *argv[])
 {
 	int ch;
 	int exit;
+	char *debug_level = NULL;
 
 	program_name = argv[0];
 	pid = getpid();
@@ -541,6 +542,10 @@ main(int argc, char *argv[])
 	if (argc != 1)
 		usage();
 
+	debug_level = getenv("DGSH_DEBUG_LEVEL");
+	if (debug_level != NULL)
+		dgsh_debug_level = atoi(debug_level);
+
 	signal(SIGALRM, dgsh_alarm_handler);
 	alarm(5);
 
@@ -556,7 +561,8 @@ main(int argc, char *argv[])
 	chosen_mb = NULL;
 	exit = pass_message_blocks();
 	if (exit == PS_RUN) {
-		DPRINTF(1, "%s(): Communicated the solution", __func__);
+		if (noinput)
+			DPRINTF(1, "%s(): Communicated the solution", __func__);
 		if (multiple_inputs)
 			gather_input_fds(chosen_mb);
 		else if (!noinput)	// Output noinput conc has no job here
