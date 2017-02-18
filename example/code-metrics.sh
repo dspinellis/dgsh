@@ -45,7 +45,7 @@
 		{{
 			# Remove strings and comments
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+			cpp -P |
 			tee |
 			{{
 				# Structure definitions
@@ -88,7 +88,7 @@
 			# testing
 			echo -n 'NCCHAR: ' &
 			sed 's/#/@/g' |
-			cpp -traditional -P 2>/dev/null |
+			cpp -traditional -P |
 			wc -c |
 			awk '{OFMT = "%.0f"; print $1/1000}' &
 
@@ -132,7 +132,7 @@
 
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
-			cpp -P 2>/dev/null |
+			cpp -P |
 			tee |
 			{{
 				# Number of functions
