@@ -23,6 +23,6 @@
 extern int dgsh_debug_level;
 
 /* ## is a gcc extension that removes trailing comma if no args */
-#define DPRINTF(debug_level, fmt, ...) (debug_level <= dgsh_debug_level ? fprintf(stderr, "%d: " fmt " \n", (int)getpid(), ##__VA_ARGS__) : 0 )
+#define DPRINTF(debug_level, fmt, ...) ((debug_level) <= dgsh_debug_level ? fprintf(stderr, "%d: " fmt "\n", (int)getpid(), ##__VA_ARGS__) : 0)
 
 #endif /* DEBUG_H */
