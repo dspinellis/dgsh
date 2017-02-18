@@ -151,7 +151,7 @@ is_ready(int i, struct dgsh_negotiation *mb)
 	bool ready = false;
 	if (pi[i].seen && pi[i].written)
 		ready = true;
-	DPRINTF(3, "pi[%d].pid: %d %s?: %d\n",
+	DPRINTF(4, "pi[%d].pid: %d %s?: %d\n",
 			i, pi[i].pid, __func__, ready);
 	return ready;
 }
@@ -175,7 +175,7 @@ set_io_channels(struct dgsh_negotiation *mb)
 	c.proc_pids = (int *)malloc(sizeof(int) * c.n_proc_pids);
 	int j = 0, i;
 
-	DPRINTF(3, "%s: n_proc_pids: %d", __func__, c.n_proc_pids);
+	DPRINTF(4, "%s: n_proc_pids: %d", __func__, c.n_proc_pids);
 	if (multiple_inputs) {
 		c.endpoint_pid = pi[STDOUT_FILENO].pid;
 		if (c.endpoint_pid == 0)
@@ -209,7 +209,7 @@ set_io_channels(struct dgsh_negotiation *mb)
 	}
 	memcpy(&mb->conc_array[mb->n_concs - 1], &c, sizeof(struct dgsh_conc));
 
-	DPRINTF(3, "%s(): Added conc with pid: %d, now n_concs: %d",
+	DPRINTF(4, "%s(): Added conc with pid: %d, now n_concs: %d",
 			__func__, mb->conc_array[mb->n_concs - 1].pid, mb->n_concs);
 
 	return 0;
@@ -220,19 +220,19 @@ print_state(int i, int var, int pcase)
 {
 	switch (pcase) {
 		case 1:
-			DPRINTF(3, "%s(): pi[%d].pid: %d", 
+			DPRINTF(4, "%s(): pi[%d].pid: %d",
 					__func__, i, (int)pi[i].pid);
-			DPRINTF(3, "  initiator pid: %d",
+			DPRINTF(4, "  initiator pid: %d",
 					var);
-			DPRINTF(3, "  pi[%d].seen: %d",
+			DPRINTF(4, "  pi[%d].seen: %d",
 					i, pi[i].seen);
-			DPRINTF(3, "  write: %d", pi[i].written);
+			DPRINTF(4, "  write: %d", pi[i].written);
 		case 2:
-			DPRINTF(3, "%s(): pi[%d].pid: %d",
+			DPRINTF(4, "%s(): pi[%d].pid: %d",
 					__func__, i, pi[i].pid);
-			DPRINTF(3, "  run ready?: %d, seen times: %d",
+			DPRINTF(4, "  run ready?: %d, seen times: %d",
 					(int)pi[i].run_ready, pi[i].seen);
-			DPRINTF(3, "  written: %d, nfds: %d",
+			DPRINTF(4, "  written: %d, nfds: %d",
 					pi[i].written, var);
 	}
 }
@@ -283,8 +283,8 @@ pass_message_blocks(void)
 				nfds = max(i + 1, nfds);
 				pi[i].to_write->is_origin_conc = true;
 				pi[i].to_write->conc_pid = pid;
-				DPRINTF(3, "Origin: conc with pid %d", pid);
-				DPRINTF(3, "**fd i: %d set for writing", i);
+				DPRINTF(4, "Origin: conc with pid %d", pid);
+				DPRINTF(4, "**fd i: %d set for writing", i);
 			}
 		}
 
@@ -312,7 +312,7 @@ pass_message_blocks(void)
 				// Write side exit
 				if (is_ready(i, pi[i].to_write)) {
 					pi[i].run_ready = true;
-					DPRINTF(3, "**%s(): pi[%d] is run ready",
+					DPRINTF(4, "**%s(): pi[%d] is run ready",
 							__func__, i);
 				}
 				pi[i].to_write = NULL;
@@ -327,7 +327,7 @@ pass_message_blocks(void)
 				read_message_block(i, &pi[next].to_write); // XXX check return
 				rb = pi[next].to_write;
 
-				DPRINTF(3, "%s(): next write via fd %d to pid %d",
+				DPRINTF(4, "%s(): next write via fd %d to pid %d",
 						__func__, next, pi[next].pid);
 
 				if (oi == -1) {
@@ -336,7 +336,7 @@ pass_message_blocks(void)
 							 i == 0)) {
 						oi = rb->origin_index;
 						ofd = rb->origin_fd_direction;
-						DPRINTF(3, "**Store origin: %d, fd: %s",
+						DPRINTF(4, "**Store origin: %d, fd: %s",
 							oi, ofd ? "stdout" : "stdin");
 					}
 				}
@@ -354,7 +354,7 @@ pass_message_blocks(void)
 				 * Don't move this block before get_origin_pid()
 				 */
 				if (ro) {
-					DPRINTF(3, "**Restore origin: %d, fd: %s",
+					DPRINTF(4, "**Restore origin: %d, fd: %s",
 							oi, ofd ? "stdout" : "stdin");
 					pi[next].to_write->origin_index = oi;
 					pi[next].to_write->origin_fd_direction = ofd;
@@ -402,7 +402,7 @@ pass_message_blocks(void)
 				if (pi[i].seen && pi[i].written) {
 					chosen_mb = pi[next].to_write;
 					pi[i].run_ready = true;
-					DPRINTF(3, "**%s(): pi[%d] is run ready",
+					DPRINTF(4, "**%s(): pi[%d] is run ready",
 							__func__, i);
 				}
 			}
@@ -419,10 +419,10 @@ pass_message_blocks(void)
 					(noinput && nfds == nfd - 2))) ||
 		    (nfds == nfd || (noinput && nfds == nfd - 1))) {
 			assert(chosen_mb != NULL);
-			DPRINTF(3, "%s(): conc leaves negotiation", __func__);
+			DPRINTF(4, "%s(): conc leaves negotiation", __func__);
 			return chosen_mb->state;
 		} else if (chosen_mb != NULL &&	iswrite) { // Free if we have written
-			DPRINTF(3, "chosen_mb: %lx, i: %d, next: %d, pi[next].to_write: %lx\n",
+			DPRINTF(4, "chosen_mb: %lx, i: %d, next: %d, pi[next].to_write: %lx\n",
 				(long)chosen_mb, i, next_fd(i, &ro), (long)pi[next_fd(i, &ro)].to_write);
 			free_mb(chosen_mb);
 			chosen_mb = NULL;
@@ -449,18 +449,18 @@ scatter_input_fds(struct dgsh_negotiation *mb)
 	int *read_fds = (int *)malloc(n_to_read * sizeof(int));
 	int i, j, write_index = 0;
 	bool ignore = false;
-	DPRINTF(3, "%s(): fds to read: %d", __func__, n_to_read);
+	DPRINTF(4, "%s(): fds to read: %d", __func__, n_to_read);
 
 	for (i = 0; i < n_to_read; i++)
 		read_fds[i] = read_fd(STDIN_FILENO);
 
 	for (i = STDOUT_FILENO; i != STDIN_FILENO; i = next_fd(i, &ignore)) {
 		int n_to_write = get_expected_fds_n(mb, pi[i].pid);
-		DPRINTF(3, "%s(): fds to write for p[%d].pid %d: %d",
+		DPRINTF(4, "%s(): fds to write for p[%d].pid %d: %d",
 				__func__, i, pi[i].pid, n_to_write);
 		for (j = write_index; j < write_index + n_to_write; j++) {
 			write_fd(i, read_fds[j]);
-			DPRINTF(3, "%s(): Write fd: %d to output channel: %d",
+			DPRINTF(4, "%s(): Write fd: %d to output channel: %d",
 					__func__, read_fds[j], i);
 		}
 		write_index += n_to_write;
@@ -483,16 +483,16 @@ gather_input_fds(struct dgsh_negotiation *mb)
 	int n_to_write = this_conc->output_fds;
 	int *read_fds = (int *)malloc(n_to_write * sizeof(int));
 	int i, j, read_index;
-	DPRINTF(3, "%s(): fds to write: %d", __func__, n_to_write);
+	DPRINTF(4, "%s(): fds to write: %d", __func__, n_to_write);
 
 	read_index = 0;
 	for (i = STDIN_FILENO; i < nfd; i == STDIN_FILENO ? i = FREE_FILENO : i++) {
 		int n_to_read = get_provided_fds_n(mb, pi[i].pid);
-		DPRINTF(3, "%s(): fds to read for p[%d].pid %d: %d",
+		DPRINTF(4, "%s(): fds to read for p[%d].pid %d: %d",
 				__func__, i, pi[i].pid, n_to_read);
 		for (j = read_index; j < read_index + n_to_read; j++) {
 			read_fds[j] = read_fd(i);
-			DPRINTF(3, "%s(): Read fd: %d from input channel: %d",
+			DPRINTF(4, "%s(): Read fd: %d from input channel: %d",
 					__func__, read_fds[j], i);
 		}
 		read_index += n_to_read;

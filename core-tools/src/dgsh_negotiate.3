@@ -112,11 +112,14 @@ is gather I/O requirements, compute the solution, and
 communicate the solution.
 .TP
 .B DGSH_DEBUG_LEVEL=2
-Level 2 outputs the reading and writing of the message block
+Level 2 outputs the progress of the negotiation process
+by each command.
+.B DGSH_DEBUG_LEVEL=3
+Level 3 outputs the reading and writing of the message block
 by each command as it flows across the process graph.
 .TP
-.B DGSH_DEBUG_LEVEL=3
-Level 3 outputs the complete debug output including the
+.B DGSH_DEBUG_LEVEL=4
+Level 4 outputs the complete debug output including the
 shell's initial setup of the process graph.
 This is very verbose.
 .SH ERROR MANAGEMENT

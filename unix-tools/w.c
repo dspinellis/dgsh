@@ -5,7 +5,6 @@
 #include <stdlib.h>	// atoi()
 #include <err.h>	// errx()
 #include <unistd.h>	// read(), write()
-#include <errno.h>	//errno
 #include <string.h>	// memcpy()
 
 #include "dgsh.h"
@@ -43,47 +42,43 @@ int main(int argc, char** argv)
 
 	// Read input: 2 float values
 	wr_size = read(inputfds[0], buf, sizeof(buf));
-	if (wr_size == -1) {
-		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
-		return 1;
-	}
-	//DPRINTF(3, "Read %zu characters, long double size: %zu, long double complex size: %zu",
-	//		wr_size, sizeof(long double), sizeof(long double complex));
+	if (wr_size == -1)
+		err(1, "write failed");
+	DPRINTF(4, "Read %zu characters, long double size: %zu, long double complex size: %zu",
+			wr_size, sizeof(long double), sizeof(long double complex));
 	if (wr_size == sizeof(long double)) {
 		memcpy(&x1, buf, sizeof(x1));
-		DPRINTF(3, "Read input x1: %.10Lf", x1);
+		DPRINTF(4, "Read input x1: %.10Lf", x1);
 	} else {
-		//DPRINTF(3, "##buf(xc1): %s", buf);
+		//DPRINTF(4, "##buf(xc1): %s", buf);
 		sscanf(buf, "%s %s\n", real, imag);
 		xc1 = atof(real) + atof(imag)*I;
-		DPRINTF(3, "##xc1: %.10f + %.10fi (read %zu characters)\n",
+		DPRINTF(4, "##xc1: %.10f + %.10fi (read %zu characters)\n",
 				creal(xc1), cimag(xc1), wr_size);
 	}
 
 	memset(buf, 0, sizeof(buf));
 	wr_size = read(inputfds[1], buf, sizeof(buf));
-	if (wr_size == -1) {
-		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
-		return 1;
-	}
-	//DPRINTF(3, "Read %zu characters, long double size: %zu, long double complex size: %zu",
-	//		wr_size, sizeof(long double), sizeof(long double complex));
+	if (wr_size == -1)
+		err(1, "write failed");
+	DPRINTF(4, "Read %zu characters, long double size: %zu, long double complex size: %zu",
+			wr_size, sizeof(long double), sizeof(long double complex));
 	if (wr_size == sizeof(long double)) {
 		memcpy(&x2, buf, sizeof(x2));
-		DPRINTF(3, "Read input x2: %.10Lf", x2);
+		DPRINTF(4, "Read input x2: %.10Lf", x2);
 	} else {
-		//DPRINTF(3, "##buf(xc2): %s", buf);
+		//DPRINTF(4, "##buf(xc2): %s", buf);
 		sscanf(buf, "%s %s\n", real, imag);
 		xc2 = atof(real) + atof(imag)*I;
-		DPRINTF(3, "##xc2: %.10f + %.10fi (read %zu characters)\n",
+		DPRINTF(4, "##xc2: %.10f + %.10fi (read %zu characters)\n",
 				creal(xc2), cimag(xc2), wr_size);
 	}
 
 	// Calculate
 	w = 2 * M_PI * I / m;
 	wmn = cpow(cexp(w), n);
-	DPRINTF(3, "w: %.10f + %.10fi", creal(w), cimag(w));
-	DPRINTF(3, "##m: %d, n: %d, wmn: %.10f + %.10fi\n",
+	DPRINTF(4, "w: %.10f + %.10fi", creal(w), cimag(w));
+	DPRINTF(4, "##m: %d, n: %d, wmn: %.10f + %.10fi\n",
 			m, n, creal(wmn), cimag(wmn));
 	if (x1 == -1.0 && x2 == -1.0) {
 		y1 = xc1 + wmn * xc2;
@@ -96,24 +91,20 @@ int main(int argc, char** argv)
 	// Write output: 2 float values
 	memset(buf, 0, sizeof(buf));
 	sprintf(buf, "%.10f %.10fi\n", creal(y1), cimag(y1));
-	//DPRINTF(3, "##buf(y1): %s", buf);
+	//DPRINTF(4, "##buf(y1): %s", buf);
 	wr_size = write(outputfds[0], buf, sizeof(buf));
-	if (wr_size == -1) {
-		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
-		return 1;
-	}
-	DPRINTF(3, "##y1: %.10f + %.10fi (wrote %zu characters)\n",
+	if (wr_size == -1)
+		err(1, "write failed");
+	DPRINTF(4, "##y1: %.10f + %.10fi (wrote %zu characters)\n",
 			creal(y1), cimag(y1), wr_size);
 
 	memset(buf, 0, sizeof(buf));
 	sprintf(buf, "%.10f %.10fi\n", creal(y2), cimag(y2));
-	//DPRINTF(3, "##buf(y2): %s", buf);
+	//DPRINTF(4, "##buf(y2): %s", buf);
 	wr_size = write(outputfds[1], buf, sizeof(buf));
-	if (wr_size == -1) {
-		DPRINTF(3, "ERROR: write failed: errno: %d", errno);
-		return 1;
-	}
-	DPRINTF(3, "##y2: %.10f + %.10fi (wrote %zu characters)\n",
+	if (wr_size == -1)
+		err(1, "write failed");
+	DPRINTF(4, "##y2: %.10f + %.10fi (wrote %zu characters)\n",
 			creal(y2), cimag(y2), wr_size);
 
 	return 0;

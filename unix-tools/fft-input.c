@@ -4,7 +4,6 @@
 #include <unistd.h>	// read(), write()
 #include <stdlib.h>	// free()
 #include <err.h>	// errx()
-#include <errno.h>	// errno
 
 #include "dgsh.h"
 #include "debug.h"
@@ -29,7 +28,7 @@ int main(int argc, char **argv)
 	f = fopen(input_file, "r");
 	if (!f)
 		errx(2, "Open file %s failed", input_file);
-	DPRINTF(3, "Opened input file: %s", input_file);
+	DPRINTF(4, "Opened input file: %s", input_file);
 
 	while (fgets(line, len, f)) {
 		assert(len == sizeof(input[nlines - 1]));
@@ -43,7 +42,7 @@ int main(int argc, char **argv)
 		}
 		input[nlines - 1] = atof(line);
 
-		DPRINTF(3, "Retrieved input %.10Lf\n", input[nlines - 1]);
+		DPRINTF(4, "Retrieved input %.10Lf\n", input[nlines - 1]);
 	}
 	noutputfds = nlines;
 
@@ -51,18 +50,16 @@ negotiate:
 
 	dgsh_negotiate(DGSH_HANDLE_ERROR, "fft-input", &ninputfds, &noutputfds,
 					&inputfds, &outputfds);
-	DPRINTF(3, "Read %d inputs, received %d fds", nlines, noutputfds);
+	DPRINTF(4, "Read %d inputs, received %d fds", nlines, noutputfds);
 	assert(ninputfds == 0);
 	assert(noutputfds == nlines);
 
 	for (i = 0; i < noutputfds; i++) {
-		DPRINTF(3, "Write input %.10Lf to fd %d", input[i], outputfds[i]);
+		DPRINTF(4, "Write input %.10Lf to fd %d", input[i], outputfds[i]);
 		wsize = write(outputfds[i], &input[i],
 				sizeof(long double));
-		if (wsize == -1) {
-			DPRINTF(3, "ERROR: write failed: errno: %d", errno);
-			return 1;
-		}
+		if (wsize == -1)
+			err(1, "write failed");
 	}
 
 	fclose(f);

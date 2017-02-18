@@ -119,7 +119,7 @@ dgsh_send_command(const char *socket_path, char cmd, bool retry_connection,
 		while (content_length > 0) {
 			if ((n = read(s, buff, sizeof(buff))) == -1)
 				err(5, "read");
-			DPRINTF(3, "Read %d bytes", n);
+			DPRINTF(4, "Read %d bytes", n);
 			if (write(outfd, buff, n) == -1)
 				err(4, "write");
 			content_length -= n;

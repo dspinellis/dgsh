@@ -295,12 +295,12 @@ page_out(struct buffer_pool *bp)
 				err(1, "Write to temporary file failed");
 			/* FALLTHROUGH */
 		case s_memory_backed:
-			DPRINTF(3, "Page out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
+			DPRINTF(4, "Page out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
 			bp->buffers[bp->page_out_ptr].s = s_file;
 			free(bp->buffers[bp->page_out_ptr].p);
 			bp->buffers_freed++;
 			bp->buffers_paged_out++;
-			DPRINTF(3, "Paged out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
+			DPRINTF(4, "Paged out buffer %d %p", bp->page_out_ptr, bp->buffers[bp->page_out_ptr].p);
 			break;
 		case s_file:
 		case s_none:
@@ -323,12 +323,12 @@ allocate_pool_buffer(struct buffer_pool *bp, int pool)
 	struct pool_buffer *b = &bp->buffers[pool];
 
 	if ((b->p = malloc(buffer_size)) == NULL) {
-		DPRINTF(3, "Unable to allocate %d bytes for buffer %ld", buffer_size, b - bp->buffers);
+		DPRINTF(4, "Unable to allocate %d bytes for buffer %ld", buffer_size, b - bp->buffers);
 		bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 		return false;
 	}
 	b->s = s_memory;
-	DPRINTF(3, "Allocated buffer %ld to %p", b - bp->buffers, b->p);
+	DPRINTF(4, "Allocated buffer %ld to %p", b - bp->buffers, b->p);
 	bp->buffers_allocated++;
 	bp->max_buffers_allocated = MAX(bp->buffers_allocated - bp->buffers_freed, bp->max_buffers_allocated);
 	return true;
@@ -357,11 +357,11 @@ page_in(struct buffer_pool *bp, int pool)
 			err(1, "Read from temporary file failed");
 		bp->buffers_paged_in++;
 		b->s = s_memory_backed;
-		DPRINTF(3, "Page in buffer %d", pool);
+		DPRINTF(4, "Page in buffer %d", pool);
 		break;
 	case s_none:
 	default:
-		DPRINTF(3, "Buffer %d has invalid storage %d", pool, b->s);
+		DPRINTF(4, "Buffer %d has invalid storage %d", pool, b->s);
 		assert(false);
 		break;
 	}
@@ -384,7 +384,7 @@ memory_allocate(struct buffer_pool *bp, int pool)
 	if (pool < bp->allocated_pool_end)
 		return true;
 
-	DPRINTF(3, "Buffers allocated: %d Freed: %d", bp->buffers_allocated, bp->buffers_freed);
+	DPRINTF(4, "Buffers allocated: %d Freed: %d", bp->buffers_allocated, bp->buffers_freed);
 	/* Check soft memory limit through allocated plus requested memory. */
 	if (memory_pool_size(bp, pool) > max_mem) {
 		if (use_tmp_file)
@@ -403,7 +403,7 @@ memory_allocate(struct buffer_pool *bp, int pool)
 		else
 			bp->pool_size *= 2;
 		if ((bp->buffers = realloc(bp->buffers, bp->pool_size * sizeof(struct pool_buffer))) == NULL) {
-			DPRINTF(3, "Unable to reallocate buffer pool bank");
+			DPRINTF(4, "Unable to reallocate buffer pool bank");
 			bp->pool_size = orig_pool_size;
 			bp->buffers = orig_buffers;
 			return false;
@@ -449,7 +449,7 @@ memory_free(struct buffer_pool *bp, off_t pos)
 	int pool_end = pos / buffer_size;
 	int i;
 
-	DPRINTF(3, "memory_free: pool=%p pos = %ld, begin=%d end=%d",
+	DPRINTF(4, "memory_free: pool=%p pos = %ld, begin=%d end=%d",
 		bp, (long)pos, bp->free_pool_begin, pool_end);
 	for (i = bp->free_pool_begin; i < pool_end; i++) {
 		switch (bp->buffers[i].s) {
@@ -472,7 +472,7 @@ memory_free(struct buffer_pool *bp, off_t pos)
 			break;
 		}
 		bp->buffers[i].s = s_none;
-		DPRINTF(3, "Freed buffer %d %p (pos = %ld, begin=%d end=%d)",
+		DPRINTF(4, "Freed buffer %d %p (pos = %ld, begin=%d end=%d)",
 			i, bp->buffers[i].p, (long)pos, bp->free_pool_begin, pool_end);
 		#ifdef DEBUG
 		bp->buffers[i].p = NULL;
@@ -497,7 +497,7 @@ source_buffer(struct source_info *ifp, /* OUT */ struct io_buffer *b)
 	assert(ifp->bp->buffers[pool].s == s_memory);
 	b->p = ifp->bp->buffers[pool].p + pool_offset;
 	b->size = buffer_size - pool_offset;
-	DPRINTF(3, "Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
+	DPRINTF(4, "Source buffer(%ld) returns pool %d(%p) o=%ld l=%ld a=%p",
 		(long)ifp->source_pos_read, pool, ifp->bp->buffers[pool].p, (long)pool_offset, (long)b->size, b->p);
 	return true;
 }
@@ -522,7 +522,7 @@ sink_buffer(struct sink_info *ofp)
 			page_in(ofp->ifp->bp, pool);
 		b.p = ofp->ifp->bp->buffers[pool].p + pool_offset;
 	}
-	DPRINTF(3, "Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p for input fd: %s",
+	DPRINTF(4, "Sink buffer(%ld-%ld) returns pool %d(%p) o=%ld l=%ld a=%p for input fd: %s",
 		(long)ofp->pos_written, (long)ofp->pos_to_write, pool, b.size ? ofp->ifp->bp->buffers[pool].p : NULL, (long)pool_offset, (long)b.size, b.p, fp_name(ofp->ifp));
 	return b;
 }
@@ -550,7 +550,7 @@ sink_buffer_length(off_t start, off_t end)
 	size_t pool_offset = start % buffer_size;
 	size_t source_bytes = end - start;
 
-	DPRINTF(3, "sink_buffer_length(%ld, %ld) = %ld",
+	DPRINTF(4, "sink_buffer_length(%ld, %ld) = %ld",
 		(long)start, (long)end,  (long)MIN(buffer_size - pool_offset, source_bytes));
 	return MIN(buffer_size - pool_offset, source_bytes);
 }
@@ -575,20 +575,20 @@ source_read(struct source_info *ifp)
 	struct io_buffer b;
 
 	if (!source_buffer(ifp, &b)) {
-		DPRINTF(3, "Memory full");
+		DPRINTF(4, "Memory full");
 		/* Provide some time for the output to drain. */
 		return read_oom;
 	}
 	if ((n = read(ifp->fd, b.p, b.size)) == -1)
 		switch (errno) {
 		case EAGAIN:
-			DPRINTF(3, "EAGAIN on %s", fp_name(ifp));
+			DPRINTF(4, "EAGAIN on %s", fp_name(ifp));
 			return read_again;
 		default:
 			err(3, "Read from %s", fp_name(ifp));
 		}
 	ifp->source_pos_read += n;
-	DPRINTF(3, "Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, fp_name(ifp),
+	DPRINTF(4, "Read %d out of %zu bytes from %s data=[%.*s]", n, b.size, fp_name(ifp),
 		(int)n * DATA_DUMP, (char *)b.p);
 	/* Return -1 on EOF */
 	return n ? read_ok : read_eof;
@@ -617,7 +617,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 			    ofp->ifp->reached_eof &&
 			    ofp->ifp->next) {
 				ofp->ifp = ofp->ifp->next;
-				DPRINTF(3, "%s(): advance to input file %s\n",
+				DPRINTF(4, "%s(): advance to input file %s\n",
 						__func__, fp_name(ofp->ifp));
 				ofp->pos_written = 0;
 			}
@@ -655,7 +655,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 		if (ofp->pos_written != ofp->pos_to_write || !FD_ISSET(ofp->fd, sink_fds))
 			continue;
 
-		DPRINTF(3, "pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld",
+		DPRINTF(4, "pos_assigned=%ld source_pos_read=%ld available_data=%ld available_sinks=%d data_per_sink=%ld",
 			(long)pos_assigned, (long)ofp->ifp->source_pos_read, (long)available_data, available_sinks, (long)data_per_sink);
 		/* First file also gets the remainder bytes. */
 		if (data_to_assign == 0)
@@ -717,7 +717,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 						} else {
 							/* No newline found in buffer; defer writing. */
 							ofp->pos_to_write = pos_assigned;
-							DPRINTF(3, "scatter to file[%s] no newline from %ld to %ld",
+							DPRINTF(4, "scatter to file[%s] no newline from %ld to %ld",
 								fp_name(ofp), (long)pos_assigned, (long)data_end);
 							return;
 						}
@@ -736,7 +736,7 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 		} else
 			pos_assigned += data_to_assign;
 		ofp->pos_to_write = pos_assigned;
-		DPRINTF(3, "scatter to file[%s] pos_written=%ld pos_to_write=%ld data=[%.*s]",
+		DPRINTF(4, "scatter to file[%s] pos_written=%ld pos_to_write=%ld data=[%.*s]",
 			fp_name(ofp), (long)ofp->pos_written, (long)ofp->pos_to_write,
 			(int)(ofp->pos_to_write - ofp->pos_written) * DATA_DUMP, sink_pointer(ofp->ifp->bp, ofp->pos_written));
 	}
@@ -762,13 +762,13 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 
 	allocate_data_to_sinks(sink_fds, ofiles);
 	for (ofp = ofiles; ofp; ofp = ofp->next) {
-		DPRINTF(3, "\n%s(): try write to file %s", __func__, fp_name(ofp));
+		DPRINTF(4, "\n%s(): try write to file %s", __func__, fp_name(ofp));
 		if (ofp->active && FD_ISSET(ofp->fd, sink_fds)) {
 			int n;
 			struct io_buffer b;
 
 			b = sink_buffer(ofp);
-			DPRINTF(3, "\n%s(): sink buffer returned %d bytes to write",
+			DPRINTF(4, "\n%s(): sink buffer returned %d bytes to write",
 					__func__, (int)b.size);
 			if (b.size == 0)
 				/* Can happen when a line spans a buffer */
@@ -781,10 +781,10 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 					case EPIPE:
 						ofp->active = false;
 						(void)close(ofp->fd);
-						DPRINTF(3, "EPIPE for %s", fp_name(ofp));
+						DPRINTF(4, "EPIPE for %s", fp_name(ofp));
 						break;
 					case EAGAIN:
-						DPRINTF(3, "EAGAIN for %s", fp_name(ofp));
+						DPRINTF(4, "EAGAIN for %s", fp_name(ofp));
 						n = 0;
 						break;
 					default:
@@ -795,7 +795,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 					written += n;
 				}
 			}
-			DPRINTF(3, "Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
+			DPRINTF(4, "Wrote %d out of %zu bytes for file %s pos_written=%lu data=[%.*s]",
 				n, b.size, fp_name(ofp), (unsigned long)ofp->pos_written, (int)n * DATA_DUMP, (char *)b.p);
 		}
 		if (ofp->active) {
@@ -815,7 +815,7 @@ sink_write(struct source_info *ifiles, fd_set *sink_fds, struct sink_info *ofile
 			break;
 	}
 
-	DPRINTF(3, "Wrote %zu total bytes", written);
+	DPRINTF(4, "Wrote %zu total bytes", written);
 	return written;
 }
 
@@ -953,7 +953,7 @@ parse_permute(char *s)
 
 	if (copy == NULL)
 		errx(1, "Out of memory for destination string");
-	DPRINTF(3, "In parse_permute [%s]", s);
+	DPRINTF(4, "In parse_permute [%s]", s);
 	for (p = strtok(copy, ","); p != NULL; p = strtok(NULL, ","))
 		permute_n++;
 	free(copy);
@@ -965,8 +965,8 @@ parse_permute(char *s)
 			errx(1, "Illegal permutation destination [%s]", s);
 	}
 	for (i = 0; i < permute_n; i++)
-		DPRINTF(3, "%d = %d", i, permute_dest[i]);
-	DPRINTF(3, "permute_n=%d", permute_n);
+		DPRINTF(4, "%d = %d", i, permute_dest[i]);
+	DPRINTF(4, "permute_n=%d", permute_n);
 }
 
 /*
@@ -1262,7 +1262,7 @@ main(int argc, char *argv[])
 				case read_ib:
 				case read_ob:
 				case drain_ob:
-					DPRINTF(3, "Check active file[%s] pos_written=%ld pos_to_write=%ld",
+					DPRINTF(4, "Check active file[%s] pos_written=%ld pos_to_write=%ld",
 						fp_name(ofp), (long)ofp->pos_written, (long)ofp->pos_to_write);
 					if (ofp->pos_written < ofp->pos_to_write)
 						FD_SET(ofp->fd, &sink_fds);
