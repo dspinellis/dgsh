@@ -101,6 +101,35 @@ The appropriate file descriptors are provided to each tool and the negotiation
 phase ends.
 .SH RETURN VALUE
 On success, the function returns 0, on failure it returns -1.
+.SH ENVIRONMENT
+The following environment variables affect the negotiation to create
+the communication graph.
+.TP
+.B DGSH_DEBUG_LEVEL
+Setting this variable to an integer
+(see the section \fBDEBUGGING\fP below)
+causes the function to output debug data regarding the negotiation
+on its standard error.
+.TP
+.B DGSH_DOT_DRAW
+Setting this variable to a file path causes the \fIdgsh\fP negotiation
+to save the graph of the communication processes in that file.
+The graph is saved in
+.IR dot (1)
+format.
+.TP
+.B DGSH_DOT_DRAW_EXIT
+Setting this variable in conjunction with \fBDGSH_DOT_DRAW\fP
+causes all processes participating in the negotiation to exit after
+the graph is saved to the file.
+.TP
+.B DGSH_TIMEOUT
+Setting this variable to an integer value specifies the number of
+seconds \fIdgsh\fP processes will wait for the negotiation to comlete
+before timing out and exiting.
+The default value is five seconds, but this value may need to be increased
+for negotiations that take a long time to complete.
+
 .SH DEBUGGING
 The DGSH_DEBUG_LEVEL environment variable controls
 debug output, which appears in \fIstderr\fP.
@@ -140,29 +169,6 @@ and linking to the library or with the use of \fIdgsh-wrap(1)\fP.
 For commands that stuck in the negotiation procedure because another
 command aborted during it, an alarm signal triggers an exit after 5
 seconds spent in negotiation to help commands exit it.
-
-.SH ENVIRONMENT
-The following environment variables affect the negotiation to create
-the communication graph.
-.TP
-.B DGSH_DOT_DRAW
-Setting this variable to a file path causes the \fIdgsh\fP negotiation
-to save the graph of the communication processes in that file.
-The graph is saved in
-.IR dot (1)
-format.
-.TP
-.B DGSH_DOT_DRAW_EXIT
-Setting this variable in conjunction with \fBDGSH_DOT_DRAW\fP
-causes all processes participating in the negotiation to exit after
-the graph is saved to the file.
-.TP
-.B DGSH_TIMEOUT
-Setting this variable to an integer value specifies the number of
-seconds \fIdgsh\fP processes will wait for the negotiation to comlete
-before timing out and exiting.
-The default value is five seconds, but this value may need to be increased
-for negotiations that take a long time to complete.
 
 .SH EXAMPLES
 .PP
