@@ -2826,16 +2826,6 @@ again:
 				if (self_node.pid ==
 						chosen_mb->initiator_pid) {
 					switch (chosen_mb->state) {
-					case PS_RUN:
-						DPRINTF(1, "%s(): Communicated the solution", __func__);
-						chosen_mb->state = PS_COMPLETE;
-						goto exit;
-					case PS_ERROR:
-						if (chosen_mb->is_error_confirmed)
-							goto exit;
-						else
-							chosen_mb->is_error_confirmed = true;
-						break;
 					case PS_NEGOTIATION:
 						chosen_mb->state = PS_NEGOTIATION_END;
 						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
@@ -2846,6 +2836,16 @@ again:
 							DPRINTF(1, "%s(): Computed solution", __func__);
 							chosen_mb->state = PS_RUN;
 						}
+						break;
+					case PS_RUN:
+						DPRINTF(1, "%s(): Communicated the solution", __func__);
+						chosen_mb->state = PS_COMPLETE;
+						goto exit;
+					case PS_ERROR:
+						if (chosen_mb->is_error_confirmed)
+							goto exit;
+						else
+							chosen_mb->is_error_confirmed = true;
 						break;
 					default:
 						assert(0);
