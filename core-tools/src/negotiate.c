@@ -1678,7 +1678,7 @@ add_node(void)
 		memcpy(&chosen_mb->node_array[n_nodes], &self_node,
 					sizeof(struct dgsh_node));
 		self_node_io_side.index = n_nodes;
-		DPRINTF(2, "%s(): Added node %s in position %d on dgsh graph, initiator: %d\n",
+		DPRINTF(2, "%s(): Added node %s in position %d on dgsh graph, initiator: %d",
 				__func__, self_node.name, self_node_io_side.index,
 				chosen_mb->initiator_pid);
 		chosen_mb->n_nodes++;
@@ -2507,9 +2507,8 @@ read_message_block(int read_fd, struct dgsh_negotiation **fresh_mb)
 enum op_result
 construct_message_block(const char *tool_name, pid_t self_pid)
 {
-	int memory_allocation_size = sizeof(struct dgsh_negotiation);
 	chosen_mb = (struct dgsh_negotiation *)malloc(
-				memory_allocation_size);
+				sizeof(struct dgsh_negotiation));
 	if (!chosen_mb) {
 		DPRINTF(3, "ERROR: Memory allocation of message block failed.");
 		return OP_ERROR;
@@ -2676,6 +2675,28 @@ dgsh_exit(int ret, int flags)
 	if (errno == ECONNRESET)
 		exit(EX_PROTOCOL);
 	err(EX_PROTOCOL, "%s: dgsh negotiation failed", programname);
+}
+
+/**
+ * Return the name of the specified state
+ */
+const char *
+state_name(enum prot_state s)
+{
+	switch (s) {
+	case PS_COMPLETE:
+		return "COMPLETE";
+	case PS_NEGOTIATION:
+		return "NEGOTIATION";
+	case PS_NEGOTIATION_END:
+		return "NEGOTIATION_END";
+	case PS_RUN:
+		return "RUN";
+	case PS_ERROR:
+		return "ERROR";
+	default:
+		assert(0);
+	}
 }
 
 /**
@@ -2856,9 +2877,9 @@ again:
 		}
 	}
 exit:
-	DPRINTF(2, "%s(): %s (%d) leaves after %s with state %d.", __func__,
+	DPRINTF(2, "%s(): %s (%d) leaves after %s with state %s.", __func__,
 			programname, self_node.index, isread ? "read" : "write",
-			chosen_mb->state);
+			state_name(chosen_mb->state));
 	if (chosen_mb->state == PS_COMPLETE) {
 		if (alloc_io_fds() == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
