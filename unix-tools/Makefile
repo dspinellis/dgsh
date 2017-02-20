@@ -144,7 +144,7 @@ test-bash: ../simple-shell/fid
 	printf "$B\nBash tests:${EC}\n"
 	
 	./run_simple_test.sh $(PSDIR) secho_paste \
-		"echo hello \
+		"pecho hello \
 		| paste $(PSDIR)/world"
 
 	./run_simple_test.sh $(PSDIR) wrap-cat_comm_sort \
@@ -191,8 +191,8 @@ test-bash: ../simple-shell/fid
 	# does not mess pipe substitution
 	./run_simple_test.sh $(PSDIR) secho_secho_fgrep \
 		"{{ \
-			echo match & \
-			echo \"not `date`\" & \
+			pecho match & \
+			pecho \"not `date`\" & \
 		}} \
 		| grep -F -h match"
 	
