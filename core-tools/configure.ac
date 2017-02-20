@@ -46,5 +46,7 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  tests/Makefile])
 
+AM_CONDITIONAL([FREEBSD], [test $(uname) -eq  "FreeBSD"])
+
 AC_OUTPUT
 

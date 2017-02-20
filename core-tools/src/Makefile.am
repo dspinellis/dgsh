@@ -1,5 +1,11 @@
 include ../../.config
 
+if FREEBSD
+CPOW = cpow.c
+else
+CPOW = 
+endif
+
 lib_LIBRARIES = libdgsh.a
 libdgsh_a_SOURCES = negotiate.c
 
@@ -16,7 +22,8 @@ man1_MANS = dgsh.1 dgsh-conc.1 dgsh-enumerate.1 dgsh-httpval.1 \
 man3_MANS = dgsh_negotiate.3
 
 libexec_PROGRAMS = dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor \
-		 dgsh-conc dgsh-wrap dgsh-enumerate
+		 dgsh-conc dgsh-wrap dgsh-enumerate dgsh-pecho \
+		 dgsh-fft-input dgsh-w
 libexec_SCRIPTS = dgsh-parallel perm
 libexecdir = $(prefix)/libexec/dgsh
 
@@ -28,6 +35,9 @@ dgsh_writeval_SOURCES = dgsh-writeval.c
 dgsh_conc_SOURCES = dgsh-conc.c
 dgsh_wrap_SOURCES = dgsh-wrap.c
 dgsh_enumerate_SOURCES = dgsh-enumerate.c
+dgsh_pecho_SOURCES = dgsh-pecho.c
+dgsh_fft_input_SOURCES = dgsh-fft-input.c
+dgsh_w_SOURCES = dgsh-w.c $(CPOW)
 
 dgsh_readval_LDADD = libdgsh.a
 dgsh_writeval_LDADD = libdgsh.a
@@ -35,6 +45,9 @@ dgsh_conc_LDADD = libdgsh.a
 dgsh_wrap_LDADD = libdgsh.a
 dgsh_tee_LDADD = libdgsh.a
 dgsh_enumerate_LDADD = libdgsh.a
+dgsh_pecho_LDADD = libdgsh.a
+dgsh_fft_input_LDADD = libdgsh.a
+dgsh_w_LDADD = libdgsh.a -lm
 
 dgsh-parallel: dgsh-parallel.sh
 	install $? $@

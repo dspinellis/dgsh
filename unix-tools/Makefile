@@ -74,22 +74,13 @@ configure:
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
 
-make: w
+make:
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
 	$(MAKE) -C grep
-	$(CC) $(CFLAGS) $(PATHS) pecho.c -o dgsh-pecho $(LIBS)
-	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
 
-w: w.c $(LIBS)
-ifeq ($(shell uname),FreeBSD)
-	$(CC) $(CFLAGS) $(PATHS) w.c cpow.c -o w $(LIBS) -lm
-else
-	$(CC) $(CFLAGS) $(PATHS) w.c -o w $(LIBS) -lm
-endif
-
-build-install: cat tee w make
+build-install: cat tee make
 	mkdir -p ../build/libexec/dgsh ../build/bin
 	cp bash/bash ../build/libexec/dgsh/
 	rm -f ../build/bin/dgsh
@@ -104,10 +95,10 @@ build-install: cat tee w make
 	cp grep/src/egrep ../build/libexec/dgsh/
 	cp grep/src/fgrep ../build/libexec/dgsh/
 	chmod 755 tee cat
-	cp -p dgsh-pecho fft-input w cat tee ../build/libexec/dgsh/
+	cp -p cat tee ../build/libexec/dgsh/
 	./install-wrapped.sh $$(cd .. ; pwd)/build
 
-install: cat tee w make
+install: cat tee make
 	$(MAKE) -C bash install
 	rm -f $(DESTDIR)$(PREFIX)/bin/dgsh
 	ln $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh || install $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh
@@ -117,9 +108,6 @@ install: cat tee w make
 	# Install last to overwrite standard tools of coreutils
 	install cat $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
-	install dgsh-pecho $(DESTDIR)$(DGSHPATH)
-	install fft-input $(DESTDIR)$(DGSHPATH)
-	install w $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
 
 cat: cat.sh
@@ -144,7 +132,7 @@ test-bash: ../simple-shell/fid
 	printf "$B\nBash tests:${EC}\n"
 	
 	./run_simple_test.sh $(PSDIR) secho_paste \
-		"pecho hello \
+		"dgsh-pecho hello \
 		| paste $(PSDIR)/world"
 
 	./run_simple_test.sh $(PSDIR) wrap-cat_comm_sort \
@@ -191,8 +179,8 @@ test-bash: ../simple-shell/fid
 	# does not mess pipe substitution
 	./run_simple_test.sh $(PSDIR) secho_secho_fgrep \
 		"{{ \
-			pecho match & \
-			pecho \"not `date`\" & \
+			dgsh-pecho match & \
+			dgsh-pecho \"not `date`\" & \
 		}} \
 		| grep -F -h match"
 	
