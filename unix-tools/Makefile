@@ -79,8 +79,7 @@ make: w
 	$(MAKE) -C coreutils
 	$(MAKE) -C diffutils
 	$(MAKE) -C grep
-	$(CC) $(CFLAGS) $(PATHS) simple_echo.c -o secho $(LIBS)
-	$(CC) $(CFLAGS) $(PATHS) pecho.c -o pecho $(LIBS)
+	$(CC) $(CFLAGS) $(PATHS) pecho.c -o dgsh-pecho $(LIBS)
 	$(CC) $(CFLAGS) $(PATHS) fft-input.c -o fft-input $(LIBS)
 
 w: w.c $(LIBS)
@@ -105,7 +104,7 @@ build-install: cat tee w make
 	cp grep/src/egrep ../build/libexec/dgsh/
 	cp grep/src/fgrep ../build/libexec/dgsh/
 	chmod 755 tee cat
-	cp -p secho pecho fft-input w cat tee ../build/libexec/dgsh/
+	cp -p dgsh-pecho fft-input w cat tee ../build/libexec/dgsh/
 	./install-wrapped.sh $$(cd .. ; pwd)/build
 
 install: cat tee w make
@@ -118,8 +117,7 @@ install: cat tee w make
 	# Install last to overwrite standard tools of coreutils
 	install cat $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
-	install secho $(DESTDIR)$(DGSHPATH)
-	install pecho $(DESTDIR)$(DGSHPATH)
+	install dgsh-pecho $(DESTDIR)$(DGSHPATH)
 	install fft-input $(DESTDIR)$(DGSHPATH)
 	install w $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
@@ -146,7 +144,7 @@ test-bash: ../simple-shell/fid
 	printf "$B\nBash tests:${EC}\n"
 	
 	./run_simple_test.sh $(PSDIR) secho_paste \
-		"secho hello \
+		"echo hello \
 		| paste $(PSDIR)/world"
 
 	./run_simple_test.sh $(PSDIR) wrap-cat_comm_sort \
@@ -193,8 +191,8 @@ test-bash: ../simple-shell/fid
 	# does not mess pipe substitution
 	./run_simple_test.sh $(PSDIR) secho_secho_fgrep \
 		"{{ \
-			secho match & \
-			secho \"not `date`\" & \
+			echo match & \
+			echo \"not `date`\" & \
 		}} \
 		| grep -F -h match"
 	
