@@ -94,10 +94,21 @@ remove_from_path(const char *string)
 int
 main(int argc, char *argv[])
 {
-	int pos = 1;
 	int ninputs = -1, noutputs = -1;
 	int *input_fds = NULL;
 	int feed_stdin = 0, special_args = 0;
+	int k = 0, i = 0, j = 0, r = 0;
+	int ch;
+	int internal_argc = 0;
+	char **internal_argv;
+	int dgsh_wrap_args;
+	char *m, *dup_arg;
+	int skip_pos_dup_arg = -1;
+	char *debug_level;
+
+	debug_level = getenv("DGSH_DEBUG_LEVEL");
+	if (debug_level)
+		dgsh_debug_level = atoi(debug_level);
 
 	/* Preclude recursive wrapping */
 	DPRINTF(4, "PATH before: [%s]", getenv("PATH"));
@@ -105,78 +116,151 @@ main(int argc, char *argv[])
 	DPRINTF(4, "PATH after: [%s]", getenv("PATH"));
 
 	DPRINTF(4, "argc: %d", argc);
-	int k = 0;
 	for (k = 0; k < argc; k++)
-		DPRINTF(4, "argv[%d]: %s", k, argv[k]);
+		DPRINTF(4, "argv[%d]: %s, len: %d", k, argv[k], strlen(argv[k]));
 
 	program_name = argv[0];
 
 	if (argc < 2)
 		usage();
 
-	/* Parse any arguments to dgsh-wrap
-	 * Tried getopt, but it swallows spaces in this case
-	 */
-	if (argv[1][0] == '-') {
-		char *m = ++argv[1];
-		DPRINTF(4, "m: %s", m);
-		while (m) {
-			if (m[0] == 'd') {
-				ninputs = 0;
-				pos++;
-				// argv[1] may carry also the guest program's name
-				if (strlen(m) > 2 && m[2] != '-')
-					guest_program_name = &m[2];
-			} else if (m[0] == 'm') {
-				noutputs = 0;
-				pos++;
-				if (strlen(m) > 2 && m[2] != '-')
-					guest_program_name = &m[2];
-			} else if (m[0] == 's') {
-				feed_stdin = 1;
-				pos++;
-				if (strlen(m) > 2 && m[2] != '-')
-					guest_program_name = &m[2];
-			} else
-				usage();
+	/* If args to dgsh-wrap are there, they start with argv[1] */
+	j = 1;
+	while (argv[j][0] == '-' && (strchr(argv[j], ' ') != NULL ||
+				strchr(argv[j], '\t') != NULL)) {
+		int count_space = 0;
+		int p;
 
-			m = strchr(m, '-');
+		/* Figure out allocation for space for internal_argv */
+		for (i = 0; i < strlen(argv[j]); i++)
+			if (argv[j][i] == ' ' || argv[j][i] == '\t')
+				count_space++;
+		DPRINTF(4, "In %s count_space: %d", argv[j], count_space);
+		internal_argc = argc + count_space;
+		internal_argv = malloc(sizeof(char *) * internal_argc);
+
+		/* Copy the same slots from the beginning of argv.
+		 * getopt works with program name as first arg.
+		 */
+		for (r = 0; r < j; r++)
+			internal_argv[r] = strdup(argv[r]);
+
+		/* Continue to fill in internal_argv by
+		 * copying the tokens found between non-handled spaces.
+		 */
+		p = r;
+		m = strtok(argv[j], " \t");
+		while (m != NULL) {
+			internal_argv[p] = strdup(m);
+			DPRINTF(4, "tokenised internal_argv[%d]: %s",
+					p, internal_argv[p]);
+			m = strtok(NULL, " \t");
+			p++;
+		}
+
+		/* Copy the remaining slots of argv into internal_argv
+		 * until the end of argv
+		 */
+		for (r = j + 1; r < argc; r++, p++)
+			internal_argv[p] = strdup(argv[r]);
+		j++;
+	}
+
+	/* If no args to dgsh-wrap: copy argv to internal_argv
+	 * for uniform processing of the provided command.
+	 * Else: separate args to dgsh-wrap from the guest command.
+	 */
+	if (j == 1) {
+		dgsh_wrap_args = 1;	// exclude argv[0] = dgsh-wrap
+		internal_argc = argc;
+		internal_argv = malloc(sizeof(char *) * internal_argc);
+		for (r = 0; r < argc; r++)
+			internal_argv[r] = strdup(argv[r]);
+	} else {
+		j = 1;
+		while (internal_argv[j][0] == '-')
+			j++;
+		dgsh_wrap_args = j;
+	}
+	DPRINTF(4, "dgsh_wrap_args: %d", dgsh_wrap_args);
+
+	// For debugging.
+	DPRINTF(4, "internal_argc: %d", internal_argc);
+	for (k = 0; k < internal_argc; k++)
+		DPRINTF(4, "internal_argv[%d]: %s", k, internal_argv[k]);
+
+	/* dgsh_wrap_args: handle only args to dgsh-wrap */
+        while ((ch = getopt(dgsh_wrap_args, internal_argv, "dms")) != -1) {
+		switch (ch) {
+		case 'd':
+			ninputs = 0;
+			break;
+		case 'm':
+			noutputs = 0;
+			break;
+		case 's':
+			feed_stdin = 1;
+			break;
+		case '?':
+		default:
+			usage();
 		}
 	}
+	DPRINTF(3, "After getopt: ninputs: %d, noutputs: %d, feed_stdin: %d",
+			ninputs, noutputs, feed_stdin);
 
-	if (!guest_program_name) {
-		guest_program_name = argv[pos];
-		pos++;
+	/* Record guest program name (without path) */
+	m = strchr(internal_argv[j], '/');
+	guest_program_name = internal_argv[j];
+	while (m != NULL) {
+		m++;
+		guest_program_name = m;
+		m = strchr(m, '/');
 	}
-	DPRINTF(3, "guest_program_name: %s", guest_program_name);
-
-	int exec_argv_len = argc - 1;
-	int i, j;
-	char **exec_argv = (char **)malloc((exec_argv_len + 1) *
-			sizeof(char *));
-
-	if (exec_argv == NULL)
-		err(1, "Error allocating exec_argv memory");
-	exec_argv[0] = guest_program_name;
+	DPRINTF(4, "guest_program_name: %s", guest_program_name);
 
 	/* Arguments might contain the dgsh-wrap script to executable
 	 * Skip the argv item that contains the wrapper script
 	 */
-	int cmp = 0, compare_chars = strlen(argv[0]) - strlen("dgsh-wrap");
-	DPRINTF(3, "argv[0]: %s, argv[2]: %s, compare_chars: %d",
-			argv[0], argv[pos], compare_chars);
-	if (compare_chars > 0 &&
-			!(cmp = strncmp(argv[pos], argv[0], compare_chars)))
-		pos++;
-	DPRINTF(4, "cmp: %d, pos: %d", cmp, pos);
+	if (internal_argc > j + 1) {
+		m = strchr(internal_argv[j + 1], '/');
+		dup_arg = internal_argv[j + 1];
+		while (m != NULL) {
+			m++;
+			dup_arg = m;
+			m = strchr(m, '/');
+		}
+		DPRINTF(4, "dup_arg: %s", dup_arg);
+		if (!strcmp(guest_program_name, dup_arg))
+			skip_pos_dup_arg = j + 1;
+	}
+	DPRINTF(4, "skip_pos_dup_arg: %d", skip_pos_dup_arg);
 
-	// Pass argv arguments to exec_argv for exec() call.
-	for (i = pos, j = 1; i < argc; i++, j++)
-		exec_argv[j] = argv[i];
+	// Pass internal_argv arguments to exec_argv for exec() call.
+	int exec_argc = internal_argc + 1 - dgsh_wrap_args -
+						(skip_pos_dup_arg > 0);
+	char **exec_argv = (char **)malloc(sizeof(char *) * exec_argc);
+
+	if (exec_argv == NULL)
+		err(1, "Error allocating exec_argv memory");
+
+	j = 0;
+	i = dgsh_wrap_args;
+	while (i < internal_argc) {
+		if (skip_pos_dup_arg == i) {
+			i++;
+			continue;
+		}
+		exec_argv[j] = internal_argv[i];
+		i++;
+		j++;
+	}
 	exec_argv[j] = NULL;
 
-	// Mark special argument "<|" that means input from /proc/self/fd/x
-	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
+	/* Mark special argument "<|" that means input from /proc/self/fd/x
+	 * exec_argv[argc - 1] == NULL
+	 */
+	for (k = 0; exec_argv[k] != NULL; k++) {
 		DPRINTF(4, "exec_argv[%d]: %s", k, exec_argv[k]);
 		char *m = NULL;
 		if (!strcmp(exec_argv[k], "<|") ||
@@ -201,32 +285,34 @@ main(int argc, char *argv[])
 	/* Build command title to be used in negotiation
 	 * Include the first two arguments
 	 */
-	DPRINTF(4, "argc: %d", argc);
 	char negotiation_title[100];
-	if (argc >= 5)	// [4] does not exist, [3] is NULL
+	if (exec_argc > 3)	// [3] is NULL
 		snprintf(negotiation_title, 100, "%s %s %s",
 				guest_program_name, exec_argv[1], exec_argv[2]);
-	else if (argc == 4) // [3] does not exist, [2] is NULL
+	else if (exec_argc == 3) // [2] is NULL
 		snprintf(negotiation_title, 100, "%s %s",
 				guest_program_name, exec_argv[1]);
 	else
 		snprintf(negotiation_title, 100, "%s", guest_program_name);
 
-	// Participate in negotiation
+	/* Participate in negotiation */
 	dgsh_negotiate(DGSH_HANDLE_ERROR, negotiation_title,
 					ninputs == -1 ? NULL : &ninputs,
 					noutputs == -1 ? NULL : &noutputs,
 					&input_fds, NULL);
 	int n = feed_stdin ? 1 : 0;
 
-	char **fds = calloc(argc - 2, sizeof(char *));		// /proc/self/fd/x or arg=/proc/self/fd/x
+	/* /proc/self/fd/x or arg=/proc/self/fd/x */
+	char **fds = calloc(argc - 2, sizeof(char *));
 
 	if (ninputs != -1)
 		DPRINTF(3, "%s returned %d input fds", negotiation_title, ninputs);
+
 	/* Substitute special argument "<|" with /proc/self/fd/x received
-	 * from negotiation
+	 * from negotiation.
+	 * exec_argv[argc - 1] == NULL
 	 */
-	for (k = 0; exec_argv[k] != NULL; k++) {	// exec_argv[argc - 1] = NULL
+	for (k = 0; exec_argv[k] != NULL; k++) {
 		char *m = NULL;
 		DPRINTF(3, "exec_argv[%d] to sub: %s", k, exec_argv[k]);
 		if (!strcmp(exec_argv[k], "<|") ||
@@ -237,7 +323,8 @@ main(int argc, char *argv[])
 			DPRINTF(4, "fds[k] size: %d", (int)size);
 			fds[k] = (char *)malloc(size);
 			if (fds[k] == NULL)
-				err(1, "Unable to allocate %zu bytes for fds", size);
+				err(1, "Unable to allocate %zu bytes for fds",
+						size);
 			memset(fds[k], 0, size);
 
 			if (!m)	// full match, just substitute
@@ -289,10 +376,10 @@ main(int argc, char *argv[])
 
 	// Execute command
 	if (exec_argv[0][0] == '/')
-		execv(guest_program_name, exec_argv);
+		execv(exec_argv[0], exec_argv);
 	else
-		execvp(guest_program_name, exec_argv);
+		execvp(exec_argv[0], exec_argv);
 
-	err(1, "Unable to execute %s", guest_program_name);
+	err(1, "Unable to execute %s", exec_argv[0]);
 	return 1;
 }
