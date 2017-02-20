@@ -74,7 +74,7 @@ core-tools:
 	$(MAKE) -C core-tools CFLAGS="$(CFLAGS)"
 	cd core-tools/src && $(MAKE) build-install
 
-unix-tools:
+unix-tools: core-tools
 	$(MAKE) -C unix-tools make MAKEFLAGS=
 	$(MAKE) -C unix-tools build-install
 

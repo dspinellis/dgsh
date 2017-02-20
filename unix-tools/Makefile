@@ -27,7 +27,6 @@ STD=/usr/bin
 SCRIPTDIR=tool_scripts
 
 PATHS= -I$(DGSHDIR)
-LIBS= $(DGSHDIR)/libdgsh.a
 
 # Color
 GR=\033[0;32m	# Green
