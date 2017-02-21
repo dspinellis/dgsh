@@ -21,6 +21,7 @@ DGSHPATH=$(PREFIX)/libexec/dgsh
 DGSHDIR=../core-tools/src
 PSDIR=../simple-shell
 EGDIR=../example
+MANDUMPDIR=/var/tmp/dgsh-share-duplicates
 # TOOLDIR
 TD=unix-tools
 STD=/usr/bin
@@ -65,13 +66,19 @@ get-submodules:
 		$(TD)/grep
 
 configure:
-	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
+	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH) \
+		--mandir=$(MANDUMPDIR)
 	cd coreutils && ./bootstrap && ../cygwin-sys-select-patch.sh && \
 	./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
-		--enable-no-install-program="$(DISABLE_COREUTILS_PROGRAMS)"
-	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
-	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH)
+		--enable-no-install-program="$(DISABLE_COREUTILS_PROGRAMS)" \
+		--mandir=$(MANDUMPDIR)
+	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) \
+		--bindir=$(DGSHPATH) \
+		--mandir=$(MANDUMPDIR)
+	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) \
+		--bindir=$(DGSHPATH) \
+		--mandir=$(MANDUMPDIR)
 
 make:
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
