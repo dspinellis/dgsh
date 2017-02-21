@@ -21,7 +21,7 @@ DGSHPATH=$(PREFIX)/libexec/dgsh
 DGSHDIR=../core-tools/src
 PSDIR=../simple-shell
 EGDIR=../example
-MANDUMPDIR=/var/tmp/dgsh-share-duplicates
+MANDUMPDIR=$(PREFIX)/var/tmp/dgsh-share-duplicates
 # TOOLDIR
 TD=unix-tools
 STD=/usr/bin
