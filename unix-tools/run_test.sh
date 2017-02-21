@@ -40,6 +40,7 @@ F=${R}failed${EC}
 
 if [ $? -ne 0 ]; then
 	echo "Skip test $BSCRIPT.sh"
+	exit 0
 fi
 
 if [ "$INPUT_TYPE" = pipe ]; then
