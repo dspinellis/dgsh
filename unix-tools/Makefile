@@ -67,18 +67,30 @@ get-submodules:
 
 configure:
 	cd bash && ./configure --prefix=$(PREFIX) --bindir=$(DGSHPATH) \
-		--mandir=$(MANDUMPDIR)
+		--docdir=$(MANDUMPDIR) \
+		--mandir=$(MANDUMPDIR) \
+		--infodir=$(MANDUMPDIR) \
+		--localedir=$(MANDUMPDIR)
 	cd coreutils && ./bootstrap && ../cygwin-sys-select-patch.sh && \
 	./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
 		--enable-no-install-program="$(DISABLE_COREUTILS_PROGRAMS)" \
-		--mandir=$(MANDUMPDIR)
+		--docdir=$(MANDUMPDIR) \
+		--mandir=$(MANDUMPDIR) \
+		--infodir=$(MANDUMPDIR) \
+		--localedir=$(MANDUMPDIR)
 	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
-		--mandir=$(MANDUMPDIR)
+		--docdir=$(MANDUMPDIR) \
+		--mandir=$(MANDUMPDIR) \
+		--infodir=$(MANDUMPDIR) \
+		--localedir=$(MANDUMPDIR)
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
-		--mandir=$(MANDUMPDIR)
+		--docdir=$(MANDUMPDIR) \
+		--mandir=$(MANDUMPDIR) \
+		--infodir=$(MANDUMPDIR) \
+		--localedir=$(MANDUMPDIR)
 
 make:
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
