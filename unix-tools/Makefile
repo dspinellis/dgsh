@@ -21,7 +21,7 @@ DGSHPATH=$(PREFIX)/libexec/dgsh
 DGSHDIR=../core-tools/src
 PSDIR=../simple-shell
 EGDIR=../example
-MANDUMPDIR=$(PREFIX)/var/tmp/dgsh-share-duplicates
+MANDUMPDIR=/var/tmp/dgsh-share-duplicates
 # TOOLDIR
 TD=unix-tools
 STD=/usr/bin
@@ -115,6 +115,7 @@ install: cat tee make
 	install cat $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
+	rm -r $(DESTDIR)$(PREFIX)$(MANDUMPDIR)
 
 cat: cat.sh
 	install $? $@

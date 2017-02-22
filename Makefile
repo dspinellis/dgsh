@@ -34,7 +34,6 @@ DOTFLAGS=-Nfontname=Arial -Ngradientangle=90 -Nstyle=filled -Nshape=ellipse -Nfi
 MAN1SRC=$(wildcard core-tools/src/*.1)
 MANPDF=$(patsubst %.1,%.pdf,$(MAN1SRC)) core-tools/src/dgsh_negotiate.pdf
 MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) core-tools/src/dgsh_negotiate.html
-MANDUMPDIR=$(PREFIX)/var/tmp/dgsh-share-duplicates
 
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
@@ -125,7 +124,6 @@ install:
 	-rm -r build
 	$(MAKE) -C core-tools install
 	$(MAKE) -C unix-tools install
-	rm -r $(MANDUMPDIR)
 
 webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
 
