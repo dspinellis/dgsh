@@ -2,6 +2,18 @@
 
 PSDIR=$1
 
+./run_simple_test.sh $PSDIR read_while \
+	'echo -e "hi\nthere" \
+	| while read X; do echo $X; done'
+
+./run_simple_test.sh $PSDIR subshell \
+	"(echo a) \
+	| cat"
+
+./run_simple_test.sh $PSDIR group \
+	"{ echo a ;} \
+	| cat"
+
 ./run_simple_test.sh $PSDIR secho_paste \
 	"dgsh-pecho hello \
 	| paste $PSDIR/world"
