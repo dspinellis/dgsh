@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -308,7 +309,7 @@ http_serve(FILE *in, FILE *out, const char *mime_type)
 
 	/* File system name space */
 	if (stat(file, &sb) < 0) {
-		send_error(out, 404, "Not Found", NULL, "File not found.");
+		send_error(out, 404, "Not Found", NULL, strerror(errno));
 		return;
 	}
 	if (S_ISSOCK(sb.st_mode)) {

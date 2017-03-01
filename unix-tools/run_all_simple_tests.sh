@@ -2,6 +2,8 @@
 
 PSDIR=$1
 
+set -e
+
 ./run_simple_test.sh $PSDIR read_while \
 	'echo -e "hi\nthere" \
 	| while read X; do echo $X; done'
