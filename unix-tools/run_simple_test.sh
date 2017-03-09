@@ -15,7 +15,7 @@ FILENAME=$2
 SCRIPT=$3
 
 PATH="$(pwd)/../build/libexec/dgsh:$(pwd)/../build/bin:$PATH" \
-DGSH_DEBUG_LEVEL=4 $DGSH -c "$SCRIPT > $PSDIR/$FILENAME.outb" \
+$DGSH -c "$SCRIPT > $PSDIR/$FILENAME.outb" \
 2>$PSDIR/$FILENAME.errb \
 && diff $PSDIR/$FILENAME.outb $PSDIR/$FILENAME.success \
 && printf "$FILENAME $S\n" \
