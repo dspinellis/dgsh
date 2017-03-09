@@ -27,21 +27,21 @@ ls -n |
 tee |
 {{
 	# Reorder fields in DIR-like way
-	awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}' &
+	awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}'
 
 	# Count number of files
-	wc -l | tr -d \\n &
+	wc -l | tr -d \\n
 
 	# Print label for number of files
-	echo -n ' File(s) ' &
+	echo -n ' File(s) '
 
 	# Tally number of bytes
-	awk '{s += $5} END {printf("%d bytes\n", s)}' &
+	awk '{s += $5} END {printf("%d bytes\n", s)}'
 
 	# Count number of directories
-	grep -c '^d' | tr -d \\n &
+	grep -c '^d' | tr -d \\n
 
 	# Print label for number of dirs and calculate free bytes
-	echo " Dir(s) $FREE bytes free" &
+	echo " Dir(s) $FREE bytes free"
 }} |
 cat

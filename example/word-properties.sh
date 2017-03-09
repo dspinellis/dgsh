@@ -39,19 +39,19 @@ sort -u |
 tee |
 {{
 	# Pass through the original words
-	cat &
+	cat
 
 	# List two-letter palindromes
 	sed 's/.*\(.\)\(.\)\2\1.*/p: \1\2-\2\1/;t
-		g' &
+		g'
 
 	# List four consecutive consonants
 	sed -E 's/.*([^aeiouyAEIOUY]{4}).*/c: \1/;t
-		g' &
+		g'
 
 	# List length of words longer than 12 characters
 	awk '{if (length($1) > 12) print "l:", length($1);
-		else print ""}' &
+		else print ""}'
 }} |
 # Paste the four streams side-by-side
 paste |

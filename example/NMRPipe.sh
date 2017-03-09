@@ -42,7 +42,7 @@ tee |
   nmrPipe -fn FT |
   nmrPipe -fn PS -p0 0 -p1 0 -di |
   nmrPipe -fn TP |
-  nmrPipe -fn POLY -auto -verb >A &
+  nmrPipe -fn POLY -auto -verb >A
 
   nmrPipe |
   nmrPipe -fn SOL |
@@ -58,7 +58,7 @@ tee |
   nmrPipe -fn FT |
   nmrPipe -fn PS -p0 -90 -p1 0 -di |
   nmrPipe -fn TP |
-  nmrPipe -fn POLY -auto -verb >B &
+  nmrPipe -fn POLY -auto -verb >B
 
 }}
 

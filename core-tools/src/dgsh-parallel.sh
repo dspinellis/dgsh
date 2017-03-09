@@ -106,7 +106,7 @@ fi |
 sed 's/[&/\\]/\\&/g' |
 # Replace {} with the name of each node
 while IFS='' read -r node ; do
-  echo "  $@" " &" | sed "s/{}/$node/"
+  echo "  $@" | sed "s/{}/$node/"
 done >>$SCRIPT
 
 cat >>$SCRIPT <<EOF

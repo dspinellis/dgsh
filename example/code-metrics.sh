@@ -29,7 +29,7 @@
 
 		# Average file name length
 		# Convert to newline separation for counting
-		echo -n 'FNAMELEN: ' &
+		echo -n 'FNAMELEN: '
 		tr \\0 \\n |
 		# Remove path
 		sed 's|^.*/||' |
@@ -38,7 +38,7 @@
 			if (n>0)
 				print s / n;
 			else
-				print 0; }' &
+				print 0; }'
 
 		xargs -0 /bin/cat |
 		tee |
@@ -49,58 +49,58 @@
 			tee |
 			{{
 				# Structure definitions
-				echo -n 'NSTRUCT: ' &
-				egrep -c 'struct[   ]*{|struct[   ]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{' &
+				echo -n 'NSTRUCT: '
+				egrep -c 'struct[   ]*{|struct[   ]*[a-zA-Z_][a-zA-Z0-9_]*[       ]*{'
 				#}} (match preceding openings)
 
 				# Type definitions
-				echo -n 'NTYPEDEF: ' &
-				grep -cw typedef &
+				echo -n 'NTYPEDEF: '
+				grep -cw typedef
 
 				# Use of void
-				echo -n 'NVOID: ' &
-				grep -cw void &
+				echo -n 'NVOID: '
+				grep -cw void
 
 				# Use of gets
-	  			echo -n 'NGETS: ' &
-	  			grep -cw gets &
+	  			echo -n 'NGETS: '
+	  			grep -cw gets
 
 				# Average identifier length
-				echo -n 'IDLEN: ' &
+				echo -n 'IDLEN: '
 				tr -cs 'A-Za-z0-9_' '\n' |
 				sort -u |
 				awk '/^[A-Za-z]/ { len += length($1); n++ } END {
 					if (n>0)
 						print len / n;
 					else
-						print 0; }' &
-			}} &
+						print 0; }'
+			}}
 
 			# Lines and characters
-			echo -n 'CHLINESCHAR: ' &
+			echo -n 'CHLINESCHAR: '
 			wc -lc |
-			awk '{OFS=":"; print $1, $2}' &
+			awk '{OFS=":"; print $1, $2}'
 
 			# Non-comment characters (rounded thousands)
 			# -traditional avoids expansion of tabs
 			# We round it to avoid failing due to minor
 			# differences between preprocessors in regression
 			# testing
-			echo -n 'NCCHAR: ' &
+			echo -n 'NCCHAR: '
 			sed 's/#/@/g' |
 			cpp -traditional -P |
 			wc -c |
-			awk '{OFMT = "%.0f"; print $1/1000}' &
+			awk '{OFMT = "%.0f"; print $1/1000}'
 
 			# Number of comments
-			echo -n 'NCOMMENT: ' &
-			egrep -c '/\*|//' &
+			echo -n 'NCOMMENT: '
+			egrep -c '/\*|//'
 
 			# Occurences of the word Copyright
-			echo -n 'NCOPYRIGHT: ' &
-			grep -ci copyright &
-		}} &
-	}} &
+			echo -n 'NCOPYRIGHT: '
+			grep -ci copyright
+		}}
+	}}
 
 	# C files
 	find "$@" -name \*.c -type f -print0 |
@@ -111,24 +111,24 @@
 		tee |
 		{{
 			# Number of C files
-			echo -n 'NCFILE: ' &
-			wc -l &
+			echo -n 'NCFILE: '
+			wc -l
 
 			# Number of directories containing C files
-			echo -n 'NCDIR: ' &
+			echo -n 'NCDIR: '
 			sed 's,/[^/]*$,,;s,^.*/,,' |
 			sort -u |
-			wc -l &
-		}} &
+			wc -l
+		}}
 
 		# C code
 		xargs -0 /bin/cat |
 		tee |
 		{{
 			# Lines and characters
-			echo -n 'CLINESCHAR: ' &
+			echo -n 'CLINESCHAR: '
 			wc -lc |
-			awk '{OFS=":"; print $1, $2}' &
+			awk '{OFS=":"; print $1, $2}'
 
 			# C code without comments and strings
 			sed 's/#/@/g;s/\\[\\"'\'']/@/g;s/"[^"]*"/""/g;'"s/'[^']*'/''/g" |
@@ -136,36 +136,36 @@
 			tee |
 			{{
 				# Number of functions
-				echo -n 'NFUNCTION: ' &
-				grep -c '^{' &
+				echo -n 'NFUNCTION: '
+				grep -c '^{'
 
 				# Number of gotos
-				echo -n 'NGOTO: ' &
-				grep -cw goto &
+				echo -n 'NGOTO: '
+				grep -cw goto
 
 				# Occurrences of the register keyword
-				echo -n 'NREGISTER: ' &
-				grep -cw register &
+				echo -n 'NREGISTER: '
+				grep -cw register
 
 				# Number of macro definitions
-				echo -n 'NMACRO: ' &
-				grep -c '@[   ]*define[   ][   ]*[a-zA-Z_][a-zA-Z0-9_]*(' &
+				echo -n 'NMACRO: '
+				grep -c '@[   ]*define[   ][   ]*[a-zA-Z_][a-zA-Z0-9_]*('
 				# Number of include directives
-				echo -n 'NINCLUDE: ' &
-				grep -c '@[   ]*include' &
+				echo -n 'NINCLUDE: '
+				grep -c '@[   ]*include'
 
 				# Number of constants
-				echo -n 'NCONST: ' &
-				grep -ohw '[0-9][x0-9][0-9a-f]*' | wc -l &
+				echo -n 'NCONST: '
+				grep -ohw '[0-9][x0-9][0-9a-f]*' | wc -l
 
-			}} &
-		}} &
-	}} &
+			}}
+		}}
+	}}
 
 	# Header files
-	echo -n 'NHFILE: ' &
+	echo -n 'NHFILE: '
 	find "$@" -name \*.h -type f |
-	wc -l &
+	wc -l
 
 }} |
 # Gather and print the results

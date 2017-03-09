@@ -33,10 +33,10 @@ tee |
 {{
 
   # List all defined (exported) symbols
-  awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort &
+  awk 'NF == 3 && $2 ~ /[A-Z]/ {print $3}' | sort
 
   # List all undefined (imported) symbols
-  awk '$1 == "U" {print $2}' | sort &
+  awk '$1 == "U" {print $2}' | sort
 
 }} |
 # Print exports that are not imported

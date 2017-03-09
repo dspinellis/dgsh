@@ -56,48 +56,48 @@ EOF
 tee |
 {{
 	# Number of accesses
-	echo -n 'Number of accesses: ' &
-	dgsh-readval -l -s nAccess &
+	echo -n 'Number of accesses: '
+	dgsh-readval -l -s nAccess
 
 	# Number of transferred bytes
 	awk '{s += $NF} END {print s}' |
 	tee |
 	{{
-		echo -n 'Number of Gbytes transferred: ' &
-		awk '{print $1 / 1024 / 1024 / 1024}' &
+		echo -n 'Number of Gbytes transferred: '
+		awk '{print $1 / 1024 / 1024 / 1024}'
 
-		dgsh-writeval -s nXBytes &
-	}} &
+		dgsh-writeval -s nXBytes
+	}}
 
-	echo -n 'Number of hosts: ' &
-	dgsh-readval -l -q -s nHosts &
+	echo -n 'Number of hosts: '
+	dgsh-readval -l -q -s nHosts
 
-	echo -n 'Number of domains: ' &
-	dgsh-readval -l -q -s nDomains &
+	echo -n 'Number of domains: '
+	dgsh-readval -l -q -s nDomains
 
-	echo -n 'Number of top level domains: ' &
-	dgsh-readval -l -q -s nTLDs &
+	echo -n 'Number of top level domains: '
+	dgsh-readval -l -q -s nTLDs
 
-	echo -n 'Number of different pages: ' &
-	dgsh-readval -l -q -s nUniqPages &
+	echo -n 'Number of different pages: '
+	dgsh-readval -l -q -s nUniqPages
 
-	echo -n 'Accesses per day: ' &
-	dgsh-readval -l -q -s nDayAccess &
+	echo -n 'Accesses per day: '
+	dgsh-readval -l -q -s nDayAccess
 
-	echo -n 'MBytes per day: ' &
-	dgsh-readval -l -q -s nDayMB &
+	echo -n 'MBytes per day: '
+	dgsh-readval -l -q -s nDayMB
 
 	# Number of log file bytes
-	echo -n 'MBytes log file size: ' &
+	echo -n 'MBytes log file size: '
 	wc -c |
-	awk '{print $1 / 1024 / 1024}' &
+	awk '{print $1 / 1024 / 1024}'
 
 	# Host names
 	awk '{print $1}' |
 	tee |
 	{{
 		# Number of accesses
-		wc -l | dgsh-writeval -s nAccess &
+		wc -l | dgsh-writeval -s nAccess
 
 		# Sorted hosts
 		sort |
@@ -109,29 +109,29 @@ tee |
 			tee |
 			{{
 				# Number of hosts
-				wc -l | dgsh-writeval -s nHosts &
+				wc -l | dgsh-writeval -s nHosts
 
 				# Number of TLDs
 				awk -F. '$NF !~ /[0-9]/ {print $NF}' |
 				sort -u |
 				wc -l |
-				dgsh-writeval -s nTLDs &
-			}} &
+				dgsh-writeval -s nTLDs
+			}}
 
 			# Top 10 hosts
 			{{
-				 call 'header "Top 10 Hosts"' &
-				 call 'toplist 10' &
-			}} &
-		}} &
+				 call 'header "Top 10 Hosts"'
+				 call 'toplist 10'
+			}}
+		}}
 
 		# Top 20 TLDs
 		{{
-			call 'header "Top 20 Level Domain Accesses"' &
+			call 'header "Top 20 Level Domain Accesses"'
 			awk -F. '$NF !~ /^[0-9]/ {print $NF}' |
 			sort |
-			call 'toplist 20' &
-		}} &
+			call 'toplist 20'
+		}}
 
 		# Domains
 		awk -F. 'BEGIN {OFS = "."}
@@ -142,24 +142,24 @@ tee |
 			# Number of domains
 			uniq |
 			wc -l |
-			dgsh-writeval -s nDomains &
+			dgsh-writeval -s nDomains
 
 			# Top 10 domains
 			{{
-				 call 'header "Top 10 Domains"' &
-				 call 'toplist 10' &
-			}} &
-		}} &
-	}} &
+				 call 'header "Top 10 Domains"'
+				 call 'toplist 10'
+			}}
+		}}
+	}}
 
 	# Hosts by volume
 	{{
-		call 'header "Top 10 Hosts by Transfer"' &
+		call 'header "Top 10 Hosts by Transfer"'
 		awk '    {bytes[$1] += $NF}
 		END {for (h in bytes) print bytes[h], h}' |
 		sort -rn |
-		head -10 &
-	}} &
+		head -10
+	}}
 
 	# Sorted page name requests
 	awk '{print $7}' |
@@ -169,22 +169,22 @@ tee |
 
 		# Top 20 area requests (input is already sorted)
 		{{
-			 call 'header "Top 20 Area Requests"' &
+			 call 'header "Top 20 Area Requests"'
 			 awk -F/ '{print $2}' |
-			 call 'toplist 20' &
-		}} &
+			 call 'toplist 20'
+		}}
 
 		# Number of different pages
 		uniq |
 		wc -l |
-		dgsh-writeval -s nUniqPages &
+		dgsh-writeval -s nUniqPages
 
 		# Top 20 requests
 		{{
-			 call 'header "Top 20 Requests"' &
-			 call 'toplist 20' &
-		}} &
-	}} &
+			 call 'header "Top 20 Requests"'
+			 call 'toplist 20'
+		}}
+	}}
 
 	# Access time: dd/mmm/yyyy:hh:mm:ss
 	awk '{print substr($4, 2)}' |
@@ -205,40 +205,40 @@ tee |
 					BEGIN {
 					"dgsh-readval -l -x -s nAccess" | getline NACCESS;}
 					{print NACCESS / $1}' |
-				dgsh-writeval -s nDayAccess &
+				dgsh-writeval -s nDayAccess
 
 				awk '
 					BEGIN {
 					"dgsh-readval -l -x -q -s nXBytes" | getline NXBYTES;}
 					{print NXBYTES / $1 / 1024 / 1024}' |
-				dgsh-writeval -s nDayMB &
-			}} &
+				dgsh-writeval -s nDayMB
+			}}
 
 			{{
-				 call 'header "Accesses by Date"' &
-				 uniq -c &
-			}} &
+				 call 'header "Accesses by Date"'
+				 uniq -c
+			}}
 
 			# Accesses by day of week
 			{{
-				 call 'header "Accesses by Day of Week"' &
+				 call 'header "Accesses by Day of Week"'
 				 sed 's|/|-|g' |
 				 call '(date -f - +%a 2>/dev/null || gdate -f - +%a)' |
 				 sort |
 				 uniq -c |
-				 sort -rn &
-			}} &
-		}} &
+				 sort -rn
+			}}
+		}}
 
 		# Hour
 		{{
-			call 'header "Accesses by Local Hour"' &
+			call 'header "Accesses by Local Hour"'
 			awk -F: '{print $2}' |
 			sort |
-			uniq -c &
-		}} &
-	}} &
-	dgsh-readval -q -s nAccess &
+			uniq -c
+		}}
+	}}
+	dgsh-readval -q -s nAccess
 }} |
 cat
 

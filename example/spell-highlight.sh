@@ -31,15 +31,15 @@ tee |
 		# Obtain list of words in text
 		tr -cs A-Za-z \\n |
 		tr A-Z a-z |
-		sort -u &
+		sort -u
 
 		# Ensure dictionary is compatibly sorted
-		sort /usr/share/dict/words &
+		sort /usr/share/dict/words
 	}} |
 	# List errors as a set difference
-	comm -23 &
+	comm -23
 
 	# Pass through text
-	cat &
+	cat
 }} |
 grep --fixed-strings --file=- --ignore-case --color --word-regex --context=2

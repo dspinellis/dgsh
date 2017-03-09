@@ -32,8 +32,8 @@ sfsmooth rect2=2 |
 sfsmooth rect2=2 |
 tee |
 {{
-	sfgrey pclip=100 wanttitle=n &
-	#dgsh-writeval -s pulse.vpl &
+	sfgrey pclip=100 wanttitle=n
+	#dgsh-writeval -s pulse.vpl
 
 	sffft1 |
 	sffft3 axis=2 pad=1 |
@@ -41,19 +41,19 @@ tee |
 	tee |
 	{{
 		sfwindow f1=1 |
-		sfreverse which=3 &
+		sfreverse which=3
 
-		cat &
+		cat
 		#dgsh-tee -I |
-		#dgsh-writeval -s ft2d &
+		#dgsh-writeval -s ft2d
 	}} |
 	sfcat axis=1 "<|" |	# dgsh-readval
 	sfgrey pclip=100 wanttitle=n \
-		label1="1/time" label2="1/space" &
-	#dgsh-writeval -s ft2d.vpl &
+		label1="1/time" label2="1/space"
+	#dgsh-writeval -s ft2d.vpl
 }} |
 call_with_stdin 'side_by_side_iso "<|" \
-	   yscale=1.25 >Fig/ft2dofpulse.vpl' &
+	   yscale=1.25 >Fig/ft2dofpulse.vpl'
 
 # A simulated air wave and the amplitude of its 2D Fourier transform
 sfspike n1=64 d1=1 o1=32 nsp=4 k1=1,2,3,4 mag=1,3,3,1 \
@@ -64,43 +64,43 @@ sflmostretch delay=0 v0=-1 |
 tee |
 {{
 	sfwindow f2=1 |
-	sfreverse which=2 &
+	sfreverse which=2
 
-	cat &
-	#dgsh-tee -I | dgsh-writeval -s air &
+	cat
+	#dgsh-tee -I | dgsh-writeval -s air
 }} |
 sfcat axis=2 "<|" |
 tee |
 {{
-	sfgrey pclip=100 wanttitle=n &
-	#| dgsh-writeval -s airtx.vpl &
+	sfgrey pclip=100 wanttitle=n
+	#| dgsh-writeval -s airtx.vpl
 			
 	sffft1 |
 	sffft3 sign=1 |
 	tee |
 	{{
-		sfreal &
-		#| dgsh-writeval -s airftr &
+		sfreal
+		#| dgsh-writeval -s airftr
 				
-		sfimag &
-		#| dgsh-writeval -s airfti &
+		sfimag
+		#| dgsh-writeval -s airfti
 	}} |
 	sfmath nostdin=y re="<|" im="<|" output="sqrt(re*re+im*im)" |
 	tee |
 	{{
 		sfwindow f1=1 |
-		sfreverse which=3 &
+		sfreverse which=3
 
-		cat &
-		#dgsh-tee -I | dgsh-writeval -s airft1 &
+		cat
+		#dgsh-tee -I | dgsh-writeval -s airft1
 	}} |
 	sfcat axis=1 "<|" |
 	sfgrey pclip=100 wanttitle=n label1="1/time" \
-		label2="1/space" &
+		label2="1/space"
 	#| dgsh-writeval -s airfk.vpl
 }} |
 call_with_stdin 'side_by_side_iso "<|" \
-		yscale=1.25 >Fig/airwave.vpl' &
+		yscale=1.25 >Fig/airwave.vpl'
 #call 'side_by_side_iso airtx.vpl airfk.vpl \
 
 wait

@@ -24,34 +24,34 @@ dgsh-fft-input $1 |
 perm 1,5,3,7,2,6,4,8 |
 {{
 	{{
-		dgsh-w 1 0 &
-		dgsh-w 1 0 &
+		dgsh-w 1 0
+		dgsh-w 1 0
 	}} |
 	perm 1,3,2,4 |
 	{{
-		dgsh-w 2 0 &
-		dgsh-w 2 1 &
-	}} &
+		dgsh-w 2 0
+		dgsh-w 2 1
+	}}
 
 	{{
-		dgsh-w 1 0 &
-		dgsh-w 1 0 &
+		dgsh-w 1 0
+		dgsh-w 1 0
 	}} |
 	perm 1,3,2,4 |
 	{{
-		dgsh-w 2 0 &
-		dgsh-w 2 1 &
-	}} &
+		dgsh-w 2 0
+		dgsh-w 2 1
+	}}
 }} |
 perm 1,5,3,7,2,6,4,8 |
 {{
-	dgsh-w 3 0 &
+	dgsh-w 3 0
 
-	dgsh-w 3 1 &
+	dgsh-w 3 1
 
-	dgsh-w 3 2 &
+	dgsh-w 3 2
 
-	dgsh-w 3 3 &
+	dgsh-w 3 3
 }} |
 perm 1,5,2,6,3,7,4,8 |
 cat

@@ -37,10 +37,10 @@ tee |
 {{
 
 	# Print an MD5 sum for each file that appears more than once
-	awk '{print $2}' | uniq -d &
+	awk '{print $2}' | uniq -d
 
 	# Promote the stream to gather it
-	cat &
+	cat
 }} |
 # Join the repeated MD5 sums with the corresponding file names
 # Join expects two inputs, second will come from scatter

@@ -29,19 +29,19 @@
 
 tee |
 {{
-	printf 'File type:\t' &
-	file - &
+	printf 'File type:\t'
+	file -
 
-	printf 'Original size:\t' &
-	wc -c &
+	printf 'Original size:\t'
+	wc -c
 
-	printf 'xz:\t\t' &
-	xz -c | wc -c &
+	printf 'xz:\t\t'
+	xz -c | wc -c
 
-	printf 'bzip2:\t\t' &
-	bzip2 -c | wc -c &
+	printf 'bzip2:\t\t'
+	bzip2 -c | wc -c
 
-	printf 'gzip:\t\t' &
-	gzip -c | wc -c &
+	printf 'gzip:\t\t'
+	gzip -c | wc -c
 }} |
 cat
