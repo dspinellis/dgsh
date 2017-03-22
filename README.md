@@ -6,4 +6,4 @@ The directed graph shell, *dgsh*, allows the expressive expression of efficient 
 
 You can find a complete introduction, reference documentation,
 and illustrated examples in the suite's
-[web site] (http://www.spinellis.gr/sw/dgsh/).
+[web site](http://www.spinellis.gr/sw/dgsh/).
