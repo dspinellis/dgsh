@@ -127,7 +127,7 @@ install: cat tee make
 	install cat $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
-	rm -r $(DESTDIR)$(MANDUMPDIR)
+	rm -rf $(DESTDIR)$(MANDUMPDIR)
 
 cat: cat.sh
 	install $? $@
