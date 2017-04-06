@@ -45,7 +45,11 @@ The wrapped program is deaf, it will not read any input.
 The wrapped program is mute, it will not produce any output.
 
 .IP "\fB\-s\fP
-Include stdin to the channel assignments (used in conjunction with \fI<|\fP)
+Include standard input to the channel assignments.
+This option is used in conjunction with \fI<|\fP and has the effect of
+having standard input mapped to the first \fI<|\fP argument and passed to the
+wrapped command through it, rather than having the standard input left
+connected to the command's standard input.
 
 .SH "SEE ALSO"
 \fIdgsh\fP(1)
