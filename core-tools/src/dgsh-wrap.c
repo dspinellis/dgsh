@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Diomidis Spinellis
+ * Copyright 2016, 2017 Diomidis Spinellis, Marios Fragkoulis
  *
  * Wrap any command to participate in the dgsh negotiation
  *
@@ -303,7 +303,7 @@ main(int argc, char *argv[])
 	int n = feed_stdin ? 1 : 0;
 
 	/* /proc/self/fd/x or arg=/proc/self/fd/x */
-	char **fds = calloc(argc - 2, sizeof(char *));
+	char **fds = calloc(argc, sizeof(char *));
 
 	if (ninputs != -1)
 		DPRINTF(3, "%s returned %d input fds", negotiation_title, ninputs);
