@@ -149,7 +149,7 @@ commit:
 	printf '\n\n# Please enter the commit message for your changes.\n#\n' >.git/COMMIT_EDITMSG
 	git status --ignore-submodules=untracked | sed 's/^/# /' >>.git/COMMIT_EDITMSG
 	$${VISUAL-vi} .git/COMMIT_EDITMSG
-	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do cat .git/COMMIT_EDITMSG | (cd $$i && git commit -a -F -) ; done
+	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do sed -i '/^#/d' .git/COMMIT_EDITMSG | (cd $$i && git commit -a -F -) ; done
 	rm -f .git/COMMIT_EDITMSG
 
 # Rough uninstall rule to verify that tests pick up correct files
