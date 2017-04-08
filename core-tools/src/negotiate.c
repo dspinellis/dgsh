@@ -1202,9 +1202,9 @@ solve_dgsh_graph(void)
 				OP_ERROR ||
 				(exit_state == OP_RETRY && retries > 10)) {
 			int i = 0, index = 0;
-			fprintf(stderr, "ERROR: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
+			fprintf(stderr, "dgsh: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
 					index_argc);
-			for (i = 0; i < index_argc - 1; i++){
+			for (i = 0; i < index_argc - 1; i++) {
 				index = index_commands_notmatched[i];
 				fprintf(stderr, "%s, ",
 					chosen_mb->node_array[index].name);
@@ -2672,9 +2672,15 @@ dgsh_exit(int ret, int flags)
 		return 0;
 	if (!(flags & DGSH_HANDLE_ERROR))
 		return ret;
-	if (errno == ECONNRESET)
+
+	switch (errno) {
+	case ECONNRESET:
 		exit(EX_PROTOCOL);
-	err(EX_PROTOCOL, "dgsh negotiation failed");
+	case 0:
+		errx(EX_PROTOCOL, "dgsh negotiation failed");
+	default:
+		err(EX_PROTOCOL, "dgsh negotiation failed");
+	}
 }
 
 /**
