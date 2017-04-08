@@ -2674,7 +2674,7 @@ dgsh_exit(int ret, int flags)
 		return ret;
 	if (errno == ECONNRESET)
 		exit(EX_PROTOCOL);
-	err(EX_PROTOCOL, "%s: dgsh negotiation failed", programname);
+	err(EX_PROTOCOL, "dgsh negotiation failed");
 }
 
 /**
