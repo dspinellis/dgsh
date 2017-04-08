@@ -84,22 +84,26 @@ section 'Simple tests' # {{{2
 
 testcase "Single record" # {{{3
 echo single record | $DGSH_WRITEVAL -s testsocket 2>server.err &
+sleep 1
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 EXPECT='single record'
 check
 
 testcase "Single record fixed width" # {{{3
 echo -n 0123456789 | $DGSH_WRITEVAL -l 10 -s testsocket 2>server.err &
+sleep 1
 EXPECT='0123456789'
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 check
 
 testcase "Record separator" # {{{3
 echo -n record1:record2 | $DGSH_WRITEVAL -t : -s testsocket 2>server.err &
+sleep 1
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 EXPECT='record1:'
 check
 
+sleep 1
 testcase "HTTP interface - text data" # {{{3
 PORT=53843
 echo single record | $DGSH_WRITEVAL -s testsocket 2>server.err &
@@ -234,7 +238,7 @@ EXPECT='record three'
 check
 
 section 'Non-blocking reading of newline-separated records in stream' # {{{2
-(sleep 1 ; echo record one; sleep 2; echo record two; sleep 3; echo record three) | $DGSH_WRITEVAL -s testsocket 2>server.err &
+(sleep 2 ; echo record one; sleep 4; echo record two; sleep 6; echo record three) | $DGSH_WRITEVAL -s testsocket 2>server.err &
 
 testcase "Empty record" # {{{3
 TRY="`$DGSH_READVAL -e -s testsocket 2>client.err `"
@@ -242,13 +246,13 @@ EXPECT=''
 check -n
 
 testcase "Record one" # {{{3
-sleep 1
+sleep 3
 TRY="`$DGSH_READVAL -e -s testsocket 2>client.err `"
 EXPECT='record one'
 check -n
 
 testcase "Record two" # {{{3
-sleep 2
+sleep 5
 TRY="`$DGSH_READVAL -e -s testsocket 2>client.err `"
 EXPECT='record two'
 check
