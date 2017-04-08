@@ -2720,7 +2720,7 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct dgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 
-	int nfds = 0, n_io_channels;
+	int nfds = 0, n_io_sides;
 	bool isread = false;
 	fd_set read_fds, write_fds;
 	char *timeout;
@@ -2755,20 +2755,21 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	self_node.dgsh_in = 0;
 	self_node.dgsh_out = 0;
 	get_environment_vars();
-	n_io_channels = self_node.dgsh_in + self_node.dgsh_out;
-	if (n_io_channels == 0) {
-		if ((n_input_fds != NULL && *n_input_fds > 1) ||
-				(n_output_fds != NULL && *n_output_fds > 1)) {
-			fprintf(stderr, "Cannot serve more than one input or output channel without dgsh negotiation. %d input and %d output channels requested for command %s\n",
-					*n_input_fds, *n_output_fds, tool_name);
-			errno = ENOTSOCK;
-			negotiation_completed = 1;
-			return dgsh_exit(-1, flags);
-		} else {
-			negotiation_completed = 1;
-			return dgsh_exit(setup_file_descriptors(n_input_fds,
-						n_output_fds, input_fds, output_fds), flags);
-		}
+	n_io_sides = self_node.dgsh_in + self_node.dgsh_out;
+
+	/* Easy case, no dgsh I/O */
+	if (n_io_sides == 0) {
+		negotiation_completed = 1;
+		return dgsh_exit(setup_file_descriptors(n_input_fds,
+					n_output_fds, input_fds, output_fds), flags);
+	}
+
+	/* Verify dgsh available on the required sides */
+	if ((n_input_fds != NULL && *n_input_fds > 1 && !self_node.dgsh_in) ||
+	    (n_output_fds != NULL && *n_output_fds > 1 && !self_node.dgsh_out)) {
+		errno = ENOTSOCK;
+		negotiation_completed = 1;
+		return dgsh_exit(-1, flags);
 	}
 
 	signal(SIGALRM, dgsh_alarm_handler);
@@ -2812,8 +2813,8 @@ again:
 				set_dispatcher();
 				if (write_message_block(i) == OP_ERROR)
 					chosen_mb->state = PS_ERROR;
-				if (n_io_channels == ntimes_seen_run ||
-				    n_io_channels == ntimes_seen_error) {
+				if (n_io_sides == ntimes_seen_run ||
+				    n_io_sides == ntimes_seen_error) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
 					goto exit;
