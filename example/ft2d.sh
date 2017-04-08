@@ -74,14 +74,14 @@ tee |
 {{
 	sfgrey pclip=100 wanttitle=n
 	#| dgsh-writeval -s airtx.vpl
-			
+
 	sffft1 |
 	sffft3 sign=1 |
 	tee |
 	{{
 		sfreal
 		#| dgsh-writeval -s airftr
-				
+
 		sfimag
 		#| dgsh-writeval -s airfti
 	}} |
