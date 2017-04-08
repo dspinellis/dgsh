@@ -52,7 +52,8 @@ set -e
 
 ./run_simple_test.sh $PSDIR grep_comm \
 	"grep -l -L match $PSDIR/ff $PSDIR/F |
-	comm"
+	comm |
+	paste"
 
 ./run_simple_test.sh $PSDIR join_sort_diff \
 	"join $PSDIR/f1s $PSDIR/f2s |
@@ -99,7 +100,8 @@ set -e
 		sort $PSDIR/f4s 2>$PSDIR/f4s.errb
 		sort $PSDIR/f5s 2>$PSDIR/f5s.errb
 	}} |
-	comm"
+	comm |
+	cat"
 
 ./run_simple_test.sh $PSDIR sort_sort_comm_paste_join_diff \
 	"{{
