@@ -1200,7 +1200,7 @@ solve_dgsh_graph(void)
 		if ((exit_state = cross_match_constraints(
 				&index_commands_notmatched, &index_argc)) ==
 				OP_ERROR ||
-				(exit_state == OP_RETRY && retries > 10)) {
+				(exit_state == OP_RETRY && retries > 100)) {
 			int i = 0, index = 0;
 			fprintf(stderr, "dgsh: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
 					index_argc);
@@ -2763,19 +2763,19 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	get_environment_vars();
 	n_io_sides = self_node.dgsh_in + self_node.dgsh_out;
 
-	/* Easy case, no dgsh I/O */
-	if (n_io_sides == 0) {
-		negotiation_completed = 1;
-		return dgsh_exit(setup_file_descriptors(n_input_fds,
-					n_output_fds, input_fds, output_fds), flags);
-	}
-
 	/* Verify dgsh available on the required sides */
 	if ((n_input_fds != NULL && *n_input_fds > 1 && !self_node.dgsh_in) ||
 	    (n_output_fds != NULL && *n_output_fds > 1 && !self_node.dgsh_out)) {
 		errno = ENOTSOCK;
 		negotiation_completed = 1;
 		return dgsh_exit(-1, flags);
+	}
+
+	/* Easy case, no dgsh I/O */
+	if (n_io_sides == 0) {
+		negotiation_completed = 1;
+		return dgsh_exit(setup_file_descriptors(n_input_fds,
+					n_output_fds, input_fds, output_fds), flags);
 	}
 
 	signal(SIGALRM, dgsh_alarm_handler);
