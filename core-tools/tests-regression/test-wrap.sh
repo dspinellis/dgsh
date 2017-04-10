@@ -39,7 +39,7 @@ $DGSH -c 'dgsh-enumerate 2 | dgsh-wrap  /usr/bin/paste - "<|" ' >dgsh-wrap/paste
 ensure_same paste1
 
 # Test substitution of embedded arguments
-$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -iIoO dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
+$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -eIO dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
 ensure_same dd-args
 
 # Test that echo is wrapped as deaf when wrapped as script with supplied exec

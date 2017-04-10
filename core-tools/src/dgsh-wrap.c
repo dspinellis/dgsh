@@ -298,7 +298,7 @@ main(int argc, char *argv[])
 	char *guest_program_name;
 	/* Option-dependent flags */
 	bool program_from_os = false, program_supplied = false;
-	bool embedded_input_args = false, embedded_output_args = false;
+	bool embedded_args = false;
 	bool include_stdin = false, include_stdout = false;
 
 
@@ -325,19 +325,19 @@ main(int argc, char *argv[])
 	 * first non-flag argument.
 	 * Therefore, adjust argc, argv on entry and optind on exit.
 	 */
-        while ((ch = getopt(argc, argv, "+dIimOoSs")) != -1) {
+        while ((ch = getopt(argc, argv, "+deImOSs")) != -1) {
 		DPRINTF(4, "getopt switch=%c", ch);
 		switch (ch) {
 		case 'd':
 			nflags++;
 			ninputs = 0;
 			break;
-		case 'I':
-			include_stdin = true;
+		case 'e':
+			embedded_args = true;
 			nflags++;
 			break;
-		case 'i':
-			embedded_input_args = true;
+		case 'I':
+			include_stdin = true;
 			nflags++;
 			break;
 		case 'm':
@@ -346,10 +346,6 @@ main(int argc, char *argv[])
 			break;
 		case 'O':
 			include_stdout = true;
-			nflags++;
-			break;
-		case 'o':
-			embedded_output_args = true;
 			nflags++;
 			break;
 		case 'S':
@@ -407,19 +403,19 @@ main(int argc, char *argv[])
 	 * "<|" and ">|", which mean input from or output to
 	 * /proc/self/fd/N
 	 */
-	DPRINTF(4, "embedded_input_args=%d embedded_output_args=%d",
-			embedded_input_args, embedded_output_args);
+	DPRINTF(4, "embedded_args=%d", embedded_args);
 	for (i = optind + 1; i < argc; i++) {
-		if (embedded_input_args)
+		if (embedded_args) {
 			for (p = argv[i]; p = strstr(p, "<|"); p += 2)
 				ninputs++;
-		else if (strcmp(argv[i], "<|") == 0)
-			ninputs++;
-		if (embedded_output_args)
 			for (p = argv[i]; p = strstr(p, ">|"); p += 2)
 				noutputs++;
-		else if (strcmp(argv[i], ">|") == 0)
-			noutputs++;
+		} else {
+			if (strcmp(argv[i], "<|") == 0)
+				ninputs++;
+			if (strcmp(argv[i], ">|") == 0)
+				noutputs++;
+		}
 	}
 	/*
 	 * Adjust for the default implicit I/O channel.
@@ -445,16 +441,15 @@ main(int argc, char *argv[])
 	int *inptr = include_stdin ? input_fds : input_fds + 1;
 	int *outptr = include_stdout ? output_fds : output_fds + 1;
 	for (i = optind + 1; i < argc; i++) {
-		if (embedded_input_args)
+		if (embedded_args) {
 			while (process_embedded_io_arg(&argv[i], "<|", &inptr))
 				;
-		else
-			process_standalone_io_arg(&argv[i], "<|", &inptr);
-		if (embedded_output_args)
 			while (process_embedded_io_arg(&argv[i], ">|", &outptr))
 				;
-		else
+		} else {
+			process_standalone_io_arg(&argv[i], "<|", &inptr);
 			process_standalone_io_arg(&argv[i], ">|", &outptr);
+		}
 	}
 	DPRINTF(4, "Arguments to execvp after substitung <| and >|");
 	dump_args(argc - optind, argv + optind);

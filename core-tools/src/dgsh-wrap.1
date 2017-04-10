@@ -18,10 +18,10 @@
 dgsh-wrap \- allow any program to participate in an dgsh pipeline
 .SH SYNOPSIS
 \fBdgsh-wrap\fP
-[\fB-S\fP] [\fB-dIimOo\fP] \fIprogram\fP [\fIprogram-arguments\fP ...]
+[\fB-S\fP] [\fB-deImO\fP] \fIprogram\fP [\fIprogram-arguments\fP ...]
 
 #!/usr/libexec/dgsh/\fBdgsh-wrap\fP
-\fB-s\fP [\fB-dIimOo\fP] [\fIprogram-arguments\fP ...]
+\fB-s\fP [\fB-deImO\fP] [\fIprogram-arguments\fP ...]
 
 .SH DESCRIPTION
 \fIdgsh-wrap\fP takes as arguments an absolute path or the name
@@ -52,17 +52,17 @@ I/O requirements.
 .IP "\fB\-d\fP
 The wrapped program is deaf, it will not read any input.
 
+.IP "\fB\-e\fP
+Replace \fI<|\fP and \fI>|\fP strings embedded within arguments,
+with names of input file descriptor paths.
+By default, only standalone arguments are thus replaced.
+
 .IP "\fB\-I\fP
 When replacing \fI<|\fP arguments with names of input file descriptor paths,
 start with the standard input
 (i.e. the first path with be \fI/proc/self/fd/0\fP).
 When this option is not given, the program will require one input channel
 more than those specified by the \fI<|\fP arguments.
-
-.IP "\fB\-i\fP
-Replace \fI<|\fP strings embedded within arguments,
-with names of input file descriptor paths.
-By default, only standalone arguments are thus replaced.
 
 .IP "\fB\-m\fP
 The wrapped program is mute, it will not produce any output.
@@ -73,11 +73,6 @@ start with the standard output
 (i.e. the first path with be \fI/proc/self/fd/1\fP).
 When this option is not given, the program will require one output channel
 more than those specified by the \fI>|\fP arguments.
-
-.IP "\fB\-o\fP
-Replace \fI>|\fP strings embedded within arguments,
-with names of output file descriptor paths.
-By default, only standalone arguments are thus replaced.
 
 .IP "\fB\-S\fP
 Process flags as a shebang-invoked (\fI#!\fP) interpreter.
