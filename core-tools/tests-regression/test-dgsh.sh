@@ -13,8 +13,7 @@ EXAMPLE="$TOP/example"
 # File names are by conventions $base/out.{ok,test}
 ensure_same()
 {
-  local flags=$1
-  local base=$2
+  local base=$1
   echo -n "$base.sh "
   if diff -rw $base/out.ok $base/out.test
   then
@@ -50,10 +49,10 @@ rm -rf */out.test
 
 mkdir -p spell-highlight
 echo hello cruwl world | $DGSH $EXAMPLE/spell-highlight.sh >spell-highlight/out.test
-ensure_same "$flags" spell-highlight
+ensure_same spell-highlight
 
 $DGSH $EXAMPLE/map-hierarchy.sh map-hierarchy/in/a map-hierarchy/in/b map-hierarchy/out.test
-ensure_same "$flags" map-hierarchy
+ensure_same map-hierarchy
 
 (
 cd $TOP/unix-tools/grep
@@ -61,22 +60,22 @@ $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
   --until=2015-12-31Z23:59 \
   >$TOP/core-tools/tests-regression/commit-stats/out.test
 )
-ensure_same "$flags" commit-stats
+ensure_same commit-stats
 
 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test
-ensure_same "$flags" code-metrics
+ensure_same code-metrics
 
 $DGSH $EXAMPLE/duplicate-files.sh duplicate-files >duplicate-files/out.test
-ensure_same "$flags" duplicate-files
+ensure_same duplicate-files
 
 $DGSH $EXAMPLE/word-properties.sh <word-properties/LostWorldChap1-3 >word-properties/out.test
-ensure_same "$flags" word-properties
+ensure_same word-properties
 
 $DGSH $EXAMPLE/compress-compare.sh <word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >compress-compare/out.test
-ensure_same "$flags" compress-compare
+ensure_same compress-compare
 
 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
-ensure_same "$flags" web-log-report
+ensure_same web-log-report
 
 (
 cd text-properties
@@ -85,15 +84,14 @@ mkdir out.test
 cd out.test
 $DGSH $EXAMPLE/text-properties.sh <../../word-properties/LostWorldChap1-3
 )
-ensure_same "$flags" text-properties
+ensure_same text-properties
 
-# Outside the loop, because scatter -s is not compatible with -S
 # The correct file was generated using
 # tr -s ' \t\n\r\f' \\n <word-properties/LostWorldChap1-3 | sort | uniq -c | sed 's/^  *//'
 # An empty line is removed from the test output, because it can be generated
 # by tr when the first line of a split file is empty. (In that case \n is not
 # a repeated character that tr will remove.)
 $DGSH $EXAMPLE/parallel-word-count.sh <word-properties/LostWorldChap1-3 | sed '/^[0-9]* $/d' >parallel-word-count/out.test
-ensure_same "" parallel-word-count
+ensure_same parallel-word-count
 
 exit 0
