@@ -63,7 +63,7 @@ graphdot/%.dot: example/%.sh
 .PHONY: all tools core-tools unix-tools export-prefix \
 	config config-core-tools \
 	test test-dgsh test-merge-sum test-tee test-negotiate \
-	test-unix-tools test-kvstore \
+	test-unix-tools test-wrap test-kvstore \
 	clean install webfiles dist pull commit uninstall
 
 all: tools
@@ -93,10 +93,13 @@ config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src
 	cd tests && \
 	patch Makefile <Makefile.patch
 
-test: test-negotiate test-tee test-kvstore test-unix-tools test-merge-sum test-dgsh
+test: test-negotiate test-tee test-kvstore test-unix-tools test-merge-sum test-dgsh test-wrap
 
 test-dgsh: tools
 	cd core-tools/tests-regression && ./test-dgsh.sh
+
+test-wrap: tools
+	cd core-tools/tests-regression && ./test-wrap.sh
 
 test-merge-sum:
 	cd core-tools/tests-regression && ./test-merge-sum.sh

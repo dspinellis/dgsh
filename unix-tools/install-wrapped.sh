@@ -15,17 +15,17 @@ fi
 sed 's/[ \t]*#.*//;/^$/d' wrapped-commands-posix wrapped-commands-tests |
 while read mode name ; do
   # Continue if command is not available
-  if ! path=$(which $name 2>/dev/null) ; then
+  if ! which $name 2>/dev/null >/dev/null ; then
     continue
   fi
 
-  # Continue if command is custom-implemented or both dead and mute
+  # Continue if command is custom-implemented or both deaf and mute
   if [ $mode = c -o $mode = dm ] ; then
     continue
   fi
 
   # Iterate over the mode's characters creating $opt
-  opt=''
+  opt=' -s'
   for m in $(echo "$mode" | sed 's/./& /g') ; do
     case $m in
       m)	# Mute
@@ -36,8 +36,8 @@ while read mode name ; do
       d)	# Deaf
 	opt="$opt -d"
 	;;
-      s)	# Count stdin in channel assignments
-	opt="$opt -s"
+      I)	# Count stdin in channel assignments
+	opt="$opt -I"
 	;;
       D)	# Deaf unless - is specified or no arguments are provided (TODO)
 	;;
@@ -49,6 +49,6 @@ while read mode name ; do
     esac
   done
   target=$DGPATH/$name
-  echo "#!$DGPATH/dgsh-wrap$opt $path" >$target
+  echo "#!$DGPATH/dgsh-wrap$opt" >$target
   chmod 755 $target
 done

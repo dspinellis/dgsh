@@ -1,3 +1,4 @@
 # Commands required for running the negotiation and performance tests
 d git
-s sfcat
+I sfcat
+I dgsh-merge-sum

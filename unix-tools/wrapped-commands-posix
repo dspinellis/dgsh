@@ -67,7 +67,7 @@ dm test
 f time		# Depends on the command
 dm touch
 dm true
-D tsort
+f tsort
 d tty
 d type
 d ulimit
