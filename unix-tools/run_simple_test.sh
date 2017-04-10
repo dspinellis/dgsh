@@ -14,7 +14,9 @@ PSDIR=$1
 FILENAME=$2
 SCRIPT=$3
 
-PATH="$(pwd)/../build/libexec/dgsh:$(pwd)/../build/bin:$PATH" \
+export DGSHPATH="$(pwd)/../build/libexec/dgsh"
+PATH="$(pwd)/../build/bin:$PATH"
+
 $DGSH -c "$SCRIPT > $PSDIR/$FILENAME.outb" \
 2>$PSDIR/$FILENAME.errb \
 && diff $PSDIR/$FILENAME.outb $PSDIR/$FILENAME.success \
