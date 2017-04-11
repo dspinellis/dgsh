@@ -38,6 +38,7 @@ MANHTML=$(patsubst %.1,%.html,$(MAN1SRC)) core-tools/src/dgsh_negotiate.html
 # Web files
 EXAMPLES=$(patsubst example/%,%,$(wildcard example/*.sh))
 EGPNG=$(patsubst %.sh,png/%-pretty.png,$(EXAMPLES))
+EGDOT=$(patsubst %.sh,graphdot/%.dot,$(EXAMPLES))
 WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
@@ -58,13 +59,14 @@ png/%-pretty.png: graphdot/%.dot
 
 graphdot/%.dot: example/%.sh
 	mkdir -p graphdot
+	rm -f graphdot/$*.dot
 	-DGSH_DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $< 2>err
 
 .PHONY: all tools core-tools unix-tools export-prefix \
 	config config-core-tools \
 	test test-dgsh test-merge-sum test-tee test-negotiate \
 	test-unix-tools test-wrap test-kvstore \
-	clean install webfiles dist pull commit uninstall
+	clean install webfiles dist pull commit uninstall dotfiles
 
 all: tools
 
@@ -134,6 +136,8 @@ dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' web/index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
+
+dotfiles: $(EGDOT)
 
 pull:
 	git pull
