@@ -52,8 +52,7 @@ tee |
 		label1="1/time" label2="1/space"
 	#dgsh-writeval -s ft2d.vpl
 }} |
-call_with_stdin 'side_by_side_iso "<|" \
-	   yscale=1.25 >Fig/ft2dofpulse.vpl'
+call_with_stdin side_by_side_iso '<|' '<|' yscale=1.25 >Fig/ft2dofpulse.vpl
 
 # A simulated air wave and the amplitude of its 2D Fourier transform
 sfspike n1=64 d1=1 o1=32 nsp=4 k1=1,2,3,4 mag=1,3,3,1 \
@@ -85,7 +84,7 @@ tee |
 		sfimag
 		#| dgsh-writeval -s airfti
 	}} |
-	sfmath nostdin=y re="<|" im="<|" output="sqrt(re*re+im*im)" |
+	dgsh-wrap -e -I sfmath nostdin=y re="<|" im="<|" output="sqrt(re*re+im*im)" |
 	tee |
 	{{
 		sfwindow f1=1 |
@@ -99,8 +98,7 @@ tee |
 		label2="1/space"
 	#| dgsh-writeval -s airfk.vpl
 }} |
-call_with_stdin 'side_by_side_iso "<|" \
-		yscale=1.25 >Fig/airwave.vpl'
+call_with_stdin side_by_side_iso '<|' '<|' yscale=1.25 >Fig/airwave.vpl
 #call 'side_by_side_iso airtx.vpl airfk.vpl \
 
 wait
