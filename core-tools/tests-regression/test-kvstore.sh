@@ -193,21 +193,22 @@ fi
 
 # Last record tests {{{1
 section 'Reading of fixed-length records in stream' # {{{2
-(echo -n A12345A7AB; sleep 1; echo -n 12345B7BC; sleep 3; echo -n 12345C7CD) | $DGSH_WRITEVAL -l 9 -s testsocket 2>server.err &
+(echo -n A12345A7AB; sleep 4; echo -n 12345B7BC; sleep 4; echo -n 12345C7CD) | $DGSH_WRITEVAL -l 9 -s testsocket 2>server.err &
 
 testcase "Record one" # {{{3
+sleep 2
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err`"
 EXPECT=A12345A7A
 check -n
 
 testcase "Record two" # {{{3
-sleep 2
+sleep 4
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT=B12345B7B
 check -n
 
 testcase "Record three" # {{{3
-sleep 3
+sleep 4
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err`"
 EXPECT=C12345C7C
 check
@@ -218,21 +219,22 @@ $DGSH_READVAL -nq -s testsocket 2>client.err
 
 
 section 'Reading of newline-separated records in stream' # {{{2
-(echo record one; sleep 1; echo record two; sleep 3; echo record three) | $DGSH_WRITEVAL -s testsocket 2>server.err &
+(echo record one; sleep 4; echo record two; sleep 4; echo record three) | $DGSH_WRITEVAL -s testsocket 2>server.err &
 
 testcase "Record one" # {{{3
+sleep 2
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='record one'
 check -n
 
 testcase "Record two" # {{{3
-sleep 2
+sleep 4
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='record two'
 check -n
 
 testcase "Record three" # {{{3
-sleep 3
+sleep 4
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='record three'
 check
