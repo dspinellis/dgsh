@@ -2749,8 +2749,10 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	self_pipe_fds.output_fds = NULL;	/* Ditto */
 #endif
 	programname = strdup(tool_name);
-	DPRINTF(2, "%s(): Tool %s with pid %d entered dgsh negotiation.",
-			__func__, tool_name, (int)self_pid);
+	DPRINTF(2, "%s(): Tool %s with pid %d negotiating: nin=%d nout=%d.",
+			__func__, tool_name, (int)self_pid,
+			n_input_fds ? *n_input_fds : 1,
+			n_output_fds ? *n_output_fds : 1);
 
 	if (validate_input(n_input_fds, n_output_fds, tool_name)
 							== OP_ERROR) {
