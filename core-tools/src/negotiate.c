@@ -1200,7 +1200,7 @@ solve_dgsh_graph(void)
 		if ((exit_state = cross_match_constraints(
 				&index_commands_notmatched, &index_argc)) ==
 				OP_ERROR ||
-				(exit_state == OP_RETRY && retries > 100)) {
+				(exit_state == OP_RETRY && retries > 10)) {
 			int i = 0, index = 0;
 			fprintf(stderr, "dgsh: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
 					index_argc);
