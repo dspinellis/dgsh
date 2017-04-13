@@ -5,7 +5,9 @@
 
 TOP=$(cd ../.. ; pwd)
 DGSH_TEE=$TOP/build/libexec/dgsh/dgsh-tee
+DGSH_ENUMERATE=$TOP/build/libexec/dgsh/dgsh-enumerate
 DGSH_TEE_C=../src/dgsh-tee.c
+WORDS=/usr/share/dict/words
 DGSH="$TOP/build/bin/dgsh"
 PATH="$TOP/build/bin:$PATH"
 export DGSHPATH="$TOP/build/libexec/dgsh"
@@ -65,32 +67,32 @@ ensure_similar_buffers()
 for flags in '' -I
 do
 	# Test two input files
-	cat $DGSH_TEE_C $DGSH_TEE_C /usr/share/dict/words >expected
-	$DGSH_TEE $flags -b 64 -i $DGSH_TEE_C -i $DGSH_TEE_C -i /usr/share/dict/words >a
+	cat $DGSH_TEE_C $DGSH_TEE_C $WORDS >expected
+	$DGSH_TEE $flags -b 64 -i $DGSH_TEE_C -i $DGSH_TEE_C -i $WORDS >a
 	ensure_same "Three input $flags" expected a
 	rm expected a
 
 	# Test line scatter reliable algorithm (stdin)
-	cat -n /usr/share/dict/words >words
+	cat -n $WORDS >words
 	$DGSH_TEE $flags -s -b 1000000 <words -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable stdin $flags" words words2
 
 	# Test line scatter reliable algorithm (pipe)
-	cat -n /usr/share/dict/words |
+	cat -n $WORDS |
 	$DGSH_TEE $flags -s -b 1000000 -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable pipe $flags" words words2
 
 
 	# Test line scatter reliable algorithm (file argument)
-	cat -n /usr/share/dict/words >words
+	cat -n $WORDS >words
 	$DGSH_TEE $flags -s -b 1000000 -i words -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Line scatter reliable file $flags" words words2
 
 	# Test scatter to blocking sinks
-	cat -n /usr/share/dict/words >words
+	cat -n $WORDS >words
 	for buffer in 128 1000000
 	do
 		$DGSH -c "
@@ -112,7 +114,7 @@ do
 	ensure_same "Small buffer $flags" words words2
 
 	# Test with data less than the buffer size
-	head -50 /usr/share/dict/words | cat -n >words
+	head -50 $WORDS | cat -n >words
 	$DGSH_TEE $flags -s -b 1000000 <words -o a -o b -o c -o d
 	cat a b c d | sort -n >words2
 	ensure_same "Large buffer $flags" words words2
@@ -130,6 +132,27 @@ do
 	ensure_same "Plain distribution $flags" $DGSH_TEE_C a
 	ensure_same "Plain distribution $flags" $DGSH_TEE_C b
 	rm a b
+
+	# Test 2->4 distribution
+	$DGSH_TEE $flags -b 64 -i $WORDS -i $DGSH_TEE_C -o a -o b -o c -o d
+	ensure_same "2->4 distribution $flags" $WORDS a
+	ensure_same "2->4 distribution $flags" $WORDS b
+	ensure_same "2->4 distribution $flags" $DGSH_TEE_C c
+	ensure_same "2->4 distribution $flags" $DGSH_TEE_C d
+	rm a b c d
+
+	# Test 4->2 distribution
+	cat $WORDS $DGSH_TEE_C >result1
+	cat /etc/services /etc/hosts >result2
+	$DGSH_TEE $flags -b 64 -i $WORDS -i $DGSH_TEE_C -i /etc/services -i /etc/hosts -o a -o b
+	ensure_same "4->2 distribution $flags" result1 a
+	ensure_same "4->2 distribution $flags" result2 b
+	rm a b result1 result2
+
+	# Test permutation
+	$DGSH -c "$DGSH_ENUMERATE 4 | $DGSH_TEE -p 4,2,3,1 | $DGSH_TEE" >a
+	ensure_same "Permutation $flags" a tee/perm.ok
+	rm a
 
 	# Test output to stdout
 	$DGSH_TEE $flags -b 64 <$DGSH_TEE_C >a

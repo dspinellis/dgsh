@@ -1,6 +1,6 @@
-.TH DGSH-TEE 1 "24 December 2016"
+.TH DGSH-TEE 1 "13 April 2017"
 .\"
-.\" (C) Copyright 2013-2016 Diomidis Spinellis.  All rights reserved.
+.\" (C) Copyright 2013-2017 Diomidis Spinellis.  All rights reserved.
 .\"
 .\"  Licensed under the Apache License, Version 2.0 (the "License");
 .\"  you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 .\"  limitations under the License.
 .\"
 .SH NAME
-dgsh-tee \- buffer and copy or scatter standard input to one or more sinks
+dgsh-tee \- buffer, copy, permute, or distribute data from input sources to output sinks
 .SH SYNOPSIS
 \fBdgsh-tee\fP
 [\fB\-b\fP \fIbuffer-size\fP]
@@ -27,13 +27,16 @@ dgsh-tee \- buffer and copy or scatter standard input to one or more sinks
 [\fB\-T\fP \fIdirectory\fP]
 [\fB\-t\fP \fIcharacter\fP]
 .SH DESCRIPTION
-\fIdgsh-tee\fP will read data from its standard input and scatter it to
-the specified sinks as files.
-It resembles in its operation \fItee\fP(1),
+\fIdgsh-tee\fP will read data from the specified sources and copy or distribute
+it to the specified sinks.
+It resembles in its operation \fItee\fP(1) and \fIcat\fP(1),
 but offers additional capabilities required for the operation of \fIdgsh\fP(1).
-In contrast to \fItee\fP(1), \fIdgsh-tee\fP will buffer the data it handles,
-so it will never cause deadlock or starvation when one or more sinks
-are unable to read data.
+In contrast to these programs, \fIdgsh-tee\fP will buffer the data it handles,
+so it will never cause deadlock or starvation when one or more sources
+are unable to provide data or if sinks are unable to receive them.
+Furthermore, \fIdgsh-tee\fP can copy data from multiple sources to
+multiple sinks, permute the data between sources and sinks, and
+also distribute the data among the sinks.
 .PP
 \fIdgsh-tee\fP is normally executed within \fIdgsh\fP through wrappers
 that replace the system-provided \fItee\fP and \fIcat\fP commands.
