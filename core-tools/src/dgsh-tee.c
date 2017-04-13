@@ -223,7 +223,7 @@ new_source_info(const char *name)
  * presenting an infinite output buffer to the upstream process.
  * The output-side buffering will read input only if at least one
  * active output buffer is empty.
- * The setting in effect is determined by the program's -i flag.
+ * The setting in effect is determined by the program's -I flag.
  *
  * States read_ib and read_ob have select return:
  * - if data is available for reading,
