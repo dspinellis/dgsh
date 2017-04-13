@@ -1042,6 +1042,46 @@ last_in_group(int group_size, int n)
 	return (n + 1) % group_size == 0;
 }
 
+struct list {
+	struct list *next;
+};
+
+/*
+ * Transpose the elements of th specified linked list given
+ * a notional new row length.  As an example, a list of 12 elements
+ * with a row size of 3, would be transposed as follows.
+ * 0 -> 4 -> 8 ->
+ * 1 -> 5 -> 9 ->
+ * 2 -> 6 -> 10 ->
+ * 3 -> 7 -> 11
+ * This function can handle arbitrary lists, as long
+ * as the list's first element is the pointer to the
+ * next one.
+ */
+static void
+list_transpose(struct list *lst, int row_length)
+{
+	int i, count = 0;
+	struct list **vector, *p;
+
+	/* Create a vector of pointers to list elements */
+	for (p = lst; p; p = p->next)
+		count++;
+	vector = (struct list **)malloc(count * sizeof(struct list *));
+	if (vector == NULL)
+		err(1, NULL);
+	for (p = lst, i = 0; p; p = p->next, i++)
+		vector[i] = p;
+	/* Transpose notional rows into columns */
+	for (i = 0; i < count - row_length; i++)
+		vector[i]->next = vector[i + row_length];
+	for (i = count - row_length; i < count - 1; i++)
+		vector[i]->next = vector[(i + 1) % row_length];
+	free(vector);
+}
+
+
+
 /*
  * Chain input and output files into groups
  * by setting the chain_last of all I/O files
@@ -1067,17 +1107,19 @@ last_in_group(int group_size, int n)
  * No files are chained
  *
  * Read from few, output to more (multipipe tee)
- * A		>	a->b
- * B		>	c->d
+ * A		>	a->d->g
+ * B		>	b->e->h
+ * C		>	c->f->i
  * Output files are chained into groups
  *
  * Read from many, output to few (multipipe cat)
- * A->B		>	a
- * C->D		>	b
+ * A->D->G	>	a
+ * B->E->H	>	b
+ * C->F->I	>	c
  * Input files are chained into groups
  *
  * Note that cat, tee, and perm are special cases of the multipipe ones
- * are are treated as such.
+ * are are implemented as such.
  */
 static void
 chain_io_files(struct source_info *ifiles, struct sink_info *ofiles, bool permute)
@@ -1102,6 +1144,7 @@ chain_io_files(struct source_info *ifiles, struct sink_info *ofiles, bool permut
 		if (nin % nout)
 			errx(1, "The number of inputs %d is not an exact multiple of the number of outputs %d", nin, nout);
 		group_size = nin / nout;
+		list_transpose((struct list *)ifiles, group_size);
 		for (ifp = ifiles, n = 0; ifp; ifp = ifp->next, n++) {
 			ifp->active = first_in_group(group_size, n);
 			ifp->chain_last = last_in_group(group_size, n);
@@ -1122,6 +1165,7 @@ chain_io_files(struct source_info *ifiles, struct sink_info *ofiles, bool permut
 			errx(1, "The number of outputs %d is not an exact multiple of the number of inputs %d", nin, nout);
 		group_size = nout / nin;
 		assert(!permute);
+		list_transpose((struct list *)ofiles, group_size);
 		for (ifp = ifiles, n = 0; ifp; ifp = ifp->next, n++) {
 			ifp->active = true;
 			ifp->chain_last = true;

@@ -38,6 +38,19 @@ Furthermore, \fIdgsh-tee\fP can copy data from multiple sources to
 multiple sinks, permute the data between sources and sinks, and
 also distribute the data among the sinks.
 .PP
+When copying data from a few sources to a multiple of their number sinks,
+the first input tuple will appear in the first sinks, and so on.
+As an example, two sources \fIa, b\fP will appear in six sinks as
+\fIa, b, a, b, a, b\fP.
+When copying data from many sources to a fraction of their number sinks,
+a tuple of sources equal to the number of sinks is output first,
+followed by a tuple of the next sinks, and so on.
+As an example, six sources \fa, b, c, d, e, f\fP will appear in two
+sinks as \fIa, c, e\fP in the first sink and \fIb, d, f\fP in the
+second one.
+In effect, the group of few sources or sinks is treated as a single
+unit to be scattered or sequentially concatenated.
+.PP
 \fIdgsh-tee\fP is normally executed within \fIdgsh\fP through wrappers
 that replace the system-provided \fItee\fP and \fIcat\fP commands.
 This manual page serves mainly to document its operation,

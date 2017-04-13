@@ -136,14 +136,14 @@ do
 	# Test 2->4 distribution
 	$DGSH_TEE $flags -b 64 -i $WORDS -i $DGSH_TEE_C -o a -o b -o c -o d
 	ensure_same "2->4 distribution $flags" $WORDS a
-	ensure_same "2->4 distribution $flags" $WORDS b
-	ensure_same "2->4 distribution $flags" $DGSH_TEE_C c
+	ensure_same "2->4 distribution $flags" $WORDS c
+	ensure_same "2->4 distribution $flags" $DGSH_TEE_C b
 	ensure_same "2->4 distribution $flags" $DGSH_TEE_C d
 	rm a b c d
 
 	# Test 4->2 distribution
-	cat $WORDS $DGSH_TEE_C >result1
-	cat /etc/services /etc/hosts >result2
+	cat $WORDS /etc/services >result1
+	cat $DGSH_TEE_C /etc/hosts >result2
 	$DGSH_TEE $flags -b 64 -i $WORDS -i $DGSH_TEE_C -i /etc/services -i /etc/hosts -o a -o b
 	ensure_same "4->2 distribution $flags" result1 a
 	ensure_same "4->2 distribution $flags" result2 b
