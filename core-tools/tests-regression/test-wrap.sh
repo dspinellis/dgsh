@@ -31,15 +31,15 @@ $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -d echo hi ; dgsh-wrap dd 2>/dev/null 
 ensure_same echo-deaf
 
 # Test stand-alone path substitution (with stdin)
-$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I paste "<|" "<|" ' >dgsh-wrap/paste2.test
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap paste "<|" "<|" ' >dgsh-wrap/paste2.test
 ensure_same paste2
 
 # Test stand-alone path substitution (without stdin)
-$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap  /usr/bin/paste - "<|" ' >dgsh-wrap/paste1.test
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I /usr/bin/paste - "<|" ' >dgsh-wrap/paste1.test
 ensure_same paste1
 
 # Test substitution of embedded arguments
-$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -eIO dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
+$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -e dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
 ensure_same dd-args
 
 # Test that echo is wrapped as deaf when wrapped as script with supplied exec

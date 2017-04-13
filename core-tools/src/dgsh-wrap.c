@@ -299,7 +299,8 @@ main(int argc, char *argv[])
 	/* Option-dependent flags */
 	bool program_from_os = false, program_supplied = false;
 	bool embedded_args = false;
-	bool include_stdin = false, include_stdout = false;
+	/* Pass stdin/stdout as a command-line argument */
+	bool stdin_as_arg = true, stdout_as_arg = true;
 
 
 	debug_level = getenv("DGSH_DEBUG_LEVEL");
@@ -337,7 +338,7 @@ main(int argc, char *argv[])
 			nflags++;
 			break;
 		case 'I':
-			include_stdin = true;
+			stdin_as_arg = false;
 			nflags++;
 			break;
 		case 'm':
@@ -345,7 +346,7 @@ main(int argc, char *argv[])
 			noutputs = 0;
 			break;
 		case 'O':
-			include_stdout = true;
+			stdout_as_arg = false;
 			nflags++;
 			break;
 		case 'S':
@@ -422,9 +423,9 @@ main(int argc, char *argv[])
 	 * E.g. if two <| are specified, ninputs will be 3 at this point,
 	 * whereas we want it to be 2.
 	 */
-	if (include_stdin && ninputs > 1)
+	if (stdin_as_arg && ninputs > 1)
 		ninputs--;
-	if (include_stdout && noutputs > 1)
+	if (stdout_as_arg && noutputs > 1)
 		noutputs--;
 
 	/* Participate in negotiation */
@@ -438,8 +439,8 @@ main(int argc, char *argv[])
 	 * Substitute special arguments "<|" and ">|" with file descriptor
 	 * paths /proc/self/fd/N using the fds received from negotiation.
 	 */
-	int *inptr = include_stdin ? input_fds : input_fds + 1;
-	int *outptr = include_stdout ? output_fds : output_fds + 1;
+	int *inptr = stdin_as_arg ? input_fds : input_fds + 1;
+	int *outptr = stdout_as_arg ? output_fds : output_fds + 1;
 	for (i = optind + 1; i < argc; i++) {
 		if (embedded_args) {
 			while (process_embedded_io_arg(&argv[i], "<|", &inptr))
