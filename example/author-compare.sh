@@ -2,11 +2,11 @@
 #
 # SYNOPSIS Compare IEEE Software with ICSE authors
 # DESCRIPTION
-# Obtain the computer science bibliography from the specied compressed
-# DBLP URL (e.g. http://dblp.uni-trier.de/xml/dblp.xml.gz) and output the
-# number of authors who have published only in IEEE Software, the number
-# who have published only in the International Conference on Software
-# Engineering, and authors who have published in both.
+# Read a compressed DBLP computer science bibliography from the standard
+# input (e.g. piped from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz)
+# and output the number of authors who have published only in IEEE Software,
+# the number who have published only in the International Conference on
+# Software Engineering, and authors who have published in both.
 # Demonstrates the use of dgsh-wrap -e to have sed(1) create two output
 # streams and the use of tee to copy a pair of streams into four ones.
 #
@@ -34,15 +34,9 @@ sorted_authors()
 
 export -f sorted_authors
 
-if [ -z "$1" ] ; then
-  echo "usage: $0 URL" 1>&2
-  exit 1
-fi
-
-curl -s "$1" |
 gzip -dc |
 # Output ICSE and IEEE Software authors as two output streams
-dgsh-wrap -eO sed -n '
+dgsh-wrap -e sed -n '
 /<inproceedings.*key="conf\/icse\//,/<title>/ w >|
 /<article.*key="journals\/software\//,/<title>/ w >|' |
 # 2 streams in 4 streams out: ICSE, Software, ICSE, Software
