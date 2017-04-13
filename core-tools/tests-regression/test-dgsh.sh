@@ -56,7 +56,7 @@ ensure_same map-hierarchy
 
 (
 cd $TOP/unix-tools/grep
-$DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
+LC_ALL=en_US.UTF-8 $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
   --until=2015-12-31Z23:59 \
   >$TOP/core-tools/tests-regression/commit-stats/out.test
 )
