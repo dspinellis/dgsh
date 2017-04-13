@@ -4,9 +4,10 @@
 # DESCRIPTION
 # Read a compressed DBLP computer science bibliography from the standard
 # input (e.g. piped from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz)
-# and output the number of authors who have published only in IEEE Software,
+# and output the number of papers published in each venue as well as
+# the number of authors who have published only in IEEE Software,
 # the number who have published only in the International Conference on
-# Software Engineering, and authors who have published in both.
+# Software Engineering (ICSE), and authors who have published in both.
 # Demonstrates the use of dgsh-wrap -e to have sed(1) create two output
 # streams and the use of tee to copy a pair of streams into four ones.
 #
