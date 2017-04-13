@@ -15,6 +15,7 @@ SECTION='compress-compare
 	map-hierarchy
 	committer-plot
 	parallel-word-count
+	author-compare
 	ft2d
 	NMRPipe
 	fft-block8
