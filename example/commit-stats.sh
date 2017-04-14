@@ -2,7 +2,7 @@
 #
 # SYNOPSIS Git commit statistics
 # DESCRIPTION
-# Process the git history, and list the authors and days of the week
+# Process the Git history, and list the authors and days of the week
 # ordered by the number of their commits.
 # Demonstrates streams and piping through a function.
 #

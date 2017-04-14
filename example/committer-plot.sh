@@ -1,8 +1,8 @@
 #!/usr/bin/env dgsh
 #
-# SYNOPSIS Plot git committer activity over time
+# SYNOPSIS Plot Git committer activity over time
 # DESCRIPTION
-# Process the git history, and create two PNG diagrams depicting
+# Process the Git history, and create two PNG diagrams depicting
 # committer activity over time. The most active committers appear
 # at the center vertical of the diagram.
 # Demonstrates image processing, mixining of synchronous and
