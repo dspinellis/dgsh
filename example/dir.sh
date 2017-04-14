@@ -4,9 +4,9 @@
 # DESCRIPTION
 # Windows-like DIR command for the current directory.
 # Nothing that couldn't be done with <code>ls -l | awk</code>.
-# Demonstrates combined use of stores and streams.
+# Demonstrates use of wrapped commands with no input (df, echo).
 #
-#  Copyright 2012-2013 Diomidis Spinellis
+#  Copyright 2012-2017 Diomidis Spinellis
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
