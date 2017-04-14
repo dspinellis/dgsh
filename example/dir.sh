@@ -21,8 +21,6 @@
 #  limitations under the License.
 #
 
-FREE=`df -h . | awk '!/Use%/{print $4}'`
-
 ls -n |
 tee |
 {{
@@ -42,6 +40,6 @@ tee |
 	grep -c '^d' | tr -d \\n
 
 	# Print label for number of dirs and calculate free bytes
-	echo " Dir(s) $FREE bytes free"
+	df -h . | awk '!/Use%/{print " Dir(s) " $4 " bytes free"}'
 }} |
 cat
