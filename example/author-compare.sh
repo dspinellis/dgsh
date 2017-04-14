@@ -1,6 +1,6 @@
 #!/usr/bin/env dgsh
 #
-# SYNOPSIS Compare IEEE Software with ICSE authors
+# SYNOPSIS IEEE Software/ICSE author compare
 # DESCRIPTION
 # Read a compressed DBLP computer science bibliography from the standard
 # input (e.g. piped from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz)
