@@ -94,4 +94,7 @@ ensure_same text-properties
 $DGSH $EXAMPLE/parallel-word-count.sh <word-properties/LostWorldChap1-3 | sed '/^[0-9]* $/d' >parallel-word-count/out.test
 ensure_same parallel-word-count
 
+$DGSH $EXAMPLE/author-compare.sh <author-compare/dblp-subset.gz >author-compare/out.test
+ensure_same author-compare
+
 exit 0

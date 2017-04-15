@@ -45,7 +45,7 @@ tee |
 	sfcat axis=1 "<|" |
 	sfgrey pclip=100 wanttitle=n label1="1/time" label2="1/space"
 }} |
-call_with_stdin side_by_side_iso '<|' '<|' yscale=1.25 >Fig/ft2dofpulse.vpl
+call_with_stdin side_by_side_iso '<|' yscale=1.25 >Fig/ft2dofpulse.vpl
 
 # A simulated air wave and the amplitude of its 2D Fourier transform
 sfspike n1=64 d1=1 o1=32 nsp=4 k1=1,2,3,4 mag=1,3,3,1 \
@@ -70,7 +70,7 @@ tee |
 		sfreal
 		sfimag
 	}} |
-	dgsh-wrap -e -I sfmath nostdin=y re="<|" im="<|" \
+	dgsh-wrap -e sfmath nostdin=y re="<|" im="<|" \
 	  output="sqrt(re*re+im*im)" |
 	tee |
 	{{
@@ -80,6 +80,6 @@ tee |
 	sfcat axis=1 "<|" |
 	sfgrey pclip=100 wanttitle=n label1="1/time" label2="1/space"
 }} |
-call_with_stdin side_by_side_iso '<|' '<|' yscale=1.25 >Fig/airwave.vpl
+call_with_stdin side_by_side_iso '<|' yscale=1.25 >Fig/airwave.vpl
 
 wait

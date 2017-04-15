@@ -4,9 +4,9 @@
 # DESCRIPTION
 # Windows-like DIR command for the current directory.
 # Nothing that couldn't be done with <code>ls -l | awk</code>.
-# Demonstrates combined use of stores and streams.
+# Demonstrates use of wrapped commands with no input (df, echo).
 #
-#  Copyright 2012-2013 Diomidis Spinellis
+#  Copyright 2012-2017 Diomidis Spinellis
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-
-FREE=`df -h . | awk '!/Use%/{print $4}'`
 
 ls -n |
 tee |
@@ -42,6 +40,6 @@ tee |
 	grep -c '^d' | tr -d \\n
 
 	# Print label for number of dirs and calculate free bytes
-	echo " Dir(s) $FREE bytes free"
+	df -h . | awk '!/Use%/{print " Dir(s) " $4 " bytes free"}'
 }} |
 cat

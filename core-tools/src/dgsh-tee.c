@@ -159,6 +159,8 @@ struct sink_info {
 	off_t pos_to_write;	/* Position up to which to write */
 	bool active;		/* True if this sink is still active */
 	struct source_info *ifp;/* Input file we read from */
+	bool chain_last;	/* True if last element in a group; Writing  (copy or scatter)
+				   should not continue to next element */
 };
 
 /* Construct a new sink_info object */
@@ -172,6 +174,7 @@ new_sink_info(const char *name)
 	ofp->name = name ? strdup(name) : NULL;
 	ofp->active = true;
 	ofp->pos_written = ofp->pos_to_write = 0;
+	ofp->next = NULL;
 	return ofp;
 }
 
@@ -184,7 +187,11 @@ struct source_info {
 	off_t source_pos_read;		/* The position up to which all sinks have read data */
 	bool reached_eof;		/* True if we reached EOF for this source */
 	off_t read_min_pos;		/* Minimum position read by all sinks */
+	bool active;			/* True if this is a source that should be currently
+					   read (rather than chained later on) */
 	bool is_read;			/* True if an active sink reads it */
+	bool chain_last;		/* True if reading should stop at this element rather
+					   than continue to the next element */
 };
 
 /* Return the name of a source or sink */
@@ -212,6 +219,7 @@ new_source_info(const char *name)
 	ifp->bp = new_buffer_pool();
 	ifp->source_pos_read = 0;
 	ifp->reached_eof = false;
+	ifp->next = NULL;
 	return ifp;
 }
 
@@ -612,13 +620,13 @@ allocate_data_to_sinks(fd_set *sink_fds, struct sink_info *files)
 	if (!opt_scatter) {
 		for (ofp = files; ofp; ofp = ofp->next) {
 			/* Advance to next input file, if required */
-			if (permute_n == 0 &&
-			    ofp->pos_written == ofp->ifp->source_pos_read &&
+			if (ofp->pos_written == ofp->ifp->source_pos_read &&
 			    ofp->ifp->reached_eof &&
-			    ofp->ifp->next) {
-				ofp->ifp = ofp->ifp->next;
+			    !ofp->ifp->chain_last) {
 				DPRINTF(4, "%s(): advance to input file %s\n",
 						__func__, fp_name(ofp->ifp));
+				ofp->ifp = ofp->ifp->next;
+				ofp->ifp->active = true;
 				ofp->pos_written = 0;
 			}
 			ofp->pos_to_write = ofp->ifp->source_pos_read;
@@ -989,7 +997,7 @@ output_source(struct source_info *ifiles, int output_n)
 		errx(1, "Unspecified output %d", output_n + 1);
 
 	/* Find input file pointer */
-	for (ifp = ifiles, i = permute_n - 1; ifp; ifp = ifp->next, i--)
+	for (ifp = ifiles, i = 0; ifp; ifp = ifp->next, i++)
 		if (i == input_n)
 			return ifp;
 	assert(0);
@@ -1010,12 +1018,185 @@ memory_stats(struct source_info *ifiles)
 	}
 }
 
+/*
+ * Return true if an element with ordinal number n,
+ * is the first element of a group in a series of groups
+ * of group_size each.
+ * Example: elements 0 and 3 in groups of size 3.
+ */
+static bool
+first_in_group(int group_size, int n)
+{
+	return n % group_size == 0;
+}
+
+/*
+ * Return true if an element with ordinal number n,
+ * is the last element of a group in a series of groups
+ * of group_size each.
+ * Example: elements 2 and 5 in groups of size 3.
+ */
+static bool
+last_in_group(int group_size, int n)
+{
+	return (n + 1) % group_size == 0;
+}
+
+struct list {
+	struct list *next;
+};
+
+/*
+ * Transpose the elements of th specified linked list given
+ * a notional new row length.  As an example, a list of 12 elements
+ * with a row size of 3, would be transposed as follows.
+ * 0 -> 4 -> 8 ->
+ * 1 -> 5 -> 9 ->
+ * 2 -> 6 -> 10 ->
+ * 3 -> 7 -> 11
+ * This function can handle arbitrary lists, as long
+ * as the list's first element is the pointer to the
+ * next one.
+ */
+static void
+list_transpose(struct list *lst, int row_length)
+{
+	int i, count = 0;
+	struct list **vector, *p;
+
+	/* Create a vector of pointers to list elements */
+	for (p = lst; p; p = p->next)
+		count++;
+	vector = (struct list **)malloc(count * sizeof(struct list *));
+	if (vector == NULL)
+		err(1, NULL);
+	for (p = lst, i = 0; p; p = p->next, i++)
+		vector[i] = p;
+	/* Transpose notional rows into columns */
+	for (i = 0; i < count - row_length; i++)
+		vector[i]->next = vector[i + row_length];
+	for (i = count - row_length; i < count - 1; i++)
+		vector[i]->next = vector[(i + 1) % row_length];
+	free(vector);
+}
+
+
+
+/*
+ * Chain input and output files into groups
+ * by setting the chain_last of all I/O files
+ * and the input file (ifp) field of all output
+ * files.
+ *
+ * These are the possible cases and the corresponding
+ * group chains.
+ *
+ * Read from many, output to one (cat)
+ * A->B->C	>	a
+ * All input files are chained together
+ *
+ * Read from one, output to many (tee)
+ * A		>	b->c->d
+ * All output files are chained together
+ *
+ * Read from many output to permuted many (perm)
+ * A		>	d
+ * B		>	c
+ * C		>	b
+ * D		>	a
+ * No files are chained
+ *
+ * Read from few, output to more (multipipe tee)
+ * A		>	a->d->g
+ * B		>	b->e->h
+ * C		>	c->f->i
+ * Output files are chained into groups
+ *
+ * Read from many, output to few (multipipe cat)
+ * A->D->G	>	a
+ * B->E->H	>	b
+ * C->F->I	>	c
+ * Input files are chained into groups
+ *
+ * Note that cat, tee, and perm are special cases of the multipipe ones
+ * are are implemented as such.
+ */
+static void
+chain_io_files(struct source_info *ifiles, struct sink_info *ofiles, bool permute)
+{
+	int nin = 0, nout = 0;
+	int group_size, n, i;
+	struct source_info *ifp;
+	struct sink_info *ofp;
+
+	for (ifp = ifiles; ifp; ifp = ifp->next)
+		nin++;
+	for (ofp = ofiles; ofp; ofp = ofp->next)
+		nout++;
+
+	if (nin >= nout) {
+		/*
+		 * Read from many output to few.
+		 * First input element in group is active.
+		 * Chain all but the last element of each input chain.
+		 * None of the outputs are chained.
+		 */
+		if (nin % nout)
+			errx(1, "The number of inputs %d is not an exact multiple of the number of outputs %d", nin, nout);
+		group_size = nin / nout;
+		list_transpose((struct list *)ifiles, group_size);
+		for (ifp = ifiles, n = 0; ifp; ifp = ifp->next, n++) {
+			ifp->active = first_in_group(group_size, n);
+			ifp->chain_last = last_in_group(group_size, n);
+		}
+		for (ofp = ofiles, ifp = ifiles, n = 0; ofp; ofp = ofp->next, n++) {
+			ofp->chain_last = true;
+			ofp->ifp = permute ? output_source(ifiles, n) : ifp;
+			for (i = 0; i <  group_size; i++)
+				ifp = ifp->next;
+		}
+	} else {
+		/*
+		 * Read from few output to many.
+		 * All inputs are active, none is chained.
+		 * Chain all but the last element in the output chain.
+		 */
+		if (nout % nin)
+			errx(1, "The number of outputs %d is not an exact multiple of the number of inputs %d", nin, nout);
+		group_size = nout / nin;
+		assert(!permute);
+		list_transpose((struct list *)ofiles, group_size);
+		for (ifp = ifiles, n = 0; ifp; ifp = ifp->next, n++) {
+			ifp->active = true;
+			ifp->chain_last = true;
+		}
+		for (ofp = ofiles, ifp = ifiles, n = 0; ofp; ofp = ofp->next, n++) {
+			ofp->ifp = ifp;
+			if (last_in_group(group_size, n)) {
+				ifp = ifp->next;
+				ofp->chain_last = true;
+			} else
+				ofp->chain_last = false;
+		}
+	}
+	assert(ifp == NULL);
+
+	DPRINTF(3, "Input files");
+	for (ifp = ifiles; ifp; ifp = ifp->next)
+		DPRINTF(3, "%p: chain_last=%d (%s)", ifp, ifp->chain_last, ifp->name);
+	DPRINTF(3, "Output files");
+	for (ofp = ofiles; ofp; ofp = ofp->next)
+		DPRINTF(3, "%p: chain_last=%d ifp=%p (%s)", ofp, ofp->chain_last, ofp->ifp, ofp->name);
+}
+
 int
 main(int argc, char *argv[])
 {
 	int max_fd = 0;
 	struct sink_info *ofiles = NULL, *ofp;
-	struct source_info *ifiles = NULL, *ifp, *end = NULL;
+	struct sink_info **oend = &ofiles;
+	struct source_info *ifiles = NULL, *ifp;
+	struct source_info **iend = &ifiles;
 	struct source_info *front_ifp;	/* To keep output sequential, never output past this one */
 	int ch;
 	const char *progname = argv[0];
@@ -1044,14 +1225,9 @@ main(int argc, char *argv[])
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ifp->fd, max_fd);
 			non_block(ifp->fd, fp_name(ifp));
-
 			/* Add file at the end of the linked list */
-			ifp->next = NULL;
-			if (end)
-				end->next = ifp;
-			else
-				ifiles = ifp;
-			end = ifp;
+			*iend = ifp;
+			iend = &ifp->next;
 			break;
 		case 'm':
 			max_mem = parse_size(progname, optarg);
@@ -1067,8 +1243,9 @@ main(int argc, char *argv[])
 				err(2, "Error opening %s", optarg);
 			max_fd = MAX(ofp->fd, max_fd);
 			non_block(ofp->fd, fp_name(ofp));
-			ofp->next = ofiles;
-			ofiles = ofp;
+			/* Add file at the end of the linked list */
+			*oend = ofp;
+			oend = &ofp->next;
 			break;
 		case 'p':
 			parse_permute(optarg);
@@ -1153,8 +1330,9 @@ main(int argc, char *argv[])
 		}
 		max_fd = MAX(ofp->fd, max_fd);
 		non_block(ofp->fd, fp_name(ofp));
-		ofp->next = ofiles;
-		ofiles = ofp;
+		/* Add file at the end of the linked list */
+		*oend = ofp;
+		oend = &ofp->next;
 	}
 
 	for (j = 0; j < ninputfds; j++) {
@@ -1169,12 +1347,8 @@ main(int argc, char *argv[])
 		max_fd = MAX(ifp->fd, max_fd);
 		non_block(ifp->fd, fp_name(ifp));
 		/* Add file at the end of the linked list */
-		ifp->next = NULL;
-		if (end)
-			end->next = ifp;
-		else
-			ifiles = ifp;
-		end = ifp;
+		*iend = ifp;
+		iend = &ifp->next;
 	}
 
 	if (buffer_size > max_mem)
@@ -1206,26 +1380,11 @@ main(int argc, char *argv[])
 		ifiles = ifp;
 	}
 
-
 	/* We will handle SIGPIPE explicitly when calling write(2). */
 	signal(SIGPIPE, SIG_IGN);
 
-
 	front_ifp = ifiles;
-	DPRINTF(3, "permute_n = %d", permute_n);
-	if (permute_n) {
-		/* Assign the corresponding input to each output file */
-		int n;
-
-		for (ofp = ofiles, n = 0; ofp; ofp = ofp->next, n++) {
-			ofp->ifp = output_source(ifiles, n);
-			DPRINTF(3, "output(%d) = %d", ofp->fd, ofp->ifp->fd);
-		}
-	} else {
-		/* Initially all output comes from the first input file */
-		for (ofp = ofiles; ofp; ofp = ofp->next)
-			ofp->ifp = front_ifp;
-	}
+	chain_io_files(ifiles, ofiles, permute_n != 0);
 
 	/* Copy source to sink without allowing any single file to block us. */
 	for (;;) {
@@ -1245,12 +1404,9 @@ main(int argc, char *argv[])
 						FD_SET(ifp->fd, &source_fds);
 				break;
 			case read_ob:
-				if (permute_n) {
-					for (ifp = front_ifp; ifp; ifp = ifp->next)
-						if (!ifp->reached_eof)
-							FD_SET(ifp->fd, &source_fds);
-				} else
-					FD_SET(front_ifp->fd, &source_fds);
+				for (ifp = front_ifp; ifp; ifp = ifp->next)
+					if (ifp->active && !ifp->reached_eof)
+						FD_SET(ifp->fd, &source_fds);
 				break;
 			default:
 				break;
@@ -1345,51 +1501,33 @@ main(int argc, char *argv[])
 				state = drain_ib;
 			break;
 		case read_ob:
-			/* Read, if possible. */
-			if (permute_n) {
-				/* Read, from possible sources; set global reached_eof if all have reached it */
-				reached_eof = true;
-				for (ifp = front_ifp; ifp; ifp = ifp->next) {
-					if (FD_ISSET(ifp->fd, &source_fds))
-						switch (source_read(ifp)) {
-						case read_eof:
-							ifp->reached_eof = true;
-							break;
-						case read_again:
-							break;
-						case read_oom:	/* Allow buffers to empty. */
-							state = drain_ob;
-							break;
-						case read_ok:
-							state = write_ob;
-							break;
-						}
-					if (!ifp->reached_eof)
-						reached_eof = false;
-				}
-				if (reached_eof)
-					state = drain_ib;
-				break;
-			} else if (FD_ISSET(front_ifp->fd, &source_fds))
-				/* Read from the single source */
-				switch (source_read(front_ifp)) {
-				case read_eof:
-					front_ifp->reached_eof = true;
-					front_ifp = front_ifp->next;
-					if (front_ifp == NULL) {
-						reached_eof = true;
-						state = drain_ib;
+			/* Read, from possible sources; set global reached_eof if all have reached it */
+			reached_eof = true;
+			for (ifp = front_ifp; ifp; ifp = ifp->next) {
+				if (!ifp->active)
+					continue;
+				if (FD_ISSET(ifp->fd, &source_fds))
+					switch (source_read(ifp)) {
+					case read_eof:
+						ifp->reached_eof = true;
+						ifp->active = false;
+						if (!ifp->chain_last)
+							ifp->next->active = true;
+						break;
+					case read_again:
+						break;
+					case read_oom:	/* Allow buffers to empty. */
+						state = drain_ob;
+						break;
+					case read_ok:
+						state = write_ob;
+						break;
 					}
-					break;
-				case read_again:
-					break;
-				case read_oom:	/* Allow buffers to empty. */
-					state = drain_ob;
-					break;
-				case read_ok:
-					state = write_ob;
-					break;
-				}
+				if (!ifp->reached_eof)
+					reached_eof = false;
+			}
+			if (reached_eof)
+				state = drain_ib;
 			break;
 		case drain_ib:
 			break;

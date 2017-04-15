@@ -1,4 +1,4 @@
-.TH DGSH-WRAP 1 "10 April 2017"
+.TH DGSH-WRAP 1 "13 April 2017"
 .\"
 .\" (C) Copyright 2016-2017 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -58,20 +58,24 @@ with names of input file descriptor paths.
 By default, only standalone arguments are thus replaced.
 
 .IP "\fB\-I\fP
-When replacing \fI<|\fP arguments with names of input file descriptor paths,
-start with the standard input
-(i.e. the first path with be \fI/proc/self/fd/0\fP).
-When this option is not given, the program will require one input channel
+Do not include the standard input to the command line arguments,
+when replacing \fI<|\fP arguments with names of input file descriptor paths.
+This will result in the standard input becoming available to the
+command as its standard input, rather than as a command line argument.
+Without this option, the first path with be \fI/proc/self/fd/0\fP.
+When this option is given, the program will require one input channel
 more than those specified by the \fI<|\fP arguments.
 
 .IP "\fB\-m\fP
 The wrapped program is mute, it will not produce any output.
 
 .IP "\fB\-O\fP
-When replacing \fI>|\fP arguments with names of output file descriptor paths,
-start with the standard output
-(i.e. the first path with be \fI/proc/self/fd/1\fP).
-When this option is not given, the program will require one output channel
+Do not include the standard output to the command line arguments,
+when replacing \fI>|\fP arguments with names of output file descriptor paths.
+This will result in the standard output becoming available to the
+command as its standard output, rather than as a command line argument.
+Without this option the first path with be \fI/proc/self/fd/1\fP.
+When this option is given, the program will require one output channel
 more than those specified by the \fI>|\fP arguments.
 
 .IP "\fB\-S\fP
