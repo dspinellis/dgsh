@@ -1922,8 +1922,7 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 
 	if (chosen_mb->state == PS_ERROR && chosen_mb->is_error_confirmed)
 		(*ntimes_seen_error)++;
-	else if (chosen_mb->state == PS_DRAW_EXIT &&
-			chosen_mb->is_draw_exit_confirmed)
+	else if (chosen_mb->state == PS_DRAW_EXIT)
 		(*ntimes_seen_draw_exit)++;
 	else if (chosen_mb->state == PS_RUN)
 		(*ntimes_seen_run)++;
@@ -2525,7 +2524,6 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->initiator_pid = self_pid;
 	chosen_mb->state = (init_error ? PS_ERROR : PS_NEGOTIATION);
 	chosen_mb->is_error_confirmed = false;
-	chosen_mb->is_draw_exit_confirmed = false;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
 	chosen_mb->is_origin_conc = false;
@@ -2874,10 +2872,9 @@ again:
 						if (state == OP_ERROR) {
 							chosen_mb->state = PS_ERROR;
 							chosen_mb->is_error_confirmed = true;
-						} else if (state == OP_DRAW_EXIT) {
+						} else if (state == OP_DRAW_EXIT)
 							chosen_mb->state = PS_DRAW_EXIT;
-							chosen_mb->is_draw_exit_confirmed = true;
-						} else {
+						else {
 							DPRINTF(1, "%s(): Computed solution", __func__);
 							chosen_mb->state = PS_RUN;
 						}
@@ -2893,11 +2890,7 @@ again:
 							chosen_mb->is_error_confirmed = true;
 						break;
 					case PS_DRAW_EXIT:
-						if (chosen_mb->is_draw_exit_confirmed)
-							goto exit;
-						else
-							chosen_mb->is_draw_exit_confirmed = true;
-						break;
+						goto exit;
 					default:
 						assert(0);
 					}

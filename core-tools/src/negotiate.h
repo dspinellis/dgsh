@@ -139,7 +139,6 @@ struct dgsh_negotiation {
 	enum prot_state state;		/* State of the negotiation process */
 	bool is_error_confirmed;	/* Error state is confirmed by the initiator
 					   and propagated to the graph */
-	bool is_draw_exit_confirmed;	/* Draw exit state is confirmed by the initiator */
 	int origin_index;		/* The node from which the message
 					 * block is dispatched.
 					 */
