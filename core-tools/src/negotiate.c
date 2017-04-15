@@ -36,7 +36,7 @@
 #include <stdio.h>		/* fprintf() in DPRINTF() */
 #include <stdlib.h>		/* getenv(), errno, atexit() */
 #include <string.h>		/* memcpy() */
-#include <sysexits.h>		/* EX_PROTOCOL */
+#include <sysexits.h>		/* EX_PROTOCOL, EX_OK */
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
 				 * STDIN_FILENO, STDOUT_FILENO,
@@ -1242,15 +1242,14 @@ solve_dgsh_graph(void)
 			goto exit;
 
 	if (getenv("DGSH_DRAW_EXIT")) {
-		fprintf(stderr,
-			"Fake an error and exit after outputting the graph\n");
-		exit_state = OP_ERROR;
+		DPRINTF(1, "Document the solution and exit\n");
+		exit_state = OP_DRAW_EXIT;
 	}
 
 	DPRINTF(4, "%s: exit_state: %d", __func__, exit_state);
 
 exit:
-	if (exit_state == OP_ERROR)
+	if (exit_state == OP_ERROR || exit_state == OP_DRAW_EXIT)
 		free_graph_solution(chosen_mb->n_nodes - 1);
 	return exit_state;
 } /* memory deallocation when in error state? */
@@ -1906,6 +1905,7 @@ static enum op_result
 analyse_read(struct dgsh_negotiation *fresh_mb,
 			int *ntimes_seen_run,
 			int *ntimes_seen_error,
+			int *ntimes_seen_draw_exit,
 			const char *tool_name,
 			pid_t pid, int *n_input_fds, int *n_output_fds)
 {
@@ -1922,6 +1922,9 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 
 	if (chosen_mb->state == PS_ERROR && chosen_mb->is_error_confirmed)
 		(*ntimes_seen_error)++;
+	else if (chosen_mb->state == PS_DRAW_EXIT &&
+			chosen_mb->is_draw_exit_confirmed)
+		(*ntimes_seen_draw_exit)++;
 	else if (chosen_mb->state == PS_RUN)
 		(*ntimes_seen_run)++;
 	else if (chosen_mb->state == PS_NEGOTIATION)
@@ -2522,6 +2525,7 @@ construct_message_block(const char *tool_name, pid_t self_pid)
 	chosen_mb->initiator_pid = self_pid;
 	chosen_mb->state = (init_error ? PS_ERROR : PS_NEGOTIATION);
 	chosen_mb->is_error_confirmed = false;
+	chosen_mb->is_draw_exit_confirmed = false;
 	chosen_mb->origin_index = -1;
 	chosen_mb->origin_fd_direction = -1;
 	chosen_mb->is_origin_conc = false;
@@ -2663,15 +2667,18 @@ setup_file_descriptors(int *n_input_fds, int *n_output_fds,
 /*
  * Return function for dgsh_negotiate
  * Exit by printing an error (if needed)
- * otherwise return the passed return value
+ * otherwise return 0 for successful termination
+ * or -1 for error
  */
 static int
 dgsh_exit(int ret, int flags)
 {
-	if (ret == 0)
+	if (ret == PS_COMPLETE)
 		return 0;
+	if (ret == PS_DRAW_EXIT)
+		exit(EX_OK);
 	if (!(flags & DGSH_HANDLE_ERROR))
-		return ret;
+		return -1;
 
 	switch (errno) {
 	case ECONNRESET:
@@ -2723,6 +2730,7 @@ dgsh_negotiate(int flags, const char *tool_name, int *n_input_fds,
 	int i = 0;
 	int ntimes_seen_run = 0;
 	int ntimes_seen_error = 0;
+	int ntimes_seen_draw_exit = 0;
 	pid_t self_pid = getpid();    /* Get tool's pid */
 	struct dgsh_negotiation *fresh_mb = NULL; /* MB just read. */
 
@@ -2822,7 +2830,8 @@ again:
 				if (write_message_block(i) == OP_ERROR)
 					chosen_mb->state = PS_ERROR;
 				if (n_io_sides == ntimes_seen_run ||
-				    n_io_sides == ntimes_seen_error) {
+				    n_io_sides == ntimes_seen_error ||
+				    n_io_sides == ntimes_seen_draw_exit) {
 					if (chosen_mb->state == PS_RUN)
 						chosen_mb->state = PS_COMPLETE;
 					goto exit;
@@ -2839,7 +2848,9 @@ again:
 				/* Check state */
 				if (analyse_read(fresh_mb,
 						&ntimes_seen_run,
-						&ntimes_seen_error, tool_name,
+						&ntimes_seen_error,
+						&ntimes_seen_draw_exit,
+						tool_name,
 						self_pid, n_input_fds,
 						n_output_fds) == OP_ERROR)
 					chosen_mb->state = PS_ERROR;
@@ -2859,9 +2870,13 @@ again:
 					case PS_NEGOTIATION:
 						chosen_mb->state = PS_NEGOTIATION_END;
 						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
-						if (solve_dgsh_graph() == OP_ERROR) {
+						int state = solve_dgsh_graph();
+						if (state == OP_ERROR) {
 							chosen_mb->state = PS_ERROR;
 							chosen_mb->is_error_confirmed = true;
+						} else if (state == OP_DRAW_EXIT) {
+							chosen_mb->state = PS_DRAW_EXIT;
+							chosen_mb->is_draw_exit_confirmed = true;
 						} else {
 							DPRINTF(1, "%s(): Computed solution", __func__);
 							chosen_mb->state = PS_RUN;
@@ -2876,6 +2891,12 @@ again:
 							goto exit;
 						else
 							chosen_mb->is_error_confirmed = true;
+						break;
+					case PS_DRAW_EXIT:
+						if (chosen_mb->is_draw_exit_confirmed)
+							goto exit;
+						else
+							chosen_mb->is_draw_exit_confirmed = true;
 						break;
 					default:
 						assert(0);
@@ -2901,6 +2922,11 @@ exit:
 		if (establish_io_connections(input_fds, n_input_fds, output_fds,
 						n_output_fds) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
+	} else if (chosen_mb->state == PS_DRAW_EXIT) {
+		if (n_input_fds != NULL)
+			*n_input_fds = 0;
+		if (n_output_fds != NULL)
+			*n_output_fds = 0;
 	}
 	int state = chosen_mb->state;
 #ifdef TIME
@@ -2916,5 +2942,5 @@ exit:
 	negotiation_completed = 1;
 	alarm(0);			// Cancel alarm
 	signal(SIGALRM, SIG_IGN);	// Do not handle the signal
-	return dgsh_exit(state ? -1 : 0, flags);
+	return dgsh_exit(state, flags);
 }

@@ -34,6 +34,7 @@ enum prot_state {
 	PS_NEGOTIATION_END,	/* End of negotiation phase */
 	PS_RUN,			/* Share solution; prepare to run */
 	PS_ERROR,		/* Error in negotiation process */
+	PS_DRAW_EXIT,		/* Compute and write the solution and exit */
 };
 
 union fdmsg {
@@ -65,6 +66,7 @@ enum op_result {
 				 * problem have been satisfied yet.
 				 * Retry by leveraging flexible constraints.
 				 */
+	OP_DRAW_EXIT,		/* Compute and write the solution and exit */
 };
 
 
@@ -137,6 +139,7 @@ struct dgsh_negotiation {
 	enum prot_state state;		/* State of the negotiation process */
 	bool is_error_confirmed;	/* Error state is confirmed by the initiator
 					   and propagated to the graph */
+	bool is_draw_exit_confirmed;	/* Draw exit state is confirmed by the initiator */
 	int origin_index;		/* The node from which the message
 					 * block is dispatched.
 					 */

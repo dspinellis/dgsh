@@ -45,6 +45,8 @@ export -f toplist
 export -f header
 
 
+if [ -z "${DGSH_DRAW_EXIT}" ]
+then
 cat <<EOF
 			WWW server statistics
 			=====================
@@ -52,6 +54,7 @@ cat <<EOF
 Summary
 -------
 EOF
+fi
 
 tee |
 {{

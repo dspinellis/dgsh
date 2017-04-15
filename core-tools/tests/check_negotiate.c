@@ -2348,11 +2348,14 @@ START_TEST(test_analyse_read)
 	int serialno_ntimes_same = 0;
 	int run_ntimes_same = 0;
 	int error_ntimes_same = 0;
+	int draw_exit_ntimes_same = 0;
 	fresh_mb->state = PS_ERROR;
 	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
@@ -2371,7 +2374,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
@@ -2391,7 +2396,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
@@ -2410,7 +2417,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->is_error_confirmed = true;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_ERROR);
@@ -2427,7 +2436,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
@@ -2445,7 +2456,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
@@ -2464,7 +2477,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->state = PS_RUN;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
@@ -2483,7 +2498,9 @@ START_TEST(test_analyse_read)
 	run_ntimes_same = 1;
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq(chosen_mb->state, PS_RUN);
@@ -2501,7 +2518,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->initiator_pid = 110; /* Younger than chosen_mb. */
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	retire_test_analyse_read();
@@ -2515,7 +2534,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->initiator_pid = 103; /* Same initiator */
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 	ck_assert_int_eq((long int)chosen_mb, (long int)fresh_mb);
@@ -2531,7 +2552,9 @@ START_TEST(test_analyse_read)
 	fresh_mb->initiator_pid = 103; /* Same initiator */
 	ck_assert_int_eq(analyse_read(fresh_mb,
 				&run_ntimes_same,
-				&error_ntimes_same, self_node.name,
+				&error_ntimes_same,
+				&draw_exit_ntimes_same,
+				self_node.name,
 				self_node.pid, &self_node.requires_channels,
 				&self_node.provides_channels), OP_SUCCESS);
 }

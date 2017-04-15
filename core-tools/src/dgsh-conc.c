@@ -304,8 +304,10 @@ pass_message_blocks(void)
 				chosen_mb = pi[i].to_write;
 				write_message_block(i); // XXX check return
 
-				if (pi[i].to_write->state == PS_RUN
-					|| (pi[i].to_write->state == PS_ERROR &&
+				if (pi[i].to_write->state == PS_RUN ||
+					(pi[i].to_write->state == PS_DRAW_EXIT &&
+						pi[i].to_write->is_draw_exit_confirmed) ||
+					(pi[i].to_write->state == PS_ERROR &&
 						pi[i].to_write->is_error_confirmed))
 					pi[i].written = true;
 
@@ -378,10 +380,13 @@ pass_message_blocks(void)
 							seen == nfd - 1) {
 						chosen_mb = rb;
 						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
-						if (solve_dgsh_graph() ==
-								OP_ERROR) {
+						int state = solve_dgsh_graph();
+						if (state == OP_ERROR) {
 							pi[next].to_write->state = PS_ERROR;
 							pi[next].to_write->is_error_confirmed = true;
+						} else if (state == OP_DRAW_EXIT) {
+							pi[next].to_write->state = PS_DRAW_EXIT;
+							pi[next].to_write->is_draw_exit_confirmed = true;
 						} else {
 							DPRINTF(1, "%s(): Computed solution", __func__);
 							pi[next].to_write->state = PS_RUN;
@@ -392,11 +397,15 @@ pass_message_blocks(void)
 						chosen_mb = NULL;
 					}
 				} else if (rb->state == PS_RUN ||
+						(rb->state == PS_DRAW_EXIT &&
+						rb->is_draw_exit_confirmed) ||
 						(rb->state == PS_ERROR &&
 						rb->is_error_confirmed))
 					pi[i].seen = true;
 				else if (rb->state == PS_ERROR)
 					rb->is_error_confirmed = true;
+				else if (rb->state == PS_DRAW_EXIT)
+					rb->is_draw_exit_confirmed = true;
 
 				print_state(i, (int)rb->initiator_pid, 1);
 				if (pi[i].seen && pi[i].written) {

@@ -60,7 +60,7 @@ png/%-pretty.png: graphdot/%.dot
 graphdot/%.dot: example/%.sh
 	mkdir -p graphdot
 	rm -f graphdot/$*.dot
-	-DGSH_DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $< 2>err
+	DGSH_DRAW_EXIT=1 DGSH_DOT_DRAW=graphdot/$* ./unix-tools/bash/bash --dgsh $<
 
 .PHONY: all tools core-tools unix-tools export-prefix \
 	config config-core-tools \

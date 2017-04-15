@@ -65,5 +65,8 @@ tee |
 # We use temporary files rather than streams, because
 # addNMR mmaps its input files. The diagram displayed in the
 # example shows the notional data flow.
-addNMR -in1 A -in2 B -out A+B.dgsh.ft2 -c1 1.0 -c2 1.25 -add
-addNMR -in1 A -in2 B -out A-B.dgsh.ft2 -c1 1.0 -c2 1.25 -sub
+if [ -z "${DGSH_DRAW_EXIT}" ]
+then
+	addNMR -in1 A -in2 B -out A+B.dgsh.ft2 -c1 1.0 -c2 1.25 -add
+	addNMR -in1 A -in2 B -out A-B.dgsh.ft2 -c1 1.0 -c2 1.25 -sub
+fi
