@@ -379,7 +379,7 @@ pass_message_blocks(void)
 							seen == nfd - 1) {
 						chosen_mb = rb;
 						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
-						int state = solve_dgsh_graph();
+						int state = solve_graph();
 						if (state == OP_ERROR) {
 							pi[next].to_write->state = PS_ERROR;
 							pi[next].to_write->is_error_confirmed = true;

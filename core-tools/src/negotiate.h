@@ -163,7 +163,7 @@ struct dgsh_negotiation {
 
 };
 
-enum op_result solve_dgsh_graph(void);
+enum op_result solve_graph(void);
 enum op_result construct_message_block(const char *tool_name, pid_t pid);
 struct dgsh_conc *find_conc(struct dgsh_negotiation *mb, pid_t pid);
 pid_t get_origin_pid(struct dgsh_negotiation *mb);

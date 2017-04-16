@@ -1167,7 +1167,7 @@ node_match_constraints(void)
  * I/O constraints of tools on an dgsh graph.
  */
 enum op_result
-solve_dgsh_graph(void)
+solve_graph(void)
 {
 	char *filename;
 	enum op_result exit_state = OP_SUCCESS;
@@ -2868,7 +2868,7 @@ again:
 					case PS_NEGOTIATION:
 						chosen_mb->state = PS_NEGOTIATION_END;
 						DPRINTF(1, "%s(): Gathered I/O requirements.", __func__);
-						int state = solve_dgsh_graph();
+						int state = solve_graph();
 						if (state == OP_ERROR) {
 							chosen_mb->state = PS_ERROR;
 							chosen_mb->is_error_confirmed = true;
