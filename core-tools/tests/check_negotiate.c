@@ -625,7 +625,7 @@ setup_test_free_graph_solution(void)
 }
 
 void
-setup_test_solve_dgsh_graph(void)
+setup_test_solve_graph(void)
 {
 	setup_chosen_mb();
 	setup_graph_solution();
@@ -1000,7 +1000,7 @@ retire_test_free_graph_solution(void)
 }
 
 void
-retire_test_solve_dgsh_graph(void)
+retire_test_solve_graph(void)
 {
 	/* Are the other data structures handled correctly?
 	 * They could be deallocated above our feet.
@@ -1065,11 +1065,11 @@ retire_test_set_io_channels(void)
 	retire_pi();
 }
 
-START_TEST(test_solve_dgsh_graph)
+START_TEST(test_solve_graph)
 {
 	DPRINTF(4, "%s", __func__);
         /* A normal case with fixed, tight constraints. */
-	ck_assert_int_eq(solve_dgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(solve_graph(), OP_SUCCESS);
 	struct dgsh_node_connections *graph_solution =
 		chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
@@ -1081,19 +1081,19 @@ START_TEST(test_solve_dgsh_graph)
 	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 1);
 	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 1);
 	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
-	retire_test_solve_dgsh_graph();
+	retire_test_solve_graph();
 
 	/* An impossible case. */
-	setup_test_solve_dgsh_graph();
+	setup_test_solve_graph();
 	chosen_mb->node_array[3].requires_channels = 1;
-	ck_assert_int_eq(solve_dgsh_graph(), OP_ERROR);
+	ck_assert_int_eq(solve_graph(), OP_ERROR);
 	exit_state = 1;
-	retire_test_solve_dgsh_graph();
+	retire_test_solve_graph();
 
 	/* Relaxing our target node's constraint. */
-	setup_test_solve_dgsh_graph();
+	setup_test_solve_graph();
 	chosen_mb->node_array[3].requires_channels = -1;
-	ck_assert_int_eq(solve_dgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(solve_graph(), OP_SUCCESS);
 	graph_solution = chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
@@ -1105,14 +1105,14 @@ START_TEST(test_solve_dgsh_graph)
 	ck_assert_int_eq(graph_solution[3].edges_incoming[1].instances, 1);
 	ck_assert_int_eq(graph_solution[1].edges_outgoing[1].instances, 1);
 	ck_assert_int_eq((long int)graph_solution[3].edges_outgoing, 0);
-	retire_test_solve_dgsh_graph();
+	retire_test_solve_graph();
 
 	/* Relaxing also pair nodes' constraints. */
-	setup_test_solve_dgsh_graph();
+	setup_test_solve_graph();
 	chosen_mb->node_array[3].requires_channels = -1;
 	chosen_mb->node_array[0].provides_channels = -1;
 	chosen_mb->node_array[1].provides_channels = -1;
-	ck_assert_int_eq(solve_dgsh_graph(), OP_SUCCESS);
+	ck_assert_int_eq(solve_graph(), OP_SUCCESS);
 	graph_solution = chosen_mb->graph_solution;
 	ck_assert_int_eq(graph_solution[3].n_edges_incoming, 2);
 	ck_assert_int_eq(graph_solution[3].n_edges_outgoing, 0);
@@ -3006,9 +3006,9 @@ suite_solve(void)
 	suite_add_tcase(s, tc_wgs);
 
 	TCase *tc_ssg = tcase_create("solve dgsh graph");
-	tcase_add_checked_fixture(tc_ssg, setup_test_solve_dgsh_graph,
-					  retire_test_solve_dgsh_graph);
-	tcase_add_test(tc_ssg, test_solve_dgsh_graph);
+	tcase_add_checked_fixture(tc_ssg, setup_test_solve_graph,
+					  retire_test_solve_graph);
+	tcase_add_test(tc_ssg, test_solve_graph);
 	suite_add_tcase(s, tc_ssg);
 
 	TCase *tc_ccf = tcase_create("calculate conc fds");

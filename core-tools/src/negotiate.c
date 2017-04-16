@@ -996,25 +996,57 @@ prepare_solution(void)
 	return exit_state;
 }
 
+static void
+print_solution_error(int index_argc, int *index_commands_notmatched,
+		int *side_commands_notmatched)
+{
+	int i = 0, index = 0, side = 0, reqs = 0;
+	fprintf(stderr, "dgsh: No solution was found to satisfy the I/O requirements of the following %d participating processes:\n",
+			index_argc);
+	for (i = 0; i < index_argc; i++) {
+		index = index_commands_notmatched[i];
+		side = side_commands_notmatched[i];
+		if (side == STDIN_FILENO)
+			reqs = chosen_mb->node_array[index].requires_channels;
+		else
+			reqs = chosen_mb->node_array[index].provides_channels;
+		fprintf(stderr, "%s (n%s=%d)\n",
+				chosen_mb->node_array[index].name,
+				side == STDIN_FILENO ? "in" : "out",
+				reqs);
+	}
+	free(index_commands_notmatched);
+	free(side_commands_notmatched);
+}
+
 /**
  * Check that a node's input/output channel matched its requirements
  */
 static void
 check_constraints_matched(int node_index, bool *constraints_matched,
-				int ** index_commands_notmatched, int *index_argc)
+				int **index_commands_notmatched,
+				int **side_commands_notmatched,
+				int *index_argc, int side)
 {
 	if (!*constraints_matched) {
-		DPRINTF(4, "Constraint not matched. index_argc: %d",
-				*index_argc);
-		if (*index_argc == 0)
+		(*index_argc)++;
+		DPRINTF(4, "Constraint not matched for node at index %d. So far %d nodes not matched",
+				node_index, *index_argc);
+		if (*index_argc == 1) {
 			*index_commands_notmatched = (int *)malloc(
-					sizeof(int) *
-					++(*index_argc));
-		else
+					sizeof(int) * *index_argc);
+			*side_commands_notmatched = (int *)malloc(
+					sizeof(int) * *index_argc);
+		} else {
 			*index_commands_notmatched = (int *)realloc(
 				*index_commands_notmatched,
-				sizeof(int) * ++(*index_argc));
+				sizeof(int) * *index_argc);
+			*side_commands_notmatched = (int *)realloc(
+				*side_commands_notmatched,
+				sizeof(int) * *index_argc);
+		}
 		(*index_commands_notmatched)[*index_argc - 1] = node_index;
+		(*side_commands_notmatched)[*index_argc - 1] = side;
 	}
 	*constraints_matched = false;
 }
@@ -1024,7 +1056,8 @@ check_constraints_matched(int node_index, bool *constraints_matched,
  * I/O constraints of tools on an dgsh graph.
  */
 static enum op_result
-cross_match_constraints(int **index_commands_notmatched, int *index_argc)
+cross_match_constraints(int **index_commands_notmatched,
+		int **side_commands_notmatched, int *index_argc)
 {
 	int i;
 	int n_nodes = chosen_mb->n_nodes;
@@ -1070,7 +1103,9 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 				return OP_ERROR;
 			}
 			check_constraints_matched(i, &constraints_matched,
-					index_commands_notmatched, index_argc);
+					index_commands_notmatched,
+					side_commands_notmatched, index_argc,
+					STDOUT_FILENO);
 		}
 		if (*n_edges_incoming > 0){
 			if (cross_match_io_constraints(
@@ -1088,7 +1123,9 @@ cross_match_constraints(int **index_commands_notmatched, int *index_argc)
 				return OP_ERROR;
 			}
 			check_constraints_matched(i, &constraints_matched,
-					index_commands_notmatched, index_argc);
+					index_commands_notmatched,
+					side_commands_notmatched, index_argc,
+					STDIN_FILENO);
 		}
 	}
 	DPRINTF(4, "%s(): Cross matched constraints of %d out of %d nodes for %d edges out of %d edges.", __func__, n_nodes - *index_argc, n_nodes, edges_matched / 2, n_edges);
@@ -1174,6 +1211,7 @@ solve_graph(void)
 	int retries = 0;
 	int index_argc = 0;
 	int *index_commands_notmatched;
+	int *side_commands_notmatched;
 
 	/**
 	 * The initial layout of the solution plays an important
@@ -1198,23 +1236,14 @@ solve_graph(void)
 
 	while (exit_state == OP_RETRY) {
 		if ((exit_state = cross_match_constraints(
-				&index_commands_notmatched, &index_argc)) ==
+				&index_commands_notmatched,
+				&side_commands_notmatched,
+				&index_argc)) ==
 				OP_ERROR ||
 				(exit_state == OP_RETRY && retries > 10)) {
-			int i = 0, index = 0;
-			fprintf(stderr, "dgsh: No solution was found to satisfy the I/O requirements of the following %d participating processes: ",
-					index_argc);
-			for (i = 0; i < index_argc - 1; i++) {
-				index = index_commands_notmatched[i];
-				fprintf(stderr, "%s, ",
-					chosen_mb->node_array[index].name);
-			}
-			if (index_argc > 0) {
-				index = index_commands_notmatched[i];
-				fprintf(stderr, "%s.\n",
-					chosen_mb->node_array[index].name);
-				free(index_commands_notmatched);
-			}
+			print_solution_error(index_argc,
+					index_commands_notmatched,
+					side_commands_notmatched);
 			exit_state = OP_ERROR;
 			goto exit;
 		}
@@ -1223,6 +1252,7 @@ solve_graph(void)
 		retries++;
 		if (index_argc > 0) {
 			free(index_commands_notmatched);
+			free(side_commands_notmatched);
 			index_argc = 0;
 		}
 	}
