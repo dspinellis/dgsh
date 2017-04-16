@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Marios Fragkoulis
+ * Copyright 2016, 2017 Marios Fragkoulis
  *
  * A passive component that aids the dgsh negotiation by passing
  * message blocks among participating processes.
