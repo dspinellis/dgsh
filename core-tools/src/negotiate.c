@@ -2877,14 +2877,13 @@ again:
 						fresh_mb != NULL)
 					fresh_mb->state = PS_ERROR;
 				/* Check state */
-				if (analyse_read(fresh_mb,
+				analyse_read(fresh_mb,
 						&ntimes_seen_run,
 						&ntimes_seen_error,
 						&ntimes_seen_draw_exit,
 						tool_name,
 						self_pid, n_input_fds,
-						n_output_fds) == OP_ERROR)
-					chosen_mb->state = PS_ERROR;
+						n_output_fds);
 
 				/**
 				 * Initiator process.
