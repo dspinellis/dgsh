@@ -1950,9 +1950,12 @@ analyse_read(struct dgsh_negotiation *fresh_mb,
 	if (init_error)
 		chosen_mb->state = PS_ERROR;
 
-	if (chosen_mb->state == PS_ERROR && chosen_mb->is_error_confirmed)
-		(*ntimes_seen_error)++;
-	else if (chosen_mb->state == PS_DRAW_EXIT)
+	if (chosen_mb->state == PS_ERROR) {
+		if (errno == 0)
+			errno = ECONNRESET;
+		if (chosen_mb->is_error_confirmed)
+			(*ntimes_seen_error)++;
+	} else if (chosen_mb->state == PS_DRAW_EXIT)
 		(*ntimes_seen_draw_exit)++;
 	else if (chosen_mb->state == PS_RUN)
 		(*ntimes_seen_run)++;
@@ -2710,7 +2713,7 @@ dgsh_exit(int ret, int flags)
 
 	switch (errno) {
 	case ECONNRESET:
-		exit(EX_PROTOCOL);
+		exit(EX_PROTOCOL, "dgsh negotiation failed at remote command");
 	case 0:
 		errx(EX_PROTOCOL, "dgsh negotiation failed");
 	default:
