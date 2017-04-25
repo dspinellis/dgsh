@@ -1636,6 +1636,9 @@ write_message_block(int write_fd)
 
 	DPRINTF(3, "%s(): %s (%d)", __func__, programname, self_node.index);
 
+	if (chosen_mb->state == PS_ERROR && errno == 0)
+		errno = EPROTO;
+
 	/**
 	 * Prepare and perform message block transmission.
 	 * Formally invalidate pointers to nodes and edges
