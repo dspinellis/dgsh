@@ -2716,7 +2716,7 @@ dgsh_exit(int ret, int flags)
 
 	switch (errno) {
 	case ECONNRESET:
-		exit(EX_PROTOCOL, "dgsh negotiation failed at remote command");
+		exit(EX_PROTOCOL);
 	case 0:
 		errx(EX_PROTOCOL, "dgsh negotiation failed");
 	default:
