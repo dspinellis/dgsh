@@ -1504,12 +1504,14 @@ START_TEST(test_write_output_fds)
 	int write_fd = 1;
 	int *output_fds;
 	/* 0 outgoing edges for node 3, so no action really. */
-	ck_assert_int_eq(write_output_fds(write_fd, output_fds), OP_SUCCESS);
+	ck_assert_int_eq(write_output_fds(write_fd, output_fds, 0),
+			OP_SUCCESS);
 
 	/* Switch to node 2 that has 2 outgoing edges. */
 	memcpy(&self_node, &chosen_mb->node_array[2], sizeof(struct dgsh_node));
 	output_fds = (int *)malloc(sizeof(int) * 2);
-	ck_assert_int_eq(write_output_fds(write_fd, output_fds), OP_SUCCESS);
+	ck_assert_int_eq(write_output_fds(write_fd, output_fds,
+				DGSH_HANDLE_ERROR), OP_SUCCESS);
 	free(output_fds);
 
 	/* Incomplete testing since socket descriptors have not yet been setup.

@@ -152,6 +152,7 @@ static volatile sig_atomic_t negotiation_completed = 0;
 int dgsh_debug_level = 0;
 
 static void get_environment_vars();
+static int dgsh_exit(int state, int flags);
 
 
 #ifndef UNIT_TESTING
@@ -1363,7 +1364,7 @@ establish_io_connections(int **input_fds, int *n_input_fds, int **output_fds,
  * tool's output to another tool.
  */
 static enum op_result
-write_output_fds(int output_socket, int *output_fds)
+write_output_fds(int output_socket, int *output_fds, int flags)
 {
 	/**
 	 * A node's connections are located at the same position
@@ -1401,7 +1402,7 @@ write_output_fds(int output_socket, int *output_fds)
 			 */
 			if (pipe(fd) == -1) {
 				perror("pipe open failed");
-				exit(1);
+				dgsh_exit(-1, flags);
 			}
 			DPRINTF(4, "%s(): created pipe pair %d - %d. Transmitting fd %d through sendmsg().", __func__, fd[0], fd[1], fd[0]);
 
@@ -2944,8 +2945,8 @@ exit:
 		if (read_input_fds(STDIN_FILENO, self_pipe_fds.input_fds) ==
 									OP_ERROR)
 			chosen_mb->state = PS_ERROR;
-		if (write_output_fds(STDOUT_FILENO, self_pipe_fds.output_fds) ==
-									OP_ERROR)
+		if (write_output_fds(STDOUT_FILENO,
+				self_pipe_fds.output_fds, flags) == OP_ERROR)
 			chosen_mb->state = PS_ERROR;
 		if (establish_io_connections(input_fds, n_input_fds, output_fds,
 						n_output_fds) == OP_ERROR)
