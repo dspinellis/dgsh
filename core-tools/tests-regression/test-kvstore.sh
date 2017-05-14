@@ -90,14 +90,14 @@ EXPECT='single record'
 check
 
 testcase "Single record fixed width" # {{{3
-echo -n 0123456789 | $DGSH_WRITEVAL -l 10 -s testsocket 2>server.err &
+printf 0123456789 | $DGSH_WRITEVAL -l 10 -s testsocket 2>server.err &
 sleep 1
 EXPECT='0123456789'
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 check
 
 testcase "Record separator" # {{{3
-echo -n record1:record2 | $DGSH_WRITEVAL -t : -s testsocket 2>server.err &
+printf record1:record2 | $DGSH_WRITEVAL -t : -s testsocket 2>server.err &
 sleep 1
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 EXPECT='record1:'
@@ -173,7 +173,7 @@ test $EXITCODE = 0 || exit 1
 
 testcase "HTTP interface - large data" # {{{3
 PORT=53843
-dd if=/dev/zero bs=1M count=1 2>/dev/null |
+dd if=/dev/zero bs=1000000 count=1 2>/dev/null |
 $DGSH_WRITEVAL -l 1000000 -s testsocket 2>server.err &
 start_server -m application/octet-stream
 # -s40: silent, IPv4 HTTP 1.0
@@ -193,7 +193,7 @@ fi
 
 # Last record tests {{{1
 section 'Reading of fixed-length records in stream' # {{{2
-(echo -n A12345A7AB; sleep 4; echo -n 12345B7BC; sleep 4; echo -n 12345C7CD) | $DGSH_WRITEVAL -l 9 -s testsocket 2>server.err &
+(printf A12345A7AB; sleep 4; printf 12345B7BC; sleep 4; printf 12345C7CD) | $DGSH_WRITEVAL -l 9 -s testsocket 2>server.err &
 
 testcase "Record one" # {{{3
 sleep 2
@@ -280,7 +280,7 @@ EXPECT=''
 check
 
 testcase "Incomplete record" # {{{3
-echo -n unterminated | $DGSH_WRITEVAL -s testsocket 2>server.err &
+printf unterminated | $DGSH_WRITEVAL -s testsocket 2>server.err &
 TRY="`$DGSH_READVAL -l -s testsocket 2>client.err `"
 EXPECT=''
 check
@@ -322,28 +322,28 @@ check
 section 'Window from fixed record stream' # {{{2
 
 testcase "Middle record" # {{{3
-(echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 2 -e 1 -s testsocket 2>server.err &
+(printf 000 ; printf 011112 ; printf 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 2 -e 1 -s testsocket 2>server.err &
 sleep 1
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='1111'
 check
 
 testcase "First record" # {{{3
-(echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 2 -s testsocket 2>server.err &
+(printf 000 ; printf 011112 ; printf 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 2 -s testsocket 2>server.err &
 sleep 1
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='0000'
 check
 
 testcase "First two records" # {{{3
-(echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 1 -s testsocket 2>server.err &
+(printf 000 ; printf 011112 ; printf 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 1 -s testsocket 2>server.err &
 sleep 1
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='00001111'
 check
 
 testcase "All records" # {{{3
-(echo -n 000 ; echo -n 011112 ; echo -n 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 0 -s testsocket 2>server.err &
+(printf 000 ; printf 011112 ; printf 222; sleep 2) | $DGSH_WRITEVAL -l 4 -b 3 -e 0 -s testsocket 2>server.err &
 sleep 1
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
 EXPECT='000011112222'
@@ -416,7 +416,7 @@ check
 section 'Time window from fixed record stream' # {{{2
 
 testcase "Fixed record stream, first record" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 2.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 011112 ; sleep 1 ; printf 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 2.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
@@ -424,7 +424,7 @@ EXPECT='0000'
 check
 
 testcase "First two records" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 1.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 011112 ; sleep 1 ; printf 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 1.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
@@ -432,7 +432,7 @@ EXPECT='000011112222'
 check
 
 testcase "Middle record" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 011112 ; sleep 1 ; echo -n 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 2.5 -e 1.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 011112 ; sleep 1 ; printf 222; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 2.5 -e 1.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
@@ -440,7 +440,7 @@ EXPECT='11112222'
 check
 
 testcase "Last record" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 1.5 -e 0.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 01111 ; sleep 1 ; printf 222; printf 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 1.5 -e 0.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
@@ -448,7 +448,7 @@ EXPECT='2222'
 check
 
 testcase "All records" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 0.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 01111 ; sleep 1 ; printf 222; printf 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 3.5 -e 0.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
@@ -457,7 +457,7 @@ check
 
 
 testcase "First record after wait" # {{{3
-(echo -n 000 ; sleep 1 ; echo -n 01111 ; sleep 1 ; echo -n 222; echo -n 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 4.5 -e 3.5 -s testsocket 2>server.err &
+(printf 000 ; sleep 1 ; printf 01111 ; sleep 1 ; printf 222; printf 2 ; sleep 3) | $DGSH_WRITEVAL -l 4 -u s -b 4.5 -e 3.5 -s testsocket 2>server.err &
 #Rel     3                       2                          1
 sleep 3
 TRY="`$DGSH_READVAL -c -s testsocket 2>client.err `"
