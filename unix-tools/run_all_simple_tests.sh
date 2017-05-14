@@ -5,7 +5,8 @@ PSDIR=$1
 set -e
 
 ./run_simple_test.sh $PSDIR read_while \
-	'echo -e "hi\nthere" |
+	'echo "hi
+there" |
 	while read X; do echo $X; done'
 
 ./run_simple_test.sh $PSDIR subshell \
