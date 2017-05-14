@@ -174,7 +174,7 @@ test-bash: ../simple-shell/fid
 	./run_test.sh $(PSDIR) $(EGDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
-	./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils
+	DGSH_TIMEOUT=10 ./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
 	./run_test.sh $(PSDIR) $(EGDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
 	./run_test.sh $(PSDIR) $(EGDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \

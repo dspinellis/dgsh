@@ -36,6 +36,8 @@
 				   set_negotiation_complete() */
 #include "dgsh-debug.h"		/* DPRINTF */
 
+#define DGSH_TIMEOUT 5
+
 /* Alarm mechanism and on_exit handling */
 extern volatile sig_atomic_t negotiation_completed;
 
@@ -516,6 +518,7 @@ main(int argc, char *argv[])
 	int ch;
 	int exit;
 	char *debug_level = NULL;
+	char *timeout;
 
 	program_name = argv[0];
 	pid = getpid();
@@ -551,7 +554,10 @@ main(int argc, char *argv[])
 		dgsh_debug_level = atoi(debug_level);
 
 	signal(SIGALRM, dgsh_alarm_handler);
-	alarm(5);
+	if ((timeout = getenv("DGSH_TIMEOUT")) != NULL)
+		alarm(atoi(timeout));
+	else
+		alarm(DGSH_TIMEOUT);
 
 	/* +1 for stdin when scatter/stdout when gather
 	 * +1 for stderr which is not used
