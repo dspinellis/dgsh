@@ -43,7 +43,8 @@ WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 png/%-pretty.png: graphdot/%.dot
-	dot $(DOTFLAGS) -Tpng $< >$@
+	gvpr 'BEG_G { graph_t L = cloneG($$G,"last")} END {write(L)}' $< | \
+	dot $(DOTFLAGS) -Tpng >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
