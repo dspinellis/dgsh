@@ -44,7 +44,7 @@ escape()
 
 export -f sorted_authors
 
-if [ ! "$2" ] ; then
+if [ ! "$2" -a ! "$DGSH_DOT_DRAW"] ; then
   echo "Usage: $0 key1 key2" 1>&2
   echo "Example: $0 conf/icse/ journals/software/" 1>&2
   exit 1
