@@ -43,7 +43,8 @@ WEBPNG=$(EGPNG)
 WEBDIST=../../../pubs/web/home/sw/dgsh/
 
 png/%-pretty.png: graphdot/%.dot
-	dot $(DOTFLAGS) -Tpng $< >$@
+	gvpr 'BEG_G { graph_t L = cloneG($$G,"last")} END {write(L)}' $< | \
+	dot $(DOTFLAGS) -Tpng >$@
 
 %.pdf: %.1
 	groff -man -Tps $< | ps2pdf - $@
@@ -132,10 +133,17 @@ install:
 
 webfiles: $(MANPDF) $(MANHTML) $(WEBPNG)
 
+# Create web page
 dist: $(MANPDF) $(MANHTML) $(WEBPNG)
 	perl -n -e 'if (/^<!-- #!(.*) -->/) { system("$$1"); } else { print; }' web/index.html >$(WEBDIST)/index.html
 	cp $(MANHTML) $(MANPDF) $(WEBDIST)
 	cp $(WEBPNG) $(WEBDIST)
+
+# Obtain dot files from Unix host
+rsync-graphdot:
+	ssh stereo 'cd src/dgsh && git pull && make webfiles'
+	rsync -a stereo:src/dgsh/graphdot/ graphdot/
+	rsync -a stereo:src/dgsh/example/ example/
 
 dotfiles: $(EGDOT)
 

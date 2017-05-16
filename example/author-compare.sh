@@ -51,7 +51,7 @@ if [ ! "$2" -a ! "$DGSH_DOT_DRAW"] ; then
 fi
 
 gzip -dc |
-# Output ICSE and IEEE Software authors as two output streams
+# Output the two venue authors as two output streams
 dgsh-wrap -e sed -n "
 /^<.*key=\"$(escape $1)/,/<title>/ w >|
 /^<.*key=\"$(escape $2)/,/<title>/ w >|" |
