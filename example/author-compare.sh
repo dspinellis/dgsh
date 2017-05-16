@@ -2,7 +2,7 @@
 #
 # SYNOPSIS Venue author compare
 # DESCRIPTION
-# Given the specification of two publication venues, Read a compressed
+# Given the specification of two publication venues, read a compressed
 # DBLP computer science bibliography from the standard input (e.g. piped
 # from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz or from a locally
 # cached copy) and output the number of papers published in each of the
