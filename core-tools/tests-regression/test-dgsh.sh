@@ -62,7 +62,7 @@ LC_ALL=en_US.UTF-8 $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
 )
 ensure_same commit-stats
 
-$DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test
+DGSH_TIMEOUT=20 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test 2>/dev/null
 ensure_same code-metrics
 
 $DGSH $EXAMPLE/duplicate-files.sh duplicate-files >duplicate-files/out.test
@@ -74,7 +74,7 @@ ensure_same word-properties
 $DGSH $EXAMPLE/compress-compare.sh <word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >compress-compare/out.test
 ensure_same compress-compare
 
-$DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
+KVSTORE_RETRY_LIMIT=30 DGSH_TIMEOUT=30 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
 ensure_same web-log-report
 
 (

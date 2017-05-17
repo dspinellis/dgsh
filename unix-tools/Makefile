@@ -175,7 +175,7 @@ test-bash: ../simple-shell/fid
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
 	DGSH_TIMEOUT=10 ./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils
-	./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
+	KVSTORE_RETRY_LIMIT=30 DGSH_TIMEOUT=30 ./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
 	./run_test.sh $(PSDIR) $(EGDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
 	./run_test.sh $(PSDIR) $(EGDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
 					sfspray sffft1 sffft3 sfcat sflmostretch \

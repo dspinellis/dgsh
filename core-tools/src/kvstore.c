@@ -36,7 +36,7 @@
 #include "kvstore.h"
 #include "debug.h"
 
-#define RETRY_LIMIT 10
+int retry_limit = 10;
 
 /* Write a command to the specified socket, and return the socket */
 static int
@@ -46,6 +46,10 @@ write_command(const char *name, char cmd, bool retry_connection)
 	socklen_t len;
 	struct sockaddr_un remote;
 	int counter = 0;
+	char *env_retry_limit;
+
+	if ((env_retry_limit = getenv("KVSTORE_RETRY_LIMIT")) != NULL)
+		retry_limit = atoi(env_retry_limit);
 
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		err(1, "socket");
@@ -62,7 +66,7 @@ again:
 	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
 		if (retry_connection &&
 		    (errno == ENOENT || errno == ECONNREFUSED) &&
-		    counter++ < RETRY_LIMIT) {
+		    counter++ < retry_limit) {
 			DPRINTF(3, "Retrying connection setup");
 			sleep(1);
 			goto again;
