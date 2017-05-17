@@ -253,7 +253,7 @@ remove_absolute_path(char *s)
 
 /*
  * Replace an instance of the string special (e.g. "<|") embedded in arg
- * with /proc/self/fd/N, where N is the integer pointed
+ * with /dev/fd/N, where N is the integer pointed
  * by fdptr, and increase fdptr to point to the next integer.
  * Return true if a replacement was made, false if not.
  */
@@ -266,7 +266,7 @@ process_embedded_io_arg(char **arg, const char *special, int **fdptr)
 	*p = 0;
 	char *before = *arg;
 	char *after = p + strlen(special);
-	if (asprintf(arg, "%s/proc/self/fd/%d%s", before, **fdptr, after) == -1)
+	if (asprintf(arg, "%s/dev/fd/%d%s", before, **fdptr, after) == -1)
 		err(1, "asprintf out of memory");
 	(*fdptr)++;
 	return true;
@@ -274,7 +274,7 @@ process_embedded_io_arg(char **arg, const char *special, int **fdptr)
 
 /*
  * Replace an instance of the string special (e.g. "<|") matching an arg
- * with /proc/self/fd/N, where N is the integer pointed
+ * with /dev/fd/N, where N is the integer pointed
  * by fdptr, and increase fdptr to point to the next integer.
  */
 static void
@@ -282,7 +282,7 @@ process_standalone_io_arg(char **arg, const char *special, int **fdptr)
 {
 	if (strcmp(*arg, special) != 0)
 		return;
-	if (asprintf(arg, "/proc/self/fd/%d", **fdptr) == -1)
+	if (asprintf(arg, "/dev/fd/%d", **fdptr) == -1)
 		err(1, "asprintf out of memory");
 	(*fdptr)++;
 }
@@ -402,7 +402,7 @@ main(int argc, char *argv[])
 	/*
 	 * Adjust ninputs and noutputs by special arguments
 	 * "<|" and ">|", which mean input from or output to
-	 * /proc/self/fd/N
+	 * /dev/fd/N
 	 */
 	DPRINTF(4, "embedded_args=%d", embedded_args);
 	for (i = optind + 1; i < argc; i++) {
@@ -437,7 +437,7 @@ main(int argc, char *argv[])
 
 	/*
 	 * Substitute special arguments "<|" and ">|" with file descriptor
-	 * paths /proc/self/fd/N using the fds received from negotiation.
+	 * paths /dev/fd/N using the fds received from negotiation.
 	 */
 	int *inptr = stdin_as_arg ? input_fds : input_fds + 1;
 	int *outptr = stdout_as_arg ? output_fds : output_fds + 1;
