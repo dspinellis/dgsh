@@ -1,44 +1,44 @@
 Authors ordered by number of commits
-    557 Jim Meyering
-    252 Paul Eggert
-    146 Paolo Bonzini
-     79 Norihiro Tanaka
-      9 Bruno Haible
-      8 Eric Blake
-      7 Stefano Lattarini
-      6 Aharon Robbins
-      5 Eli Zaretskii
-      5 Arnold D. Robbins
-      4 Reuben Thomas
-      4 Norihirio Tanaka
-      3 Arnold Robbins
-      2 Stephane Chazelas
-      2 Santiago Ruano Rincón
-      2 Mike Frysinger
-      2 Benno Schulenberg
-      2 behoffski
-      1 Zev Weiss
-      1 Yuliy Pisetsky
-      1 Tony Abou-Assaleh
-      1 Petr Písař
-      1 Petr Pisar
-      1 Patrick Boyd
-      1 Pádraig Brady
-      1 Nicolas Vigier
-      1 Mike Haertel
-      1 Matthew Burgess
-      1 Karl Berry
-      1 Javier Villavicencio
-      1 Jaroslav Škarvada
-      1 Dmitry V. Levin
-      1 Corinna Vinschen
-      1 Allan McRae
-      1 Adam Katz
+ 557 Jim Meyering
+ 252 Paul Eggert
+ 146 Paolo Bonzini
+  79 Norihiro Tanaka
+   9 Bruno Haible
+   8 Eric Blake
+   7 Stefano Lattarini
+   6 Aharon Robbins
+   5 Eli Zaretskii
+   5 Arnold D. Robbins
+   4 Reuben Thomas
+   4 Norihirio Tanaka
+   3 Arnold Robbins
+   2 behoffski
+   2 Stephane Chazelas
+   2 Santiago Ruano Rincón
+   2 Mike Frysinger
+   2 Benno Schulenberg
+   1 Zev Weiss
+   1 Yuliy Pisetsky
+   1 Tony Abou-Assaleh
+   1 Pádraig Brady
+   1 Petr Písař
+   1 Petr Pisar
+   1 Patrick Boyd
+   1 Nicolas Vigier
+   1 Mike Haertel
+   1 Matthew Burgess
+   1 Karl Berry
+   1 Javier Villavicencio
+   1 Jaroslav Škarvada
+   1 Dmitry V. Levin
+   1 Corinna Vinschen
+   1 Allan McRae
+   1 Adam Katz
 Days ordered by number of commits
-    186 Thu
-    167 Fri
-    161 Mon
-    152 Wed
-    149 Sun
-    149 Sat
-    148 Tue
+ 186 Thu
+ 167 Fri
+ 161 Mon
+ 152 Wed
+ 149 Sun
+ 149 Sat
+ 148 Tue
