@@ -1,13 +1,16 @@
 #!/usr/bin/env dgsh
 #
-# SYNOPSIS IEEE Software/ICSE author compare
+# SYNOPSIS Venue author compare
 # DESCRIPTION
-# Read a compressed DBLP computer science bibliography from the standard
-# input (e.g. piped from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz)
-# and output the number of papers published in each venue as well as
-# the number of authors who have published only in IEEE Software,
-# the number who have published only in the International Conference on
-# Software Engineering (ICSE), and authors who have published in both.
+# Given the specification of two publication venues, read a compressed
+# DBLP computer science bibliography from the standard input (e.g. piped
+# from curl -s http://dblp.uni-trier.de/xml/dblp.xml.gz or from a locally
+# cached copy) and output the number of papers published in each of the
+# two venues as well as the number of authors who have published only in
+# the first venue, the number who have published only in the second one,
+# and authors who have published in both.  The venues are specified through
+# the script's first two command-line arguments as a DBLP key prefix, e.g.
+# journals/acta/, conf/icse/, journals/software/, conf/iwpc/, or conf/msr/.
 # Demonstrates the use of dgsh-wrap -e to have sed(1) create two output
 # streams and the use of tee to copy a pair of streams into four ones.
 #
@@ -33,21 +36,33 @@ sorted_authors()
   sort
 }
 
+# Escape a string to make it a valid sed(1) pattern
+escape()
+{
+  echo "$1" | sed 's/\([/\\]\)/\\\1/g'
+}
+
 export -f sorted_authors
 
+if [ ! "$2" -a ! "$DGSH_DOT_DRAW"] ; then
+  echo "Usage: $0 key1 key2" 1>&2
+  echo "Example: $0 conf/icse/ journals/software/" 1>&2
+  exit 1
+fi
+
 gzip -dc |
-# Output ICSE and IEEE Software authors as two output streams
-dgsh-wrap -e sed -n '
-/<inproceedings.*key="conf\/icse\//,/<title>/ w >|
-/<article.*key="journals\/software\//,/<title>/ w >|' |
-# 2 streams in 4 streams out: ICSE, Software, ICSE, Software
+# Output the two venue authors as two output streams
+dgsh-wrap -e sed -n "
+/^<.*key=\"$(escape $1)/,/<title>/ w >|
+/^<.*key=\"$(escape $2)/,/<title>/ w >|" |
+# 2 streams in 4 streams out: venue1, venue2, venue1, venue2
 tee |
 {{
   {{
-    echo -n 'ICSE papers: '
-    grep -c '<inproceedings'
-    echo -n 'IEEE Software articles: '
-    grep -c '<article'
+    echo -n "$1 papers: "
+    grep -c '^<.* mdate=.* key='
+    echo -n "$2 papers: "
+    grep -c '^<.* mdate=.* key='
   }}
 
   {{
@@ -56,9 +71,9 @@ tee |
   }} |
   comm |
   {{
-    echo -n 'Authors only in ICSE: '
+    echo -n "Authors only in $1: "
     wc -l
-    echo -n 'Authors only in IEEE Software: '
+    echo -n "Authors only in $2: "
     wc -l
     echo -n 'Authors common in both venues: '
     wc -l

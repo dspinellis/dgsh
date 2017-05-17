@@ -1,5 +1,5 @@
-ICSE papers: 213
-IEEE Software articles: 182
-Authors only in ICSE: 547
-Authors only in IEEE Software: 299
+conf/icse/ papers: 219
+journals/software/ papers: 182
+Authors only in conf/icse/: 547
+Authors only in journals/software/: 299
 Authors common in both venues: 22
