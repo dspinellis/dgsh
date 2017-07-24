@@ -28,12 +28,11 @@ unset DGSH_OUT
 
 usage()
 {
-  echo 'Usage: dgsh-grep [-d] [-c] [-f] [-j] [-l] [-L] [-o] [-v] [file]' 1>&2
-  exit 2
+	echo 'Usage: dgsh-grep [-d] [-c] [-f] [-j] [-l] [-L] [-o] [-v] [file]' 1>&2
+	exit 2
 }
 
 # TODO:
-#   - common arguments
 #   - multiple input streams, e.g. -f -
 #   - testing
 #   - substitute grep
@@ -41,57 +40,80 @@ usage()
 #command="$0"
 command="grep" #Temporary
 
-declare -A shortopts
-declare -A longopts
-sargs=-1
-largs=-1
+outopts=("-c" "-d" "-j" "-l" "-L" "-o" "-v")
+declare -a streamopts
+declare -a restopts
 
-# segregate short opts from long opts, pattern, target
+# segregate short opts that indicate IO channels from everything else
 for arg in "$@"; do
+	#echo "arg: $arg"
 	if [ `expr match "$arg" '-[a-z[A-Z]'` -eq 2 ] ; then
-		echo "match shortopt: $arg"
-		(( sargs++ ))
-		shortopts[$sargs]="$arg"
-		is_shortopt=1
-	elif [ $is_shortopt -eq 1 ] && [ `expr match "$arg" '[a-z[A-Z]+'` -gt 1 ] ; then
-		echo "optarg: $arg"
-		shortopts[$sargs]="$arg"
-		(( sargs++ ))
-		is_shortopt=0
+		# echo "short opt: $arg"
+		for pos in $(seq ${#arg[*]}) ; do
+			char=${arg:$pos:1}
+			# echo "char: $char"
+			is_streamopt=0
+			for out in ${outopts[*]}; do
+				if [ "-$char" == "$out" ] ; then
+					#echo "match streamopt: $arg"
+					streamopts+=("$arg")
+					is_streamopt=1
+					break
+				fi
+			done
+			if [ $is_streamopt -eq 0 ] ; then
+				#echo "other short opt: $arg"
+				restopts+=("$arg")
+			fi
+		done
 	else
-		echo "long opt or target files: $arg"
-		longopts[$largs]="$arg"
-		(( largs++ ))
+		#echo "other arg: $arg"
+		restopts+=("$arg")
 	fi
 done
 	
 echo "command: $command"
-echo "sargs: $sargs"
-echo "largs: $largs"
+echo "streamopts len: ${#streamopts[*]}"
+echo "streamopts: ${streamopts[*]}"
+echo "restopts len: ${#restopts[*]}"
+echo "restopts: ${restopts[*]}"
 
 # Process flags
-while getopts 'df:l:n:' o; do
-  case "$o" in
-    d)
-      DEBUG=1
-      ;;
-    n)
-      n="$OPTARG"
-      nspec=X$nspec
-      ;;
-    f)
-      file="$OPTARG"
-      nspec=X$nspec
-      ;;
-    -l)
-      list=$(echo "$OPTARG" | sed 's/,/ /g')
-      nspec=X$nspec
-      ;;
-    *)
-      usage
-      ;;
-  esac
+while getopts 'cdf:jlLov' o ${streamopts[*]} ; do
+	case "$o" in
+		c)
+			args+=("-$o")
+			;;
+		d)
+			DEBUG=1
+			;;
+		f)
+			args+=("-$o")
+			args+=("$OPTARG")
+			;;
+		j)
+			args+=("-$o")
+			;;
+		l)
+			args+=("-$o")
+			;;
+		L)
+			args+=("-$o")
+			;;
+		o)
+			args+=("-$o")
+			;;
+		v)
+			args+=("-$o")
+			;;
+		*)
+			usage
+			;;
+	esac
 done
+
+echo "args len: ${#args[*]}"
+echo "args: ${args[*]}"
 
 # Ensure generated script is always removed
 SCRIPT="${TMP:-/tmp}/dgsh-grep-$$"
@@ -112,17 +134,17 @@ cat >$SCRIPT <<EOF
 
 EOF
 
-if [ $sargs -gt 1 ]; then
+if [ ${#args[*]} -gt 1 ]; then
 cat >$SCRIPT <<EOF
 {{
 EOF
 fi
 
-for arg in ${shortopts[*]} ; do
-	echo "	$command $arg ${longopts[*]}"
+for arg in ${args[*]} ; do
+	echo "	$command $arg ${restopts[*]}"
 done >>$SCRIPT
 
-if [ $sargs -gt 1 ]; then
+if [ ${#args[*]} -gt 1 ]; then
 cat >>$SCRIPT <<EOF
 }}
 EOF
