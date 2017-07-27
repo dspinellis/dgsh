@@ -72,12 +72,6 @@ for arg in "$@"; do
 	fi
 done
 	
-echo "command: $command"
-echo "streamopts len: ${#streamopts[*]}"
-echo "streamopts: ${streamopts[*]}"
-echo "restopts len: ${#restopts[*]}"
-echo "restopts: ${restopts[*]}"
-
 # Process flags
 while getopts 'cdf:jlLov' o ${streamopts[*]} ; do
 	case "$o" in
@@ -112,17 +106,21 @@ while getopts 'cdf:jlLov' o ${streamopts[*]} ; do
 	esac
 done
 
-echo "args len: ${#args[*]}"
-echo "args: ${args[*]}"
-
 # Ensure generated script is always removed
 SCRIPT="${TMP:-/tmp}/dgsh-grep-$$"
 
 if [ "$DEBUG" ] ; then
-  echo "Script is $SCRIPT" 1>&2
+	echo "command: $command"
+	echo "streamopts len: ${#streamopts[*]}"
+	echo "streamopts: ${streamopts[*]}"
+	echo "restopts len: ${#restopts[*]}"
+	echo "restopts: ${restopts[*]}"
+	echo "args len: ${#args[*]}"
+	echo "args: ${args[*]}"
+	echo "Script is $SCRIPT" 1>&2
 else
-  trap 'rm -rf "$SCRIPT"' 0
-  trap 'exit 2' 1 2 15
+	trap 'rm -rf "$SCRIPT"' 0
+	trap 'exit 2' 1 2 15
 fi
 
 cat >$SCRIPT <<EOF
@@ -149,10 +147,6 @@ cat >>$SCRIPT <<EOF
 }}
 EOF
 fi
-
-cat $SCRIPT
-exit 0
-
 
 # Restore dgsh settings
 PATH="$OPATH"
