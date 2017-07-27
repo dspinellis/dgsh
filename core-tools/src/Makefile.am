@@ -24,7 +24,7 @@ man3_MANS = dgsh_negotiate.3
 libexec_PROGRAMS = dgsh-tee dgsh-writeval dgsh-readval dgsh-monitor \
 		 dgsh-conc dgsh-wrap dgsh-enumerate dgsh-pecho \
 		 dgsh-fft-input dgsh-w
-libexec_SCRIPTS = dgsh-parallel perm
+libexec_SCRIPTS = dgsh-grep dgsh-parallel perm
 libexecdir = $(prefix)/libexec/dgsh
 
 dgsh_monitor_SOURCES = dgsh-monitor.c
@@ -49,6 +49,9 @@ dgsh_pecho_LDADD = libdgsh.a
 dgsh_fft_input_LDADD = libdgsh.a
 dgsh_w_LDADD = libdgsh.a -lm
 
+dgsh-grep: dgsh-grep.sh
+	install $? $@
+
 dgsh-parallel: dgsh-parallel.sh
 	install $? $@
 
@@ -59,7 +62,7 @@ dgsh-merge-sum: dgsh-merge-sum.pl
 	install $? $@
 
 clean-local:
-	-rm -rf dgsh-parallel perm degsh-merge-sum
+	-rm -rf dgsh-grep dgsh-parallel perm degsh-merge-sum
 
 build-install:
 	mkdir -p ../../build/bin ../../build/libexec/dgsh
