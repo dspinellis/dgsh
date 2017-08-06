@@ -14,7 +14,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 
 # fairly severe build strictness
 # change foreign to gnu or gnits to comply with gnu standards
-AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.9.6])
+AM_INIT_AUTOMAKE([-Wall -Werror subdir-objects foreign 1.9.6])
 
 # Checks for programs.
 AM_PROG_AR
@@ -46,7 +46,7 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  tests/Makefile])
 
-AM_CONDITIONAL([FREEBSD], [test $(uname) -eq  "FreeBSD"])
+AM_CONDITIONAL([FREEBSD], [test $(uname) = "FreeBSD"])
 
 AC_OUTPUT
 

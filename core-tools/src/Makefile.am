@@ -1,7 +1,7 @@
 include ../../.config
 
 if FREEBSD
-CPOW = cpow.c
+CPOW = ../../unix-tools/cpow.c
 else
 CPOW = 
 endif

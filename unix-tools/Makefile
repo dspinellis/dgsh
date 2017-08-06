@@ -84,7 +84,8 @@ configure:
 		--docdir=$(MANDUMPDIR) \
 		--mandir=$(MANDUMPDIR) \
 		--infodir=$(MANDUMPDIR) \
-		--localedir=$(MANDUMPDIR)
+		--localedir=$(MANDUMPDIR) \
+		SHELL=`which bash`
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
 		--docdir=$(MANDUMPDIR) \
