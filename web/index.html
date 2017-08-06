@@ -26,6 +26,11 @@
 	</ul>
 	</li>
     <li ><a href="#download">Downloading and installation</a></li>
+	<li>
+	<ul class="nav nav-list">
+    	<li ><a href="#debian">Debian Linux</a></li>
+	</ul>
+	</li>
     <li ><a href="#reference">Reference</a></li>
     <li><a href="#examples">Examples</a></li>
 	<li>
@@ -353,28 +358,37 @@ multipipe blocks at its two endpoints.
   <div class="page-header">
     <h1>Downloading and installation</h1>
   </div>
-    <section>
-    <h2>Prerequisites</h1>
+
 <p>
-To compile and run <em>dgsh</em> you will need to have the following commands
-installed in your system:
-<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //;s/ /, /g;s/$/,/p}' .travis.yml -->
-and gettext (at least 0.19.5).
+The <em>dgsh</em> suite has been tested under
+Debian and Ubuntu Linux, FreeBSD, and Mac OS X.
+A Cygwin port is underway.
+</p>
 
-To test <em>dgsh</em> you will need to have the following commands
-installed in your system:
-<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //;s/ /, /gp}' .travis.yml -->
-
+<p>
 An installation of <a href="http://www.graphviz.org/">GraphViz</a>
 will allow you to visualize the <em>dgsh</em> graphs that you specify
 in your programs.
-The <em>dgsh</em> suite has been tested under
-Debian Linux, FreeBSD, and Mac OS X.
-A Cygwin port is underway.
 </p>
-    </section>
+
+    <section id="debian"> <!-- {{{2 -->
+    <h2>Debian Linux</h2>
     <section>
-    <h2>Installation steps</h1>
+    <h3>Prerequisites</h3>
+<p>
+To compile and run <em>dgsh</em> you will need to have the following commands
+installed in your system:
+<pre class="prettyprint lang-bash">
+<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //p}' .travis.yml --> gettext #(at least 0.19.5).
+</pre>
+
+To test <em>dgsh</em> you will need to have the following commands
+installed in your system:
+<pre class="prettyprint lang-bash">
+<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //p}' .travis.yml -->
+</pre>
+</p>
+    <h3>Installation steps</h3>
 <p>
 Go through the following steps.
 <ol>
@@ -416,6 +430,16 @@ make
 make install
 </pre>
 </p>
+
+    <h3>Testing</h3>
+<p>
+
+Issue the following command.
+<pre class="prettyprint lang-bash">
+make test
+</pre>
+</p>
+
     </section>
 </section>
 
