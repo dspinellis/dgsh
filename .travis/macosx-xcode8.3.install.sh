@@ -2,7 +2,7 @@
 
 set -x
 
-brew install check xz
+brew install check xz texinfo
 wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 tar Jxvf gettext-0.19.5.tar.xz >/dev/null
 cd gettext-0.19.5 && ./configure && make && sudo make install >/dev/null
