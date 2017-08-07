@@ -4,10 +4,10 @@ wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 tar Jxvf gettext-0.19.5.tar.xz
 cd gettext-0.19.5 && ./configure && make && sudo make install
 cd ..
-git clone --depth=1 -b madagascar-devel-2016 https://github.com/ahay/src.git madagascar
-cd madagascar && rm -rf trip
-sudo ./configure --prefix=/usr/local && sudo make && sudo make install
-cd ..
+#git clone --depth=1 -b madagascar-devel-2016 https://github.com/ahay/src.git madagascar
+#cd madagascar && rm -rf trip
+#sudo ./configure --prefix=/usr/local && sudo make && sudo make install
+#cd ..
 mkdir nmrpipe && cd nmrpipe
 wget https://www.ibbr.umd.edu/nmrpipe/install.com
 wget https://www.ibbr.umd.edu/nmrpipe/binval.com
