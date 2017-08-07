@@ -1,6 +1,12 @@
-dist: trusty
+matrix:
+        include:
+                - os: linux
+                  dist: trusty
+                - os: osx
+                  osx_image: xcode8.3
 
 language: C
+compiler: gcc
 
 install:
 - sudo apt-get -qq update
@@ -29,7 +35,5 @@ install:
 - sudo install nmrbin.linux212_64/addNMR /usr/bin
 - cd ..
 - make config && make
-
-compiler: gcc
 
 script: make test && sudo make install
