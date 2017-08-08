@@ -2,7 +2,9 @@
 
 set -x
 
+brew update
 brew install check xz texinfo
+echo 'export PATH="/usr/local/opt/texinfo/bin:$PATH"' >> ~/.bash_profile
 wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 tar Jxvf gettext-0.19.5.tar.xz >/dev/null
 cd gettext-0.19.5 && ./configure && make && sudo make install >/dev/null
