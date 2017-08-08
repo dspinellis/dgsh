@@ -3,7 +3,7 @@
 set -x
 
 brew update
-brew install check xz texinfo
+brew install check xz texinfo help2man
 brew link texinfo --force
 wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 tar Jxvf gettext-0.19.5.tar.xz >/dev/null
