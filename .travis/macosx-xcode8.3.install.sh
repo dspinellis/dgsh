@@ -3,12 +3,13 @@
 set -x
 
 brew update
-brew install check xz texinfo help2man
+brew install check xz texinfo help2man gettext
 brew link texinfo --force
-wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
-tar Jxvf gettext-0.19.5.tar.xz >/dev/null
-cd gettext-0.19.5 && ./configure && make && sudo make install >/dev/null
-cd ..
+brew link gettext --force
+#wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
+#tar Jxvf gettext-0.19.5.tar.xz >/dev/null
+#cd gettext-0.19.5 && ./configure && make && sudo make install >/dev/null
+#cd ..
 #git clone --depth=1 -b madagascar-devel-2016 https://github.com/ahay/src.git madagascar
 #cd madagascar && rm -rf trip
 #sudo ./configure --prefix=/usr/local && sudo make && sudo make install
