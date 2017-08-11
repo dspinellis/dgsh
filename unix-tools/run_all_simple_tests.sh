@@ -4,6 +4,39 @@ PSDIR=$1
 
 set -e
 
+./run_simple_test.sh $PSDIR multipipe_one_last \
+	'cat /dev/null | {{ cat  & }}'
+
+./run_simple_test.sh $PSDIR multipipe_one_start \
+	'{{ cat /dev/null & }} | cat'
+
+CAT=`which cat`
+./run_simple_test.sh $PSDIR function_bash_tools \
+	"function h
+	{
+		$CAT | $CAT
+	}
+
+	function g
+	{
+		$CAT | h | $CAT
+	}
+
+	$CAT /dev/null | g"
+
+./run_simple_test.sh $PSDIR function_dgsh_tools \
+	'function h
+	{
+		cat | cat
+	}
+
+	function g
+	{
+		cat | h | cat
+	}
+
+	cat /dev/null | g'
+
 ./run_simple_test.sh $PSDIR read_while \
 	'echo "hi
 there" |
