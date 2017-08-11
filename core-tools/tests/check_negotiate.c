@@ -837,7 +837,6 @@ retire_test_alloc_copy_graph_solution(void)
 void
 retire_test_alloc_copy_concs(void)
 {
-	retire_concs(fresh_mb);
 	retire_mb(fresh_mb);
 }
 
