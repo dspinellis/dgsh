@@ -48,8 +48,12 @@ will make the three outputs appear in sequence,
 while connecting it to the
 \fIpaste\fP command supplied with \fIdgsh\fP
 will make the output appear in its customary format.
-\fIDgsh\fP handles all programs residing in a directory
-whose last component is \fI/dgsh/\fP as being multipipe compatible.
+\fIDgsh\fP handles the following programs
+as being multipipe compatible:
+a) those that are linked with the \fIdgsh\fP library;
+b) scripts that include in their first line one of the strings
+\fCdgsh-wrap\fP, \fCenv dgsh\fP, or \fC--dgsh\fP;
+c) scripts whose second line starts with \fC#!dgsh\fP.
 .PP
 \fBMultipipe blocks\fP are enclosed within double braces: {{ ... }}.
 These
