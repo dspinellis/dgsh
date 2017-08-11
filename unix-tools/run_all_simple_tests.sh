@@ -4,6 +4,32 @@ PSDIR=$1
 
 set -e
 
+./run_simple_test.sh $PSDIR function_bash_tools \
+	'function h
+	{
+		/bin/cat | /bin/cat
+	}
+
+	function g
+	{
+		/bin/cat | h | /bin/cat
+	}
+
+	/bin/cat /dev/null | g'
+
+./run_simple_test.sh $PSDIR function_dgsh_tools \
+	'function h
+	{
+		cat | cat
+	}
+
+	function g
+	{
+		cat | h | cat
+	}
+
+	cat /dev/null | g'
+
 ./run_simple_test.sh $PSDIR read_while \
 	'echo "hi
 there" |
