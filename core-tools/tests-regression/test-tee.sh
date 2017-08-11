@@ -12,6 +12,20 @@ DGSH="$TOP/build/bin/dgsh"
 PATH="$TOP/build/bin:$PATH"
 export DGSHPATH="$TOP/build/libexec/dgsh"
 
+echo dgsh-tee
+readelf -S ../../build/libexec/dgsh/dgsh-tee
+readelf -n ../../build/libexec/dgsh/dgsh-tee
+echo sort
+readelf -S ../../build/libexec/dgsh/sort
+readelf -n ../../build/libexec/dgsh/sort
+echo dgsh-conc, paste, grep
+readelf -S ../../build/libexec/dgsh/dgsh-conc
+readelf -S ../../build/libexec/dgsh/paste
+readelf -S ../../build/libexec/dgsh/grep
+echo cut
+readelf -S ../../build/libexec/dgsh/cut
+readelf -n ../../build/libexec/dgsh/cut
+
 # Ensure that the files passed as 2nd and 3rd arguments are the same
 ensure_same()
 {
