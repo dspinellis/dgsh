@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!dgsh
 #
 # Implementation of POSIX tee through dgsh-tee
 #

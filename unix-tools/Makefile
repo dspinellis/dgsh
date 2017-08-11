@@ -137,7 +137,7 @@ tee: tee.sh
 	install $? $@
 
 
-test: test-bash
+test: test-bash test-compat
 
 path:
 	export PATH
@@ -145,6 +145,12 @@ path:
 
 ../simple-shell/fid:
 	wget -O $@ $(FID) || curl $(FID) >$@
+
+test-compat: dgsh-compat
+	./test-compat.sh
+
+dgsh-compat: bash/dgsh_util.c
+	cc -o $@ -DDGSH_COMPAT $?
 
 test-bash: ../simple-shell/fid
 

@@ -1,4 +1,5 @@
 #!/bin/sh
+#!dgsh
 #
 # Permute inputs to outputs by invoking dgsh-tee -p
 #

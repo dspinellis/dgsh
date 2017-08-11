@@ -154,6 +154,14 @@ int dgsh_debug_level = 0;
 static void get_environment_vars();
 static int dgsh_exit(int state, int flags);
 
+/* Force the inclusion of the ELF note section */
+extern int dgsh_force_include;
+void
+dgsh_force_include_function(void)
+{
+	dgsh_force_include = 1;
+}
+
 
 #ifndef UNIT_TESTING
 static void
