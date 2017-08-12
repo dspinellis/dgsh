@@ -46,14 +46,12 @@
 static void
 usage(void)
 {
-	fputs("Usage:\tdgsh-wrap [-S] [-dIimOo] program [program-arguments ...]\n"
+	fputs("Usage:\tdgsh-wrap [-S] [-dImO] program [program-arguments ...]\n"
 		"\tdgsh-wrap -s [-diImoO] [program-arguments ...]\n"
 		"-d\t"		"Requires no input (deaf)\n"
-		"-I\t"		"Replace <| args, starting from stdin\n"
-		"-i\t"		"Replace <| args, do not include stdin\n"
+		"-I\t"		"Do not provide standard input as a <| arg\n"
 		"-m\t"		"Provides no output; (mute)\n"
-		"-O\t"		"Replace >| args, starting from stdout\n"
-		"-o\t"		"Replace >| args, do not include stdout\n"
+		"-O\t"		"Do not provide standard output as a >| arg\n"
 		"-S\t"		"Process flags and program as a #! interpreter\n"
 		"-s\t"		"Process flags as a #! interpreter\n"
 		"\t"		"(-S or -s must be the first flag of shebang line)\n",
