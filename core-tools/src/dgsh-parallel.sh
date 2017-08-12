@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!dgsh
 #
 # Create and execute a semi-homongeneous dgsh parallel processing block
 #
