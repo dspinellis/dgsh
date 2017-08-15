@@ -30,18 +30,6 @@ export PATH="$PATH:bin"
 $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -d echo hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-deaf.test
 ensure_same echo-deaf
 
-# Test stand-alone path substitution (with stdin)
-$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap paste "<|" "<|" ' >dgsh-wrap/paste2.test
-ensure_same paste2
-
-# Test stand-alone path substitution (without stdin)
-$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I /usr/bin/paste - "<|" ' >dgsh-wrap/paste1.test
-ensure_same paste1
-
-# Test substitution of embedded arguments
-$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -e dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
-ensure_same dd-args
-
 # Test that echo is wrapped as deaf when wrapped as script with supplied exec
 echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -S  -d `which echo`" >dgsh-wrap/echo-S
 chmod +x dgsh-wrap/echo-S
@@ -53,5 +41,36 @@ echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -s  -d" >dgsh-wrap/echo
 chmod +x dgsh-wrap/echo
 $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap/echo hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-s.test
 ensure_same echo-s
+
+# Verify the fdescfs functionality (required by dgsh-wrap <| and >|
+# arguments) is available
+if [ $(ls /dev/fd | wc -l) -ne 4 ] ; then
+  cat <<\EOF 1>&2
+The full functionality of dgsh-wrap requires full /dev/fd functionality;
+i.e.  that *all* file descriptors of a process are available under /dev/fd.
+It appears that on this system only the first three file descriptors
+are available under /dev/fd.  Consequently, dgsh-wrap will not be able
+support <| and >| arguments and dependent programs (e.g. dgsh-parallel)
+will fail.
+
+In FreeBSD full /dev/fd functionality is provided by fdescfs; the
+functionality that FreeBSD devfs provides by default only includes
+the first three file descriptors under /dev/fd.  In FreeBSD systems
+consider mounting fdescfs(5) on /dev/fd to avoid this problem.
+EOF
+  exit 1
+else
+  # Test stand-alone path substitution (with stdin)
+  $DGSH -c 'dgsh-enumerate 2 | dgsh-wrap paste "<|" "<|" ' >dgsh-wrap/paste2.test
+  ensure_same paste2
+
+  # Test stand-alone path substitution (without stdin)
+  $DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I /usr/bin/paste - "<|" ' >dgsh-wrap/paste1.test
+  ensure_same paste1
+
+  # Test substitution of embedded arguments
+  $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -e dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
+  ensure_same dd-args
+fi
 
 exit 0

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Diomidis Spinellis
+ * Copyright 2016, 2017 Diomidis Spinellis
  *
  * A passive component that aids the dgsh negotiation by passing
  * message blocks among participating processes.
@@ -123,10 +123,11 @@ next_fd(int fd, bool *ro)
 			if (!noinput)
 				return STDOUT_FILENO;
 		case STDOUT_FILENO:
-			if (!noinput)
-				*ro = true;
-			if (nfd > 2)	// if ==2, treat in default case
+			if (nfd > 2) {	// if ==2, treat in default case
+				if (!noinput)
+					*ro = true;
 				return FREE_FILENO;
+			}
 		default:
 			if (fd == nfd - 1)
 				if (!noinput)
@@ -285,8 +286,7 @@ pass_message_blocks(void)
 				nfds = max(i + 1, nfds);
 				pi[i].to_write->is_origin_conc = true;
 				pi[i].to_write->conc_pid = pid;
-				DPRINTF(4, "Origin: conc with pid %d", pid);
-				DPRINTF(4, "**fd i: %d set for writing", i);
+				DPRINTF(4, "Actual origin: conc with pid %d", pid);
 			}
 		}
 
@@ -304,6 +304,7 @@ pass_message_blocks(void)
 				iswrite = true;
 				assert(pi[i].to_write);
 				chosen_mb = pi[i].to_write;
+				DPRINTF(4, "**fd i: %d set for writing to tool with pid %d", i, pi[i].pid);
 				write_message_block(i); // XXX check return
 
 				if (pi[i].to_write->state == PS_RUN ||

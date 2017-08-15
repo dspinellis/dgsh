@@ -1789,6 +1789,7 @@ fill_dgsh_edge(struct dgsh_edge *e)
 			self_node_io_side.fd_direction == STDIN_FILENO);
 		e->to = self_node_io_side.index;
 	}
+        assert(e->from != e->to);
 	e->instances = 0;
 	e->from_instances = 0;
 	e->to_instances = 0;
@@ -2207,6 +2208,7 @@ pid_t
 get_origin_pid(struct dgsh_negotiation *mb)
 {
 	struct dgsh_node *n = &mb->node_array[mb->origin_index];
+	DPRINTF(4, "Logical origin: tool %s with pid %d", n->name, n->pid);
 	return n->pid;
 }
 
