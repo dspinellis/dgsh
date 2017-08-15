@@ -50,6 +50,10 @@ there" |
 	"{ echo a ;} |
 	cat"
 
+./run_simple_test.sh $PSDIR nondgsh \
+	"true || false
+	dgsh-enumerate 2 | cat"
+
 ./run_simple_test.sh $PSDIR secho_paste \
 	"dgsh-pecho hello |
 	paste $PSDIR/world"
