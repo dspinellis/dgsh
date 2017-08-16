@@ -1789,7 +1789,7 @@ fill_dgsh_edge(struct dgsh_edge *e)
 			self_node_io_side.fd_direction == STDIN_FILENO);
 		e->to = self_node_io_side.index;
 	}
-        assert(e->from != e->to);
+	assert(e->from != e->to);
 	e->instances = 0;
 	e->from_instances = 0;
 	e->to_instances = 0;
