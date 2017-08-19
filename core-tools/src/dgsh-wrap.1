@@ -1,4 +1,4 @@
-.TH DGSH-WRAP 1 "13 April 2017"
+.TH DGSH-WRAP 1 "18 August 2017"
 .\"
 .\" (C) Copyright 2016-2017 Diomidis Spinellis.  All rights reserved.
 .\"
@@ -79,7 +79,8 @@ When this option is given, the program will require one output channel
 more than those specified by the \fI>|\fP arguments.
 
 .IP "\fB\-S\fP
-Process flags as a shebang-invoked (\fI#!\fP) interpreter.
+Process flags as a shebang-invoked (\fI#!\fP) interpreter using
+an invocation-supplied program name.
 This will change the argument processing in two ways.
 First, it will cause the arguments being specified on the shebang line to
 be properly parsed as separate arguments by splitting them on whitespace.
@@ -92,7 +93,8 @@ because the program to wrap is specified as an argument.)
 If this flag is specified, it must be the first command-line argument.
 
 .IP "\fB\-s\fP
-Process flags as a shebang-invoked (\fI#!\fP) interpreter.
+Process flags as a shebang-invoked (\fI#!\fP) interpreter using an
+operating system-supplied program name.
 This will change the argument processing in two ways.
 First, it will split arguments in the shebang line, in the same
 way as the \fI-S\fP flag.
