@@ -19,8 +19,8 @@
 
 /*
  * Examples:
- * dgsh-wrap -d yes | fsck
- * tar cf - / | dgsh-wrap -m dd of=/dev/st0
+ * dgsh-wrap -i 0 yes | fsck
+ * tar cf - / | dgsh-wrap -o 0 dd of=/dev/st0
  * ls | dgsh-wrap /usr/bin/sort -k5n | more
  */
 
@@ -46,11 +46,12 @@
 static void
 usage(void)
 {
-	fputs("Usage:\tdgsh-wrap [-S] [-dImO] program [program-arguments ...]\n"
-		"\tdgsh-wrap -s [-diImoO] [program-arguments ...]\n"
-		"-d\t"		"Requires no input (deaf)\n"
+	fputs("Usage:\tdgsh-wrap [-S] [-i 0|a] [-o 0|a] [-eIO] program [program-arguments ...]\n"
+		"\tdgsh-wrap -s [-i 0|a] [-o 0|a] [-eIO] [program-arguments ...]\n"
+		"-e\t"		"Process <| and >| embedded in arguments\n"
+		"-i 0|a\t"	"Process no (0) or arbitrary (a) input channels\n"
 		"-I\t"		"Do not provide standard input as a <| arg\n"
-		"-m\t"		"Provides no output; (mute)\n"
+		"-o 0|a\t"	"Process no (0) or arbitrary (a) output channels\n"
 		"-O\t"		"Do not provide standard output as a >| arg\n"
 		"-S\t"		"Process flags and program as a #! interpreter\n"
 		"-s\t"		"Process flags as a #! interpreter\n"
@@ -274,15 +275,32 @@ process_embedded_io_arg(char **arg, const char *special, int **fdptr)
  * Replace an instance of the string special (e.g. "<|") matching an arg
  * with /dev/fd/N, where N is the integer pointed
  * by fdptr, and increase fdptr to point to the next integer.
+ * If special is null, then the replacement is always made.
  */
 static void
 process_standalone_io_arg(char **arg, const char *special, int **fdptr)
 {
-	if (strcmp(*arg, special) != 0)
+	if (special != NULL && strcmp(*arg, special) != 0)
 		return;
 	if (asprintf(arg, "/dev/fd/%d", **fdptr) == -1)
 		err(1, "asprintf out of memory");
 	(*fdptr)++;
+}
+
+/*
+ * Increment the channels specified by the given variable.
+ * Ensure that the corresponding variable is not
+ * already set to an arbitrary number of channels.
+ */
+static void
+increment_channels(int *var)
+{
+	if (*var == -1) {
+		fputs("I/O channel arguments cannot be combined with an arbitrary I/O file specification\n",
+				stderr);
+		exit(1);
+	}
+	(*var)++;
 }
 
 int
@@ -299,6 +317,7 @@ main(int argc, char *argv[])
 	bool embedded_args = false;
 	/* Pass stdin/stdout as a command-line argument */
 	bool stdin_as_arg = true, stdout_as_arg = true;
+	bool supply_input_args = false, supply_output_args = false;
 
 
 	debug_level = getenv("DGSH_DEBUG_LEVEL");
@@ -324,12 +343,18 @@ main(int argc, char *argv[])
 	 * first non-flag argument.
 	 * Therefore, adjust argc, argv on entry and optind on exit.
 	 */
-        while ((ch = getopt(argc, argv, "+deImOSs")) != -1) {
+        while ((ch = getopt(argc, argv, "+ei:Io:OSs")) != -1) {
 		DPRINTF(4, "getopt switch=%c", ch);
 		switch (ch) {
-		case 'd':
+		case 'i':
 			nflags++;
-			ninputs = 0;
+			if (strcmp(optarg, "0") == 0)
+				ninputs = 0;
+			else if (strcmp(optarg, "a") == 0) {
+				ninputs = -1;
+				supply_input_args = true;
+			} else
+				usage();
 			break;
 		case 'e':
 			embedded_args = true;
@@ -339,9 +364,15 @@ main(int argc, char *argv[])
 			stdin_as_arg = false;
 			nflags++;
 			break;
-		case 'm':
+		case 'o':
 			nflags++;
-			noutputs = 0;
+			if (strcmp(optarg, "0") == 0)
+				noutputs = 0;
+			else if (strcmp(optarg, "a") == 0) {
+				noutputs = -1;
+				supply_output_args = true;
+			} else
+				usage();
 			break;
 		case 'O':
 			stdout_as_arg = false;
@@ -406,14 +437,14 @@ main(int argc, char *argv[])
 	for (i = optind + 1; i < argc; i++) {
 		if (embedded_args) {
 			for (p = argv[i]; p = strstr(p, "<|"); p += 2)
-				ninputs++;
+				increment_channels(&ninputs);
 			for (p = argv[i]; p = strstr(p, ">|"); p += 2)
-				noutputs++;
+				increment_channels(&noutputs);
 		} else {
 			if (strcmp(argv[i], "<|") == 0)
-				ninputs++;
+				increment_channels(&ninputs);
 			if (strcmp(argv[i], ">|") == 0)
-				noutputs++;
+				increment_channels(&noutputs);
 		}
 	}
 	/*
@@ -434,20 +465,57 @@ main(int argc, char *argv[])
 					&input_fds, &output_fds);
 
 	/*
-	 * Substitute special arguments "<|" and ">|" with file descriptor
+	 * Substitute special arguments "<|" and ">|" with or add file descriptor
 	 * paths /dev/fd/N using the fds received from negotiation.
 	 */
 	int *inptr = stdin_as_arg ? input_fds : input_fds + 1;
+	if (supply_input_args) {
+		if (!stdin_as_arg)
+			ninputs--;
+
+		/* Create space for arguments to add */
+		char **nargv = xmalloc((argc + ninputs + 1) * sizeof(char *));
+		memcpy(nargv, argv, argc * sizeof(char *));
+		memset(argv + argc, 0, (ninputs + 1) * sizeof(char *));
+		argv = nargv;
+
+		/* Add arguments */
+		for (i = argc; i < argc + ninputs; i++)
+			process_standalone_io_arg(&argv[i], NULL, &inptr);
+		argc += ninputs;
+		argv[argc] = NULL;
+	} else {
+		for (i = optind + 1; i < argc; i++) {
+			if (embedded_args)
+				while (process_embedded_io_arg(&argv[i], "<|", &inptr))
+					;
+			else
+				process_standalone_io_arg(&argv[i], "<|", &inptr);
+		}
+	}
 	int *outptr = stdout_as_arg ? output_fds : output_fds + 1;
-	for (i = optind + 1; i < argc; i++) {
-		if (embedded_args) {
-			while (process_embedded_io_arg(&argv[i], "<|", &inptr))
-				;
-			while (process_embedded_io_arg(&argv[i], ">|", &outptr))
-				;
-		} else {
-			process_standalone_io_arg(&argv[i], "<|", &inptr);
-			process_standalone_io_arg(&argv[i], ">|", &outptr);
+	if (supply_output_args) {
+		if (!stdout_as_arg)
+			noutputs--;
+
+		/* Create space for arguments to add */
+		char **nargv = xmalloc((argc + noutputs + 1) * sizeof(char *));
+		memcpy(nargv, argv, argc * sizeof(char *));
+		memset(argv + argc, 0, (noutputs + 1) * sizeof(char *));
+		argv = nargv;
+
+		/* Add arguments */
+		for (i = argc; i < argc + noutputs; i++)
+			process_standalone_io_arg(&argv[i], NULL, &outptr);
+		argc += noutputs;
+		argv[argc] = NULL;
+	} else {
+		for (i = optind + 1; i < argc; i++) {
+			if (embedded_args)
+				while (process_embedded_io_arg(&argv[i], ">|", &outptr))
+					;
+			else
+				process_standalone_io_arg(&argv[i], ">|", &outptr);
 		}
 	}
 	DPRINTF(4, "Arguments to execvp after substitung <| and >|");

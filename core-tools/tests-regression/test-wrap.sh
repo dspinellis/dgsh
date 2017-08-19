@@ -27,17 +27,17 @@ ensure_same()
 export PATH="$PATH:bin"
 
 # Test that echo is wrapped as deaf
-$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -d echo hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-deaf.test
+$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -i 0 echo hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-deaf.test
 ensure_same echo-deaf
 
 # Test that echo is wrapped as deaf when wrapped as script with supplied exec
-echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -S  -d `which echo`" >dgsh-wrap/echo-S
+echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -S  -i 0 `which echo`" >dgsh-wrap/echo-S
 chmod +x dgsh-wrap/echo-S
 $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap/echo-S hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-S.test
 ensure_same echo-S
 
 # Test that echo is wrapped as deaf when wrapped as script with implied exec
-echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -s  -d" >dgsh-wrap/echo
+echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -s  -i 0" >dgsh-wrap/echo
 chmod +x dgsh-wrap/echo
 $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap/echo hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-s.test
 ensure_same echo-s
@@ -59,18 +59,34 @@ the first three file descriptors under /dev/fd.  In FreeBSD systems
 consider mounting fdescfs(5) on /dev/fd to avoid this problem.
 EOF
   exit 1
-else
-  # Test stand-alone path substitution (with stdin)
-  $DGSH -c 'dgsh-enumerate 2 | dgsh-wrap paste "<|" "<|" ' >dgsh-wrap/paste2.test
-  ensure_same paste2
-
-  # Test stand-alone path substitution (without stdin)
-  $DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I /usr/bin/paste - "<|" ' >dgsh-wrap/paste1.test
-  ensure_same paste1
-
-  # Test substitution of embedded arguments
-  $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -e dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
-  ensure_same dd-args
 fi
+
+# Test stand-alone input path substitution (with stdin)
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap paste "<|" "<|" ' >dgsh-wrap/paste1.test
+ensure_same paste1
+
+# Test stand-alone input path substitution (without stdin)
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -I /usr/bin/paste - "<|" ' >dgsh-wrap/paste2.test
+ensure_same paste2
+
+# Test arbitrary input argument provision (with stdin)
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -i a paste' >dgsh-wrap/paste3.test
+ensure_same paste3
+
+# Test arbitrary input argument provision (without stdin)
+$DGSH -c 'dgsh-enumerate 2 | dgsh-wrap -i a -I /usr/bin/paste -' >dgsh-wrap/paste4.test
+ensure_same paste4
+
+# Test stand-alone output path substitution (without stdout)
+$DGSH -c 'echo hi | dgsh-wrap -O /usr/bin/tee ">|" | {{ sed "s/^/a/" ; sed "s/^/b/" ; }} | cat' >dgsh-wrap/tee1.test
+ensure_same tee1
+
+# Test arbitrary input argument provision (without stdout)
+$DGSH -c 'echo hi | dgsh-wrap -o a -O /usr/bin/tee | {{ sed "s/^/a/" ; sed "s/^/b/" ; }} | cat' >dgsh-wrap/tee2.test
+ensure_same tee2
+
+# Test substitution of embedded arguments
+$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -e dd "if=<|" "of=>|" 2>/dev/null ; }} | cat' >dgsh-wrap/dd-args.test
+ensure_same dd-args
 
 exit 0
