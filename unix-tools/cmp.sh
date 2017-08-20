@@ -21,6 +21,11 @@ while getopts "$optspec" optchar; do
         silent)
           oopt='-o 0'
           ;;
+	# Long options with mandatory arguments. In these the argument
+	# can appear separated from the option name, and must be removed.
+	ignore-initial|bytes)
+	  OPTIND=$(($OPTIND + 1))
+	  ;;
       esac
       ;;
     s)

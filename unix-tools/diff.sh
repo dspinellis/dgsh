@@ -27,6 +27,11 @@ while getopts "$optspec" optchar; do
         to-file=*)
 	  to_file=${OPTARG#*=}
 	  ;;
+	# Long options with mandatory arguments. In these the argument
+	# can appear separated from the option name, and must be removed.
+	width|show-function-line|label|tabsize|exclude|exclude-from|starting-file|ignore-matching-lines|ifdef|GTYPE-group-format|line-format|LTYPE-line-format|horizon-lines|palette)
+	  OPTIND=$(($OPTIND + 1))
+	  ;;
       esac
       ;;
   esac
