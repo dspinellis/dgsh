@@ -170,3 +170,11 @@ there" |
 ./run_simple_test.sh $PSDIR cmp1-same1 'echo -n | cmp - /dev/null'
 ./run_simple_test.sh $PSDIR cmp1-same2 'echo -n | cmp /dev/null -'
 ./run_simple_test.sh $PSDIR cmp0 'cmp /dev/null /dev/null'
+
+# Wrapped diff3
+./run_simple_test.sh $PSDIR diff3-3 '{{ echo a ; echo b ; echo c; }} | diff3'
+./run_simple_test.sh $PSDIR diff3-2 '{{ echo a ; echo b ; }} | diff3 /dev/null'
+./run_simple_test.sh $PSDIR diff3-2-stdin1 '{{ echo a ; echo b ; }} | diff3 - /dev/null'
+./run_simple_test.sh $PSDIR diff3-2-stdin2 '{{ echo a ; echo b ; }} | diff3 /dev/null -'
+./run_simple_test.sh $PSDIR diff3-1 '{{ echo a ; }} | diff3 /dev/null /dev/null'
+./run_simple_test.sh $PSDIR diff3-0 'diff3 /dev/null /dev/null /dev/null'

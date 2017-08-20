@@ -90,7 +90,7 @@ make:
 	$(MAKE) -C coreutils
 	$(MAKE) -C grep
 
-build-install: cat cmp diff tee make
+build-install: cat cmp diff diff3 tee make
 	mkdir -p ../build/libexec/dgsh ../build/bin
 	cp bash/bash ../build/libexec/dgsh/
 	rm -f ../build/bin/dgsh
@@ -103,11 +103,11 @@ build-install: cat cmp diff tee make
 	cp grep/src/grep ../build/libexec/dgsh/
 	cp grep/src/egrep ../build/libexec/dgsh/
 	cp grep/src/fgrep ../build/libexec/dgsh/
-	chmod 755 cat cmp diff tee
-	cp -p cat cmp diff tee ../build/libexec/dgsh/
+	chmod 755 cat cmp diff diff3 tee
+	cp -p cat cmp diff diff3 tee ../build/libexec/dgsh/
 	./install-wrapped.sh $$(cd .. ; pwd)/build
 
-install: cat cmp diff tee make
+install: cat cmp diff diff3 tee make
 	$(MAKE) -C bash install
 	rm -f $(DESTDIR)$(PREFIX)/bin/dgsh
 	ln $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh || install $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh
@@ -117,6 +117,7 @@ install: cat cmp diff tee make
 	install cat $(DESTDIR)$(DGSHPATH)
 	install cmp $(DESTDIR)$(DGSHPATH)
 	install diff $(DESTDIR)$(DGSHPATH)
+	install diff3 $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
 	rm -rf $(DESTDIR)$(MANDUMPDIR)
@@ -128,6 +129,9 @@ cmp: cmp.sh
 	install $? $@
 
 diff: diff.sh
+	install $? $@
+
+diff3: diff3.sh
 	install $? $@
 
 tee: tee.sh

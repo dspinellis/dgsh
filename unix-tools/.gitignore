@@ -3,6 +3,7 @@ cat
 cmp
 coreutils/*
 diff
+diff3
 etc/*
 gawk/*
 gnulib/*
