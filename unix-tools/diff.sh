@@ -27,6 +27,11 @@ while getopts "$optspec" optchar; do
         to-file=*)
 	  to_file=${OPTARG#*=}
 	  ;;
+	# Long options with mandatory arguments. In these the argument
+	# can appear separated from the option name, and must be removed.
+	width|show-function-line|label|tabsize|exclude|exclude-from|starting-file|ignore-matching-lines|ifdef|GTYPE-group-format|line-format|LTYPE-line-format|horizon-lines|palette)
+	  OPTIND=$(($OPTIND + 1))
+	  ;;
       esac
       ;;
   esac
@@ -56,7 +61,13 @@ case $(($# - $OPTIND + 1)) in
     fi
     ;;
   *)
-    # No input is required
-    exec dgsh-wrap -i 0 /usr/bin/diff "$@"
+    ARG2=$((OPTIND + 1))
+    if [[ "${!OPTIND}" == '-' ]] || [[ "${!ARG2}" == '-' ]] ; then
+      # One (stdin) input is required
+      exec dgsh-wrap /usr/bin/diff "$@"
+    else
+      # No input is required
+      exec dgsh-wrap -i 0 /usr/bin/diff "$@"
+    fi
     ;;
 esac

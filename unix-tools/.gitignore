@@ -1,5 +1,6 @@
 bin/*
 cat
+cmp
 coreutils/*
 diff
 etc/*

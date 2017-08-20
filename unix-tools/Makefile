@@ -90,7 +90,7 @@ make:
 	$(MAKE) -C coreutils
 	$(MAKE) -C grep
 
-build-install: cat diff tee make
+build-install: cat cmp diff tee make
 	mkdir -p ../build/libexec/dgsh ../build/bin
 	cp bash/bash ../build/libexec/dgsh/
 	rm -f ../build/bin/dgsh
@@ -103,11 +103,11 @@ build-install: cat diff tee make
 	cp grep/src/grep ../build/libexec/dgsh/
 	cp grep/src/egrep ../build/libexec/dgsh/
 	cp grep/src/fgrep ../build/libexec/dgsh/
-	chmod 755 cat diff tee
-	cp -p cat diff tee ../build/libexec/dgsh/
+	chmod 755 cat cmp diff tee
+	cp -p cat cmp diff tee ../build/libexec/dgsh/
 	./install-wrapped.sh $$(cd .. ; pwd)/build
 
-install: cat diff tee make
+install: cat cmp diff tee make
 	$(MAKE) -C bash install
 	rm -f $(DESTDIR)$(PREFIX)/bin/dgsh
 	ln $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh || install $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh
@@ -115,12 +115,16 @@ install: cat diff tee make
 	$(MAKE) -C grep install
 	# Install last to overwrite standard tools of coreutils
 	install cat $(DESTDIR)$(DGSHPATH)
+	install cmp $(DESTDIR)$(DGSHPATH)
 	install diff $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
 	rm -rf $(DESTDIR)$(MANDUMPDIR)
 
 cat: cat.sh
+	install $? $@
+
+cmp: cmp.sh
 	install $? $@
 
 diff: diff.sh
