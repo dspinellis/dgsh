@@ -12,7 +12,7 @@ dm chgrp
 dm chmod
 dm chown
 D cksum
-D cmp
+c cmp
 c comm
 d command
 f compress	# TODO custom

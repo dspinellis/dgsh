@@ -163,3 +163,10 @@ there" |
 ./run_simple_test.sh $PSDIR diff0-stdin1 '! dgsh-enumerate 1 | diff -w - /dev/null'
 ./run_simple_test.sh $PSDIR diff0-stdin2 '! dgsh-enumerate 1 | diff -w /dev/null -'
 ./run_simple_test.sh $PSDIR diff0-noin '! dgsh-enumerate 1 | diff -w /dev/null /dev/null'
+
+# Wrapped cmp
+./run_simple_test.sh $PSDIR cmp2-same '{{ echo a ; echo a ; }} | cmp'
+./run_simple_test.sh $PSDIR cmp2-diff '! {{ echo a ; echo b ; }} | cmp -s'
+./run_simple_test.sh $PSDIR cmp1-same1 'echo -n | cmp - /dev/null'
+./run_simple_test.sh $PSDIR cmp1-same2 'echo -n | cmp /dev/null -'
+./run_simple_test.sh $PSDIR cmp0 'cmp /dev/null /dev/null'
