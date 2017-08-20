@@ -56,7 +56,13 @@ case $(($# - $OPTIND + 1)) in
     fi
     ;;
   *)
-    # No input is required
-    exec dgsh-wrap -i 0 /usr/bin/diff "$@"
+    ARG2=$((OPTIND + 1))
+    if [[ "${!OPTIND}" == '-' ]] || [[ "${!ARG2}" == '-' ]] ; then
+      # One (stdin) input is required
+      exec dgsh-wrap /usr/bin/diff "$@"
+    else
+      # No input is required
+      exec dgsh-wrap -i 0 /usr/bin/diff "$@"
+    fi
     ;;
 esac

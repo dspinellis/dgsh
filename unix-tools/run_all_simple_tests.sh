@@ -160,3 +160,6 @@ there" |
 ./run_simple_test.sh $PSDIR diff1 '! dgsh-enumerate 1 | diff -w /dev/null'
 ./run_simple_test.sh $PSDIR diff1-stdin '! dgsh-enumerate 2 | diff -'
 ./run_simple_test.sh $PSDIR diff0 'diff -w /dev/null /dev/null'
+./run_simple_test.sh $PSDIR diff0-stdin1 '! dgsh-enumerate 1 | diff -w - /dev/null'
+./run_simple_test.sh $PSDIR diff0-stdin2 '! dgsh-enumerate 1 | diff -w /dev/null -'
+./run_simple_test.sh $PSDIR diff0-noin '! dgsh-enumerate 1 | diff -w /dev/null /dev/null'
