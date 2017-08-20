@@ -13,7 +13,7 @@ pr pathchk od numfmt nohup unexpand uname tty tsort truncate true \
 tr touch timeout test tee tail tac sync sum stat split sleep shuf \
 shred yes whoami wc vdir unlink uniq
 
-FID=http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid 
+FID=http://www.bmrb.wisc.edu/ftp/pub/bmrb/timedomain/bmr6443/timedomain_data/c13-hsqc/june11-se-6426-CA.fid/fid
 
 PREFIX?=/usr/local/dgsh
 DGSHPATH=$(PREFIX)/libexec/dgsh
@@ -62,7 +62,6 @@ get-submodules:
 	cd .. && git submodule update --init --recursive --depth=5000 \
 		$(TD)/bash \
 		$(TD)/coreutils \
-		$(TD)/diffutils \
 		$(TD)/grep
 
 configure:
@@ -79,13 +78,6 @@ configure:
 		--mandir=$(MANDUMPDIR) \
 		--infodir=$(MANDUMPDIR) \
 		--localedir=$(MANDUMPDIR)
-	cd diffutils && ./bootstrap && ./configure --prefix=$(PREFIX) \
-		--bindir=$(DGSHPATH) \
-		--docdir=$(MANDUMPDIR) \
-		--mandir=$(MANDUMPDIR) \
-		--infodir=$(MANDUMPDIR) \
-		--localedir=$(MANDUMPDIR) \
-		SHELL=`which bash`
 	cd grep && ./bootstrap && ./configure --prefix=$(PREFIX) \
 		--bindir=$(DGSHPATH) \
 		--docdir=$(MANDUMPDIR) \
@@ -96,10 +88,9 @@ configure:
 make:
 	$(MAKE) -C bash CFLAGS="$(CFLAGS)"
 	$(MAKE) -C coreutils
-	$(MAKE) -C diffutils
 	$(MAKE) -C grep
 
-build-install: cat tee make
+build-install: cat diff tee make
 	mkdir -p ../build/libexec/dgsh ../build/bin
 	cp bash/bash ../build/libexec/dgsh/
 	rm -f ../build/bin/dgsh
@@ -109,23 +100,22 @@ build-install: cat tee make
 	cp coreutils/src/join ../build/libexec/dgsh/
 	cp coreutils/src/paste ../build/libexec/dgsh/
 	cp coreutils/src/sort ../build/libexec/dgsh/
-	cp diffutils/src/diff ../build/libexec/dgsh/
 	cp grep/src/grep ../build/libexec/dgsh/
 	cp grep/src/egrep ../build/libexec/dgsh/
 	cp grep/src/fgrep ../build/libexec/dgsh/
-	chmod 755 tee cat
-	cp -p cat tee ../build/libexec/dgsh/
+	chmod 755 cat diff tee
+	cp -p cat diff tee ../build/libexec/dgsh/
 	./install-wrapped.sh $$(cd .. ; pwd)/build
 
-install: cat tee make
+install: cat diff tee make
 	$(MAKE) -C bash install
 	rm -f $(DESTDIR)$(PREFIX)/bin/dgsh
 	ln $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh || install $(DESTDIR)$(DGSHPATH)/bash $(DESTDIR)$(PREFIX)/bin/dgsh
 	$(MAKE) -C coreutils install
-	$(MAKE) -C diffutils install
 	$(MAKE) -C grep install
 	# Install last to overwrite standard tools of coreutils
 	install cat $(DESTDIR)$(DGSHPATH)
+	install diff $(DESTDIR)$(DGSHPATH)
 	install tee $(DESTDIR)$(DGSHPATH)
 	./install-wrapped.sh
 	rm -rf $(DESTDIR)$(MANDUMPDIR)
@@ -133,9 +123,11 @@ install: cat tee make
 cat: cat.sh
 	install $? $@
 
-tee: tee.sh
+diff: diff.sh
 	install $? $@
 
+tee: tee.sh
+	install $? $@
 
 test: test-bash test-compat
 
@@ -158,7 +150,7 @@ test-bash: ../simple-shell/fid
 	printf "$B\nBash tests:${EC}\n"
 
 	./run_all_simple_tests.sh $(PSDIR)
-	
+
 	printf " $BPaper examples under ../example:${EC}\n"
 
 	# No diff, just check execution exit status
@@ -193,5 +185,4 @@ test-bash: ../simple-shell/fid
 clean:
 	$(MAKE) -C bash clean
 	$(MAKE) -C coreutils clean
-	$(MAKE) -C diffutils clean
 	$(MAKE) -C grep clean

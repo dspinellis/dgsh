@@ -154,3 +154,9 @@ there" |
 	}} |
 	cat"
 
+# Wrapped diff
+./run_simple_test.sh $PSDIR diff4 '! dgsh-enumerate 4 | diff -w --to-file=/dev/null'
+./run_simple_test.sh $PSDIR diff2 '! dgsh-enumerate 2 | diff -w'
+./run_simple_test.sh $PSDIR diff1 '! dgsh-enumerate 1 | diff -w /dev/null'
+./run_simple_test.sh $PSDIR diff1-stdin '! dgsh-enumerate 2 | diff -'
+./run_simple_test.sh $PSDIR diff0 'diff -w /dev/null /dev/null'
