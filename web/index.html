@@ -28,8 +28,7 @@
     <li ><a href="#download">Downloading and installation</a></li>
 	<li>
 	<ul class="nav nav-list">
-    	<li ><a href="#debian">Debian Linux</a></li>
-    	<li ><a href="#ubuntu">Ubuntu Linux</a></li>
+    	<li ><a href="#debian">Debian and Ubuntu</a></li>
     	<li ><a href="#freebsd">FreeBSD</a></li>
 	</ul>
 	</li>
@@ -386,90 +385,22 @@ in your programs.
 </p>
 
     <section id="debian"> <!-- {{{2 -->
-    <h2>Debian Linux</h2>
+    <h2>Debian and Ubuntu GNU/Linux</h2>
     <section>
     <h3>Prerequisites</h3>
 <p>
 To compile and run <em>dgsh</em> you will need to have the following commands
-installed in your system:
+installed on your system:
 <pre class="prettyprint lang-bash">
-<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //p}' .travis.yml --> git check autopoint bison gperf xz-utils gettext #(at least 0.19.5).
+<!-- #!sed -n -e '/\# For installation/{n;s/sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh -->
+git xz-utils gettext
 </pre>
 
 To test <em>dgsh</em> you will need to have the following commands
 installed in your system:
 <pre class="prettyprint lang-bash">
-<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //p}' .travis.yml --> curl bzip2
-</pre>
-</p>
-    <h3>Installation steps</h3>
-<p>
-Go through the following steps.
-<ol>
-<li>
-Recursively clone the project's source code through its
-<a href="https://github.com/dspinellis/dgsh">GitHub page</a>.
-<pre class="prettyprint lang-bash">
-git clone --recursive https://github.com/dspinellis/dgsh.git
-</pre>
-</li>
-<li>
-Configure <em>bash</em> and the Unix tools adapted for <em>dgsh</em>.
-<pre class="prettyprint lang-bash">
-make config
-</pre>
-</li>
-<li>
-Compile all programs.
-<pre class="prettyprint lang-bash">
-make
-</pre>
-</li>
-<li>
-Install.
-<pre class="prettyprint lang-bash">
-sudo make install
-</pre>
-</li>
-</ol>
-</p>
-<p>
-By default, the program and its documentation are installed under
-<code>/usr/local</code>.
-You can modify this by setting the <code>PREFIX</code> variable
-in the `config` step, for example:
-<pre class="prettyprint lang-bash">
-make PREFIX=$HOME config
-make
-make install
-</pre>
-</p>
-
-    <h3>Testing</h3>
-<p>
-
-Issue the following command.
-<pre class="prettyprint lang-bash">
-make test
-</pre>
-</p>
-
-    </section>
-    <section id="ubuntu"> <!-- {{{2 -->
-    <h2>Ubuntu Linux</h2>
-    <section>
-    <h3>Prerequisites</h3>
-<p>
-To compile and run <em>dgsh</em> you will need to have the following commands
-installed in your system:
-<pre class="prettyprint lang-bash">
-<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh --> gettext #(at least 0.19.5).
-</pre>
-
-To test <em>dgsh</em> you will need to have the following commands
-installed in your system:
-<pre class="prettyprint lang-bash">
-<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh -->
+<!-- #!sed -n -e '/\# For testing/{n;s/sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh -->
+curl bzip2
 </pre>
 </p>
     <h3>Installation steps</h3>
@@ -530,27 +461,25 @@ make test
     <section>
     <h3>Prerequisites</h3>
 <p>
-To compile and run <em>dgsh</em> you will need to have the following commands
+To compile and run <em>dgsh</em> you will need to have the following packages
 installed in your system:
 <pre class="prettyprint lang-bash">
-pkg install bash git gmake automake pkgconf check bison gperf rsync
-<!-- #!sed -n -e '/\# For installation/{n;s/- sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh --> gettext #(at least 0.19.5).
+devel/automake
+devel/bison
+devel/check
+devel/git
+devel/gmake
+devel/gperf
+misc/help2man
+print/texinfo
+shells/bash
 </pre>
 
-Also you will need to use bash as your shell:
+To test <em>dgsh</em> you will need to have the following ports
+installed on your system:
 <pre class="prettyprint lang-bash">
-sudo chsh -s /usr/local/bin/bash <username>
-</pre>
-
-and link perl to another location:
-<pre class="prettyprint lang-bash">
-sudo ln -s `which perl` /usr/bin/perl
-</pre>
-
-To test <em>dgsh</em> you will need to have the following commands
-installed in your system:
-<pre class="prettyprint lang-bash">
-<!-- #!sed -n -e '/\# For testing/{n;s/- sudo apt-get install -y //p}' .travis/linux-ubuntu-trusty.install.sh -->
+archivers/bzip2
+ftp/curl
 </pre>
 </p>
     <h3>Installation steps</h3>
