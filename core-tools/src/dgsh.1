@@ -168,6 +168,19 @@ join -2 2 |
 .fi
 .ps +1
 .ft P
+.PP
+Check if the script is running under \fIdgsh\fP or regular \fIbash\fP (for polyglot scripts)
+.ft C
+.ps -1
+.nf
+if {{ : ; }} ; then
+    echo dgsh
+else
+    echo bash
+fi 2>/dev/null
+.fi
+.ps +1
+.ft P
 
 .SH "SEE ALSO"
 .BR dgsh-tee (1),
