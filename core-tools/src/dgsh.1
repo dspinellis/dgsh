@@ -84,7 +84,7 @@ The behavior of a stored value's IO can be modified by adding flags to
 \fIdgsh-writeval\fP and \fIdgsh-readval\fP.
 
 .SH SYNTAX EXTENSIONS
-The syntax of \fIbash\fI is extended by \fIdgsh\fI as follows.
+The syntax of \fIbash\fP is extended by \fIdgsh\fP as follows.
 .PP
 .ft C
 .ps -1
@@ -168,16 +168,29 @@ join -2 2 |
 .fi
 .ps +1
 .ft P
+.PP
+Check if the script is running under \fIdgsh\fP or regular \fIbash\fP (for polyglot scripts)
+.ft C
+.ps -1
+.nf
+if {{ : ; }} ; then
+    echo dgsh
+else
+    echo bash
+fi 2>/dev/null
+.fi
+.ps +1
+.ft P
 
 .SH "SEE ALSO"
-\fIdgsh-tee\fP(1),
-\fIdgsh-wrap\fP(1),
-\fIdgsh-writeval\fP(1),
-\fIdgsh-readval\fP(1),
-\fIdgsh-monitor\fP(1)
-\fIdgsh-conc\fP(1)
-\fIdgsh-httpval\fP(1)
-\fIdgsh-merge-sum\fP(1)
+.BR dgsh-tee (1),
+.BR dgsh-wrap (1),
+.BR dgsh-writeval (1),
+.BR dgsh-readval (1),
+.BR dgsh-monitor (1)
+.BR dgsh-conc (1),
+.BR dgsh-httpval (1),
+.BR dgsh-merge-sum (1)
 
 .SH AUTHOR
 \fIDgsh\fP was designed by
