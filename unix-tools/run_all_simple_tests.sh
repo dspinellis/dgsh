@@ -50,6 +50,12 @@ there" |
 	"{ echo a ;} |
 	cat"
 
+./run_simple_test.sh $PSDIR recursive_multipipe_oneline_start \
+	"{{ {{ echo hello ; }} | cat ; echo world ; }} | cat"
+
+./run_simple_test.sh $PSDIR recursive_multipipe_oneline_end \
+	"{{ echo world ; {{ echo hello ; }} | cat ; }} | cat"
+
 ./run_simple_test.sh $PSDIR nondgsh \
 	"true || false
 	dgsh-enumerate 2 | cat"
