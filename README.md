@@ -1,4 +1,4 @@
-## The Directed Graph Shell (DGSH)
+## The Directed Graph Shell (dgsh)
 
 [![Build Status](https://travis-ci.org/dspinellis/dgsh.svg?branch=master)](https://travis-ci.org/dspinellis/dgsh)
 
@@ -7,3 +7,9 @@ The directed graph shell, *dgsh*, allows the expressive expression of efficient 
 You can find a complete introduction, reference documentation,
 and illustrated examples in the suite's
 [web site](http://www.spinellis.gr/sw/dgsh/).
+
+See also,
+a [quick video overview](https://youtu.be/crqzO4YanwA) and
+the associated (open access) paper,
+[Extending Unix pipelines to DAGs](http://dx.doi.org/10.1109/TC.2017.2695447),
+published in the *IEEE Transactions on Computers*, 66(9):1547–1561, 2017.

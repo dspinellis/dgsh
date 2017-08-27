@@ -13,7 +13,7 @@ make install          # install in ./bin
 make -s test          # run tests
 ```
 
-The current collection of Unix tools include *coreutils, diffutils, gawk, grep, parallel, sed, and tar*.
+The current collection of Unix tools include *coreutils, gawk, grep, parallel, sed, and tar*.
 Of those currently *comm*, *join*, *paste*, and *sort* have been adapted for use with dgsh.
 
 ## Adaptation workflow

@@ -1,7 +1,9 @@
 bin/*
 cat
+cmp
 coreutils/*
-diffutils/*
+diff
+diff3
 etc/*
 gawk/*
 gnulib/*

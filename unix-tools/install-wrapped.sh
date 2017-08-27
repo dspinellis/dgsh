@@ -29,12 +29,12 @@ while read mode name ; do
   for m in $(echo "$mode" | sed 's/./& /g') ; do
     case $m in
       m)	# Mute
-	opt="$opt -m"
+	opt="$opt -o 0"
 	;;
       M)	# Mute unless - is specified (TODO)
 	;;
       d)	# Deaf
-	opt="$opt -d"
+	opt="$opt -i 0"
 	;;
       I)	# Count stdin in channel assignments
 	opt="$opt -I"
