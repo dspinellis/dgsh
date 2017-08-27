@@ -2207,9 +2207,14 @@ alloc_io_fds()
 pid_t
 get_origin_pid(struct dgsh_negotiation *mb)
 {
-	struct dgsh_node *n = &mb->node_array[mb->origin_index];
-	DPRINTF(4, "Logical origin: tool %s with pid %d", n->name, n->pid);
-	return n->pid;
+	/* Nodes may not be recorded if an error manifests early */
+	if (mb->node_array) {
+		struct dgsh_node *n = &mb->node_array[mb->origin_index];
+		DPRINTF(4, "Logical origin: tool %s with pid %d",
+				n->name, n->pid);
+		return n->pid;
+	} else
+		return 0;
 }
 
 /* Return the number of input file descriptors

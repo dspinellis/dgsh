@@ -275,6 +275,8 @@ pass_message_blocks(void)
 		FD_ZERO(&readfds);
 		FD_ZERO(&writefds);
 		for (i = 0; i < nfd; i++) {
+			if (noinput && i == STDIN_FILENO)
+				continue;
 			if (i == STDERR_FILENO)
 				continue;
 			if (!pi[i].seen) {
@@ -328,7 +330,14 @@ pass_message_blocks(void)
 
 				assert(!pi[i].run_ready);
 				assert(pi[next].to_write == NULL);
-				read_message_block(i, &pi[next].to_write); // XXX check return
+				if (read_message_block(i, &pi[next].to_write) ==
+								OP_ERROR) {
+					chosen_mb->state = PS_ERROR;
+					if (noinput)
+						chosen_mb->is_error_confirmed = true;
+					pi[next].to_write = chosen_mb;
+					continue;
+				}
 				rb = pi[next].to_write;
 
 				DPRINTF(4, "%s(): next write via fd %d to pid %d",
