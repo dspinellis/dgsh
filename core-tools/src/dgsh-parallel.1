@@ -58,7 +58,7 @@ This sequence mirrors Hadoop's WordCount example.
 dgsh-tee -s |
 # Run four instances of the command
 # Emulate Java's default StringTokenizer, sort, count
-dgsh-parallel -n 4 "tr -s ' \t\n\r\\f' '\n' | sort | uniq -c" |
+dgsh-parallel -n 4 "tr -s ' \\t\\n\\r\\f' '\\n' | sort | uniq -c" |
 # Merge the four sorted counts
 dgsh-merge-sum '<|' '<|' '<|'
 .ft P
