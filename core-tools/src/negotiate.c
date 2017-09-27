@@ -978,7 +978,7 @@ prepare_solution(void)
 		current_connections->edges_outgoing = NULL;
         	int *n_edges_incoming = &current_connections->n_edges_incoming;
         	int *n_edges_outgoing = &current_connections->n_edges_outgoing;
-		DPRINTF(4, "%s(): Node %s, pid: %d, connections in: %d, connections out: %d.",
+		DPRINTF(3, "%s(): Node %s, pid: %d, connections in: %d, connections out: %d.",
 				__func__, chosen_mb->node_array[i].name,
 				chosen_mb->node_array[i].pid,
 				*n_edges_incoming, *n_edges_outgoing);

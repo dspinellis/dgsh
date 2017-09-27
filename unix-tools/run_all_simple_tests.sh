@@ -184,3 +184,204 @@ there" |
 ./run_simple_test.sh $PSDIR diff3-2-stdin2 '{{ echo a ; echo b ; }} | diff3 /dev/null -'
 ./run_simple_test.sh $PSDIR diff3-1 '{{ echo a ; }} | diff3 /dev/null /dev/null'
 ./run_simple_test.sh $PSDIR diff3-0 'diff3 /dev/null /dev/null /dev/null'
+
+# grep
+
+# Single arg
+./run_simple_test.sh $PSDIR grep-noargs 'echo hi | grep .'
+./run_simple_test.sh $PSDIR grep-noargs-cat 'echo hi | grep . | cat'
+./run_simple_test.sh $PSDIR grep-matching-lines 'echo hi | grep --matching-lines .'
+./run_simple_test.sh $PSDIR grep-matching-lines-cat 'echo hi | grep --matching-lines . | cat'
+./run_simple_test.sh $PSDIR grep-f 'echo hi | grep -f <(echo .)'
+./run_simple_test.sh $PSDIR grep-f-cat 'echo hi | grep -f <(echo .) | cat'
+./run_simple_test.sh $PSDIR grep-c 'echo hi | grep -c . '
+./run_simple_test.sh $PSDIR grep-c-cat 'echo hi | grep -c . | cat'
+./run_simple_test.sh $PSDIR grep-l 'echo hi | grep -l . '
+./run_simple_test.sh $PSDIR grep-l-cat 'echo hi | grep -l . | cat'
+./run_simple_test.sh $PSDIR grep-L 'echo hi | grep -L hi'
+./run_simple_test.sh $PSDIR grep-L-nomatch 'echo hi | grep -L hello | cat'
+./run_simple_test.sh $PSDIR grep-L-cat 'echo hi | grep -L . | cat'
+./run_simple_test.sh $PSDIR grep-L-cat-nomatch 'echo hi | grep -L hello | cat'
+./run_simple_test.sh $PSDIR grep-o 'echo hi | grep -o hi'
+./run_simple_test.sh $PSDIR grep-o-cat 'echo hi | grep -o hi | cat'
+./run_simple_test.sh $PSDIR grep-v 'echo hi | grep -v hello | cat'
+./run_simple_test.sh $PSDIR grep-v-cat 'echo hi | grep -v hello | cat'
+
+# Double args
+./run_simple_test.sh $PSDIR grep-matching-lines-c 'echo hi | grep --matching-lines -c . | cat'
+./run_simple_test.sh $PSDIR grep-matching-lines-l 'echo hi | grep --matching-lines -l . | cat'
+./run_simple_test.sh $PSDIR grep-matching-lines-L 'echo hi | grep --matching-lines -L . | cat'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-nomatch 'echo hi | grep --matching-lines -L hello | paste'
+
+./run_simple_test.sh $PSDIR grep-c-matching-lines 'echo hi | grep -c --matching-lines . | cat'
+./run_simple_test.sh $PSDIR grep-c-l 'echo hi | grep -c -l . | cat'
+./run_simple_test.sh $PSDIR grep-c-L 'echo hi | grep -c -L . | paste'
+./run_simple_test.sh $PSDIR grep-c-L-nomatch 'echo hi | grep -c -L hello | paste'
+
+./run_simple_test.sh $PSDIR grep-l-matching-lines 'echo hi | grep -l --matching-lines . | cat'
+./run_simple_test.sh $PSDIR grep-l-c 'echo hi | grep -l -c . | cat'
+./run_simple_test.sh $PSDIR grep-l-L 'echo hi | grep -l -L . | paste'
+./run_simple_test.sh $PSDIR grep-l-L-nomatch 'echo hi | grep -l -L hello | paste'
+
+./run_simple_test.sh $PSDIR grep-L-matching-lines 'echo hi | grep -L --matching-lines . | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-nomatch 'echo hi | grep -L --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-L-c 'echo hi | grep -L -c . | cat'
+./run_simple_test.sh $PSDIR grep-L-c-nomatch 'echo hi | grep -L -c hello | cat'
+./run_simple_test.sh $PSDIR grep-L-l 'echo hi | grep -L -l . | paste'
+./run_simple_test.sh $PSDIR grep-L-l-nomatch 'echo hi | grep -L -l hello | paste'
+
+# Triple args
+./run_simple_test.sh $PSDIR grep-matching-lines-c-l 'echo hi | grep --matching-lines -c -l hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-c-L 'echo hi | grep --matching-lines -c -L hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-c-L-nomatch 'echo hi | grep --matching-lines -c -L hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-c 'echo hi | grep --matching-lines -l -c hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-L 'echo hi | grep --matching-lines -l -L hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-L-nomatch 'echo hi | grep --matching-lines -l -L hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-c 'echo hi | grep --matching-lines -L -c hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-c-nomatch 'echo hi | grep --matching-lines -L -c hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-l 'echo hi | grep --matching-lines -L -l hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-l-nomatch 'echo hi | grep --matching-lines -L -l hello | paste'
+
+./run_simple_test.sh $PSDIR grep-c-matching-lines-l 'echo hi | grep -c --matching-lines -l hi | paste'
+./run_simple_test.sh $PSDIR grep-c-matching-lines-L 'echo hi | grep -c --matching-lines -L hi | paste'
+./run_simple_test.sh $PSDIR grep-c-matching-lines-L-nomatch 'echo hi | grep -c --matching-lines -L hello | paste'
+./run_simple_test.sh $PSDIR grep-c-l-matching-lines 'echo hi | grep -c -l --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-c-l-L 'echo hi | grep -c -l -L hi | paste'
+./run_simple_test.sh $PSDIR grep-c-l-L-nomatch 'echo hi | grep -c -l -L hello | paste'
+./run_simple_test.sh $PSDIR grep-c-L-matching-lines 'echo hi | grep -c -L --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-c-L-matching-lines-nomatch 'echo hi | grep -c -L --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-c-L-l 'echo hi | grep -c -L -l hi | paste'
+./run_simple_test.sh $PSDIR grep-c-L-l-nomatch 'echo hi | grep -c -L -l hello | paste'
+
+./run_simple_test.sh $PSDIR grep-l-matching-lines-c 'echo hi | grep -l --matching-lines -c hi | paste'
+./run_simple_test.sh $PSDIR grep-l-matching-lines-L 'echo hi | grep -l --matching-lines -L hi | paste'
+./run_simple_test.sh $PSDIR grep-l-matching-lines-L-nomatch 'echo hi | grep -l --matching-lines -L hello | paste'
+./run_simple_test.sh $PSDIR grep-l-c-matching-lines 'echo hi | grep -l -c --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-l-c-L 'echo hi | grep -l -c -L hi | paste'
+./run_simple_test.sh $PSDIR grep-l-c-L-nomatch 'echo hi | grep -l -c -L hello | paste'
+./run_simple_test.sh $PSDIR grep-l-L-matching-lines 'echo hi | grep -l -L --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-l-L-matching-lines-nomatch 'echo hi | grep -l -L --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-l-L-c 'echo hi | grep -l -L -c hi | paste'
+./run_simple_test.sh $PSDIR grep-l-L-c-nomatch 'echo hi | grep -l -L -c hello | paste'
+
+./run_simple_test.sh $PSDIR grep-L-matching-lines-c 'echo hi | grep -L --matching-lines -c hi | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-c-nomatch 'echo hi | grep -L --matching-lines -c hello | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-l 'echo hi | grep -L --matching-lines -l hi | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-l-nomatch 'echo hi | grep -L --matching-lines -l hello | paste'
+./run_simple_test.sh $PSDIR grep-L-c-matching-lines 'echo hi | grep -L -c --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-L-c-matching-lines-nomatch 'echo hi | grep -L -c --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-L-c-l 'echo hi | grep -L -c -l hi | paste'
+./run_simple_test.sh $PSDIR grep-L-c-l-nomatch 'echo hi | grep -L -c -l hello | paste'
+./run_simple_test.sh $PSDIR grep-L-l-matching-lines 'echo hi | grep -L -l --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-L-l-matching-lines-nomatch 'echo hi | grep -L -l --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-L-l-c 'echo hi | grep -L -l -c hi | paste'
+./run_simple_test.sh $PSDIR grep-L-l-c-nomatch 'echo hi | grep -L -l -c hello | paste'
+
+# Quadraple args
+./run_simple_test.sh $PSDIR grep-matching-lines-c-l-L 'echo hi | grep --matching-lines -c -l -L hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-c-L-l 'echo hi | grep --matching-lines -c -L -l hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-c-L 'echo hi | grep --matching-lines -l -c -L hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-L-c 'echo hi | grep --matching-lines -l -L -c hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-c-l 'echo hi | grep --matching-lines -L -c -l hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-l-c 'echo hi | grep --matching-lines -L -l -c hi | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-c-l-L-nomatch 'echo hi | grep --matching-lines -c -l -L hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-c-L-l-nomatch 'echo hi | grep --matching-lines -c -L -l hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-c-L-nomatch 'echo hi | grep --matching-lines -l -c -L hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-l-L-c-nomatch 'echo hi | grep --matching-lines -l -L -c hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-c-l-nomatch 'echo hi | grep --matching-lines -L -c -l hello | paste'
+./run_simple_test.sh $PSDIR grep-matching-lines-L-l-c-nomatch 'echo hi | grep --matching-lines -L -l -c hello | paste'
+
+./run_simple_test.sh $PSDIR grep-c-matching-lines-l-L 'echo hi | grep -c --matching-lines -l -L hi | paste'
+./run_simple_test.sh $PSDIR grep-c-matching-lines-L-l 'echo hi | grep -c --matching-lines -L -l hi | paste'
+./run_simple_test.sh $PSDIR grep-c-l-matching-lines-L 'echo hi | grep -c -l --matching-lines -L hi | paste'
+./run_simple_test.sh $PSDIR grep-c-l-L-matching-lines 'echo hi | grep -c -l -L --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-c-L-matching-lines-l 'echo hi | grep -c -L --matching-lines -l hi | paste'
+./run_simple_test.sh $PSDIR grep-c-L-l-matching-lines 'echo hi | grep -c -L -l --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-c-matching-lines-l-L-nomatch 'echo hi | grep -c --matching-lines -l -L hello | paste'
+./run_simple_test.sh $PSDIR grep-c-matching-lines-L-l-nomatch 'echo hi | grep -c --matching-lines -L -l hello | paste'
+./run_simple_test.sh $PSDIR grep-c-l-matching-lines-L-nomatch 'echo hi | grep -c -l --matching-lines -L hello | paste'
+./run_simple_test.sh $PSDIR grep-c-l-L-matching-lines-nomatch 'echo hi | grep -c -l -L --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-c-L-matching-lines-l-nomatch 'echo hi | grep -c -L --matching-lines -l hello | paste'
+./run_simple_test.sh $PSDIR grep-c-L-l-matching-lines-nomatch 'echo hi | grep -c -L -l --matching-lines hello | paste'
+
+./run_simple_test.sh $PSDIR grep-l-matching-lines-c-L 'echo hi | grep -l --matching-lines -c -L hi | paste'
+./run_simple_test.sh $PSDIR grep-l-matching-lines-L-c 'echo hi | grep -l --matching-lines -L -c hi | paste'
+./run_simple_test.sh $PSDIR grep-l-c-matching-lines-L 'echo hi | grep -l -c --matching-lines -L hi | paste'
+./run_simple_test.sh $PSDIR grep-l-c-L-matching-lines 'echo hi | grep -l -c -L --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-l-L-matching-lines-c 'echo hi | grep -l -L --matching-lines -c hi | paste'
+./run_simple_test.sh $PSDIR grep-l-L-c-matching-lines 'echo hi | grep -l -L -c --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-l-matching-lines-c-L-nomatch 'echo hi | grep -l --matching-lines -c -L hello | paste'
+./run_simple_test.sh $PSDIR grep-l-matching-lines-L-c-nomatch 'echo hi | grep -l --matching-lines -L -c hello | paste'
+./run_simple_test.sh $PSDIR grep-l-c-matching-lines-L-nomatch 'echo hi | grep -l -c --matching-lines -L hello | paste'
+./run_simple_test.sh $PSDIR grep-l-c-L-matching-lines-nomatch 'echo hi | grep -l -c -L --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-l-L-matching-lines-c-nomatch 'echo hi | grep -l -L --matching-lines -c hello | paste'
+./run_simple_test.sh $PSDIR grep-l-L-c-matching-lines-nomatch 'echo hi | grep -l -L -c --matching-lines hello | paste'
+
+./run_simple_test.sh $PSDIR grep-L-matching-lines-c-l 'echo hi | grep -L --matching-lines -c -l hi | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-l-c 'echo hi | grep -L --matching-lines -l -c hi | paste'
+./run_simple_test.sh $PSDIR grep-L-c-matching-lines-l 'echo hi | grep -L -c --matching-lines -l hi | paste'
+./run_simple_test.sh $PSDIR grep-L-c-l-matching-lines 'echo hi | grep -L -c -l --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-L-l-matching-lines-c 'echo hi | grep -L -l --matching-lines -c hi | paste'
+./run_simple_test.sh $PSDIR grep-L-l-c-matching-lines 'echo hi | grep -L -l -c --matching-lines hi | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-c-l-nomatch 'echo hi | grep -L --matching-lines -c -l hello | paste'
+./run_simple_test.sh $PSDIR grep-L-matching-lines-l-c-nomatch 'echo hi | grep -L --matching-lines -l -c hello | paste'
+./run_simple_test.sh $PSDIR grep-L-c-matching-lines-l-nomatch 'echo hi | grep -L -c --matching-lines -l hello | paste'
+./run_simple_test.sh $PSDIR grep-L-c-l-matching-lines-nomatch 'echo hi | grep -L -c -l --matching-lines hello | paste'
+./run_simple_test.sh $PSDIR grep-L-l-matching-lines-c-nomatch 'echo hi | grep -L -l --matching-lines -c hello | paste'
+./run_simple_test.sh $PSDIR grep-L-l-c-matching-lines-nomatch 'echo hi | grep -L -l -c --matching-lines hello | paste'
+
+# The remaining (double args) combinations don't work
+# does not work: --matching-lines
+#echo hi | grep --matching-lines -v hi | paste
+#echo hi | grep --matching-lines -v hello | paste
+# does not work: -o
+#echo hi | grep --matching-lines -o hi | paste
+
+# does not work: -o
+#echo hi | grep -c -o hi | cat
+#echo hi | grep -c -v hi | paste
+# does not work: -c
+#echo hi | grep -c -v hello | paste
+
+# does not work: -o
+#echo hi | grep -l -o hi | cat
+# does not work: -l
+#echo hi | grep -l -v hi | cat
+#echo hi | grep -l -v hello | cat
+
+# does not work: -o
+#echo hi | grep -L -o hi | cat
+# does not work: -L
+#echo hi | grep -L -v hi | paste
+#echo hi | grep -L -v hello | paste
+
+# does not work: --matching-lines
+#echo hi | grep -o --matching-lines hi | paste
+# does not work: -o
+#echo hi | grep -o -c hi | cat
+# does not work: -o
+#echo hi | grep -o -l hi | paste
+# does not work: -o
+#echo hi | grep -o -L hi | cat
+# does not make sense: -o -v
+#echo hi | grep -o -v hi | paste
+# does not work: -v
+#echo hi | grep -o -v hello | paste
+
+# does not work: --matching-lines
+#echo hi | grep -v --matching-lines hi | paste
+#echo hi | grep -v --matching-lines hello | paste
+#echo hi | grep -v -c hi | paste
+# does not work -c
+#echo hi | grep -v -c hello | paste
+# does not work: -l
+#echo hi | grep -v -l hi | paste
+#echo hi | grep -v -l hello | paste
+# does not work: -L
+#echo hi | grep -v -L hi | paste
+#echo hi | grep -v -L hello | paste
+# does not make sense: -v -o
+#echo hi | grep -v -o hi | paste
+# does not make sense: -v -o
+#echo hi | grep -v -o hello | paste
+
