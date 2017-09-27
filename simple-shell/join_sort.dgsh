@@ -1,4 +1,4 @@
-1 join f1s f2s
+1 join ../test-data/f1s ../test-data/f2s
 2 sort
 
 %

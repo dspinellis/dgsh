@@ -1,4 +1,4 @@
-1 grep -l -L -w -v match ff F
+1 grep -l -L -w -v match ../test-data/ff ../test-data/F
 2 dgsh-conc -o 2
 3 diff
 4 comm

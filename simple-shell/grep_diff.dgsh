@@ -1,4 +1,4 @@
-1 grep -v -w match F ff
+1 grep -v -w match ../test-data/F ../test-data/ff
 2 diff
 
 %

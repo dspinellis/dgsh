@@ -1,6 +1,6 @@
 1 dgsh-conc -o -n 2
-2 sort f4s
-3 sort f5s
+2 sort ../test-data/f4s
+3 sort ../test-data/f5s
 4 dgsh-conc -i 2
 5 comm
 

@@ -1,7 +1,7 @@
-1 tee -i hello -s
+1 tee -i ../test-data/hello -s
 2 dgsh-conc -o 2
-3 diff world
-4 comm hello
+3 diff ../test-data/world
+4 comm ../test-data/hello
 
 %
 socketpipe 1 2

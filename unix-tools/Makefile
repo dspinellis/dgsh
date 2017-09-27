@@ -19,7 +19,7 @@ PREFIX?=/usr/local/dgsh
 DGSHPATH=$(PREFIX)/libexec/dgsh
 
 DGSHDIR=../core-tools/src
-PSDIR=../simple-shell
+PSDIR=../test-data
 EGDIR=../example
 MANDUMPDIR=/var/tmp/dgsh-share-duplicates
 # TOOLDIR
@@ -143,7 +143,7 @@ path:
 	export PATH
 	echo $(PATH)
 
-../simple-shell/fid:
+../test-data/fid:
 	wget -O $@ $(FID) || curl $(FID) >$@
 
 test-compat: dgsh-compat
@@ -152,7 +152,7 @@ test-compat: dgsh-compat
 dgsh-compat: bash/dgsh_util.c
 	cc -o $@ -DDGSH_COMPAT $?
 
-test-bash: ../simple-shell/fid
+test-bash: ../test-data/fid
 
 	rm -f $(PSDIR)/*.out $(PSDIR)/*.outb
 	printf "$B\nBash tests:${EC}\n"

@@ -1,5 +1,5 @@
-1 paste f1s f2s
-2 diff f1s
+1 paste ../test-data/f1s ../test-data/f2s
+2 diff ../test-data/f1s
 
 %
 socketpipe 1 2

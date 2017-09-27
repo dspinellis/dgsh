@@ -1,5 +1,5 @@
-1 dgsh-wrap /bin/cat f1s
-2 comm f2s
+1 dgsh-wrap /bin/cat ../test-data/f1s
+2 comm ../test-data/f2s
 3 sort
 4 wc -l
 5 tr -d " "

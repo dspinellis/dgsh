@@ -1,4 +1,4 @@
-1 grep -l -L match ff F
+1 grep -l -L match ../test-data/ff ../test-data/F
 2 comm
 
 %

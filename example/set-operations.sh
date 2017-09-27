@@ -22,7 +22,7 @@
 #
 
 if [ -z "$1" ]; then
-	PSDIR=simple-shell
+	PSDIR=test-data
 else
 	PSDIR=$1
 fi

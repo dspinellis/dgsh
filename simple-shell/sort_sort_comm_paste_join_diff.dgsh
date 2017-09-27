@@ -1,12 +1,12 @@
 1 dgsh-conc -o -n 2
-2 sort f4s
-3 sort f5s
+2 sort ../test-data/f4s
+3 sort ../test-data/f5s
 4 dgsh-conc -i 2
 5 comm
 6 dgsh-conc -o 3
-7 paste p1
-8 join j2
-9 diff d3
+7 paste ../test-data/p1
+8 join ../test-data/j2
+9 diff ../test-data/d3
 
 %
 socketpipe 1 2
