@@ -25,6 +25,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +56,8 @@ usage(void)
 		"-O\t"		"Do not provide standard output as a >| arg\n"
 		"-S\t"		"Process flags and program as a #! interpreter\n"
 		"-s\t"		"Process flags as a #! interpreter\n"
-		"\t"		"(-S or -s must be the first flag of shebang line)\n",
+		"\t"		"(-S or -s must be the first flag of shebang line)\n"
+		"-x\t"		"Wrap a non-dgsh command that will exec a dgsh one\n",
 		stderr);
 	exit(1);
 }
@@ -307,7 +309,9 @@ int
 main(int argc, char *argv[])
 {
 	int nflags = 0;
+	bool negotiation_flags = false;
 	int ninputs = 1, noutputs = 1;
+	bool xflag = false;
 	int ch, i;
 	char *p;
 	char *debug_level;
@@ -343,11 +347,12 @@ main(int argc, char *argv[])
 	 * first non-flag argument.
 	 * Therefore, adjust argc, argv on entry and optind on exit.
 	 */
-        while ((ch = getopt(argc, argv, "+ei:Io:OSs")) != -1) {
+        while ((ch = getopt(argc, argv, "+ei:Io:OSsx")) != -1) {
 		DPRINTF(4, "getopt switch=%c", ch);
 		switch (ch) {
 		case 'i':
 			nflags++;
+			negotiation_flags = true;
 			if (strcmp(optarg, "0") == 0)
 				ninputs = 0;
 			else if (strcmp(optarg, "a") == 0) {
@@ -358,14 +363,17 @@ main(int argc, char *argv[])
 			break;
 		case 'e':
 			embedded_args = true;
+			negotiation_flags = true;
 			nflags++;
 			break;
 		case 'I':
 			stdin_as_arg = false;
+			negotiation_flags = true;
 			nflags++;
 			break;
 		case 'o':
 			nflags++;
+			negotiation_flags = true;
 			if (strcmp(optarg, "0") == 0)
 				noutputs = 0;
 			else if (strcmp(optarg, "a") == 0) {
@@ -376,6 +384,7 @@ main(int argc, char *argv[])
 			break;
 		case 'O':
 			stdout_as_arg = false;
+			negotiation_flags = true;
 			nflags++;
 			break;
 		case 'S':
@@ -398,6 +407,9 @@ main(int argc, char *argv[])
 			nflags++;
 			program_from_os = true;
 			break;
+		case 'x':
+			xflag = true;
+			break;
 		case '?':
 		default:
 			usage();
@@ -409,6 +421,12 @@ main(int argc, char *argv[])
 
 	if (optind >= argc)
 		usage();
+
+	if (xflag && negotiation_flags) {
+		fputs("-x cannot be combined with I/O specifications\n",
+			stderr);
+		usage();
+	}
 
 	/*
 	 * Process argv[2], which is the name of the script
@@ -422,6 +440,17 @@ main(int argc, char *argv[])
 
 	DPRINTF(4, "Arguments after processing program name (optind=%d)", optind);
 	dump_args(argc, argv);
+
+	if (xflag) {
+		/*
+		 * Execute (non-dgsh) command, which will execute a dgsh
+		 * command, which will negotiate on our behalf
+		 */
+		execvp(argv[optind], argv + optind);
+
+		err(1, "Unable to execute %s", argv[optind]);
+		return 1;
+	}
 
 	/* Obtain guest program name (without path) */
 	guest_program_name = xstrdup(argv[optind]);
@@ -447,6 +476,7 @@ main(int argc, char *argv[])
 				increment_channels(&noutputs);
 		}
 	}
+
 	/*
 	 * Adjust for the default implicit I/O channel.
 	 * E.g. if two <| are specified, ninputs will be 3 at this point,

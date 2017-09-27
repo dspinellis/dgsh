@@ -30,6 +30,11 @@ dgsh-wrap \- allow any program to participate in an dgsh pipeline
 [\fB-o\fP \fB0\fP|\fBa\fP]
 [\fB-eIO\fP] [\fIprogram-arguments\fP ...]
 
+\fBdgsh-wrap\fP
+[\fB-Ss\fP]
+\fB-x\fP
+\fIprogram\fP [\fIprogram-arguments\fP ...]
+
 .SH DESCRIPTION
 \fIdgsh-wrap\fP takes as arguments an absolute path or the name
 of a program to execute and its arguments.
@@ -122,6 +127,17 @@ be wrapped, this path can be used to derive the name of the program to execute,
 thus removing the need to supply the name of the program in the
 invocation line.
 
+.IP "\fB\-x\fP
+Execute the specified command and arguments, without performing \fIdgsh\fP
+negotiation on its behalf.
+This is useful when
+the specified command, \fIA\fP, is not \fIdgsh\fP-compatible,
+but it will in turn execute, \fIB\fP,  a \fIdgsh\fP-compatible command.
+With this flag the \fIdgsh\fP will recognize the invocation of \fIA\fP
+as an invocation of a \fIdgsh\fP-compatible command (due to the wrapping),
+and will not attempt to autowrap it as a filter and thereby override a
+more sophisticated \fIdgsh\fP interface that \fIB\fP would present.
+
 .SH EXAMPLES
 .PP
 The following examples are given only to illustrate the command's functionality.
@@ -198,6 +214,17 @@ c) it contains the following line.
 .ps -1
 .nf
 #!/usr/libexec/dgsh/dgsh-wrap -s  -d
+.fi
+.ps +1
+.ft P
+.PP
+Trace the invocation of the \fItee\fP command,
+presenting to the shell \fIsrtace\fP as a \fIdgsh\fP-compatible command
+with the capabilities of \fItee\fP.
+.ft C
+.ps -1
+.nf
+dgsh-wrap -x strace tee
 .fi
 .ps +1
 .ft P
