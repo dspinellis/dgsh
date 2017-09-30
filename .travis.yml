@@ -7,6 +7,7 @@ matrix:
                 - os: osx
                   osx_image: xcode8.3
                   install:
+                          - rvm get stable
                           - ./.travis/macosx-xcode8.3.install.sh
 language: C
 compiler: gcc
