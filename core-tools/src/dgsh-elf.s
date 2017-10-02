@@ -1,5 +1,6 @@
 # ELF note header to mark dgsh-compatible programs
 # See http://www.netbsd.org/docs/kernel/elf-notes.html
+    .globl dgsh_force_include
     .comm dgsh_force_include,4,4
     .section ".note.ident", "a"
     .p2align 2
