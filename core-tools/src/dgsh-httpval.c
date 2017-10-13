@@ -48,7 +48,7 @@
 #include <time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #include "kvstore.h"
 
