@@ -27,7 +27,7 @@ TD=unix-tools
 STD=/usr/bin
 SCRIPTDIR=tool_scripts
 
-PATHS= -I$(DGSHDIR)
+INCPATHS= -I$(DGSHDIR)
 
 # Color
 GR=\033[0;32m	# Green
@@ -150,7 +150,7 @@ test-compat: dgsh-compat
 	./test-compat.sh
 
 dgsh-compat: bash/dgsh_util.c
-	cc -o $@ -DDGSH_COMPAT $?
+	cc -o $@ $(INCPATHS) -DDGSH_COMPAT $?
 
 test-bash: ../test-data/fid
 
