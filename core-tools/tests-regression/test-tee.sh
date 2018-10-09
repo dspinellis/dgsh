@@ -182,7 +182,7 @@ do
 	then
 		ensure_same "Low-memory $flags error" err tee/oom.err
 	else
-		sed 's/^/dgsh error output: ' err
+		sed 's/^/dgsh error output: /' err
 		ensure_same "Low-memory (try) $flags" lines try.out
 		ensure_same "Low-memory (try2) $flags" lines try2.out
 	fi
