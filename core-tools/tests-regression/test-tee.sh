@@ -191,7 +191,7 @@ do
 	# Test low-memory behavior (file)
 	rm -f try try2
 	mkfifo try try2
-	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | $DGSH_TEE -f $flags -b 512 -m 2k -o try -o try2 2>err &
+	perl -e 'for ($i = 0; $i < 500; $i++) { print "x" x 500, "\n"}' | tee lines | DGSH_DEBUG_LEVEL=4 $DGSH_TEE -f $flags -b 512 -m 2k -o try -o try2 2>err &
 	cat try2 >try2.out &
 	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
 	wait
