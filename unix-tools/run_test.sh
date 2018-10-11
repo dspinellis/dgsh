@@ -55,6 +55,7 @@ else
 	  2>$PSDIR/$BSCRIPT.err ; then
     printf "$BSCRIPT.sh $S\n"
   else
+    cat $PSDIR/$BSCRIPT.err
     printf "$BSCRIPT.sh $F\n"
     cat $PSDIR/$BSCRIPT.err
     exit 1
