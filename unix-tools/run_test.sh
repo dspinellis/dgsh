@@ -44,18 +44,17 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ "$INPUT_TYPE" = pipe ]; then
-  if DGSH_DEBUG_LEVEL=4 $DGSH $FSCRIPT <$INPUT1 >$PSDIR/$BSCRIPT.outb 2>$PSDIR/$BSCRIPT.err ; then
+  if DGSH_DEBUG_LEVEL=2 $DGSH $FSCRIPT <$INPUT1 >$PSDIR/$BSCRIPT.outb 2>$PSDIR/$BSCRIPT.err ; then
     printf "$BSCRIPT.sh $S\n"
   else
     printf "$BSCRIPT.sh $F\n"
     exit 1
   fi
 else
-  if DGSH_DEBUG_LEVEL=4 $DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 >$PSDIR/$BSCRIPT.outb \
+  if DGSH_DEBUG_LEVEL=2 $DGSH $FSCRIPT $INPUT1 $INPUT2 $INPUT3 >$PSDIR/$BSCRIPT.outb \
 	  2>$PSDIR/$BSCRIPT.err ; then
     printf "$BSCRIPT.sh $S\n"
   else
-    cat $PSDIR/$BSCRIPT.err
     printf "$BSCRIPT.sh $F\n"
     cat $PSDIR/$BSCRIPT.err
     exit 1

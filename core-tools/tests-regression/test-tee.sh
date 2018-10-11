@@ -182,7 +182,6 @@ do
 	then
 		ensure_same "Low-memory $flags error" err tee/oom.err
 	else
-		sed 's/^/dgsh error output: /' err
 		ensure_same "Low-memory (try) $flags" lines try.out
 		ensure_same "Low-memory (try2) $flags" lines try2.out
 	fi
@@ -195,7 +194,6 @@ do
 	cat try2 >try2.out &
 	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
 	wait
-	sed 's/^/dgsh error output: /' err
 	ensure_same "Low-memory temporary file (try) $flags" lines try.out
 	ensure_same "Low-memory temporary file (try2) $flags" lines try2.out
 	rm -f lines try try2 try.out try2.out err
