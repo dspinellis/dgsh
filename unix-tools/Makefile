@@ -167,7 +167,7 @@ test-bash: ../test-data/fid
 	./run_test.sh $(PSDIR) $(EGDIR)/set-operations.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(EGDIR)/compress-compare.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/commit-stats.sh
-	./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
+	DGSH_TIMEOUT=20 ./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
 	./run_test.sh $(PSDIR) $(EGDIR)/duplicate-files.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/spell-highlight.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/static-functions.sh file coreutils
