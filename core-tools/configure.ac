@@ -48,6 +48,8 @@ AC_CONFIG_FILES([Makefile
                  tests/Makefile])
 
 AM_CONDITIONAL([FREEBSD], [test $(uname) = "FreeBSD"])
+AM_CONDITIONAL([LINUX], [test $(uname) = "Linux"])
+AM_CONDITIONAL([DARWIN], [test $(uname) = "Darwin"])
 
 AC_OUTPUT
 
