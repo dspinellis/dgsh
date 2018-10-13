@@ -6,8 +6,15 @@ else
 CPOW =
 endif
 
+if LINUX
+DGSH_ASSEMBLER_VAR = dgsh-elf.s
+endif
+if DARWIN
+DGSH_ASSEMBLER_VAR = dgsh-macho.s
+endif
+
 lib_LIBRARIES = libdgsh.a
-libdgsh_a_SOURCES = negotiate.c dgsh-elf.s
+libdgsh_a_SOURCES = negotiate.c $(DGSH_ASSEMBLER_VAR)
 
 include_HEADERS = dgsh.h
 

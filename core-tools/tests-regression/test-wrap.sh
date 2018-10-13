@@ -44,7 +44,7 @@ ensure_same echo-s
 
 # Verify the fdescfs functionality (required by dgsh-wrap <| and >|
 # arguments) is available
-if [ $(ls /dev/fd | wc -l) -ne 4 ] ; then
+if [ $(ls /dev/fd | wc -l) -lt 4 ] ; then
   cat <<\EOF 1>&2
 The full functionality of dgsh-wrap requires full /dev/fd functionality;
 i.e.  that *all* file descriptors of a process are available under /dev/fd.
