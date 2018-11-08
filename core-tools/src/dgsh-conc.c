@@ -582,7 +582,7 @@ main(int argc, char *argv[])
 	exit = pass_message_blocks();
 	if (exit == PS_RUN) {
 		if (noinput)
-			DPRINTF(1, "%s(): Communicated the solution", __func__);
+			DPRINTF(1, "%s(): Special (no-input) conc communicated the solution", __func__);
 		if (multiple_inputs)
 			gather_input_fds(chosen_mb);
 		else if (!noinput)	// Output noinput conc has no job here
