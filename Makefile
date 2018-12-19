@@ -96,8 +96,7 @@ config-core-tools: core-tools/configure.ac core-tools/Makefile.am core-tools/src
 	cd tests && \
 	patch Makefile <Makefile.patch
 
-#test: test-negotiate test-tee test-kvstore test-unix-tools test-merge-sum test-wrap test-dgsh
-test: test-unix-tools test-merge-sum test-wrap test-dgsh
+test: test-negotiate test-tee test-kvstore test-unix-tools test-merge-sum test-wrap test-dgsh
 
 test-dgsh: tools
 	cd core-tools/tests-regression && ./test-dgsh.sh
