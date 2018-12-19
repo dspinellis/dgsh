@@ -5,7 +5,9 @@ set -x
 brew update
 brew install check xz texinfo help2man gettext libelf
 brew link texinfo --force
+export PATH="/usr/local/opt/texinfo/bin:$PATH"
 brew link gettext --force
+export PATH="/usr/local/opt/gettext/bin:$PATH"
 #wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
 #tar Jxvf gettext-0.19.5.tar.xz >/dev/null
 #cd gettext-0.19.5 && ./configure && make && sudo make install >/dev/null
