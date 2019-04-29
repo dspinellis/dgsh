@@ -171,47 +171,35 @@ paste <(echo hello) <(echo world)
 </pre>
 
 <p>
-In the following larger example, which implements a directory listing similar
-to that of the Windows <em>DIR</em> command,
-the output of <em>ls</em> is distributed to
-six commands:
-<em>awk</em>, which sums the number of bytes and passes the
-result to the <em>tr</em> command that deletes
-newline characters,
-<em>wc</em>, which counts the number of files,
-<em>awk</em>, which counts the number of bytes,
-<em>grep</em>, which counts the number of directories and passes the
-result to the <em>tr</em> command that deletes newline characters,
-three <code>echo</code> commands, which provide the headers
-of the data output by the commands described above.
-All six commands pass their output
+In the following larger example, which compares the performance of
+different compression utilities, the script's standard input
+is distributed to
+three compression utilities (<em>xz</em>, <em>bzip2</em>, and <em>gzip</em>),
+to assess their performance, and also to
+<em>file</em> and <em>wc</em> to report the input data's type and size.
+The <em>printf</em> commands label the data of each processing type.
+All eight commands pass their output
 to the <code>cat</code> command, which gathers their outputs
 in order.
 </p>
 
 <pre class="prettyprint lang-bash">
-FREE=$(df -h . | awk '!/Use%/{print $4}')
-
-ls -n |
 tee |
 {{
-        # Reorder fields in DIR-like way
-        awk '!/^total/ {print $6, $7, $8, $1, sprintf("%8d", $5), $9}'
+	printf 'File type:\t'
+	file -
 
-        # Count number of files
-        wc -l | tr -d \\n
+	printf 'Original size:\t'
+	wc -c
 
-        # Print label for number of files
-        echo -n ' File(s) '
+	printf 'xz:\t\t'
+	xz -c | wc -c
 
-        # Tally number of bytes
-        awk '{s += $5} END {printf("%d bytes\n", s)}'
+	printf 'bzip2:\t\t'
+	bzip2 -c | wc -c
 
-        # Count number of directories
-        grep -c '^d' | tr -d \\n
-
-        # Print label for number of dirs and calculate free bytes
-        echo " Dir(s) $FREE bytes free"
+	printf 'gzip:\t\t'
+	gzip -c | wc -c
 }} |
 cat
 </pre>
