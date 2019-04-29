@@ -24,6 +24,7 @@
  * ls | dgsh-wrap /usr/bin/sort -k5n | more
  */
 
+#define _GNU_SOURCE /* For asprintf() */
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
