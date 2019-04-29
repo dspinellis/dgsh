@@ -1,3 +1,16 @@
+#if defined(__APPLE__)
+
+    .section ".note.ident", "a"
+    .asciz "DSpinellis/dgsh"
+    .section	__TEXT,__text,regular,pure_instructions
+    .macosx_version_min 10, 13
+    .globl	_dgsh_force_include     ## @dgsh_force_include
+    .zerofill __DATA,__common,_dgsh_force_include,4,2
+
+    .subsections_via_symbols
+
+#else
+
 # ELF note header to mark dgsh-compatible programs
 # See http://www.netbsd.org/docs/kernel/elf-notes.html
     .comm dgsh_force_include,4,4
@@ -11,3 +24,5 @@
 2:  .long 0x00000001		# desc
     .long 0x00000000
 3:  .p2align 2
+
+#endif

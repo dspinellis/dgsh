@@ -20,14 +20,6 @@
  *
  */
 
-#ifdef __linux__
-#  ifndef IOV_MAX		/* IOV_MAX LINUX */
-#    define IOV_MAX 1024
-#  endif
-#elif __APPLE__
-#include <limits.h>		/* IOV_MAX APPLE */
-#endif
-
 #include <assert.h>		/* assert() */
 #include <errno.h>		/* ENOBUFS */
 #include <err.h>		/* err() */
@@ -40,7 +32,7 @@
 #include <sys/socket.h>		/* sendmsg(), recvmsg() */
 #include <unistd.h>		/* getpid(), getpagesize(),
 				 * STDIN_FILENO, STDOUT_FILENO,
-				 * STDERR_FILENO, alarm()
+				 * STDERR_FILENO, alarm(), sysconf()
 				 */
 #include <signal.h>		/* signal(), SIGALRM */
 #include <time.h>		/* nanosleep() */
@@ -203,6 +195,20 @@ install_exit_handler(void)
 	atexit(dgsh_exit_handler);
 }
 #endif
+
+static int iov_max;
+
+// Setup iov_max handling runtime, even if it is defined at runtime
+__attribute__((constructor))
+static void
+setup_iov_max(void)
+{
+#if defined(IOV_MAX)
+        iov_max = IOV_MAX;
+#else
+        iov_max = (int)sysconf(_SC_IOV_MAX);
+#endif
+}
 
 /**
  * Remove path to command to save space in the graph plot
@@ -1467,13 +1473,13 @@ static int
 do_write (int write_fd, void *datastruct, int datastruct_size, int struct_type)
 {
 	int wsize = 0;
-	if (datastruct_size > IOV_MAX) {
+	if (datastruct_size > iov_max) {
 		int all_elements, max_elements, elements = 0, pieces, 
 			prev_elements = 0, size, struct_size, i;
 
 		struct_size = get_struct_size(struct_type);
 		all_elements = datastruct_size / struct_size;
-		max_elements = IOV_MAX / struct_size;
+		max_elements = iov_max / struct_size;
 		pieces = all_elements / max_elements;
 		pieces += (all_elements % max_elements > 0);
 		DPRINTF(4, "struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
@@ -2103,15 +2109,15 @@ read_chunk(int read_fd, char *buf, int buf_size, int *bytes_read,
 {
 	int error_code;
 	DPRINTF(4, "%s(): buf_size: %d, IOV_MAX: %d",
-			__func__, buf_size, IOV_MAX);
+			__func__, buf_size, iov_max);
 
-	if (buf_size > IOV_MAX) {
+	if (buf_size > iov_max) {
 		int buf_size_piece, pieces, i, size_copied = 0, rsize = 0,
 			struct_size, all_elements, max_elements, elements = 0;
 
 		struct_size = get_struct_size(struct_type);
 		all_elements = buf_size / struct_size;
-		max_elements = IOV_MAX / struct_size;
+		max_elements = iov_max / struct_size;
 		pieces = all_elements / max_elements;
 		pieces += (all_elements % max_elements > 0);
 		DPRINTF(4, "struct_type: %d, pieces: %d, all_elements: %d, max_elements: %d",
