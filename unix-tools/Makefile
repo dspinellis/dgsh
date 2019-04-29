@@ -168,7 +168,7 @@ test-bash: ../test-data/fid
 	# ./run_test.sh $(PSDIR) $(EGDIR)/set-operations.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(EGDIR)/compress-compare.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/commit-stats.sh
-	./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
+	DGSH_TIMEOUT=20 ./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
 	./run_test.sh $(PSDIR) $(EGDIR)/duplicate-files.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/spell-highlight.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/static-functions.sh file coreutils
@@ -182,8 +182,8 @@ test-bash: ../test-data/fid
 	./run_test.sh $(PSDIR) $(EGDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
-	DGSH_TIMEOUT=20 ./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils
-	KVSTORE_RETRY_LIMIT=30 DGSH_TIMEOUT=30 ./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
+	DGSH_TIMEOUT=60 ./run_test.sh $(PSDIR) $(EGDIR)/code-metrics.sh file coreutils/src
+	KVSTORE_RETRY_LIMIT=100 DGSH_TIMEOUT=100 ./run_test.sh $(PSDIR) $(EGDIR)/web-log-report.sh pipe $(PSDIR)/access.log
 	./run_test.sh $(PSDIR) $(EGDIR)/fft-block8.sh file $(PSDIR)/fft-input.dat
 	./run_test.sh $(PSDIR) $(EGDIR)/ft2d.sh -- sfimag sfgrey sfspike sfput sfmath \
 					sfspray sffft1 sffft3 sfcat sflmostretch \

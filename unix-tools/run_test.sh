@@ -48,6 +48,7 @@ if [ "$INPUT_TYPE" = pipe ]; then
     printf "$BSCRIPT.sh $S\n"
   else
     printf "$BSCRIPT.sh $F\n"
+    cat $PSDIR/$BSCRIPT.err
     exit 1
   fi
 else
@@ -56,6 +57,7 @@ else
     printf "$BSCRIPT.sh $S\n"
   else
     printf "$BSCRIPT.sh $F\n"
+    cat $PSDIR/$BSCRIPT.err
     exit 1
   fi
 fi

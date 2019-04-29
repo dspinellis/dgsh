@@ -76,7 +76,7 @@ ensure_same word-properties
 $DGSH $EXAMPLE/compress-compare.sh <word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >compress-compare/out.test
 ensure_same compress-compare
 
-KVSTORE_RETRY_LIMIT=30 DGSH_TIMEOUT=30 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
+KVSTORE_RETRY_LIMIT=60 DGSH_TIMEOUT=60 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
 ensure_same web-log-report
 
 (
