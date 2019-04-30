@@ -7,7 +7,7 @@ CPOW =
 endif
 
 lib_LIBRARIES = libdgsh.a
-libdgsh_a_SOURCES = negotiate.c dgsh-elf.S
+libdgsh_a_SOURCES = negotiate.c dgsh-elf.s
 
 include_HEADERS = dgsh.h
 
