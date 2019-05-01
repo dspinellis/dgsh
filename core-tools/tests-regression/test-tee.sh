@@ -194,6 +194,7 @@ do
 	cat try2 >try2.out &
 	{ read x ; echo $x ; sleep 1 ; cat ; } < try > try.out &
 	wait
+	cat err
 	ensure_same "Low-memory temporary file (try) $flags" lines try.out
 	ensure_same "Low-memory temporary file (try2) $flags" lines try2.out
 	rm -f lines try try2 try.out try2.out err
