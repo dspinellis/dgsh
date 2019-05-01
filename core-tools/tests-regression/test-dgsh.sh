@@ -64,8 +64,8 @@ ensure_same commit-stats
 
 # Test depends heavily on the grep utility,
 # which is under improvement (see issue #31)
-#DGSH_TIMEOUT=20 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test 2>/dev/null
-#ensure_same code-metrics
+DGSH_TIMEOUT=20 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test 2>/dev/null
+ensure_same code-metrics
 
 $DGSH $EXAMPLE/duplicate-files.sh duplicate-files >duplicate-files/out.test
 ensure_same duplicate-files
