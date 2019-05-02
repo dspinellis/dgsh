@@ -389,11 +389,8 @@ memory_allocate(struct buffer_pool *bp, int pool)
 	int i, orig_pool_size;
 	struct pool_buffer *orig_buffers;
 
-	if (pool < bp->allocated_pool_end) {
-		if (bp->buffers[pool].s == s_memory_backed)
-			bp->buffers[pool].s = s_memory;
+	if (pool < bp->allocated_pool_end)
 		return true;
-	}
 
 	DPRINTF(4, "Buffers allocated: %d Freed: %d", bp->buffers_allocated, bp->buffers_freed);
 	/* Check soft memory limit through allocated plus requested memory. */
