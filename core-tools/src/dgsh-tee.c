@@ -502,7 +502,7 @@ source_buffer(struct source_info *ifp, /* OUT */ struct io_buffer *b)
 
 	if (!memory_allocate(ifp->bp, pool))
 		return false;
-	if (ifp->bp->buffers[pool].s != s_memory) {
+	if (ifp->bp->buffers[pool].s != s_memory)
 		fprintf(stderr, "ifp->bp->buffers[pool].s = 0x%x, pool=%d\n", ifp->bp->buffers[pool].s, pool);
 	assert(ifp->bp->buffers[pool].s == s_memory);
 	b->p = ifp->bp->buffers[pool].p + pool_offset;
