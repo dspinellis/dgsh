@@ -167,6 +167,7 @@ test-bash: ../test-data/fid
 	# TODO reinstate after fixin it
 	# ./run_test.sh $(PSDIR) $(EGDIR)/set-operations.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(EGDIR)/compress-compare.sh pipe Readme.md
+	# TODO check that .git repo exists
 	./run_test.sh $(PSDIR) $(EGDIR)/commit-stats.sh
 	DGSH_TIMEOUT=20 ./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
 	./run_test.sh $(PSDIR) $(EGDIR)/duplicate-files.sh file coreutils

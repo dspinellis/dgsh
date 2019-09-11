@@ -54,13 +54,17 @@ ensure_same spell-highlight
 $DGSH $EXAMPLE/map-hierarchy.sh map-hierarchy/in/a map-hierarchy/in/b map-hierarchy/out.test
 ensure_same map-hierarchy
 
-(
-cd $TOP/unix-tools/grep
-LC_ALL=C $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
-  --until=2015-12-31Z23:59 \
-  >$TOP/core-tools/tests-regression/commit-stats/out.test
-)
-ensure_same commit-stats
+if [ -f "$TOP/unix-tools/grep/.git" ] && [ -d "$TOP/.git" ]; then
+	(
+	cd $TOP/unix-tools/grep
+	LC_ALL=C $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
+	--until=2015-12-31Z23:59 \
+	>$TOP/core-tools/tests-regression/commit-stats/out.test
+	)
+	ensure_same commit-stats
+else
+	echo "Skip commit-stats test because input is missing (grep's git repo)"
+fi
 
 # This example outputs different result for NMACRO than the template
 # due to a variation in the behavior of grep or a variation in the
