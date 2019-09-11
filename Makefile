@@ -167,15 +167,8 @@ commit:
 	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do grep -v '^#' .git/COMMIT_EDITMSG | (cd $$i && git commit -a -F -) ; done
 	rm -f .git/COMMIT_EDITMSG
 
-# Example map-hierarchy.sh needs a pointer to dgsh/.git/modules/unix-tools/grep
 zip:
-	cd .. && zip -r dgsh.zip dgsh -x "dgsh/.git/hooks/*" \
-					 "dgsh/.git/info/*" \
-					 "dgsh/.git/logs/*" \
-					 "dgsh/.git/modules/unix-tools/bash/*" \
-					 "dgsh/.git/modules/unix-tools/coreutils/*" \
-					 "dgsh/.git/objects/*" \
-					 "dgsh/.git/refs/*"
+	cd .. && zip -r dgsh.zip dgsh -x *.git*
 
 # Rough uninstall rule to verify that tests pick up correct files
 uninstall:
