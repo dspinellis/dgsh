@@ -173,12 +173,7 @@ test-bash: ../test-data/fid
 	./run_test.sh $(PSDIR) $(EGDIR)/spell-highlight.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/static-functions.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/word-properties.sh file Readme.md
-	-rm -rf grep2 grep-p100
-	cp -R grep grep2 && \
-	cp -R grep2 grep-p100 && \
-	cd grep-p100 && git checkout HEAD~100 >/dev/null && \
-	cd ../grep2 && git checkout master && cd ..
-	./run_test.sh $(PSDIR) $(EGDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
+	./run_test.sh $(PSDIR) $(EGDIR)/map-hierarchy.sh file ../core-tools/tests-regression/map-hierarchy/in/a ../core-tools/tests-regression/map-hierarchy/in/b c
 	./run_test.sh $(PSDIR) $(EGDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv
