@@ -3,7 +3,7 @@
 set -x
 
 brew update
-brew install check xz texinfo help2man gettext libelf
+brew install autoconf check xz texinfo help2man gettext libelf
 export PATH="/usr/local/opt/texinfo/bin:$PATH"
 brew link gettext --force
 #wget http://ftp.gnu.org/gnu/gettext/gettext-0.19.5.tar.xz
