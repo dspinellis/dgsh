@@ -164,7 +164,7 @@ struct sink_info {
 };
 
 /* Construct a new sink_info object */
-struct sink_info *
+static struct sink_info *
 new_sink_info(const char *name)
 {
 	struct sink_info *ofp;
@@ -208,7 +208,7 @@ fd_name(int fd)
 
 
 /* Construct a new source_info object */
-struct source_info *
+static struct source_info *
 new_source_info(const char *name)
 {
 	struct source_info *ifp;
