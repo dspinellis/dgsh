@@ -54,16 +54,22 @@ ensure_same spell-highlight
 $DGSH $EXAMPLE/map-hierarchy.sh map-hierarchy/in/a map-hierarchy/in/b map-hierarchy/out.test
 ensure_same map-hierarchy
 
-(
-cd $TOP/unix-tools/grep
-LC_ALL=C $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
-  --until=2015-12-31Z23:59 \
-  >$TOP/core-tools/tests-regression/commit-stats/out.test
-)
-ensure_same commit-stats
+if [ -f "$TOP/unix-tools/grep/.git" ] && [ -d "$TOP/.git" ]; then
+	(
+	cd $TOP/unix-tools/grep
+	LC_ALL=C $DGSH $EXAMPLE/commit-stats.sh --since=2010-01-01Z00:00 \
+	--until=2015-12-31Z23:59 \
+	>$TOP/core-tools/tests-regression/commit-stats/out.test
+	)
+	ensure_same commit-stats
+else
+	echo "Skip commit-stats test because input is missing (grep's git repo)"
+fi
 
-# Test depends heavily on the grep utility,
-# which is under improvement (see issue #31)
+# This example outputs different result for NMACRO than the template
+# due to a variation in the behavior of grep or a variation in the
+# implementation of the sgsh example in regression/scripts/code-metrics.ok.
+# The test succeeds in Mac OS.
 #DGSH_TIMEOUT=20 $DGSH $EXAMPLE/code-metrics.sh code-metrics/in/ >code-metrics/out.test 2>/dev/null
 #ensure_same code-metrics
 
@@ -76,7 +82,7 @@ ensure_same word-properties
 $DGSH $EXAMPLE/compress-compare.sh <word-properties/LostWorldChap1-3 | sed 's/:.*ASCII.*/: ASCII/;s|/dev/stdin:||' >compress-compare/out.test
 ensure_same compress-compare
 
-KVSTORE_RETRY_LIMIT=60 DGSH_TIMEOUT=60 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
+KVSTORE_RETRY_LIMIT=100 DGSH_TIMEOUT=60 $DGSH $EXAMPLE/web-log-report.sh <web-log-report/logfile >web-log-report/out.test
 ensure_same web-log-report
 
 (

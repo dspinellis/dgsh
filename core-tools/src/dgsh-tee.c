@@ -164,7 +164,7 @@ struct sink_info {
 };
 
 /* Construct a new sink_info object */
-struct sink_info *
+static struct sink_info *
 new_sink_info(const char *name)
 {
 	struct sink_info *ofp;
@@ -208,7 +208,7 @@ fd_name(int fd)
 
 
 /* Construct a new source_info object */
-struct source_info *
+static struct source_info *
 new_source_info(const char *name)
 {
 	struct source_info *ifp;
@@ -502,6 +502,8 @@ source_buffer(struct source_info *ifp, /* OUT */ struct io_buffer *b)
 
 	if (!memory_allocate(ifp->bp, pool))
 		return false;
+	if (ifp->bp->buffers[pool].s != s_memory)
+		DPRINTF(4, "ifp->bp->buffers[pool].s = 0x%x, pool=%d\n", ifp->bp->buffers[pool].s, pool);
 	assert(ifp->bp->buffers[pool].s == s_memory);
 	b->p = ifp->bp->buffers[pool].p + pool_offset;
 	b->size = buffer_size - pool_offset;

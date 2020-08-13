@@ -167,18 +167,14 @@ test-bash: ../test-data/fid
 	# TODO reinstate after fixin it
 	# ./run_test.sh $(PSDIR) $(EGDIR)/set-operations.sh file $(PSDIR)
 	./run_test.sh $(PSDIR) $(EGDIR)/compress-compare.sh pipe Readme.md
+	# TODO check that .git repo exists
 	./run_test.sh $(PSDIR) $(EGDIR)/commit-stats.sh
 	DGSH_TIMEOUT=20 ./run_test.sh $(PSDIR) $(EGDIR)/uniform-5x5.sh
 	./run_test.sh $(PSDIR) $(EGDIR)/duplicate-files.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/spell-highlight.sh pipe Readme.md
 	./run_test.sh $(PSDIR) $(EGDIR)/static-functions.sh file coreutils
 	./run_test.sh $(PSDIR) $(EGDIR)/word-properties.sh file Readme.md
-	-rm -rf grep2 grep-p100
-	cp -R grep grep2 && \
-	cp -R grep2 grep-p100 && \
-	cd grep-p100 && git checkout HEAD~100 >/dev/null && \
-	cd ../grep2 && git checkout master && cd ..
-	./run_test.sh $(PSDIR) $(EGDIR)/map-hierarchy.sh file grep2 grep-p100 grepp
+	./run_test.sh $(PSDIR) $(EGDIR)/map-hierarchy.sh file ../core-tools/tests-regression/map-hierarchy/in/a ../core-tools/tests-regression/map-hierarchy/in/b c
 	./run_test.sh $(PSDIR) $(EGDIR)/text-properties.sh pipe Readme.md
 	cd coreutils && \
 	../run_test.sh ../$(PSDIR) ../$(EGDIR)/committer-plot.sh -- pnmtopng pamscale pgmmorphconv

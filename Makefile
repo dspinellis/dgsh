@@ -167,6 +167,9 @@ commit:
 	for i in $$(echo unix-tools/*/.git | sed 's/\.git//g') . ; do grep -v '^#' .git/COMMIT_EDITMSG | (cd $$i && git commit -a -F -) ; done
 	rm -f .git/COMMIT_EDITMSG
 
+zip:
+	cd .. && zip -r dgsh.zip dgsh -x *.git*
+
 # Rough uninstall rule to verify that tests pick up correct files
 uninstall:
 	rm -rf $(PREFIX)/bin/dgsh-* $(PREFIX)/libexec/dgsh \

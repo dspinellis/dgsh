@@ -31,10 +31,10 @@ $DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap -i 0 echo hi ; dgsh-wrap dd 2>/dev/nul
 ensure_same echo-deaf
 
 # Test that echo is wrapped as deaf when wrapped as script with supplied exec
-echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -S  -i 0 `which echo`" >dgsh-wrap/echo-S
-chmod +x dgsh-wrap/echo-S
-$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap/echo-S hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-S.test
-ensure_same echo-S
+echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -S  -i 0 `which echo`" >dgsh-wrap/echo-s_caps
+chmod +x dgsh-wrap/echo-s_caps
+$DGSH -c 'dgsh-enumerate 1 | {{ dgsh-wrap/echo-s_caps hi ; dgsh-wrap dd 2>/dev/null ; }} | cat' >dgsh-wrap/echo-s_caps.test
+ensure_same echo-s_caps
 
 # Test that echo is wrapped as deaf when wrapped as script with implied exec
 echo "#!$TOP/build/libexec/dgsh/dgsh-wrap -s  -i 0" >dgsh-wrap/echo
