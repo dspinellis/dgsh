@@ -96,7 +96,7 @@ do
 	for buffer in 128 1000000
 	do
 		$DGSH -c "
-		dgsh-tee -b $buffer -s -i words |
+		$DGSH_TEE -b $buffer -s -i words |
 		dgsh-parallel -n 8 cat |
 		sort -mn >a"
 		ensure_same "Scatter to blocking sinks $flags -b $buffer" words a
