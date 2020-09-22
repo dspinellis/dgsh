@@ -439,7 +439,7 @@ buffer_file_free(struct buffer_pool *bp, int pool)
 #ifdef FALLOC_FL_PUNCH_HOLE
 	static bool warned = false;
 
-	if (fallocate(tmp_fd, FALLOC_FL_PUNCH_HOLE, pool * buffer_size, buffer_size) < 0 &&
+	if (fallocate(bp->page_file_fd, FALLOC_FL_PUNCH_HOLE, pool * buffer_size, buffer_size) < 0 &&
 	    !warned) {
 		warn("Failed to free temporary buffer space");
 		warned = true;
