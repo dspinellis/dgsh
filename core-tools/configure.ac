@@ -39,6 +39,7 @@ AC_CHECK_HEADERS([stdlib.h])
 
 # Checks for library functions.
 AC_FUNC_MALLOC
+AC_CHECK_FUNCS(cpow)
 
 # Output files
 AC_CONFIG_HEADERS([config.h])
@@ -47,7 +48,6 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  tests/Makefile])
 
-AM_CONDITIONAL([FREEBSD], [test $(uname) = "FreeBSD"])
 AM_CONDITIONAL([LINUX], [test $(uname) = "Linux"])
 AM_CONDITIONAL([DARWIN], [test $(uname) = "Darwin"])
 

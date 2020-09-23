@@ -10,6 +10,10 @@
 #include "dgsh.h"
 #include "dgsh-debug.h"
 
+#if !defined(HAVE_CPOW)
+#include "../../unix-tools/cpow.c"
+#endif
+
 void
 read_number(int fd, long double *x, long double complex *xc)
 {

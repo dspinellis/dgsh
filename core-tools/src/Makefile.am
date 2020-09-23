@@ -1,11 +1,5 @@
 include ../../.config
 
-if FREEBSD
-CPOW = ../../unix-tools/cpow.c
-else
-CPOW =
-endif
-
 if LINUX
 DGSH_ASSEMBLY_FILE=dgsh-elf.s
 else
