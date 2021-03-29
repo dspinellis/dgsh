@@ -1392,6 +1392,7 @@ main(int argc, char *argv[])
 	for (;;) {
 		fd_set source_fds;
 		fd_set sink_fds;
+		int fd_set_count = 0;
 
 		show_state(state);
 		/* Set the fd's we're interested to read/write; close unneeded ones. */
@@ -1402,13 +1403,17 @@ main(int argc, char *argv[])
 			switch (state) {
 			case read_ib:
 				for (ifp = front_ifp; ifp; ifp = ifp->next)
-					if (!ifp->reached_eof)
+					if (!ifp->reached_eof) {
 						FD_SET(ifp->fd, &source_fds);
+						fd_set_count += 1;
+					}
 				break;
 			case read_ob:
 				for (ifp = front_ifp; ifp; ifp = ifp->next)
-					if (ifp->active && !ifp->reached_eof)
+					if (ifp->active && !ifp->reached_eof) {
 						FD_SET(ifp->fd, &source_fds);
+						fd_set_count += 1;
+					}
 				break;
 			default:
 				break;
@@ -1422,35 +1427,39 @@ main(int argc, char *argv[])
 				case drain_ob:
 					DPRINTF(4, "Check active file[%s] pos_written=%ld pos_to_write=%ld",
 						fp_name(ofp), (long)ofp->pos_written, (long)ofp->pos_to_write);
-					if (ofp->pos_written < ofp->pos_to_write)
+					if (ofp->pos_written < ofp->pos_to_write) {
 						FD_SET(ofp->fd, &sink_fds);
+						fd_set_count += 1;
+					}
 					break;
 				case drain_ib:
 				case write_ob:
 					FD_SET(ofp->fd, &sink_fds);
+					fd_set_count += 1;
 					break;
 				}
 			}
 
+		if (fd_set_count != 0) {
+			/* Block until we can read or write. */
+			show_select_args("Entering select", &source_fds, ifiles, &sink_fds, ofiles, true);
+			if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
+				err(3, "select");
+			show_select_args("Select returned", &source_fds, ifiles, &sink_fds, ofiles, false);
 
-		/* Block until we can read or write. */
-		show_select_args("Entering select", &source_fds, ifiles, &sink_fds, ofiles, true);
-		if (select(max_fd + 1, &source_fds, &sink_fds, NULL, NULL) < 0)
-			err(3, "select");
-		show_select_args("Select returned", &source_fds, ifiles, &sink_fds, ofiles, false);
-
-		/* Write to all file descriptors that accept writes. */
-		if (sink_write(ifiles, &sink_fds, ofiles) > 0) {
-			/*
-			 * If we wrote something, we made progress on the
-			 * downstream end.  Loop without reading to avoid
-			 * allocating excessive buffer memory.
-			 */
-			if (state == drain_ob)
-				state = write_ob;
-			continue;
+			/* Write to all file descriptors that accept writes. */
+			if (sink_write(ifiles, &sink_fds, ofiles) > 0) {
+				/*
+				* If we wrote something, we made progress on the
+				* downstream end.  Loop without reading to avoid
+				* allocating excessive buffer memory.
+				*/
+				if (state == drain_ob)
+					state = write_ob;
+				continue;
+			}
 		}
-
+		
 		if (reached_eof) {
 			int active_fds = 0;
 
