@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+title: dgsh: The Directed Graph Shell
+message: >-
+  If you use this software, please cite, using the metadata from this file,
+  both the article from preferred-citation and the software itself.
+preferred-citation:
+  date-released: "2017-09-01"
+  doi: "10.1109/TC.2017.2695447"
+  title: "Extending Unix Pipelines to DAGs"
+  authors:
+    - family-names: "Spinellis"
+      given-names: "Diomidis"
+    - family-names: "Fragkoulis"
+      given-names: "Marios"
+  type: "article"
+  volume: 66
+  issue: 9
+  journal: "IEEE Transactions on Computers"
+  start: 1547
+  end: 1561
+type: software
+authors:
+  - given-names: Diomidis
+    family-names: Spinellis
+    email: dds@aueb.gr
+    affiliation: Athens University of Economics and Business
+    orcid: 'https://orcid.org/0000-0003-4231-1897'
+  - given-names: "Marios"
+    family-names: "Fragkoulis"
+repository-code: 'https://github.com/dspinellis/dgsh'
+keywords:
+  - Unix
+  - shell
+  - dataflow programming
+license: Apache-2.0

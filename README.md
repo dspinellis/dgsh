@@ -1,4 +1,4 @@
-## The Directed Graph Shell (dgsh)
+## dgsh: The Directed Graph Shell
 
 [![Build Status](https://travis-ci.org/dspinellis/dgsh.svg?branch=master)](https://travis-ci.org/dspinellis/dgsh)
 
